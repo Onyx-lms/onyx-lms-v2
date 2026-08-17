@@ -46,7 +46,14 @@ async function post(action: string, body: unknown) {
   return res.json().catch(() => ({ ok: false, message: 'Something went wrong.' }));
 }
 
-export function OnyxLoginForm() {
+/**
+ * `next` is where to land after signing in, and it is only ever a path this
+ * app owns -- see `safeNext` in the login page. It exists for one flow: a
+ * learner scans an attendance QR on a phone whose session has lapsed, and
+ * sending them to the dashboard would lose the code in the URL, which rotates
+ * within seconds and cannot be recovered by going back.
+ */
+export function OnyxLoginForm({ next }: { next?: string } = {}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -65,8 +72,10 @@ export function OnyxLoginForm() {
           });
           if (!body.ok) { setError(body.message ?? 'Those details do not match.'); return; }
           // Sign-in lands you in your first institution; the switcher in the
-          // shell moves you between the rest.
-          router.push('/onyx/dashboard');
+          // shell moves you between the rest. Unless something sent you here
+          // from a page you were trying to reach, in which case you go back
+          // to it.
+          router.push(next || '/onyx/dashboard');
           router.refresh();
         });
       }}

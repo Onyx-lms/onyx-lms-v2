@@ -171,7 +171,14 @@ export interface OnyxDatabase {
 // O02 -- Onyx Learn
 // ---------------------------------------------------------------------------
 
-export type LessonType = 'video' | 'document' | 'text' | 'link';
+/**
+ * `document` covers PDFs, slide decks and word-processor files -- one type
+ * rather than one per extension, because what changes between them is the
+ * viewer, not the lesson. `image` is separate from `document` because a
+ * diagram or a scanned worksheet is displayed inline rather than downloaded.
+ * `link` is the only type whose `path` is not a storage key.
+ */
+export type LessonType = 'video' | 'document' | 'image' | 'text' | 'link';
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 export type AttendanceMethod = 'manual' | 'qr';
 export type LatePolicy = 'reject' | 'accept' | 'penalty';

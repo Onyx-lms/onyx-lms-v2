@@ -51,6 +51,28 @@ export class StorageService {
     return data?.signedUrl ?? null;
   }
 
+  /**
+   * A one-shot ticket letting the browser PUT a file straight into the bucket.
+   *
+   * This exists because of a hard platform limit rather than a preference:
+   * a request body through the app is capped at 4.5 MB on Vercel, which is
+   * below any real lecture recording and below plenty of slide decks. Routing
+   * the bytes through a function would also mean paying for them twice, in
+   * duration and in memory, to hand them straight on.
+   *
+   * The key is still minted by the server -- the browser is told where to put
+   * the file, never asked. A caller who could choose its own key could write
+   * into another institution's prefix.
+   */
+  async signedUpload(key: string): Promise<{ path: string; token: string; signedUrl: string }> {
+    const { data, error } = await this.#db.storage
+      .from(this.#bucket).createSignedUploadUrl(key);
+    if (error || !data) {
+      throw new Error(`storage.signedUpload(${key}) failed: ${error?.message ?? 'no url'}`);
+    }
+    return { path: key, token: data.token, signedUrl: data.signedUrl };
+  }
+
   async upload(key: string, body: Uint8Array | ArrayBuffer | Blob, contentType?: string) {
     const { error } = await this.#db.storage.from(this.#bucket).upload(key, body as never, {
       contentType, upsert: true,

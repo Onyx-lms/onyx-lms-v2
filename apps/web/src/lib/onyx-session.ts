@@ -121,9 +121,22 @@ export async function onyxApiSafe<T>(path: string): Promise<T | null> {
   try { return await onyxApi<T>(path); } catch { return null; }
 }
 
-export async function requireOnyxSession(): Promise<OnyxClaims> {
+/**
+ * `returnTo` sends the visitor back where they were trying to go once they
+ * have signed in. Pass it only where losing the URL actually costs something:
+ * for most pages the dashboard is a fine landing spot, but the attendance
+ * check-in carries a code in its query string that rotates within seconds, so
+ * dropping it means the learner has to find the projector again.
+ *
+ * The login page validates the value before using it -- see `safeNext` there.
+ */
+export async function requireOnyxSession(returnTo?: string): Promise<OnyxClaims> {
   const session = await getOnyxSession();
-  if (!session) redirect('/onyx/login');
+  if (!session) {
+    redirect(returnTo
+      ? '/onyx/login?next=' + encodeURIComponent(returnTo)
+      : '/onyx/login');
+  }
   return session;
 }
 

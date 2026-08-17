@@ -11,6 +11,7 @@ import {
 } from '@/lib/onyx-learn';
 import type { Discussion } from '@/lib/onyx-campus';
 import { CreatePanel, ActionButton } from '@/components/onyx-create';
+import { LessonComposer } from '@/components/onyx-lesson-composer';
 import {
   CourseFacultyManager, CourseRosterManager, CourseSettingsForm, DeleteCourseButton,
 } from '@/components/onyx-manage';
@@ -260,28 +261,16 @@ export default async function OnyxCoursePage({ params }: { params: Promise<{ id:
                   { name: 'summary', label: 'Summary', type: 'textarea', rows: 2 },
                 ]}
               />
+              {/* Not a CreatePanel: a lesson can be a file, and CreatePanel
+                  posts JSON. See onyx-lesson-composer.tsx -- the form this
+                  replaces offered a "PDF" kind the API rejects outright, and
+                  asked for a storage path as free text. */}
               {outline.modules.map((m) => (
-                <CreatePanel
+                <LessonComposer
                   key={'add-lesson-' + m.id}
-                  title={'New lesson in "' + m.title + '"'}
-                  cta={'Add a lesson to ' + m.title} icon="edit" compact
-                  endpoint={'modules/' + m.id + '/lessons'}
-                  fields={[
-                    { name: 'title', label: 'Lesson title', required: true },
-                    { name: 'type', label: 'Kind', type: 'select', fallback: 'text',
-                      options: [
-                        { value: 'text', label: 'Text' },
-                        { value: 'video', label: 'Video' },
-                        { value: 'pdf', label: 'PDF' },
-                      ] },
-                    { name: 'body', label: 'Lesson text', type: 'textarea', rows: 4,
-                      help: 'A text lesson needs this. A video or PDF needs a source path instead.' },
-                    { name: 'path', label: 'Source path (video or PDF)',
-                      placeholder: 'uploads/lesson.mp4' },
-                    { name: 'duration_seconds', label: 'Length (seconds)', type: 'number',
-                      min: 0, fallback: 300 },
-                    { name: 'is_preview', label: 'Free preview', type: 'checkbox' },
-                  ]}
+                  courseId={Number(id)}
+                  moduleId={Number(m.id)}
+                  moduleTitle={m.title}
                 />
               ))}
             </div>

@@ -59,6 +59,23 @@ export function OnyxPlayer({ lesson }: { lesson: LessonDetail }) {
     );
   }
 
+  // An image is the one attachment worth showing rather than linking: a
+  // diagram or a scanned worksheet behind an "Open the file" button is a
+  // lesson nobody reads. `url` is a short-lived signed URL, as for any other
+  // stored object.
+  if (lesson.type === 'image') {
+    return lesson.url ? (
+      // eslint-disable-next-line @next/next/no-img-element -- the source is a
+      // signed URL that changes on every load, so next/image cannot cache or
+      // optimise it, and its loader would strip the signature.
+      <img
+        src={lesson.url}
+        alt={lesson.title}
+        className="max-h-[70vh] w-full rounded-xl border border-line bg-white object-contain"
+      />
+    ) : <p className="text-sm text-muted">This lesson has nothing attached.</p>;
+  }
+
   if (lesson.type !== 'video') {
     return lesson.url ? (
       <a href={lesson.url} target="_blank" rel="noreferrer"

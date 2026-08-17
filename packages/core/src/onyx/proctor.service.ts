@@ -106,6 +106,17 @@ export class ProctorService {
     // Events after the paper is in are noise, and accepting them would let a
     // candidate pad their own log.
     if (attempt.status !== 'in_progress') throw new HttpError(422, 'That attempt is finished.');
+    // `status` is only moved to 'expired' by the sweep, so between the
+    // deadline and the next sweep pass -- or indefinitely, if the sweep is not
+    // scheduled in this environment -- an overdue attempt is still
+    // 'in_progress' and was accepting events. `saveAnswer` has always checked
+    // the clock as well as the status; this had not, which is how an integrity
+    // timeline came to hold events an hour past the end of a ten-minute paper.
+    // Refused rather than finalised: expiring an attempt belongs to the sweep,
+    // and reaching into it from here would couple monitoring to marking.
+    if (this.#now() > Date.parse(String(attempt.expires_at))) {
+      throw new HttpError(422, 'That attempt is finished.');
+    }
 
     const weight = EVENT_WEIGHTS[input.kind] ?? 0;
     const { data, error } = await this.#db.from('onyx_proctor_events').insert({
@@ -230,7 +241,13 @@ export class ProctorService {
       return {
         attempt_id: Number(a.id),
         assessment_id: Number(a.assessment_id),
-        user_id: Number(a.user_id),
+        // String, not Number. `user_id` became a Supabase Auth uuid in
+        // 0014_auth_uuid_cutover, and `Number(uuid)` is NaN, which
+        // `JSON.stringify` writes as `null` -- so every row of the
+        // invigilation queue arrived carrying no identity at all, and the
+        // screen resolved all of them to "Candidate #null". Not only the
+        // flagged ones: every row.
+        user_id: String(a.user_id),
         status: a.status,
         integrity_flags: a.integrity_flags,
         integrity_status: a.integrity_status,

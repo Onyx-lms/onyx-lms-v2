@@ -52,7 +52,13 @@ function world(c = clock()) {
     onyx_proctor_events: [],
     onyx_assessment_grades: [],
     onyx_audit_logs: [],
-    onyx_users: [{ id: 'user-20', email: 'exams@onyx.test', name: 'Exams' }],
+    onyx_users: [
+      { id: 'user-20', email: 'exams@onyx.test', name: 'Exams' },
+      // The two candidates, so a named marking queue has real names to resolve
+      // rather than only ids that happen to look like names here.
+      { id: 'user-10', email: 'ada@onyx.test', name: 'Ada Lovelace' },
+      { id: 'user-11', email: 'alan@onyx.test', name: 'Alan Turing' },
+    ],
   });
   const academics = new AcademicsService(db as never);
   const audit = new AuditService(db as never);
@@ -446,6 +452,38 @@ test('ASS-03a: anonymous marking hides who the paper belongs to', async () => {
   assert.equal(paper.anonymous, true);
 });
 
+test('a named paper names the candidate, rather than printing their uuid', async () => {
+  const w = world();
+  const { assessment } = await withPaper(w, { anonymous_marking: false });
+  for (const user of ['user-10', 'user-11']) {
+    const a = await w.assess.start(T, assessment, user);
+    await w.assess.submit(T, a.id, user);
+  }
+
+  // The screen says "Names shown" when this is off. It used to say that over a
+  // list of 36-character Supabase Auth uuids, because the non-anonymous branch
+  // returned `user_id` and nothing ever resolved it to a person.
+  const queue = await w.assess.markingQueue(T, assessment);
+  assert.deepEqual(queue.map((r) => r.candidate).sort(), ['Ada Lovelace', 'Alan Turing']);
+  for (const row of queue) {
+    assert.notEqual(row.user_id, null, 'a named paper should still carry the id');
+    assert.doesNotMatch(String(row.candidate), /^user-/, 'an id was shown as a name');
+  }
+});
+
+test('anonymous marking fetches no names at all, rather than fetching and dropping them', async () => {
+  const w = world();
+  const { assessment } = await withPaper(w);
+  const a = await w.assess.start(T, assessment, 'user-10');
+  await w.assess.submit(T, a.id, 'user-10');
+
+  // Nothing in the payload may carry the name, not even somewhere unread: the
+  // guarantee is about what leaves the server, not about what the current
+  // screen happens to render.
+  const queue = await w.assess.markingQueue(T, assessment);
+  assert.doesNotMatch(JSON.stringify(queue), /Ada Lovelace/);
+});
+
 test('marking can override an objective question, but not above the maximum', async () => {
   const w = world();
   const { q, assessment } = await withPaper(w);
@@ -581,6 +619,45 @@ test('an unknown event kind, another candidate, or a finished attempt are refuse
   // Accepting these would let a candidate pad their own log after the fact.
   await assert.rejects(w.proctor.record(T, attempt.id, 'user-10', { kind: 'paste' }),
     (e: HttpError) => e.status === 422);
+});
+
+test('monitoring stops at the deadline, not at whenever the sweep next runs', async () => {
+  const c = clock();
+  const w = world(c);
+  const { assessment } = await withPaper(w, { proctoring: true, duration_minutes: 10 });
+  const attempt = await w.assess.start(T, assessment, 'user-10', { consent: true });
+
+  await w.proctor.record(T, attempt.id, 'user-10', { kind: 'tab_blur' });
+
+  // An hour and a half past the end of a ten-minute paper, with nothing having
+  // swept it. `status` is still 'in_progress' -- only the sweep moves it, and
+  // the sweep is a scheduled job that may not be running in a given
+  // environment -- so the status check alone let events keep landing. That is
+  // how an integrity timeline came to show monitoring 89 minutes after a paper
+  // that lasted ten.
+  c.advance(90 * 60_000);
+
+  await assert.rejects(w.proctor.record(T, attempt.id, 'user-10', { kind: 'paste' }),
+    (e: HttpError) => e.status === 422 && e.message === 'That attempt is finished.');
+
+  const timeline = await w.proctor.timeline(T, attempt.id);
+  assert.equal(timeline.events.length, 1, 'an event was accepted after the deadline');
+});
+
+test('a hand-in after the deadline is an expiry, not a four-hour submission', async () => {
+  const c = clock();
+  const w = world(c);
+  const { assessment } = await withPaper(w, { duration_minutes: 10 });
+  const attempt = await w.assess.start(T, assessment, 'user-10');
+
+  // The candidate closed the laptop and pressed Hand in hours later. Answers
+  // were already refused past the deadline, so the score is unaffected -- but
+  // recording this as 'submitted' stamped `submitted_at` at the moment of the
+  // click, and every screen computing (submitted_at - started_at) then
+  // reported hours of "time taken" on a ten-minute paper.
+  c.advance(4 * 60 * 60_000);
+  const done = await w.assess.submit(T, attempt.id, 'user-10');
+  assert.equal(done.status, 'expired', 'a late hand-in was recorded as a submission');
 });
 
 test('flags are scored, and dismissing one lowers the score', async () => {

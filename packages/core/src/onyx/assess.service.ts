@@ -644,6 +644,18 @@ export class AssessService {
     const attempt = await this.#attempt(tenantId, attemptId);
     if (String(attempt.user_id) !== userId) throw new HttpError(403, 'That is not your attempt.');
     if (attempt.status !== 'in_progress') throw new HttpError(422, 'That attempt is already in.');
+    // A hand-in that arrives after the deadline is an expiry, not a
+    // submission. `saveAnswer` already refuses to write past `expires_at`, so
+    // nothing about the score changes either way -- but recording it as
+    // 'submitted' stamped `submitted_at` at the moment the button was pressed,
+    // which is what let a ten-minute paper report four hours of "time taken".
+    //
+    // `#finalise` directly rather than `#expire`, which returns void: this
+    // path still has to hand the caller back the finalised attempt, exactly as
+    // the on-time path does.
+    if (this.#now() > Date.parse(String(attempt.expires_at))) {
+      return this.#finalise(tenantId, attemptId, 'expired');
+    }
     return this.#finalise(tenantId, attemptId, 'submitted');
   }
 
@@ -731,8 +743,26 @@ export class AssessService {
       .neq('status', 'in_progress')
       .order('id');
     const anonymous = Boolean(assessment.anonymous_marking);
+    const rows = data ?? [];
 
-    return (data ?? []).map((a, i) => ({
+    // A paper marked "Names shown" has to show a name. This branch used to
+    // hand back the raw `user_id`, which since 0014_auth_uuid_cutover is a
+    // Supabase Auth uuid -- so the marking queue for a named paper listed
+    // every candidate as a 36-character identifier, on a screen that said in
+    // as many words that candidates were named.
+    //
+    // One lookup, the same shape `seatingPlan()` already uses, and only when
+    // it is allowed: under anonymous marking no name is fetched at all rather
+    // than fetched and then dropped, so there is nothing in the response for a
+    // careless later edit to leak.
+    const names = new Map<string, string>();
+    if (!anonymous && rows.length) {
+      const { data: people } = await this.#db.from('onyx_users').select('id, name')
+        .in('id', [...new Set(rows.map((a) => String(a.user_id)))]);
+      for (const p of people ?? []) names.set(String(p.id), String(p.name));
+    }
+
+    return rows.map((a, i) => ({
       id: a.id,
       attempt: a.attempt,
       status: a.status,
@@ -745,7 +775,11 @@ export class AssessService {
       integrity_status: a.integrity_status,
       // The whole point of anonymous marking: the grader cannot see whose it is.
       user_id: anonymous ? null : a.user_id,
-      candidate: anonymous ? 'Candidate ' + (i + 1) : null,
+      candidate: anonymous
+        ? 'Candidate ' + (i + 1)
+        // Falls back to the id only if the person has no row -- a deleted
+        // account, mid-migration data. Never silently blank.
+        : names.get(String(a.user_id)) ?? String(a.user_id),
     }));
   }
 
