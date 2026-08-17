@@ -44,11 +44,38 @@ if (existing.length && !['--force', '--reset'].includes(process.argv[2])) {
   process.exit(2);
 }
 
+/**
+ * Base schema, then the seed, then RLS, then every later migration in order.
+ *
+ * The tail used to be missing. This list was hardcoded and stopped at 0003, so
+ * `db:migrate` left 0004-0009 unapplied and a freshly provisioned project came
+ * up six tables short -- quiz_submissions, blog_comments, blog_likes,
+ * user_reviews, bootcamp_resources, applications. On the original project those
+ * had been applied by hand through one-off scripts (tools/db/apply-0004.mjs,
+ * apply-0005.mjs) that were never folded back in, so the gap stayed invisible
+ * for as long as nobody stood up a second database. `db:audit` reports it as
+ * "RLS enabled on only 61/67 tables", which reads as an RLS problem and is
+ * really an absent-table problem.
+ *
+ * Discovered rather than listed, so the next migration is picked up by existing
+ * and not by remembering to edit an array. The first four keep their fixed
+ * order: seed rows have to exist before 0003 grants read access to them, and
+ * everything after 0003 assumes both have run.
+ */
+const migrationsDir = new URL('../../supabase/migrations/', import.meta.url)
+  .pathname.replace(/^[/]([A-Za-z]:)/, '$1');
+const BASE = ['0001_schema.sql', '0002_indexes.sql', '0003_rls.sql'];
+const later = fs.readdirSync(migrationsDir)
+  .filter((f) => f.endsWith('.sql') && /^\d{4}_/.test(f) && !BASE.includes(f))
+  .sort()
+  .map((f) => [f.replace(/\.sql$/, '').slice(0, 7), 'supabase/migrations/' + f]);
+
 const steps = [
   ['schema ', 'supabase/migrations/0001_schema.sql'],
   ['indexes', 'supabase/migrations/0002_indexes.sql'],
   ['seed   ', 'supabase/seed.sql'],
   ['rls    ', 'supabase/migrations/0003_rls.sql'],
+  ...later,
 ];
 
 for (const [label, file] of steps) {

@@ -1,0 +1,74 @@
+# Supabase project configuration for Onyx LMS v2.
+#
+# This file exists in v2 and did not in v1, for one reason: registering the
+# Custom Access Token Hook. ADR-011 records it as "an operational step outside
+# repo control" -- a checkbox in the dashboard that nobody can review, diff, or
+# reproduce on a new project. Since v2 stands up its own project, the hook is
+# declared here and applied with `supabase config push`, so provisioning a
+# further environment is a command rather than a memory.
+#
+# NOTE ON SCOPE: `supabase config push` pushes this whole file and resets keys
+# it does not find to CLI defaults -- there is no `config pull` or `config diff`
+# to reconcile against. So values below are stated EXPLICITLY rather than left
+# implicit, even where they match a default. Do not delete a key to "leave it
+# alone"; deleting it changes it.
+project_id = "pnhsnpxrxxphgjmrqoia"
+
+[auth]
+# The app signs in with email+password through its own routes and never relies
+# on a magic-link or OAuth redirect, so site_url is not load-bearing here. It is
+# set to the local web origin the app actually runs on (port 5175) so any link
+# GoTrue does generate points somewhere real rather than at a default port
+# nothing is listening on.
+site_url = "http://localhost:5175"
+additional_redirect_urls = ["http://localhost:5175"]
+
+# Institutions are provisioned by the platform team, never self-served -- the
+# signup page says so and is deliberately inert. Leaving GoTrue's own signup
+# open would create accounts with no membership, which RLS treats as "read
+# nothing" but which still clutter auth.users and can log in.
+enable_signup = false
+
+# Access tokens are short-lived and refreshed; the hook re-resolves membership
+# on every mint, so a role change or removal takes effect on the next refresh
+# rather than the next login.
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+
+[auth.email]
+# TRUE, and it must stay true. This key does not mean "allow self-signup by
+# email" -- it enables the email provider itself, so setting it false returned
+# `422 email_provider_disabled` on every password sign-in and locked the whole
+# product out of its own database. Self-signup is blocked by `enable_signup`
+# under [auth] above, which is a different switch; the Admin API creates
+# accounts regardless of either.
+enable_signup = true
+# No SMTP is configured on this project, so confirmation mail would silently
+# never arrive and every provisioned account would be stuck unverified.
+# Accounts are created by the Admin API with email_confirm: true instead.
+enable_confirmations = false
+double_confirm_changes = true
+secure_password_change = false
+# Both of these are stated because the first `config push` proved the warning at
+# the top of this file: they were absent, so the push reset them to CLI defaults
+# -- max_frequency from 1m to 1s (an email rate-limit loosening) and otp_length
+# from 8 to 6. Restored, and now explicit so a future push cannot move them.
+max_frequency = "1m0s"
+otp_length = 8
+otp_expiry = 3600
+
+# The reason this file exists.
+#
+# GoTrue has no concept of Onyx's tenancy, so tenant_id / tenant_role / platform
+# are injected into the token at mint time by a Postgres function. Without this
+# registered, sign-in succeeds and every tenant-scoped read then behaves as if
+# the caller belongs to no institution -- which reads as "the data is gone"
+# rather than "the token is missing a claim".
+#
+# The function is created by supabase/onyx/migrations/0015_auth_claims_hook.sql
+# (and amended by 0016), in the `onyx` schema, with EXECUTE granted to
+# supabase_auth_admin -- both verified present before this was pushed.
+[auth.hook.custom_access_token]
+enabled = true
+uri = "pg-functions://postgres/onyx/custom_access_token_hook"

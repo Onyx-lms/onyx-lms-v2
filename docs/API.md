@@ -36,6 +36,8 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/assessments` | any member |
 | `POST` | `/api/onyx/assessments` | admin, faculty, exams |
 | `GET` | `/api/onyx/assessments/:id` | any member |
+| `PATCH` | `/api/onyx/assessments/:id` | admin, faculty, exams |
+| `PATCH` | `/api/onyx/attempts/:id/score` | admin, faculty, exams |
 | `POST` | `/api/onyx/assessments/:id/publish` | admin, faculty, exams |
 | `POST` | `/api/onyx/assessments/:id/start` | any member |
 | `GET` | `/api/onyx/attempts/:id` | any member |
@@ -50,7 +52,7 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/assessments/:id/marking` | admin, faculty, exams |
 | `GET` | `/api/onyx/attempts/:id/paper` | admin, faculty, exams |
 | `POST` | `/api/onyx/attempts/:id/mark` | admin, faculty, exams |
-| `POST` | `/api/onyx/assessments/:id/results/publish` | admin, exams |
+| `POST` | `/api/onyx/assessments/:id/results/publish` | any member |
 | `GET` | `/api/onyx/assessments/:id/results` | admin, faculty, exams |
 | `GET` | `/api/onyx/assessments/:id/items` | admin, faculty, exams |
 | `GET` | `/api/onyx/courses/:id/benchmark` | admin, faculty, exams |
@@ -74,9 +76,12 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/timetable` | any member |
 | `POST` | `/api/onyx/timetable/publish` | admin |
 | `DELETE` | `/api/onyx/timetable/:id` | admin |
-| `POST` | `/api/onyx/exams` | admin, exams |
+| `POST` | `/api/onyx/exams` | admin, exams, faculty |
 | `GET` | `/api/onyx/exams` | any member |
 | `GET` | `/api/onyx/exams/:id` | any member |
+| `PATCH` | `/api/onyx/exams/:id` | any member |
+| `DELETE` | `/api/onyx/exams/:id` | any member |
+| `PATCH` | `/api/onyx/exam-marks/:id` | any member |
 | `POST` | `/api/onyx/halls` | admin, exams |
 | `GET` | `/api/onyx/halls` | any member |
 | `POST` | `/api/onyx/exams/:id/seating` | any member |
@@ -85,6 +90,7 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/exams/:id/seat` | any member |
 | `POST` | `/api/onyx/exams/:id/marks` | admin, exams, faculty |
 | `GET` | `/api/onyx/exams/:id/marks` | any member |
+| `POST` | `/api/onyx/exams/:id/marks/sync-from-paper` | admin, exams, faculty |
 | `POST` | `/api/onyx/exams/:id/moderate` | any member |
 | `POST` | `/api/onyx/exams/:id/publish` | any member |
 | `GET` | `/api/onyx/results` | any member |
@@ -92,6 +98,7 @@ docs:check` fails the build if it has.
 | `POST` | `/api/onyx/transcripts` | any member |
 | `GET` | `/api/onyx/transcripts` | any member |
 | `GET` | `/api/onyx/transcripts/:serial/verify` | any member |
+| `GET` | `/api/onyx/verify/transcript/:serial` | **no token** — public by design |
 | `POST` | `/api/onyx/fee-heads` | admin |
 | `GET` | `/api/onyx/fee-heads` | admin |
 | `POST` | `/api/onyx/fee-structures` | any member |
@@ -138,6 +145,8 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/my/profile` | any member |
 | `GET` | `/api/onyx/profiles/:id` | any member |
 | `GET` | `/api/onyx/employers` | admin, placement |
+| `PATCH` | `/api/onyx/employers/:id` | admin, placement |
+| `GET` | `/api/onyx/employers/mine` | any member |
 | `POST` | `/api/onyx/employers` | admin, placement |
 | `GET` | `/api/onyx/jobs` | any member |
 | `POST` | `/api/onyx/jobs` | any member |
@@ -177,6 +186,8 @@ docs:check` fails the build if it has.
 | --- | --- | --- |
 | `GET` | `/api/onyx/problems` | any member |
 | `POST` | `/api/onyx/problems` | admin, faculty |
+| `PATCH` | `/api/onyx/problems/:id` | admin, faculty |
+| `POST` | `/api/onyx/problems/:id/unpublish` | admin, faculty |
 | `PUT` | `/api/onyx/problems/:id/tests` | admin, faculty |
 | `PUT` | `/api/onyx/problems/:id/hints` | admin, faculty |
 | `POST` | `/api/onyx/problems/:id/publish` | admin, faculty |
@@ -189,6 +200,7 @@ docs:check` fails the build if it has.
 | `POST` | `/api/onyx/queue/drain` | admin |
 | `GET` | `/api/onyx/queue` | admin |
 | `GET` | `/api/onyx/workspaces` | any member |
+| `GET` | `/api/onyx/workspaces/all` | admin, faculty |
 | `POST` | `/api/onyx/workspaces` | any member |
 | `GET` | `/api/onyx/workspaces/:id` | any member |
 | `POST` | `/api/onyx/workspaces/:id/run` | any member |
@@ -242,15 +254,20 @@ docs:check` fails the build if it has.
 | `POST` | `/api/onyx/batches/:id/members` | admin |
 | `GET` | `/api/onyx/courses` | any member |
 | `GET` | `/api/onyx/courses/:id` | any member |
-| `POST` | `/api/onyx/courses` | admin |
-| `PATCH` | `/api/onyx/courses/:id` | admin |
-| `POST` | `/api/onyx/courses/:id/publish` | admin |
-| `POST` | `/api/onyx/courses/:id/close` | admin |
+| `POST` | `/api/onyx/courses` | admin, faculty |
+| `PATCH` | `/api/onyx/courses/:id` | **no token** — public by design |
+| `DELETE` | `/api/onyx/courses/:id` | **no token** — public by design |
+| `POST` | `/api/onyx/courses/:id/publish` | **no token** — public by design |
+| `POST` | `/api/onyx/courses/:id/close` | **no token** — public by design |
 | `POST` | `/api/onyx/courses/:id/faculty` | admin |
+| `GET` | `/api/onyx/courses/:id/faculty` | admin, faculty |
+| `DELETE` | `/api/onyx/courses/:id/faculty/:userId` | admin |
 | `GET` | `/api/onyx/my/courses` | any member |
+| `GET` | `/api/onyx/my/teaching-overview` | admin, faculty |
+| `GET` | `/api/onyx/my/learning-overview` | any member |
 | `GET` | `/api/onyx/courses/:id/roster` | admin, faculty |
-| `POST` | `/api/onyx/courses/:id/enroll` | admin |
-| `DELETE` | `/api/onyx/courses/:id/enroll/:userId` | admin |
+| `POST` | `/api/onyx/courses/:id/enroll` | any member |
+| `DELETE` | `/api/onyx/courses/:id/enroll/:userId` | **no token** — public by design |
 | `POST` | `/api/onyx/courses/:id/modules` | admin, faculty |
 | `POST` | `/api/onyx/modules/:id/lessons` | admin, faculty |
 | `GET` | `/api/onyx/courses/:id/outline` | any member |
@@ -305,14 +322,43 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/platform/tenants/:id` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/people` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/academics` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/timetable` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/grades` | platform admin |
 | `POST` | `/api/onyx/platform/tenants` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/suspend` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/activate` | platform admin |
+| `PATCH` | `/api/onyx/platform/tenants/:id` | platform admin |
+| `DELETE` | `/api/onyx/platform/tenants/:id` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/members` | platform admin |
+| `DELETE` | `/api/onyx/platform/tenants/:id/members/:memberId` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/courses` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/assignments` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/assessments` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/exams` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/semesters` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/fees` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/fee-heads` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/fee-structures` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/fee-structures/:structureId/status` | platform admin |
+| `PATCH` | `/api/onyx/platform/tenants/:id/members/:memberId` | platform admin |
+| `PATCH` | `/api/onyx/platform/tenants/:id/exam-marks/:markId` | platform admin |
+| `PATCH` | `/api/onyx/platform/tenants/:id/attempts/:attemptId` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/attempts/:attemptId` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/submissions/:submissionId` | platform admin |
+| `PATCH` | `/api/onyx/platform/tenants/:id/submissions/:submissionId` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/assignments/:assignmentId/submissions` | platform admin |
+| `PATCH` | `/api/onyx/platform/tenants/:id/courses/:courseId` | platform admin |
+| `DELETE` | `/api/onyx/platform/tenants/:id/courses/:courseId` | platform admin |
+| `PATCH` | `/api/onyx/platform/tenants/:id/assignments/:assignmentId` | platform admin |
+| `PATCH` | `/api/onyx/platform/tenants/:id/exams/:examId` | platform admin |
+| `PATCH` | `/api/onyx/platform/tenants/:id/assessments/:assessmentId` | platform admin |
 | `GET` | `/api/onyx/platform/admins` | platform admin |
 | `POST` | `/api/onyx/platform/admins` | platform admin |
 | `DELETE` | `/api/onyx/platform/admins/:id` | platform admin |
 | `GET` | `/api/onyx/platform/audit` | platform admin |
+| `GET` | `/api/onyx/platform/audit/filters` | platform admin |
+| `GET` | `/api/onyx/platform/oauth-clients` | platform admin |
+| `DELETE` | `/api/onyx/platform/oauth-clients/:clientId` | platform admin |
 
 ## Tenancy, people and audit · _CMP-05 / F-01 to F-06_
 
@@ -323,8 +369,9 @@ docs:check` fails the build if it has.
 | `POST` | `/api/onyx/auth/login` | **no token** — public by design |
 | `POST` | `/api/onyx/auth/switch` | any member |
 | `GET` | `/api/onyx/me` | any member |
+| `PATCH` | `/api/onyx/tenant/settings` | admin |
 | `POST` | `/api/onyx/tenants` | platform admin |
-| `GET` | `/api/onyx/members` | admin, faculty |
+| `GET` | `/api/onyx/members` | admin, faculty, exams |
 | `POST` | `/api/onyx/members` | admin |
 | `PATCH` | `/api/onyx/members/:id` | admin |
 | `DELETE` | `/api/onyx/members/:id` | admin |
@@ -332,4 +379,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_246 endpoints across 9 route files._
+_293 endpoints across 9 route files._
