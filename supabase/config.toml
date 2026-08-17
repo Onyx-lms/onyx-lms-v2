@@ -72,3 +72,32 @@ otp_expiry = 3600
 [auth.hook.custom_access_token]
 enabled = true
 uri = "pg-functions://postgres/onyx/custom_access_token_hook"
+
+# OAuth Server Mode -- Onyx acting as an OAuth 2.1 / OIDC provider.
+#
+# Enabled because v1's project has it and v2 must not quietly lose a feature:
+# the platform console's OAuth clients screen reads
+# `/auth/v1/admin/oauth/clients`, and with this off GoTrue answers 404, the
+# service turns that into a 502, and the page renders a 500. Confirmed by
+# querying both projects directly -- v1 answered 200, v2 answered 404 -- so this
+# was a real parity gap rather than a code difference.
+#
+# NOT YET APPLIED BY `config push` -- CLI 2.111.0 does not know these keys and
+# silently reports `auth: up_to_date` rather than failing, so pushing this block
+# changes nothing. Verified by re-querying the endpoint afterwards: still 404.
+#
+# Until a CLI version supports it, this has to be switched on once per project in
+# the dashboard:
+#
+#   Authentication -> OAuth Server (or Providers -> OAuth Server, depending on
+#   dashboard version) -> enable, and allow dynamic client registration.
+#
+# Kept here anyway, because it is the correct declaration and a later CLI will
+# apply it -- and because a setting recorded in the repo is one somebody can find,
+# where a setting living only in a dashboard is one nobody knows exists until a
+# page 500s. ADR-011 recorded it as a dashboard step for the same reason.
+[auth.oauth_server]
+enabled = true
+# Third-party apps register themselves against GoTrue's own endpoint; the console
+# screen exists for visibility and revocation, never for performing registration.
+allow_dynamic_registration = true

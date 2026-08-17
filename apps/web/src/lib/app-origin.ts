@@ -11,13 +11,26 @@
  *
  * Resolution order, most explicit first:
  *
- *   API_URL      set deliberately, and it wins. Also the escape hatch for
- *                pointing a preview build at another environment.
- *   VERCEL_URL   injected by Vercel per deployment, without a scheme. This is
- *                what makes a deployment self-configuring rather than needing a
- *                variable set to its own address -- and it is per-deployment, so
- *                a preview build calls its own preview rather than production.
+ *   API_URL      set deliberately, and it wins.
+ *   VERCEL_URL   injected by Vercel per deployment, without a scheme.
  *   localhost    the dev server's port, which this project runs on 5175.
+ *
+ * VERCEL_URL IS NOT ENOUGH WHEN DEPLOYMENT PROTECTION IS ON.
+ *
+ * It looks like the obvious default -- self-configuring, and per-deployment, so a
+ * preview would call its own preview rather than production. It does not work on
+ * this project, and the failure is nasty: `VERCEL_URL` is the *deployment-specific*
+ * hostname, and with Vercel Authentication enabled that hostname 302s to an SSO
+ * login page. The public alias does not. So every self-fetch reached Vercel's auth
+ * wall instead of the app, and the symptom was a 401 from
+ * `/api/web/onyx/login` -- a login page that refused every correct password, while
+ * the very same credentials worked against the alias directly.
+ *
+ * Hence `API_URL` is set explicitly in production, to the alias. Preview
+ * deployments are left resolving VERCEL_URL and will hit the same wall until
+ * either protection is turned off for them or they are given their own API_URL --
+ * recorded here rather than discovered again, and deliberately not "fixed" by
+ * pointing previews at production, which would let a preview write to real data.
  *
  * Server-only. The browser must use relative paths (`/api/...`) so the request
  * carries the session cookie; an absolute origin here would be a cross-origin
