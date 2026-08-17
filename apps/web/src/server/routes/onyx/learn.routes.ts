@@ -169,7 +169,8 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.get('/api/onyx/courses/:id', async (req) => {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
-    const course = await ctx.onyxAcademics.course(claims.tenant_id, idOf(req));
+    const course = await ctx.onyxAcademics.assertCourseVisible(
+      claims.tenant_id, idOf(req), claims.tenant_role);
     return ok({
       ...course,
       faculty: await ctx.onyxAcademics.faculty(claims.tenant_id, course.id),
@@ -335,7 +336,12 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
     // One `.in('id', ids)` query, not one `course()` call per id -- every
     // screen built on this endpoint (the catalogue's "my courses", the
     // dashboard, a workspace's course picker) used to pay for that loop.
-    return ok(await ctx.onyxAcademics.coursesByIds(claims.tenant_id, courseIds));
+    // A learner sees only published courses here, because an administrator
+    // can enrol a cohort into a course that is still being written and that
+    // is a legitimate thing to do -- it just must not put a draft on the
+    // learner's shelf before it opens.
+    return ok(await ctx.onyxAcademics.coursesByIds(claims.tenant_id, courseIds,
+      { publishedOnly: !isStaff(claims.tenant_role) }));
   });
 
   /**
@@ -400,7 +406,14 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
   app.get('/api/onyx/my/learning-overview', async (req) => {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
     const enrollments = await ctx.onyxAcademics.enrollmentsFor(claims.tenant_id, claims.user_id);
-    const courseIds = [...new Set(enrollments.map((e) => Number(e.course_id)))];
+    // Same publication rule as `/my/courses`, and for the same reason: this
+    // feeds the learner's dashboard, and an enrolment can predate the course
+    // opening. Resolving the ids through `coursesByIds` first costs one
+    // query and keeps a draft out of every panel below.
+    const courses = await ctx.onyxAcademics.coursesByIds(claims.tenant_id,
+      [...new Set(enrollments.map((e) => Number(e.course_id)))],
+      { publishedOnly: !isStaff(claims.tenant_role) });
+    const courseIds = courses.map((c) => Number(c.id));
 
     const [assignments, outlines] = await Promise.all([
       ctx.onyxAssignments.listBulk(claims.tenant_id, courseIds, { publishedOnly: true }),

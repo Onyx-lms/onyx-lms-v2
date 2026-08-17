@@ -130,8 +130,11 @@ export default async function OnyxCourseAttendancePage(
                 ? 'of ' + held.length + ' on the calendar' : 'on this course'} />
             <StatTile label="Below threshold" value={analytics.cohort.below}
               note={'under ' + analytics.threshold + '%'} />
+            {/* The note says "still accepting", so the count has to mean it:
+                a session whose owner never pressed Close is not accepting
+                anything once it has finished. */}
             <StatTile label="Register open"
-              value={held.filter((s) => s.status === 'open').length}
+              value={held.filter((s) => s.check_in_open).length}
               note="check-in still accepting" />
           </div>
 
@@ -232,7 +235,7 @@ export default async function OnyxCourseAttendancePage(
                 ) : (
                   <RowList label="Attendance sessions on this course">
                     {held.map((s) => {
-                      const open = s.status === 'open';
+                      const open = s.check_in_open;
                       return (
                         <ListRow
                           key={s.id}

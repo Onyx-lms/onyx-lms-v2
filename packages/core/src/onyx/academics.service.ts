@@ -23,6 +23,14 @@ const BATCH_COLUMNS = 'id, tenant_id, program_id, name, code, year, status';
 const COURSE_COLUMNS = 'id, tenant_id, program_id, semester_id, code, title, slug, description, credits, self_enroll, status, created_by, created_at';
 const ENROLLMENT_COLUMNS = 'id, tenant_id, course_id, user_id, batch_id, status, enrolled_by, created_at';
 
+/**
+ * Who is allowed to see a course that is not published yet. The same two
+ * roles `courses()` lets past its `status: 1` filter -- they are the ones
+ * who have to finish the thing.
+ */
+const STAFF_ROLES: Role[] = ['admin', 'faculty'];
+const isStaff = (role: Role) => STAFF_ROLES.includes(role);
+
 export interface OnyxCourseInput {
   code: string;
   title: string;
@@ -229,6 +237,30 @@ export class AcademicsService {
   }
 
   /**
+   * The gate in front of a course *itself*, as `assertEnrolled` is the gate
+   * in front of its contents.
+   *
+   * A course at `status: 0` is a draft -- faculty are still writing it, and
+   * the catalog has always hidden it, because `courses()` forces `status: 1`
+   * for anyone who is not staff. But the catalog was the only place that
+   * looked. Anything else holding a course id reached the course anyway: a
+   * typed URL, a link in a notification, an enrolment an administrator
+   * arranged before the course was finished. `course()` itself has no
+   * opinion about who is asking, so every reader of it inherited that.
+   *
+   * 404 rather than 403 on purpose. Course ids are sequential `bigint`s, so
+   * a 403 would confirm that an unpublished course exists at that id, which
+   * is the one fact a draft is meant to keep.
+   */
+  async assertCourseVisible(tenantId: number, courseId: number, role: Role) {
+    const course = await this.course(tenantId, courseId);
+    if (!isStaff(role) && course.status !== 1) {
+      throw new HttpError(404, 'Course not found.');
+    }
+    return course;
+  }
+
+  /**
    * The same course rows `course()` returns, for a whole id list at once.
    * Written for the callers that already know exactly which courses they
    * want -- `/my/courses`, a faculty member's taught set -- and used to get
@@ -237,10 +269,15 @@ export class AcademicsService {
    * join enrolment counts or faculty, because the callers that have an id
    * list in hand already know who is on it.
    */
-  async coursesByIds(tenantId: number, ids: number[]) {
+  async coursesByIds(tenantId: number, ids: number[], opts: { publishedOnly?: boolean } = {}) {
     if (!ids.length) return [];
-    const { data } = await this.#db.from('onyx_courses')
+    let q = this.#db.from('onyx_courses')
       .select(COURSE_COLUMNS).eq('tenant_id', tenantId).in('id', ids);
+    // An id list is usually an enrolment list, and an enrolment can be
+    // arranged before the course is published. Callers serving a learner
+    // pass `publishedOnly` so a draft never reaches a "my courses" shelf.
+    if (opts.publishedOnly) q = q.eq('status', 1);
+    const { data } = await q;
     return data ?? [];
   }
 
@@ -396,12 +433,26 @@ export class AcademicsService {
     return data ?? null;
   }
 
-  /** The gate in front of every piece of course content. */
+  /**
+   * The gate in front of every piece of course content.
+   *
+   * Every caller of this is a learner path -- staff reach the same material
+   * through `assertCanTeach`, or past an `isStaff` branch -- so this is the
+   * one place that can speak for lessons, resources, assignments,
+   * attendance, discussions, workspaces and assessments at once. Which is
+   * why the draft check belongs here too: enrolment alone used to be the
+   * whole answer, and enrolment says nothing about whether the course has
+   * been published.
+   */
   async assertEnrolled(tenantId: number, courseId: number, userId: string) {
-    const enrolled = await this.enrollment(tenantId, courseId, userId);
+    const [enrolled, course] = await Promise.all([
+      this.enrollment(tenantId, courseId, userId),
+      this.course(tenantId, courseId),
+    ]);
     if (!enrolled || enrolled.status !== 1) {
       throw new HttpError(403, 'You are not enrolled in this course.');
     }
+    if (course.status !== 1) throw new HttpError(404, 'Course not found.');
     return enrolled;
   }
 

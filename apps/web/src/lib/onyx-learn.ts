@@ -62,6 +62,16 @@ export interface Resource {
 export interface AttendanceSession {
   id: number; course_id: number; title: string; scheduled_at: string;
   duration_minutes: number; status: string; qr_window_seconds: number;
+  /**
+   * Whether a learner may still mark themselves present. Derived by the
+   * server from the schedule, not read off `status` -- `status` only moves
+   * when faculty press Close, and a session nobody closed is still finished.
+   * Distinct from `status` on purpose: faculty amending a register after the
+   * session has ended is legitimate, checking yourself into it is not.
+   */
+  check_in_open: boolean;
+  /** When `check_in_open` turns false. Null if the schedule is unparseable. */
+  check_in_closes_at: string | null;
 }
 
 export interface AttendanceRecord {

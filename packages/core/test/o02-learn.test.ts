@@ -106,6 +106,54 @@ test('a course in another institution is not found, not forbidden', async () => 
   await assert.rejects(academics.enroll(T, 9, 'user-10'), (e: HttpError) => e.status === 404);
 });
 
+test('a draft course is not found by a learner, however they reach for it', async () => {
+  const { academics, content } = world();
+
+  // Course 3 is real, in this tenant, and unpublished. The catalog already
+  // hid it -- but the catalog was the only thing that looked, so anyone
+  // holding the id got the course itself, and `outline()` handed over the
+  // whole module and lesson structure with it.
+  await assert.rejects(academics.assertCourseVisible(T, 3, 'student'),
+    (e: HttpError) => e.status === 404);
+  await assert.rejects(content.outline(T, 3, 'user-10', 'student'),
+    (e: HttpError) => e.status === 404);
+
+  // 404 and not 403: course ids are sequential, so 403 would confirm that
+  // something unpublished exists at that id, which is the one fact a draft
+  // is meant to keep.
+  await assert.rejects(academics.assertCourseVisible(T, 3, 'student'),
+    (e: HttpError) => e.status !== 403);
+
+  // The people who have to finish it still see it.
+  assert.equal((await academics.assertCourseVisible(T, 3, 'faculty')).id, 3);
+  assert.equal((await academics.assertCourseVisible(T, 3, 'admin')).id, 3);
+  assert.equal((await content.outline(T, 3, 'user-20', 'faculty')).course.id, 3);
+});
+
+test('enrolling into a draft is allowed, but it stays off the learner shelf', async () => {
+  const { academics, content } = world();
+
+  // Standing a cohort up before the course opens is a real thing an
+  // administrator does, so this is deliberately not blocked...
+  await academics.enroll(T, 3, 'user-10');
+  assert.equal((await academics.enrollment(T, 3, 'user-10'))!.status, 1);
+
+  // ...but the enrolment must not be what puts an unfinished course in front
+  // of the learner. Everything downstream of enrolment -- lessons, resources,
+  // assignments, attendance, discussions -- goes through `assertEnrolled`,
+  // which is why the check belongs there rather than at each of them.
+  await assert.rejects(academics.assertEnrolled(T, 3, 'user-10'),
+    (e: HttpError) => e.status === 404);
+  await assert.rejects(content.outline(T, 3, 'user-10', 'student'),
+    (e: HttpError) => e.status === 404);
+  assert.deepEqual(await academics.coursesByIds(T, [3], { publishedOnly: true }), []);
+
+  // Published, it appears -- same enrolment, nothing else changed.
+  await academics.updateCourse(T, 3, { status: 1 });
+  assert.equal((await academics.assertEnrolled(T, 3, 'user-10')).status, 1);
+  assert.equal((await academics.coursesByIds(T, [3], { publishedOnly: true })).length, 1);
+});
+
 test('a semester outside the programme length is refused', async () => {
   const { academics } = world();
   await assert.rejects(
@@ -391,6 +439,52 @@ test('a wrong code, a closed session and a stranger are all refused', async () =
     (e: HttpError) => e.status === 422);
   await assert.rejects(attendance.currentCode(T, Number(session.id)),
     (e: HttpError) => e.status === 422);
+});
+
+test('check-in closes when the session ends, not when somebody remembers to close it', async () => {
+  const { attendance, session, clock: c } = await withSession();
+
+  // Mid-lecture, everything behaves as it always did.
+  const live = await attendance.currentCode(T, Number(session.id));
+  assert.equal((await attendance.session(T, Number(session.id))).check_in_open, true);
+  assert.equal(
+    (await attendance.checkIn(T, Number(session.id), 'user-10', live.code)).status, 'present');
+
+  // A week on, with nobody having pressed Close. `status` only moves when a
+  // human moves it, so it is still 'open' -- and that was the whole hole: a
+  // lecture that ended seven days ago went on advertising "Check-in open",
+  // went on projecting a live rotating code, and went on accepting it. The
+  // code dying after two windows never helped, because faculty could still
+  // mint a current one for a class that was long over.
+  c.advance(7 * 24 * 60 * 60_000);
+  const stale = await attendance.session(T, Number(session.id));
+  assert.equal(stale.status, 'open', 'nothing closes a session on its own -- that is the point');
+  assert.equal(stale.check_in_open, false, 'a finished session still accepted check-in');
+
+  await assert.rejects(attendance.currentCode(T, Number(session.id)),
+    (e: HttpError) => e.status === 422, 'a code could still be put on the projector');
+
+  // Asserted on the message, not only the status: a wrong code is also a 422,
+  // so the wording is the only thing that proves this was refused by the
+  // session gate rather than incidentally by the code having rotated.
+  await assert.rejects(attendance.checkIn(T, Number(session.id), 'user-11', 'DEADBEEF'),
+    (e: HttpError) => e.status === 422 && e.message === 'This session is closed.');
+});
+
+test('check-in survives a lecture that runs over, and says when it stops', async () => {
+  const { attendance, session, clock: c } = await withSession({ duration_minutes: 30 });
+  const closesAt = new Date(Date.parse(session.scheduled_at) + 45 * 60_000).toISOString();
+  assert.equal(session.check_in_closes_at, closesAt,
+    'the deadline is the scheduled end plus the grace, and is stated up front');
+
+  // Ten minutes past the end. Lectures overrun, and learners arrive at the
+  // door as one finishes; neither should need faculty to reopen anything.
+  c.advance(40 * 60_000);
+  assert.equal((await attendance.session(T, Number(session.id))).check_in_open, true);
+
+  // Past the grace, it is shut.
+  c.advance(6 * 60_000);
+  assert.equal((await attendance.session(T, Number(session.id))).check_in_open, false);
 });
 
 test('a second check-in is refused, and the record says who marked it', async () => {

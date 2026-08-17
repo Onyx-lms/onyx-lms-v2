@@ -35,6 +35,32 @@ import { csvDocument } from '../format/csv.ts';
 import type { AcademicsService } from './academics.service.ts';
 
 const SESSION_COLUMNS = 'id, tenant_id, course_id, title, scheduled_at, duration_minutes, status, qr_window_seconds, created_by, created_at';
+
+/**
+ * How long after a session's scheduled end self check-in is still accepted.
+ * A lecture that runs over, a learner who arrives at the door as it ends --
+ * both are ordinary, and neither should need faculty to reopen anything.
+ */
+const CHECK_IN_GRACE_MINUTES = 15;
+
+interface SessionTimes { scheduled_at: string; duration_minutes: number | string }
+
+/**
+ * When self check-in stops being accepted for a session.
+ *
+ * `onyx_attendance_sessions` has no `closes_at` -- it has `scheduled_at`,
+ * `duration_minutes`, and a `status` that only ever changes when faculty
+ * press Close. So a session nobody remembered to close stayed open
+ * indefinitely, and "is check-in open" had to be derived rather than read.
+ * Exported because the UI has to draw the same conclusion the server
+ * enforces, and two implementations of that rule would drift.
+ */
+export function checkInClosesAt(session: SessionTimes): number {
+  const start = Date.parse(session.scheduled_at);
+  if (Number.isNaN(start)) return Number.POSITIVE_INFINITY;
+  const minutes = Number(session.duration_minutes) || 60;
+  return start + (minutes + CHECK_IN_GRACE_MINUTES) * 60_000;
+}
 const RECORD_COLUMNS = 'id, tenant_id, session_id, user_id, status, method, note, marked_by, marked_at';
 
 export const ATTENDANCE_STATUSES: AttendanceStatus[] = ['present', 'absent', 'late', 'excused'];
@@ -83,31 +109,36 @@ export class AttendanceService {
     // careless edit to that list cannot turn into a leaked secret.
     const { qr_secret, ...session } = (data ?? {}) as Record<string, unknown>;
     void qr_secret;
-    return session as NonNullable<typeof data>;
+    // Same shape every other read returns, so a caller never has to know
+    // which method it got its session from.
+    return this.#withCheckIn(session, this.#now()) as NonNullable<typeof data>
+      & { check_in_open: boolean; check_in_closes_at: string | null };
   }
 
   async sessions(tenantId: number, courseId: number) {
+    const at = this.#now();
     const { data } = await this.#db.from('onyx_attendance_sessions')
       .select(SESSION_COLUMNS)
       .eq('tenant_id', tenantId).eq('course_id', courseId)
       .order('scheduled_at', { ascending: false });
-    return data ?? [];
+    return (data ?? []).map((s) => this.#withCheckIn(s, at));
   }
 
   /** The bulk twin of `sessions()` -- one query across several courses. */
   async sessionsBulk(tenantId: number, courseIds: number[]) {
     if (!courseIds.length) return [];
+    const at = this.#now();
     const { data } = await this.#db.from('onyx_attendance_sessions')
       .select(SESSION_COLUMNS).eq('tenant_id', tenantId).in('course_id', courseIds)
       .order('scheduled_at', { ascending: false });
-    return data ?? [];
+    return (data ?? []).map((s) => this.#withCheckIn(s, at));
   }
 
   async session(tenantId: number, id: number) {
     const { data } = await this.#db.from('onyx_attendance_sessions')
       .select(SESSION_COLUMNS).eq('tenant_id', tenantId).eq('id', id).maybeSingle();
     if (!data) throw new HttpError(404, 'Session not found.');
-    return data;
+    return this.#withCheckIn(data, this.#now());
   }
 
   async closeSession(tenantId: number, id: number) {
@@ -204,7 +235,11 @@ export class AttendanceService {
     // countdown was short by however long the round trips took.
     const at = this.#now();
     const session = await this.session(tenantId, sessionId);
-    if (session.status !== 'open') throw new HttpError(422, 'This session is closed.');
+    // Projecting a code for a session that has already finished is what made
+    // the stale-session hole reachable at all: the code itself rotates and
+    // expires correctly, so the only way to check in to last week's lecture
+    // was for somebody to still be able to produce a *current* code for it.
+    if (!session.check_in_open) throw new HttpError(422, 'This session is closed.');
 
     const secret = await this.#secret(tenantId, sessionId);
     const window = Number(session.qr_window_seconds);
@@ -232,7 +267,7 @@ export class AttendanceService {
     // the projector into the next window, and it was refused as expired.
     const at = this.#now();
     const session = await this.session(tenantId, sessionId);
-    if (session.status !== 'open') throw new HttpError(422, 'This session is closed.');
+    if (!session.check_in_open) throw new HttpError(422, 'This session is closed.');
     await this.#academics.assertEnrolled(tenantId, Number(session.course_id), userId);
 
     const secret = await this.#secret(tenantId, sessionId);
@@ -528,6 +563,41 @@ export class AttendanceService {
       .digest('hex')
       .slice(0, 8)
       .toUpperCase();
+  }
+
+  /**
+   * Self check-in is open when faculty have not closed the session AND the
+   * session has not simply finished. The second half is the one that was
+   * missing: `status` is set by a human pressing Close, so a lecture from
+   * last week whose owner never pressed it still advertised "Check-in open",
+   * still rendered an enabled code box, and still accepted a currently valid
+   * code -- which is a way to be marked present at a class that ended days
+   * ago, for anyone who could see the projector.
+   */
+  #checkInOpen(session: SessionTimes & { status: string }, now: number): boolean {
+    return session.status === 'open' && now <= checkInClosesAt(session);
+  }
+
+  /**
+   * Every session that leaves this service carries the derived answer, so no
+   * screen has to recompute it and none of them can disagree.
+   *
+   * `check_in_open` deliberately does not replace `status`. They are
+   * different questions: `status` is whether the register is still being
+   * kept, and faculty amending a register after the fact is legitimate and
+   * stays legitimate. `check_in_open` is only ever about whether a learner
+   * may still mark themselves.
+   */
+  #withCheckIn<T extends Record<string, unknown>>(session: T, now: number) {
+    const times = session as unknown as SessionTimes & { status: string };
+    const closesAt = checkInClosesAt(times);
+    return {
+      ...session,
+      check_in_open: this.#checkInOpen(times, now),
+      check_in_closes_at: Number.isFinite(closesAt)
+        ? new Date(closesAt).toISOString()
+        : null,
+    };
   }
 
   /** Late once the session is more than a quarter of the way through. */
