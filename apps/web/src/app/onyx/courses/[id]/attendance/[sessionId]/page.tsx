@@ -98,7 +98,12 @@ export default async function OnyxSessionPage(
   }));
 
   const now = Date.now();
-  const open = session.status === 'open';
+  // Derived server-side, not `status === 'open'`. `status` only changes when
+  // faculty press Close, so a lecture nobody closed kept projecting a live
+  // code and kept offering learners an enabled check-in box days afterwards.
+  // This gates both panels -- the projector and the learner's -- so the two
+  // cannot disagree, and neither can disagree with what check-in accepts.
+  const open = session.check_in_open;
 
   // Every count below is read off the roster the API already returned. Nothing
   // here asks the server anything it was not asked before.

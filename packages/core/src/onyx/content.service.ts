@@ -130,7 +130,13 @@ export class ContentService {
    * which is what makes a catalog useful, and nothing else.
    */
   async outline(tenantId: number, courseId: number, userId: string, role: Role) {
-    const course = await this.#academics.course(tenantId, courseId);
+    // Not `course()`: an unenrolled learner is *meant* to reach this -- that
+    // is what makes a catalog useful -- so this is the one content read with
+    // no enrolment gate under it, and therefore the one that has to check
+    // publication itself. Without it, a draft's whole module and lesson
+    // structure, plus the body of every preview lesson, was public to the
+    // tenant.
+    const course = await this.#academics.assertCourseVisible(tenantId, courseId, role);
     const enrolled = isStaff(role)
       ? true
       : Boolean(await this.#academics.enrollment(tenantId, courseId, userId)
