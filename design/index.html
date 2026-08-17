@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx LMS — screen designs</title>
+<link rel="stylesheet" href="onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <a class="brand" href="index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <span class="pill brand">Design prototypes</span>
+</header>
+
+<main class="gallery" id="main">
+  <div class="gallery-head">
+    <h1>Screen designs</h1>
+    <p class="page-sub" style="max-width:70ch;margin-top:8px">
+      Every screen in the product, built on one shared design system
+      (<code>onyx.css</code>). These are prototypes for arguing about a screen
+      before it is built — the running app in <code>apps/web</code> is
+      unaffected by anything here. Read <code>README.md</code> for the rules
+      they follow.
+    </p>
+    <div class="inline" style="margin-top:14px">
+      <span class="pill">45 screens</span>
+      <span class="pill">7 roles</span>
+      <span class="pill">WCAG AA palette</span>
+      <span class="pill">320px up</span>
+    </div>
+  </div>
+
+  <!-- Grouped by what someone is doing, not by which role can reach it: most
+       screens are visible to several roles, and a role-first index would list
+       the same file five times. -->
+
+  <section class="section">
+    <div class="section-head"><h2>Overview</h2></div>
+    <div class="gallery-grid">
+      <a class="gcard" href="screens/admin-dashboard.html">
+        <div class="n">Admin dashboard</div><div class="r">/onyx/dashboard</div>
+        <div class="d">The institution in four numbers, then the queues that hurt to ignore.</div>
+      </a>
+      <a class="gcard" href="screens/student-dashboard.html">
+        <div class="n">Student dashboard</div><div class="r">/onyx/dashboard</div>
+        <div class="d">Resume where you left off, what is due, and the streak.</div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Learning</h2></div>
+    <div class="gallery-grid">
+      <a class="gcard" href="screens/courses.html">
+        <div class="n">Courses</div><div class="r">/onyx/courses</div>
+        <div class="d">Continue what you are taking, then the catalogue.</div>
+      </a>
+      <a class="gcard" href="screens/course-detail.html">
+        <div class="n">Course</div><div class="r">/onyx/courses/[id]</div>
+        <div class="d">Up next, the numbered outline, what is due, and questions.</div>
+      </a>
+      <a class="gcard" href="screens/lesson-video.html">
+        <div class="n">Lesson — video</div><div class="r">/onyx/courses/[id]/lessons/[lessonId]</div>
+        <div class="d">Theatre-dark player, curriculum rail, prev/next.</div>
+      </a>
+      <a class="gcard" href="screens/lesson-reading.html">
+        <div class="n">Lesson — reading</div><div class="r">/onyx/courses/[id]/lessons/[lessonId]</div>
+        <div class="d">The same shell, but text wants a light surface, not a black one.</div>
+      </a>
+      <a class="gcard" href="screens/results.html">
+        <div class="n">Results</div><div class="r">/onyx/results</div>
+        <div class="d">Marks across assessments, banded so the shape is readable.</div>
+      </a>
+      <a class="gcard" href="screens/profile.html">
+        <div class="n">Profile</div><div class="r">/onyx/profile</div>
+        <div class="d">Who you are here: programme, attendance, credits, credentials.</div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Practice &amp; code</h2></div>
+    <div class="gallery-grid">
+      <a class="gcard" href="screens/practice.html">
+        <div class="n">Practice</div><div class="r">/onyx/practice</div>
+        <div class="d">Problem set by difficulty and topic, with what you have solved.</div>
+      </a>
+      <a class="gcard" href="screens/practice-problem.html">
+        <div class="n">Practice problem</div><div class="r">/onyx/practice/[id]</div>
+        <div class="d">Statement beside the editor, with test results underneath.</div>
+      </a>
+      <a class="gcard" href="screens/workspaces.html">
+        <div class="n">Workspaces</div><div class="r">/onyx/workspaces</div>
+        <div class="d">Your code workspaces and what they belong to.</div>
+      </a>
+      <a class="gcard" href="screens/workspace-detail.html">
+        <div class="n">Workspace</div><div class="r">/onyx/workspaces/[id]</div>
+        <div class="d">Files, editor and terminal in one working layout.</div>
+      </a>
+      <a class="gcard" href="screens/contests.html">
+        <div class="n">Contests</div><div class="r">/onyx/contests</div>
+        <div class="d">Live, upcoming and finished, with your rank.</div>
+      </a>
+      <a class="gcard" href="screens/contest-detail.html">
+        <div class="n">Contest</div><div class="r">/onyx/contests/[id]</div>
+        <div class="d">Countdown, problems by points, and the leaderboard.</div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Assessment &amp; marking</h2></div>
+    <div class="gallery-grid">
+      <a class="gcard" href="screens/assessments.html">
+        <div class="n">Assessments</div><div class="r">/onyx/assessments</div>
+        <div class="d">What is set, what is in, and how much is still to mark.</div>
+      </a>
+      <a class="gcard" href="screens/assessment-detail.html">
+        <div class="n">Assessment</div><div class="r">/onyx/assessments/[id]</div>
+        <div class="d">Its lifecycle, its questions, and its settings.</div>
+      </a>
+      <a class="gcard" href="screens/assessment-marking.html">
+        <div class="n">Marking queue</div><div class="r">/onyx/assessments/[id]/marking</div>
+        <div class="d">A queue, built so the next thing to mark is obvious.</div>
+      </a>
+      <a class="gcard" href="screens/assessment-results.html">
+        <div class="n">Cohort results</div><div class="r">/onyx/assessments/[id]/results</div>
+        <div class="d">The distribution first, the individuals second.</div>
+      </a>
+      <a class="gcard" href="screens/attempt-mark.html">
+        <div class="n">Mark an attempt</div><div class="r">/onyx/attempts/[id]/mark</div>
+        <div class="d">Answer beside rubric, with a running total.</div>
+      </a>
+      <a class="gcard" href="screens/attempt-integrity.html">
+        <div class="n">Integrity review</div><div class="r">/onyx/attempts/[id]/integrity</div>
+        <div class="d">A timeline of flags, with a verdict at the end of it.</div>
+      </a>
+      <a class="gcard" href="screens/question-bank.html">
+        <div class="n">Question bank</div><div class="r">/onyx/banks/[id]</div>
+        <div class="d">Reusable questions, selectable in bulk.</div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Exams &amp; integrity</h2></div>
+    <div class="gallery-grid">
+      <a class="gcard" href="screens/invigilate.html">
+        <div class="n">Invigilate</div><div class="r">/onyx/invigilate</div>
+        <div class="d">The one time-critical screen in the product. It pulses.</div>
+      </a>
+      <a class="gcard" href="screens/exams.html">
+        <div class="n">Examinations</div><div class="r">/onyx/exams</div>
+        <div class="d">The schedule, and which sittings have nobody watching them.</div>
+      </a>
+      <a class="gcard" href="screens/exam-detail.html">
+        <div class="n">Exam</div><div class="r">/onyx/exams/[id]</div>
+        <div class="d">Seats, register and invigilators for one sitting.</div>
+      </a>
+      <a class="gcard" href="screens/attendance.html">
+        <div class="n">Attendance</div><div class="r">/onyx/courses/[id]/attendance</div>
+        <div class="d">Who is short, before it is too late to matter.</div>
+      </a>
+      <a class="gcard" href="screens/attendance-session.html">
+        <div class="n">Check-in session</div><div class="r">/onyx/courses/[id]/attendance/[sessionId]</div>
+        <div class="d">A rotating code, and the register filling up live.</div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Credentials</h2></div>
+    <div class="gallery-grid">
+      <a class="gcard" href="screens/certificates.html">
+        <div class="n">Certificates</div><div class="r">/onyx/certificates</div>
+        <div class="d">What has been issued, to whom, and what can be revoked.</div>
+      </a>
+      <a class="gcard" href="screens/verify-credential.html">
+        <div class="n">Verify a credential</div><div class="r">/onyx/verify/[credentialId]</div>
+        <div class="d">Public. An employer opens this without an account.</div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Campus operations</h2></div>
+    <div class="gallery-grid">
+      <a class="gcard" href="screens/people.html">
+        <div class="n">People</div><div class="r">/onyx/people</div>
+        <div class="d">The roster, with the counts above it and bulk actions in it.</div>
+      </a>
+      <a class="gcard" href="screens/programmes.html">
+        <div class="n">Programmes</div><div class="r">/onyx/programs</div>
+        <div class="d">Programmes, their semesters, and how full they are.</div>
+      </a>
+      <a class="gcard" href="screens/allocations.html">
+        <div class="n">Teaching load</div><div class="r">/onyx/allocations</div>
+        <div class="d">Who is teaching what, and who is teaching nothing.</div>
+      </a>
+      <a class="gcard" href="screens/timetable.html">
+        <div class="n">Timetable</div><div class="r">/onyx/timetable</div>
+        <div class="d">The week as a grid, colour-coded by kind of session.</div>
+      </a>
+      <a class="gcard" href="screens/finance.html">
+        <div class="n">Finance</div><div class="r">/onyx/finance</div>
+        <div class="d">Collected against outstanding, aged by how late it is.</div>
+      </a>
+      <a class="gcard" href="screens/fees.html">
+        <div class="n">Fees</div><div class="r">/onyx/fees</div>
+        <div class="d">The same money, from the side of the person paying it.</div>
+      </a>
+      <a class="gcard" href="screens/audit.html">
+        <div class="n">Audit log</div><div class="r">/onyx/audit</div>
+        <div class="d">Who did what, with the security-relevant rows standing out.</div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Career</h2></div>
+    <div class="gallery-grid">
+      <a class="gcard" href="screens/placement.html">
+        <div class="n">Placement</div><div class="r">/onyx/placement</div>
+        <div class="d">Placed against unplaced, and the drives coming up.</div>
+      </a>
+      <a class="gcard" href="screens/drive-detail.html">
+        <div class="n">Recruitment drive</div><div class="r">/onyx/drives/[id]</div>
+        <div class="d">A pipeline: registered, shortlisted, interviewed, offered.</div>
+      </a>
+      <a class="gcard" href="screens/jobs.html">
+        <div class="n">Jobs</div><div class="r">/onyx/jobs</div>
+        <div class="d">The board a student sees, with eligibility already worked out.</div>
+      </a>
+      <a class="gcard" href="screens/job-detail.html">
+        <div class="n">Job</div><div class="r">/onyx/jobs/[id]</div>
+        <div class="d">One posting, and whether you actually qualify for it.</div>
+      </a>
+      <a class="gcard" href="screens/interviews.html">
+        <div class="n">Interviews</div><div class="r">/onyx/interviews</div>
+        <div class="d">What is scheduled, and how to join it.</div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Communication</h2></div>
+    <div class="gallery-grid">
+      <a class="gcard" href="screens/inbox.html">
+        <div class="n">Inbox</div><div class="r">/onyx/inbox</div>
+        <div class="d">Notifications grouped by when, typed by what they are.</div>
+      </a>
+      <a class="gcard" href="screens/support.html">
+        <div class="n">Help</div><div class="r">/onyx/support</div>
+        <div class="d">Answers first, then your own tickets.</div>
+      </a>
+      <a class="gcard" href="screens/family.html">
+        <div class="n">Your family</div><div class="r">/onyx/family</div>
+        <div class="d">A guardian's view, and nothing they should not see.</div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Access</h2></div>
+    <div class="gallery-grid">
+      <a class="gcard" href="screens/login.html">
+        <div class="n">Sign in</div><div class="r">/onyx/login</div>
+        <div class="d">One account, every institution it belongs to.</div>
+      </a>
+      <a class="gcard" href="screens/denied.html">
+        <div class="n">Access denied</div><div class="r">/onyx/denied</div>
+        <div class="d">What was refused, why, and the two ways out.</div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Superseded</h2></div>
+    <div class="gallery-grid">
+      <a class="gcard" href="student-dashboard.html">
+        <div class="n">Student dashboard (original)</div><div class="r">design/student-dashboard.html</div>
+        <div class="d">The first single-file prototype. Kept because a browser test points at this exact path.</div>
+      </a>
+    </div>
+  </section>
+</main>
+
+<script src="onyx.js"></script>
+</body>
+</html>

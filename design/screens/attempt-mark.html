@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Mark a script</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search assessments, students…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">JM</span>
+</header>
+
+<div class="layout">
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Faculty · Dr J. Mensah</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item is-active" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">2</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Teaching</div>
+      <a class="nav-item" href="programmes.html"><svg class="ic"><use href="#i-building"/></svg> Programmes</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="allocations.html"><svg class="ic"><use href="#i-chart"/></svg> Teaching load</a>
+      <a class="nav-item" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Support</div>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-help"/></svg> Mentor queue <span class="count">6</span></a>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+    </div>
+  </aside>
+
+  <main id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="assessment-detail.html">Data Structures — mid-term</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <a href="assessment-marking.html">Marking queue</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <span>Amara Nwosu</span>
+    </nav>
+
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Amara Nwosu</h1>
+        <p class="page-sub">Candidate 20241188 · attempt 1 of 1 · handed in 3 days ago · no integrity flags</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="assessment-marking.html"><svg class="ic ic-sm"><use href="#i-x"/></svg> Leave</a>
+        <a class="btn btn-ghost" href="attempt-mark.html">Skip this script</a>
+      </div>
+    </div>
+
+    <!-- Where you are, in two counters that never move off screen: which
+         script of the batch, and which question of the script. A marker who
+         loses either one re-reads an answer they already marked, and that is
+         the difference between the mark being fair and being roughly fair. -->
+    <div class="card card-pad">
+      <div class="inline" style="justify-content:space-between">
+        <span class="strong small">Script 24 of 92 in this batch</span>
+        <span class="small muted num">68 left after this one</span>
+      </div>
+      <div class="meter sm mt-1"><span style="width:26%"></span></div>
+      <div class="divider" style="margin:12px 0"></div>
+      <div class="inline">
+        <span class="small muted">Written questions:</span>
+        <!-- A tick on a chip, not a colour on a chip. -->
+        <a class="chip" href="#">19 <svg class="ic ic-sm"><use href="#i-check"/></svg></a>
+        <a class="chip is-on" href="#">20</a>
+        <a class="chip" href="#">21</a>
+        <a class="chip" href="#">22</a>
+        <span class="small muted" style="margin-left:auto">Section A was scored automatically</span>
+      </div>
+    </div>
+
+    <div class="cols mt-2">
+      <!-- ====================== the answer ========================== -->
+      <div>
+        <section>
+          <div class="section-head">
+            <h2>Question 20 of 22 · version 1 · 14 marks</h2>
+            <a class="link" href="#">Model answer</a>
+          </div>
+          <div class="card">
+            <div class="card-pad">
+              <p class="prose" style="font-weight:650">
+                Compare an adjacency list with an adjacency matrix for a sparse graph, in space
+                and in traversal cost. Justify which you would choose for a road network of
+                40,000 junctions, and say what would change your mind.
+              </p>
+            </div>
+            <div class="divider" style="margin:0"></div>
+            <div class="card-pad">
+              <div class="stat-label">Answer given</div>
+              <div class="prose mt-1">
+                <p>An adjacency matrix stores a cell for every pair of vertices, so it costs
+                  Θ(V²) whether or not the edges exist. A list stores one entry per edge, so it
+                  costs Θ(V + E). A road network is sparse — a junction meets four or five roads,
+                  not forty thousand — so E is roughly linear in V and the list is smaller by
+                  about a factor of V. For 40,000 junctions the matrix needs 1.6 billion cells
+                  and the list needs a couple of hundred thousand entries.</p>
+                <p>Traversal follows the same shape. A breadth-first search over a list touches
+                  each edge once and runs in O(V + E); over a matrix it scans a whole row per
+                  vertex and runs in O(V²), so it does most of its work reading zeroes.</p>
+                <p>I would choose the list. What would change my mind is a dense graph, or a
+                  workload dominated by <code>hasEdge(u, v)</code> lookups — the matrix answers
+                  that in constant time while the list scans a neighbour list.</p>
+              </div>
+              <div class="code mt-2">
+                <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span> answer.py — pasted by the candidate</div>
+<pre><span class="c"># memory, sparse road network, V = 40_000, avg degree 4.6</span>
+<span class="k">matrix</span> = V * V            <span class="c"># 1_600_000_000 cells</span>
+<span class="k">lists</span>  = V + (V * <span class="s">4.6</span>)    <span class="c"># ~ 224_000 entries</span></pre>
+              </div>
+            </div>
+            <div class="card-foot">
+              <div class="inline small muted">
+                <svg class="ic ic-sm"><use href="#i-clock"/></svg>
+                Written in 11 minutes, edited twice · 284 words · no paste events on this question
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Objective marks are shown, not offered for editing. They were
+             scored against the key as it stood when this paper was sat, and a
+             marker nudging one here would quietly make the cohort's marks
+             irreproducible. -->
+        <section class="section">
+          <div class="section-head"><h2>Section A · scored automatically</h2><a class="link" href="#">See all 18 answers</a></div>
+          <div class="card card-pad">
+            <div class="kv-row">
+              <span class="inline"><span class="status idle"><span class="dot"></span> Locked</span>
+                <span class="small muted">18 objective questions</span></span>
+              <span class="score hi">26 / 30</span>
+            </div>
+            <div class="divider"></div>
+            <div class="small muted">Wrong: Q5 (primary clustering), Q11 (worst-case quicksort partition).
+              Q5 is flagged across the cohort — the key is being checked, and any correction is
+              applied to every script at once.</div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ======================= rubric rail ======================== -->
+      <aside>
+        <!-- The rail is sticky and scrolls inside itself. Marking is a
+             read-left, score-right loop, and the moment the criteria scroll
+             away the marker starts scoring from memory of the rubric instead
+             of from the rubric. -->
+        <div style="position:sticky;top:84px;max-height:calc(100vh - 104px);overflow:auto">
+          <div class="card">
+            <div class="card-head">
+              <h3>Running total</h3>
+              <span class="pill soon">Draft</span>
+            </div>
+            <div class="card-pad">
+              <div class="inline" style="justify-content:space-between;align-items:flex-end">
+                <div>
+                  <div class="stat-label">This script</div>
+                  <div class="stat-value" style="font-size:30px">46 <span class="muted" style="font-size:17px">/ 80</span></div>
+                </div>
+                <span class="ring" style="--p:58%" role="img" aria-label="58 percent so far"><span>58%</span></span>
+              </div>
+              <div class="kv mt-2">
+                <div class="kv-row"><span class="k">Section A · automatic</span><span class="v num">26 / 30</span></div>
+                <div class="kv-row"><span class="k">Section B · by hand</span><span class="v num">20 / 50</span></div>
+                <div class="kv-row"><span class="k">Still to mark</span><span class="v num">2 questions</span></div>
+              </div>
+            </div>
+          </div>
+
+          <section class="section" style="margin-top:14px">
+            <div class="section-head"><h2>Rubric · question 20</h2><span class="small muted num">14 marks</span></div>
+            <div class="card">
+              <div class="rowlist" style="border:0;border-radius:0;box-shadow:none">
+
+                <div class="row" style="display:block">
+                  <div class="kv-row">
+                    <span class="strong small">Space complexity compared correctly</span>
+                    <span class="small muted num">4</span>
+                  </div>
+                  <p class="small muted mt-1">Θ(V²) against Θ(V + E), with sparsity named as the reason.</p>
+                  <div class="inline mt-1">
+                    <span class="search" style="flex:0 0 84px;max-width:84px">
+                      <label class="sr-only" for="c1">Marks for space complexity, out of 4</label>
+                      <input id="c1" type="number" min="0" max="4" step="0.5" value="4" />
+                    </span>
+                    <span class="small muted num">/ 4</span>
+                  </div>
+                  <div class="search mt-1" style="max-width:none">
+                    <svg class="ic ic-sm"><use href="#i-message"/></svg>
+                    <label class="sr-only" for="c1c">Comment on space complexity</label>
+                    <input id="c1c" value="Worked example with real figures — good." placeholder="Comment for the candidate" />
+                  </div>
+                </div>
+
+                <div class="row" style="display:block">
+                  <div class="kv-row">
+                    <span class="strong small">Traversal cost compared correctly</span>
+                    <span class="small muted num">4</span>
+                  </div>
+                  <p class="small muted mt-1">O(V + E) against O(V²), with the reason the matrix loses.</p>
+                  <div class="inline mt-1">
+                    <span class="search" style="flex:0 0 84px;max-width:84px">
+                      <label class="sr-only" for="c2">Marks for traversal cost, out of 4</label>
+                      <input id="c2" type="number" min="0" max="4" step="0.5" value="4" />
+                    </span>
+                    <span class="small muted num">/ 4</span>
+                  </div>
+                  <div class="search mt-1" style="max-width:none">
+                    <svg class="ic ic-sm"><use href="#i-message"/></svg>
+                    <label class="sr-only" for="c2c">Comment on traversal cost</label>
+                    <input id="c2c" placeholder="Comment for the candidate" />
+                  </div>
+                </div>
+
+                <div class="row" style="display:block">
+                  <div class="kv-row">
+                    <span class="strong small">Choice justified for the given network</span>
+                    <span class="small muted num">4</span>
+                  </div>
+                  <p class="small muted mt-1">Picks one, and ties the choice to the degree of a junction.</p>
+                  <div class="inline mt-1">
+                    <span class="search" style="flex:0 0 84px;max-width:84px">
+                      <label class="sr-only" for="c3">Marks for justification, out of 4</label>
+                      <input id="c3" type="number" min="0" max="4" step="0.5" value="3" />
+                    </span>
+                    <span class="small muted num">/ 4</span>
+                  </div>
+                  <div class="search mt-1" style="max-width:none">
+                    <svg class="ic ic-sm"><use href="#i-message"/></svg>
+                    <label class="sr-only" for="c3c">Comment on justification</label>
+                    <input id="c3c" value="Say what average degree you assumed." placeholder="Comment for the candidate" />
+                  </div>
+                </div>
+
+                <div class="row" style="display:block">
+                  <div class="kv-row">
+                    <span class="strong small">Names a condition that reverses the choice</span>
+                    <span class="small muted num">2</span>
+                  </div>
+                  <p class="small muted mt-1">Density, or an edge-existence-heavy workload.</p>
+                  <div class="inline mt-1">
+                    <span class="search" style="flex:0 0 84px;max-width:84px">
+                      <label class="sr-only" for="c4">Marks for reversing condition, out of 2</label>
+                      <input id="c4" type="number" min="0" max="2" step="0.5" value="2" />
+                    </span>
+                    <span class="small muted num">/ 2</span>
+                  </div>
+                  <div class="search mt-1" style="max-width:none">
+                    <svg class="ic ic-sm"><use href="#i-message"/></svg>
+                    <label class="sr-only" for="c4c">Comment on reversing condition</label>
+                    <input id="c4c" value="Both conditions, correctly reasoned." placeholder="Comment for the candidate" />
+                  </div>
+                </div>
+
+              </div>
+              <div class="card-foot">
+                <div class="kv-row">
+                  <span class="strong">Question 20</span>
+                  <span class="score hi">13 / 14</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div class="card card-pad mt-2">
+            <label class="stat-label" for="role">Marking as</label>
+            <select class="select mt-1" id="role" style="width:100%">
+              <option>First marker</option>
+              <option>Second marker</option>
+              <option>Moderator</option>
+            </select>
+            <!-- Save-and-next is the primary because it is the loop. Plain
+                 save exists for the one script you want to stop and think
+                 about, which is exactly when you must not be pushed onward. -->
+            <button class="btn btn-block btn-lg mt-2">Save and next question <svg class="ic ic-sm"><use href="#i-arrow"/></svg></button>
+            <button class="btn btn-ghost btn-block mt-1"><svg class="ic ic-sm"><use href="#i-save"/></svg> Save and stay</button>
+            <a class="btn btn-ghost btn-block mt-1" href="assessment-marking.html">Save and take the next script</a>
+            <p class="small muted mt-1">Draft autosaved a moment ago; marks are recorded when you save.
+              Nothing reaches the candidate until results are released.</p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab is-active" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate</a>
+  <a class="tab" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

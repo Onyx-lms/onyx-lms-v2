@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Assessments</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search assessments, students…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">JM</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <!-- Faculty menu. Not the admin one with links disabled: a lecturer never
+       touches finance or the audit log, so those are simply not here. -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Faculty · Dr J. Mensah</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item is-active" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">2</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Teaching</div>
+      <a class="nav-item" href="programmes.html"><svg class="ic"><use href="#i-building"/></svg> Programmes</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="allocations.html"><svg class="ic"><use href="#i-chart"/></svg> Teaching load</a>
+      <a class="nav-item" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Support</div>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-help"/></svg> Mentor queue <span class="count">6</span></a>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Assessments</h1>
+        <p class="page-sub">Papers you set · Michaelmas term, week 6 of 12</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="question-bank.html"><svg class="ic ic-sm"><use href="#i-layers"/></svg> Question banks</a>
+        <a class="btn" href="assessment-detail.html"><svg class="ic ic-sm"><use href="#i-plus"/></svg> New assessment</a>
+      </div>
+    </div>
+
+    <!-- The four numbers a lecturer actually acts on. "Awaiting marking"
+         counts scripts, not papers, because 3 assessments is not a workload
+         and 185 scripts is — and the note carries the age, which is the bit
+         that decides whether this week or next. -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Published</div>
+        <div class="stat-value">6</div>
+        <div class="stat-note">2 accepting submissions right now</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">In draft</div>
+        <div class="stat-value">2</div>
+        <div class="stat-note">1 is meant to open in 5 days</div>
+      </div>
+      <div class="stat is-alert">
+        <div class="stat-label">Awaiting marking</div>
+        <div class="stat-value">185</div>
+        <div class="stat-note">scripts · oldest waiting 11 days</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Released</div>
+        <div class="stat-value">1</div>
+        <div class="stat-note">128 candidates · released 9 days ago</div>
+      </div>
+    </div>
+
+    <!-- Counts live inside the filter labels so you know what is behind a tab
+         before you spend a click finding out. The states are the real ones a
+         paper moves through, not invented buckets: draft and published come
+         off `status`, released off `results_published_at`. -->
+    <div class="toolbar mt-3">
+      <div class="segmented" role="tablist" aria-label="Filter by state">
+        <a href="#" class="is-on" role="tab" aria-selected="true">All <span class="count">8</span></a>
+        <a href="#" role="tab" aria-selected="false">Draft <span class="count">2</span></a>
+        <a href="#" role="tab" aria-selected="false">Open <span class="count">2</span></a>
+        <a href="#" role="tab" aria-selected="false">Marking <span class="count">3</span></a>
+        <a href="#" role="tab" aria-selected="false">Released <span class="count">1</span></a>
+      </div>
+      <div class="spacer"></div>
+      <div class="search">
+        <svg class="ic ic-sm"><use href="#i-search"/></svg>
+        <input placeholder="Find an assessment…" aria-label="Find an assessment" />
+      </div>
+      <select class="select" aria-label="Course">
+        <option>All my courses</option>
+        <option>CS-2041 Data Structures</option>
+        <option>CS-2110 Algorithms</option>
+        <option>CS-3320 Networks</option>
+        <option>MA-1204 Linear Algebra</option>
+      </select>
+    </div>
+
+    <!-- A table, not a row list: this is comparing eight papers down the
+         "marked" column to decide what to open next, which is exactly the
+         job a table is for. The meter is in the row rather than a bare
+         percentage because 118/186 and 71/96 are hard to rank as numerals
+         and trivial to rank as two bar lengths. -->
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table class="table">
+          <caption class="sr-only">Assessments you have set, with marking progress</caption>
+          <thead>
+            <tr>
+              <th scope="col">Assessment</th>
+              <th scope="col">Course</th>
+              <th scope="col">Due</th>
+              <th scope="col" class="right">Submissions</th>
+              <th scope="col" style="min-width:170px">Marked</th>
+              <th scope="col">Status</th>
+              <th scope="col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="who-name"><a href="assessment-detail.html">Data Structures — mid-term</a></div>
+                <div class="who-sub">90 min · 80 marks · monitored</div>
+              </td>
+              <td class="small">CS-2041</td>
+              <td class="small muted">Closed 2 days ago</td>
+              <td class="right num">186 / 186</td>
+              <td>
+                <div class="kv-row"><span class="small num">118 / 186</span><span class="small muted num">63%</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:63%"></span></div>
+              </td>
+              <td><span class="pill soon"><span class="pill-dot"></span> Marking</span></td>
+              <td class="right"><a class="btn btn-sm" href="assessment-marking.html">Mark</a></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="who-name"><a href="assessment-detail.html">Discrete Maths — quiz 5</a></div>
+                <div class="who-sub">30 min · 20 marks</div>
+              </td>
+              <td class="small">MA-2003</td>
+              <td class="small muted">Closed 11 days ago</td>
+              <td class="right num">96 / 104</td>
+              <td>
+                <div class="kv-row"><span class="small num">71 / 96</span><span class="small muted num">74%</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:74%"></span></div>
+              </td>
+              <!-- Overdue marking gets the red pill, not the orange one: the
+                   institution's own turnaround promise is 10 working days. -->
+              <td><span class="pill late"><span class="pill-dot"></span> Overdue</span></td>
+              <td class="right"><a class="btn btn-sm" href="assessment-marking.html">Mark</a></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="who-name"><a href="assessment-detail.html">Algorithms — problem set 4</a></div>
+                <div class="who-sub">Take-home · 40 marks</div>
+              </td>
+              <td class="small">CS-2110</td>
+              <td class="small muted">Due in 3 days</td>
+              <td class="right num">92 / 140</td>
+              <td>
+                <div class="kv-row"><span class="small num">0 / 92</span><span class="small muted num">0%</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:0%"></span></div>
+              </td>
+              <td><span class="pill brand"><span class="pill-dot"></span> Open</span></td>
+              <td class="right"><a class="btn btn-sm btn-ghost" href="assessment-detail.html">Open</a></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="who-name"><a href="assessment-detail.html">Networks — practical</a></div>
+                <div class="who-sub">120 min · 60 marks · monitored</div>
+              </td>
+              <td class="small">CS-3320</td>
+              <td class="small muted">Due in 9 days</td>
+              <td class="right num">12 / 86</td>
+              <td><span class="small muted">Not started</span></td>
+              <td><span class="pill brand"><span class="pill-dot"></span> Open</span></td>
+              <td class="right"><a class="btn btn-sm btn-ghost" href="assessment-detail.html">Open</a></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="who-name"><a href="assessment-detail.html">Linear Algebra — quiz 3</a></div>
+                <div class="who-sub">45 min · 30 marks</div>
+              </td>
+              <td class="small">MA-1204</td>
+              <td class="small muted">Closed 6 hours ago</td>
+              <td class="right num">140 / 140</td>
+              <td>
+                <div class="kv-row"><span class="small num">140 / 140</span><span class="small muted num">100%</span></div>
+                <div class="meter sm good" style="margin-top:5px"><span style="width:100%"></span></div>
+              </td>
+              <!-- Marked is not released. This paper needs moderation sign-off
+                   first, so the state says so instead of implying it is done. -->
+              <td><span class="pill info"><span class="pill-dot"></span> Moderating</span></td>
+              <td class="right"><a class="btn btn-sm btn-ghost" href="assessment-results.html">Results</a></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="who-name"><a href="assessment-detail.html">Databases — coursework 2</a></div>
+                <div class="who-sub">Take-home · 100 marks</div>
+              </td>
+              <td class="small">CS-2260</td>
+              <td class="small muted">Closed 3 weeks ago</td>
+              <td class="right num">128 / 128</td>
+              <td>
+                <div class="kv-row"><span class="small num">128 / 128</span><span class="small muted num">100%</span></div>
+                <div class="meter sm good" style="margin-top:5px"><span style="width:100%"></span></div>
+              </td>
+              <td><span class="pill good"><span class="pill-dot"></span> Released</span></td>
+              <td class="right"><a class="btn btn-sm btn-ghost" href="assessment-results.html">Results</a></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="who-name"><a href="assessment-detail.html">Operating Systems — mid-term</a></div>
+                <div class="who-sub">90 min · 80 marks · 3 sections drawn</div>
+              </td>
+              <td class="small">CS-3140</td>
+              <td class="small muted">Opens in 5 days</td>
+              <td class="right muted">—</td>
+              <td><span class="small muted">—</span></td>
+              <td><span class="pill"><span class="pill-dot"></span> Draft</span></td>
+              <td class="right"><a class="btn btn-sm btn-ghost" href="assessment-detail.html">Edit</a></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="who-name"><a href="assessment-detail.html">Compilers — take-home</a></div>
+                <div class="who-sub">No questions added yet</div>
+              </td>
+              <td class="small">CS-4010</td>
+              <td class="small muted">No dates set</td>
+              <td class="right muted">—</td>
+              <td><span class="small muted">—</span></td>
+              <td><span class="pill"><span class="pill-dot"></span> Draft</span></td>
+              <td class="right"><a class="btn btn-sm btn-ghost" href="question-bank.html">Add questions</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-foot">
+        <span>Showing all 8 assessments for Michaelmas term</span>
+        <span class="pager">
+          <button class="btn btn-sm btn-ghost" disabled>Previous</button>
+          <button class="btn btn-sm btn-ghost" disabled>Next</button>
+        </span>
+      </div>
+    </div>
+
+    <div class="banner info mt-2">
+      <svg class="ic"><use href="#i-alert"/></svg>
+      <span><span class="strong">Discrete Maths — quiz 5</span> has been waiting 11 days.
+        Your department publishes a 10-working-day turnaround, so this one is already past it.</span>
+      <a class="btn btn-sm" href="assessment-marking.html">Mark 25 scripts</a>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab is-active" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate</a>
+  <a class="tab" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

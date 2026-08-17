@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Question bank</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search assessments, students…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">JM</span>
+</header>
+
+<div class="layout">
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Faculty · Dr J. Mensah</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item is-active" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">2</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Teaching</div>
+      <a class="nav-item" href="programmes.html"><svg class="ic"><use href="#i-building"/></svg> Programmes</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="allocations.html"><svg class="ic"><use href="#i-chart"/></svg> Teaching load</a>
+      <a class="nav-item" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Support</div>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-help"/></svg> Mentor queue <span class="count">6</span></a>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+    </div>
+  </aside>
+
+  <main id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="assessments.html">Assessments</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <span>Question banks</span>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <span>Data structures — core</span>
+    </nav>
+
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Data structures — core</h1>
+        <p class="page-sub">CS-2041 Data Structures · 46 questions · 118 marks · drawn by 9 papers</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-upload"/></svg> Import</a>
+        <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-plus"/></svg> Add question</a>
+      </div>
+    </div>
+
+    <!-- "Needs review" is a bank's only real health metric. Item analysis
+         hands back two verdicts — a key that looks wrong, and a question
+         nobody gets wrong — and both mean the question should not be drawn
+         again until somebody has looked at it. -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Questions</div>
+        <div class="stat-value">46</div>
+        <div class="stat-note">28 objective · 18 written</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Marks available</div>
+        <div class="stat-value">118</div>
+        <div class="stat-note">enough for two 80-mark papers</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Drawn by</div>
+        <div class="stat-value">9</div>
+        <div class="stat-note">papers, 2 of them still open</div>
+      </div>
+      <div class="stat is-alert">
+        <div class="stat-label">Needs review</div>
+        <div class="stat-value">2</div>
+        <div class="stat-note">flagged by item analysis</div>
+      </div>
+    </div>
+
+    <div class="toolbar mt-3">
+      <div class="search">
+        <svg class="ic ic-sm"><use href="#i-search"/></svg>
+        <input placeholder="Search question text…" aria-label="Search question text" />
+      </div>
+      <!-- The type options are the stored enum, said in English. There is no
+           separate "code" type: a question whose answer is code is a short
+           answer, which is why one can be marked against a rubric like any
+           other written response. -->
+      <select class="select" aria-label="Type">
+        <option>Every type</option>
+        <option>One answer</option>
+        <option>Several answers</option>
+        <option>True/false</option>
+        <option>Short answer</option>
+        <option>Essay</option>
+      </select>
+      <select class="select" aria-label="Difficulty">
+        <option>Any difficulty</option>
+        <option>Easy</option>
+        <option>Moderate</option>
+        <option>Hard</option>
+      </select>
+      <select class="select" aria-label="Topic">
+        <option>Any topic</option>
+        <option>Hashing</option>
+        <option>Graphs</option>
+        <option>Heaps</option>
+        <option>Sorting</option>
+        <option>Trees</option>
+      </select>
+      <div class="spacer"></div>
+      <span class="small muted">Showing 11 of 46</span>
+    </div>
+
+    <!-- A table, because building a paper is comparing difficulty and
+         times-used down two columns to avoid setting the same five questions
+         the cohort saw last term. Times-used earns its place: a question drawn
+         26 times has almost certainly leaked. -->
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table class="table">
+          <caption class="sr-only">Questions in the Data structures core bank</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="col-check">
+                <input type="checkbox" aria-label="Select every question on this page" />
+              </th>
+              <th scope="col" style="min-width:280px">Question</th>
+              <th scope="col">Type</th>
+              <!-- Difficulty is deliberately not colour-banded. Red here would
+                   mean "hard", and two columns away red means "overdue" — a
+                   tone that means two things means neither. -->
+              <th scope="col">Difficulty</th>
+              <th scope="col">Topics</th>
+              <th scope="col" class="right">Used</th>
+              <th scope="col" class="right">Marks</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="checkbox" checked aria-label="Select: amortised O(1) insertion" /></td>
+              <td>
+                <div class="who-name">Which structure gives amortised O(1) insertion and removal at one end only?</div>
+                <div class="who-sub">4 options · v2 · edited 3 weeks ago</div>
+              </td>
+              <td><span class="pill">One answer</span></td>
+              <td><span class="pill">Easy</span></td>
+              <td class="small muted">Stacks · Complexity</td>
+              <td class="right num">14</td>
+              <td class="right num">2</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" checked aria-label="Select: O(log n) on a balanced BST" /></td>
+              <td>
+                <div class="who-name">Select every operation that runs in O(log n) on a height-balanced BST.</div>
+                <div class="who-sub">5 options · v1</div>
+              </td>
+              <td><span class="pill">Several answers</span></td>
+              <td><span class="pill">Moderate</span></td>
+              <td class="small muted">Trees</td>
+              <td class="right num">9</td>
+              <td class="right num">3</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" aria-label="Select: O(n) heap build" /></td>
+              <td>
+                <div class="who-name">A binary min-heap of n elements can be built in O(n) time.</div>
+                <div class="who-sub">v1 · facility 0.98 across 9 papers</div>
+              </td>
+              <td><span class="pill">True/false</span></td>
+              <td><span class="pill">Moderate</span></td>
+              <td class="small muted">Heaps</td>
+              <td class="right num">22</td>
+              <td class="right num">1</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" checked aria-label="Select: root after heapify" /></td>
+              <td>
+                <div class="who-name">Given the array [7, 3, 9, 1, 8], which element is at the root after heapify?</div>
+                <div class="who-sub">4 options · v1</div>
+              </td>
+              <td><span class="pill">One answer</span></td>
+              <td><span class="pill">Easy</span></td>
+              <td class="small muted">Heaps · Arrays</td>
+              <td class="right num">11</td>
+              <td class="right num">2</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" checked aria-label="Select: primary clustering" /></td>
+              <td>
+                <div class="who-name">Which collision strategy suffers primary clustering?</div>
+                <!-- The bank is where a bad key gets fixed, so the finding
+                     from the results screen is carried here rather than left
+                     on a report nobody opens twice. -->
+                <div class="who-sub" style="color:var(--danger)">
+                  Weaker candidates did better on the current paper — check the key
+                </div>
+              </td>
+              <td><span class="pill">One answer</span></td>
+              <td><span class="pill">Hard</span></td>
+              <td class="small muted">Hashing</td>
+              <td class="right num">18</td>
+              <td class="right num">2</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" aria-label="Select: binary search invariant" /></td>
+              <td>
+                <div class="who-name">State the loop invariant that makes binary search correct, and show it holds after one iteration.</div>
+                <div class="who-sub">3 rubric criteria · v1</div>
+              </td>
+              <td><span class="pill">Short answer</span></td>
+              <td><span class="pill">Hard</span></td>
+              <td class="small muted">Searching · Proof</td>
+              <td class="right num">6</td>
+              <td class="right num">10</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" checked aria-label="Select: hash table degradation" /></td>
+              <td>
+                <div class="who-name">Explain why a hash table's expected O(1) lookup degrades to O(n), and what a resize does about it.</div>
+                <div class="who-sub">4 rubric criteria · v2 · earlier versions kept</div>
+              </td>
+              <td><span class="pill">Essay</span></td>
+              <td><span class="pill">Hard</span></td>
+              <td class="small muted">Hashing · Complexity</td>
+              <td class="right num">4</td>
+              <td class="right num">12</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" aria-label="Select: trace Dijkstra" /></td>
+              <td>
+                <div class="who-name">Trace Dijkstra from vertex A on the graph overleaf and state the final distance to F.</div>
+                <div class="who-sub">3 rubric criteria · v2 · has a figure</div>
+              </td>
+              <td><span class="pill">Short answer</span></td>
+              <td><span class="pill">Moderate</span></td>
+              <td class="small muted">Graphs · Shortest path</td>
+              <td class="right num">7</td>
+              <td class="right num">14</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" checked aria-label="Select: adjacency list versus matrix" /></td>
+              <td>
+                <div class="who-name">Compare an adjacency list with an adjacency matrix for a sparse graph, in space and in traversal cost.</div>
+                <div class="who-sub">4 rubric criteria · v1</div>
+              </td>
+              <td><span class="pill">Essay</span></td>
+              <td><span class="pill">Moderate</span></td>
+              <td class="small muted">Graphs · Complexity</td>
+              <td class="right num">5</td>
+              <td class="right num">14</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" aria-label="Select: reverse a linked list" /></td>
+              <td>
+                <div class="who-name">Implement <code>reverse</code> on a singly linked list in place, in the language of your choice.</div>
+                <div class="who-sub">Answered as code · run against 6 tests before marking · v3</div>
+              </td>
+              <td><span class="pill">Short answer</span></td>
+              <td><span class="pill">Moderate</span></td>
+              <td class="small muted">Linked lists · Code</td>
+              <td class="right num">8</td>
+              <td class="right num">8</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" aria-label="Select: quicksort worst case" /></td>
+              <td>
+                <div class="who-name">What is the worst-case running time of quicksort with a first-element pivot on already-sorted input?</div>
+                <div class="who-sub">4 options · v1 · drawn 26 times</div>
+              </td>
+              <td><span class="pill">One answer</span></td>
+              <td><span class="pill">Easy</span></td>
+              <td class="small muted">Sorting</td>
+              <td class="right num">26</td>
+              <td class="right num">2</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-foot">
+        <span>11 of 46 questions · filtered to CS-2041</span>
+        <span class="pager">
+          <button class="btn btn-sm btn-ghost" disabled>Previous</button>
+          <button class="btn btn-sm btn-ghost">Next</button>
+        </span>
+      </div>
+    </div>
+
+    <!-- The bulk bar only exists once something is selected, and it says the
+         count out loud: "add to assessment" on 6 questions and on 46 are very
+         different actions and the button text is identical. -->
+    <div class="bulkbar" style="flex-wrap:wrap;max-width:100%">
+      <span class="num">6 questions · 35 marks selected</span>
+      <button class="btn btn-sm btn-light"><svg class="ic ic-sm"><use href="#i-plus"/></svg> Add to assessment</button>
+      <button class="btn btn-sm btn-ghost-light">Move to bank</button>
+      <button class="btn btn-sm btn-ghost-light"><svg class="ic ic-sm"><use href="#i-download"/></svg> Export</button>
+      <button class="icon-btn" style="color:#fff" aria-label="Clear selection"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+
+    <div class="banner warn mt-2">
+      <svg class="ic"><use href="#i-alert"/></svg>
+      <span><span class="strong">Two questions need a look.</span> The quicksort item has been drawn 26
+        times and the clustering item's key is under suspicion — neither should go into the
+        Operating Systems mid-term until they are settled.</span>
+      <a class="btn btn-sm btn-ghost" href="assessment-results.html">Item analysis</a>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab is-active" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate</a>
+  <a class="tab" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

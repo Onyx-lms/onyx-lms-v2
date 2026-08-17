@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx LMS — Student dashboard prototype</title>
+<style>
+/* ==========================================================================
+   Onyx LMS — student dashboard prototype
+
+   Palette derived from the actual logo mark (sampled: teal #307890,
+   orange #D87818) rather than invented. Contrast is the constraint that
+   shaped the roles: the logo orange is 3.17:1 on white, which FAILS WCAG AA
+   for body text -- so it is used only for fills, rings, borders and large
+   numerals, never for small text on white. Teal deep (#1F5F75) is 7.11:1
+   and carries every interactive element.
+   ========================================================================== */
+:root {
+  --teal-50:  #F0F7F9;
+  --teal-100: #D7E9EE;
+  --teal-200: #B4D5DE;
+  --teal-500: #307890;   /* logo teal */
+  --teal-600: #1F5F75;   /* primary — 7.11:1 on white */
+  --teal-700: #17505F;
+  --teal-900: #0B2F3A;
+
+  --orange:      #D87818; /* logo orange — fills / large numerals only */
+  --orange-600:  #B45309; /* 5.02:1 — when orange must carry small text */
+  --orange-50:   #FEF6EC;
+  --orange-100:  #FCE9CE;
+
+  --ink:    #0F172A;      /* 17.85:1 */
+  --muted:  #5C6B7E;      /* 5.11:1 on --bg, 5.44:1 on white */
+  --faint:  #6E7D8F;      /* decorative marks only -- never text */
+  --line:   #E2E8F0;
+  --bg:     #F6F8FA;
+  --card:   #FFFFFF;
+
+  --danger:  #B91C1C;
+  --danger-bg: #FEF2F2;
+  --success: #15803D;
+  --success-bg: #F0FDF4;
+
+  --r-sm: 10px;
+  --r:    14px;
+  --r-lg: 20px;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,.06);
+  --shadow:    0 2px 8px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+  --shadow-lg: 0 12px 32px rgba(31,95,117,.18);
+
+  --header-h: 60px;
+  --tabbar-h: 64px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* Room for the mobile tab bar so the last card is never trapped under it. */
+  padding-bottom: calc(var(--tabbar-h) + 12px);
+}
+@media (min-width: 1024px) { body { padding-bottom: 0; } }
+
+h1, h2, h3 { margin: 0; line-height: 1.2; letter-spacing: -0.01em; }
+p { margin: 0; }
+a { color: var(--teal-600); }
+ul { list-style: none; margin: 0; padding: 0; }
+
+/* Focus ring: one rule, everywhere. Keyboard-only so a mouse click does not
+   ring every button, but always visible when tabbing. */
+:focus-visible {
+  outline: 3px solid var(--teal-600);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.skip-link {
+  position: absolute; left: 12px; top: -100vh; z-index: 100;
+  background: var(--ink); color: #fff; padding: 10px 16px;
+  border-radius: var(--r-sm); font-weight: 600; text-decoration: none;
+}
+.skip-link:focus { top: 12px; }
+
+/* Nothing here animates meaningfully; all of it is decoration, so all of it
+   goes away for anyone who asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important; scroll-behavior: auto !important;
+  }
+}
+
+
+/* One sprite, one stroke weight, one 24px grid -- so every icon in the
+   product has the same optical weight regardless of who adds the next one. */
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.ic {
+  width: 19px; height: 19px; flex: none; display: inline-block;
+  vertical-align: -3.5px;
+  fill: none; stroke: currentColor; stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.ic-sm { width: 16px; height: 16px; }
+.ic-lg { width: 22px; height: 22px; }
+
+/* ---------- header ------------------------------------------------------ */
+.header {
+  position: sticky; top: 0; z-index: 40;
+  height: var(--header-h);
+  background: rgba(255,255,255,.88);
+  backdrop-filter: saturate(1.6) blur(10px);
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 16px;
+}
+@media (min-width: 1024px) { .header { padding: 0 28px; } }
+
+.brand {
+  display: flex; align-items: center; gap: 9px; min-height: 44px;
+  text-decoration: none; color: inherit;
+}
+.brand-mark {
+  width: 30px; height: 30px; border-radius: 9px; flex: none;
+  background: linear-gradient(135deg, var(--teal-500), var(--teal-700));
+  display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 14px;
+}
+.brand-name { font-weight: 700; font-size: 15px; letter-spacing: -.02em; }
+@media (max-width: 420px) { .brand-name { display: none; } }
+
+.header-spacer { flex: 1; }
+
+/* The streak lives in the header on every screen size -- it is the one number
+   a returning student looks for first, so it should never require a scroll. */
+.streak-pill {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px;
+  background: var(--orange-50); border: 1px solid var(--orange-100);
+  color: var(--orange-600);
+  padding: 6px 12px; border-radius: 999px;
+  font-weight: 700; font-size: 13.5px; font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+.streak-pill .flame { font-size: 15px; line-height: 1; }
+
+.icon-btn {
+  width: 44px; height: 44px; border-radius: 11px; border: 1px solid var(--line);
+  background: #fff; cursor: pointer; display: grid; place-items: center;
+  color: var(--muted); position: relative;
+}
+.icon-btn:hover { background: var(--teal-50); color: var(--teal-700); }
+.icon-btn .dot {
+  position: absolute; top: 8px; right: 9px; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--orange); border: 1.5px solid #fff;
+}
+.avatar {
+  width: 38px; height: 38px; border-radius: 50%; flex: none;
+  background: linear-gradient(135deg, var(--teal-500), var(--teal-700));
+  color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 13px;
+}
+.menu-btn { display: grid; }
+@media (min-width: 1024px) { .menu-btn { display: none; } }
+
+/* ---------- layout ------------------------------------------------------ */
+.shell { max-width: 1240px; margin: 0 auto; padding: 18px 16px 8px; }
+@media (min-width: 1024px) { .shell { padding: 26px 28px 40px; } }
+
+/* Desktop sidebar. Below 1024 it is replaced by the header menu + tab bar,
+   so a phone never has to scroll past navigation to reach content. */
+.layout { display: block; }
+@media (min-width: 1024px) {
+  .layout { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 28px; align-items: start; }
+}
+.sidenav { display: none; }
+@media (min-width: 1024px) {
+  .sidenav { display: block; position: sticky; top: calc(var(--header-h) + 26px); }
+}
+.nav-group + .nav-group { margin-top: 18px; }
+.nav-label {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--muted); padding: 0 10px; margin-bottom: 6px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 10px; text-decoration: none;
+  color: #334155; font-size: 14px; font-weight: 500;
+}
+.nav-item:hover { background: #EEF3F5; color: var(--teal-700); }
+.nav-item[aria-current="page"] { background: var(--teal-600); color: #fff; font-weight: 600; }
+.nav-item .ic { opacity: .85; }
+.nav-item[aria-current="page"] .ic { opacity: 1; }
+
+/* Main / rail. The rail sits BELOW the main column on tablet and phone, so
+   the resume action is always the first thing under the greeting. */
+.cols { display: grid; gap: 18px; }
+/* Grid and flex children default to min-width:auto, i.e. they refuse to
+   shrink below their own min-content. On a 320px phone that made this
+   column 356px wide and scrolled the whole page sideways. min-width:0 is
+   the fix, and it belongs on every grid child rather than the one that
+   happened to break. */
+.cols > *, .layout > * { min-width: 0; }
+@media (min-width: 1024px) {
+  .cols { grid-template-columns: minmax(0, 1.62fr) minmax(290px, .92fr); gap: 22px; align-items: start; }
+}
+
+/* ---------- greeting ---------------------------------------------------- */
+.greeting { margin-bottom: 16px; }
+.greeting h1 { font-size: clamp(23px, 5.2vw, 30px); font-weight: 800; }
+.greeting p { color: var(--muted); font-size: 14.5px; margin-top: 4px; }
+
+/* ---------- cards ------------------------------------------------------- */
+.card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--r); box-shadow: var(--shadow-sm);
+}
+.card-pad { padding: 16px; }
+@media (min-width: 640px) { .card-pad { padding: 18px; } }
+
+.section { margin-top: 20px; }
+.section:first-child { margin-top: 0; }
+.section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; margin-bottom: 10px;
+}
+.section-head h2 {
+  font-size: 11.5px; font-weight: 700; letter-spacing: .085em;
+  text-transform: uppercase; color: var(--muted);
+}
+.section-head a {
+  font-size: 13px; font-weight: 600; text-decoration: none;
+  display: inline-flex; align-items: center; min-height: 28px; padding: 0 2px;
+}
+.section-head a:hover { text-decoration: underline; }
+
+/* ---------- hero: continue ---------------------------------------------- */
+/* The single most important control on the page. It is the only element on a
+   dark teal ground, which is what makes it unmissable without shouting. */
+.resume {
+  position: relative;
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(120% 140% at 88% 8%, rgba(216,120,24,.30) 0%, rgba(216,120,24,0) 55%),
+    linear-gradient(140deg, var(--teal-600) 0%, var(--teal-900) 100%);
+  color: #fff;
+  padding: 20px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+@media (min-width: 640px) { .resume { padding: 24px 26px; } }
+.resume-eyebrow {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: #fff; background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.22);
+  padding: 4px 10px; border-radius: 999px;
+}
+.resume h2 { font-size: clamp(19px, 4.4vw, 24px); font-weight: 800; margin-top: 12px; }
+.resume .lesson { color: rgba(255,255,255,.82); font-size: 14px; margin-top: 5px; }
+
+.resume-meter { margin-top: 16px; }
+.meter {
+  height: 9px; border-radius: 999px; background: rgba(255,255,255,.20); overflow: hidden;
+}
+.meter > span {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #F0A24A, var(--orange));
+}
+.resume-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 8px; font-size: 12.5px; color: rgba(255,255,255,.85);
+  font-variant-numeric: tabular-nums;
+}
+
+.resume-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.btn {
+  appearance: none; border: 0; cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 11px 18px; border-radius: 11px;
+  font-size: 14.5px; font-weight: 700; font-family: inherit;
+}
+.btn-lift { background: #fff; color: var(--teal-700); }
+.btn-lift:hover { background: #EAF3F6; }
+.btn-ghost-light {
+  background: rgba(255,255,255,.10); color: #fff;
+  border: 1px solid rgba(255,255,255,.28);
+}
+.btn-ghost-light:hover { background: rgba(255,255,255,.18); }
+.resume :focus-visible { outline-color: #fff; }
+
+/* ---------- due list ---------------------------------------------------- */
+.due-list > li + li { border-top: 1px solid var(--line); }
+.due {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px; text-decoration: none; color: inherit;
+}
+.due:hover { background: #F7FAFB; }
+.due-flag {
+  width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--faint);
+}
+.due-flag.is-late { background: var(--danger); }
+.due-flag.is-soon { background: var(--orange); }
+.due-body { flex: 1; min-width: 0; }
+/* These are spans (a valid child of an <a>), so they need to be told to
+   stack -- left inline they run the title and the course name together on
+   one line, which is exactly the scanning problem this list exists to fix. */
+.due-title, .due-course, .course-name, .course-code,
+.streak-cap, .streak-sub { display: block; }
+.due-title {
+  font-weight: 600; font-size: 14.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.due-course {
+  color: var(--muted); font-size: 12.5px; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Relative, human dates -- "Tomorrow", "in 3 days", "2 days late". A student
+   scanning for what is urgent should not have to parse 8/17/2026, 12:00:00 AM. */
+.due-when {
+  flex: none; font-size: 12.5px; font-weight: 700; white-space: nowrap;
+  padding: 4px 10px; border-radius: 999px;
+  background: #F1F5F9; color: #475569;
+}
+.due-when.is-late { background: var(--danger-bg); color: var(--danger); }
+.due-when.is-soon { background: var(--orange-50); color: var(--orange-600); }
+
+.empty { padding: 26px 16px; text-align: center; color: var(--muted); font-size: 14px; }
+
+/* ---------- courses ----------------------------------------------------- */
+.courses { display: grid; gap: 12px; }
+@media (min-width: 560px) { .courses { grid-template-columns: 1fr 1fr; } }
+.course { display: flex; gap: 13px; align-items: center; padding: 14px; text-decoration: none; color: inherit; }
+.course:hover { border-color: var(--teal-200); }
+/* A ring rather than a bar: at this size a 4px arc reads as progress faster
+   than a 100px track, and it survives being squeezed on a narrow phone. */
+.ring { --p: 0; width: 46px; height: 46px; flex: none; position: relative; }
+.ring::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(var(--orange) calc(var(--p) * 1%), var(--teal-100) 0);
+}
+.ring::after {
+  content: ""; position: absolute; inset: 5px; border-radius: 50%; background: #fff;
+}
+.ring b {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 11.5px; font-weight: 800; color: var(--teal-700);
+  font-variant-numeric: tabular-nums; z-index: 1;
+}
+.course-name { font-weight: 700; font-size: 14.5px; }
+.course-code { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+
+/* ---------- streak card (the one coloured card) ------------------------- */
+/* Duolingo colours exactly one stat card and leaves the rest white. That is
+   what keeps a high-energy dashboard from turning into confetti: a single
+   focal point, everything else calm. */
+.streak-card {
+  border-radius: var(--r-lg); padding: 18px;
+  background: linear-gradient(150deg, #FFF3E0 0%, #FCE3BE 100%);
+  border: 1px solid var(--orange-100);
+}
+.streak-top { display: flex; align-items: center; gap: 12px; }
+.streak-num {
+  font-size: 40px; font-weight: 800; line-height: 1; color: var(--orange-600);
+  font-variant-numeric: tabular-nums;
+}
+.streak-cap { font-size: 13px; font-weight: 700; color: #9A4508; }
+.streak-sub { font-size: 12.5px; color: #8A5A22; margin-top: 2px; }
+
+.days { display: flex; justify-content: space-between; gap: 5px; margin-top: 16px; }
+.day { flex: 1; text-align: center; }
+.day span {
+  display: block; font-size: 10.5px; font-weight: 700; color: #8A5A22;
+  margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em;
+}
+.day i {
+  display: grid; place-items: center; margin: 0 auto;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(255,255,255,.7); border: 1.5px solid rgba(180,83,9,.18);
+  font-style: normal; font-size: 13px; color: #C98A3C;
+}
+.day.done i { background: var(--orange); border-color: var(--orange); color: #fff; }
+.day.today:not(.done) i {
+  border: 2px solid #9A4508; color: #9A4508; font-weight: 800;
+}
+/* Today AND done: keep the white tick, mark it with a ring instead. */
+.day.today.done i { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #9A4508; }
+
+/* ---------- stat grid --------------------------------------------------- */
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stat { padding: 14px; }
+.stat-label {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted);
+}
+.stat-value {
+  font-size: 26px; font-weight: 800; margin-top: 5px; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.stat-note { font-size: 12px; color: var(--muted); margin-top: 5px; }
+.delta { font-weight: 700; }
+.delta.up { color: var(--success); }
+
+/* ---------- quick links ------------------------------------------------- */
+.links > li + li { border-top: 1px solid var(--line); }
+.link-row {
+  display: flex; align-items: center; gap: 11px; padding: 12px 15px;
+  text-decoration: none; color: inherit; font-size: 14px; font-weight: 500;
+}
+.link-row:hover { background: #F7FAFB; color: var(--teal-700); }
+.link-row .chev { margin-left: auto; color: var(--muted); }
+.link-row .ic { color: var(--teal-600); }
+.badge-pill {
+  background: var(--danger-bg); color: var(--danger);
+  font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+}
+
+/* ---------- mobile tab bar ---------------------------------------------- */
+/* Five destinations, thumb-reachable. The full menu stays available from the
+   header, so this is the shortcut, not the whole navigation. */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+  height: var(--tabbar-h);
+  background: rgba(255,255,255,.94);
+  backdrop-filter: saturate(1.6) blur(10px);
+  border-top: 1px solid var(--line);
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@media (min-width: 1024px) { .tabbar { display: none; } }
+.tab {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; text-decoration: none; color: var(--muted); font-size: 10.5px; font-weight: 600;
+}
+
+.tab[aria-current="page"] { color: var(--teal-600); }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+</style>
+</head>
+<body>
+<svg class="sprite" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M9.5 20v-6h5v6"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 4.5h6a3 3 0 0 1 3 3V20a2.5 2.5 0 0 0-2.5-2.5H4z"/><path d="M20 4.5h-6a3 3 0 0 0-3 3V20a2.5 2.5 0 0 1 2.5-2.5H20z"/></symbol>
+<symbol id="i-code" viewBox="0 0 24 24"><path d="m8.5 8.5-4 3.5 4 3.5"/><path d="m15.5 8.5 4 3.5-4 3.5"/><path d="m13.5 5-3 14"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></symbol>
+<symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="m8.5 13.5-1.5 7 5-2.5 5 2.5-1.5-7"/></symbol>
+<symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4.5v1.5a3 3 0 0 0 3 3"/><path d="M17 6h2.5v1.5a3 3 0 0 1-3 3"/><path d="M12 14v3.5"/><path d="M8.5 20.5h7"/><path d="M10 17.5h4v3h-4z"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17"/><path d="M8 3v4M16 3v4"/></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.3"/></symbol>
+<symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.4"/><path d="M12 17.2v.1"/></symbol>
+<symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12" rx="2.5"/><path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.5"/><path d="M3 12.5h18"/></symbol>
+<symbol id="i-mic" viewBox="0 0 24 24"><rect x="9.5" y="3" width="5" height="10" rx="2.5"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6"/><path d="M10.3 20a2 2 0 0 0 3.4 0"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9.5 5.5 7 6.5-7 6.5"/></symbol>
+<symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="18.5" cy="12" r="1.6" fill="currentColor" stroke="none"/></symbol>
+</defs></svg>
+<a class="skip-link" href="#main">Skip to the main content</a>
+
+<header class="header">
+  <button class="icon-btn menu-btn" aria-label="Open navigation"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="#" aria-label="Onyx LMS, home">
+    <span class="brand-mark" aria-hidden="true">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <span class="header-spacer"></span>
+  <a class="streak-pill" href="#streak">
+    <span class="flame" aria-hidden="true">🔥</span>
+    <span>3</span>
+    <span class="sr-only">day streak</span>
+  </a>
+  <button class="icon-btn" aria-label="Notifications, 2 unread">
+    <svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg><span class="dot"></span>
+  </button>
+  <span class="avatar" aria-hidden="true">SS</span>
+</header>
+
+<div class="shell">
+<div class="layout">
+
+  <!-- Desktop navigation, grouped the way enterprise consoles group theirs. -->
+  <nav class="sidenav" aria-label="Main">
+    <div class="nav-group">
+      <a class="nav-item" href="#" aria-current="page"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg>Dashboard</a>
+      <a class="nav-item" href="#"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg>Courses</a>
+      <a class="nav-item" href="#"><svg class="ic" aria-hidden="true"><use href="#i-code"/></svg>Practice</a>
+      <a class="nav-item" href="#"><svg class="ic" aria-hidden="true"><use href="#i-layers"/></svg>Workspaces</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="#"><svg class="ic" aria-hidden="true"><use href="#i-edit"/></svg>Assessments</a>
+      <a class="nav-item" href="#"><svg class="ic" aria-hidden="true"><use href="#i-award"/></svg>Results</a>
+      <a class="nav-item" href="#"><svg class="ic" aria-hidden="true"><use href="#i-trophy"/></svg>Contests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="#"><svg class="ic" aria-hidden="true"><use href="#i-calendar"/></svg>Timetable</a>
+      <a class="nav-item" href="#"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Fees</a>
+      <a class="nav-item" href="#"><svg class="ic" aria-hidden="true"><use href="#i-help"/></svg>Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="#"><svg class="ic" aria-hidden="true"><use href="#i-briefcase"/></svg>Jobs</a>
+      <a class="nav-item" href="#"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg>Interviews</a>
+      <a class="nav-item" href="#"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg>Your profile</a>
+    </div>
+  </nav>
+
+  <main id="main" tabindex="-1">
+    <div class="greeting">
+      <h1>Hi, Sam 👋</h1>
+      <p>You're <strong>2 lessons</strong> from finishing this week's plan.</p>
+    </div>
+
+    <div class="cols">
+      <!-- ============ main column ============ -->
+      <div>
+        <section class="resume" aria-labelledby="resume-h">
+          <span class="resume-eyebrow">Pick up where you left off</span>
+          <h2 id="resume-h">Introduction to Programming</h2>
+          <p class="lesson">Module 2 · Lesson 4 — Loops and iteration</p>
+          <div class="resume-meter">
+            <div class="meter" role="progressbar" aria-valuenow="62" aria-valuemin="0"
+                 aria-valuemax="100" aria-label="Course progress">
+              <span style="width:62%"></span>
+            </div>
+            <div class="resume-meta">
+              <span>62% complete</span>
+              <span>about 2h left</span>
+            </div>
+          </div>
+          <div class="resume-actions">
+            <a class="btn btn-lift" href="#"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-play"/></svg> Resume lesson</a>
+            <a class="btn btn-ghost-light" href="#">Course outline</a>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="due-h">
+          <div class="section-head">
+            <h2 id="due-h">Due next</h2>
+            <a href="#">All assignments</a>
+          </div>
+          <div class="card">
+            <ul class="due-list">
+              <li><a class="due" href="#">
+                <span class="due-flag is-late" aria-hidden="true"></span>
+                <span class="due-body">
+                  <span class="due-title">Hello World — first program</span>
+                  <span class="due-course">CS101 · Introduction to Programming</span>
+                </span>
+                <span class="due-when is-late">2 days late</span>
+              </a></li>
+              <li><a class="due" href="#">
+                <span class="due-flag is-soon" aria-hidden="true"></span>
+                <span class="due-body">
+                  <span class="due-title">Loops worksheet</span>
+                  <span class="due-course">CS101 · Introduction to Programming</span>
+                </span>
+                <span class="due-when is-soon">Tomorrow</span>
+              </a></li>
+              <li><a class="due" href="#">
+                <span class="due-flag" aria-hidden="true"></span>
+                <span class="due-body">
+                  <span class="due-title">Data structures quiz</span>
+                  <span class="due-course">CS102 · Databases</span>
+                </span>
+                <span class="due-when">in 5 days</span>
+              </a></li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="courses-h">
+          <div class="section-head">
+            <h2 id="courses-h">Your courses</h2>
+            <a href="#">Catalogue</a>
+          </div>
+          <div class="courses">
+            <a class="card course" href="#">
+              <span class="ring" style="--p:62" role="img" aria-label="62 percent complete"><b>62%</b></span>
+              <span>
+                <span class="course-name">Introduction to Programming</span>
+                <span class="course-code">CS101 · 4 credits</span>
+              </span>
+            </a>
+            <a class="card course" href="#">
+              <span class="ring" style="--p:18" role="img" aria-label="18 percent complete"><b>18%</b></span>
+              <span>
+                <span class="course-name">Databases</span>
+                <span class="course-code">CS102 · 3 credits</span>
+              </span>
+            </a>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============ right rail ============ -->
+      <div>
+        <section class="streak-card" id="streak" aria-labelledby="streak-h">
+          <div class="streak-top">
+            <span class="streak-num">3</span>
+            <span>
+              <span class="streak-cap" id="streak-h">day streak</span>
+              <span class="streak-sub">Best yet: 11 days</span>
+            </span>
+          </div>
+          <div class="days">
+            <div class="day done"><span>M</span><i aria-hidden="true">✓</i><span class="sr-only">Monday, done</span></div>
+            <div class="day done"><span>T</span><i aria-hidden="true">✓</i><span class="sr-only">Tuesday, done</span></div>
+            <div class="day done today"><span>W</span><i aria-hidden="true">✓</i><span class="sr-only">Wednesday, today, done</span></div>
+            <div class="day"><span>T</span><i aria-hidden="true"></i><span class="sr-only">Thursday</span></div>
+            <div class="day"><span>F</span><i aria-hidden="true"></i><span class="sr-only">Friday</span></div>
+            <div class="day"><span>S</span><i aria-hidden="true"></i><span class="sr-only">Saturday</span></div>
+            <div class="day"><span>S</span><i aria-hidden="true"></i><span class="sr-only">Sunday</span></div>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="stats-h">
+          <div class="section-head"><h2 id="stats-h">This week</h2></div>
+          <div class="stats">
+            <div class="card stat">
+              <div class="stat-label">Lessons</div>
+              <div class="stat-value">14</div>
+              <div class="stat-note"><span class="delta up">▲ 4</span> vs last week</div>
+            </div>
+            <div class="card stat">
+              <div class="stat-label">Attendance</div>
+              <div class="stat-value">92%</div>
+              <div class="stat-note">11 of 12 sessions</div>
+            </div>
+            <div class="card stat">
+              <div class="stat-label">Solved</div>
+              <div class="stat-value">27</div>
+              <div class="stat-note"><span class="delta up">▲ 6</span> vs last week</div>
+            </div>
+            <div class="card stat">
+              <div class="stat-label">Submitted</div>
+              <div class="stat-value">8</div>
+              <div class="stat-note">1 outstanding</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="quick-h">
+          <div class="section-head"><h2 id="quick-h">Quick links</h2></div>
+          <div class="card">
+            <ul class="links">
+              <li><a class="link-row" href="#"><svg class="ic" aria-hidden="true"><use href="#i-calendar"/></svg>Timetable<span class="chev"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-chevron"/></svg></span></a></li>
+              <li><a class="link-row" href="#"><svg class="ic" aria-hidden="true"><use href="#i-award"/></svg>Results<span class="chev"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-chevron"/></svg></span></a></li>
+              <li><a class="link-row" href="#"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Fees
+                <span class="badge-pill">1 due</span><span class="chev"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-chevron"/></svg></span></a></li>
+              <li><a class="link-row" href="#"><svg class="ic" aria-hidden="true"><use href="#i-help"/></svg>Ask for help<span class="chev"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-chevron"/></svg></span></a></li>
+            </ul>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</div>
+
+<nav class="tabbar" aria-label="Quick navigation">
+  <a class="tab" href="#" aria-current="page"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-home"/></svg>Home</a>
+  <a class="tab" href="#"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-book"/></svg>Courses</a>
+  <a class="tab" href="#"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-code"/></svg>Practice</a>
+  <a class="tab" href="#"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-award"/></svg>Results</a>
+  <a class="tab" href="#"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-dots"/></svg>More</a>
+</nav>
+</body>
+</html>

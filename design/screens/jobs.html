@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Jobs</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search courses, roles…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">AO</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================
+       The learner's menu, grouped by the job being done. Career sits below
+       Campus because a final-year student checks the board weekly and their
+       timetable daily. -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees</a>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item is-active" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">5</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Jobs</h1>
+        <p class="page-sub">Openings shared with Demo University · 11 of 18 match your profile</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="profile.html"><svg class="ic ic-sm"><use href="#i-user"/></svg> Your profile</a>
+      </div>
+    </div>
+
+    <!-- Readiness is the number every eligibility rule on this page is checked
+         against, so it belongs above the board rather than buried in a profile
+         page a learner visits once. Two roles are ruled out by one missing
+         skill: that is worth a sentence and a link, not silence. -->
+    <div class="banner info">
+      <svg class="ic"><use href="#i-target"/></svg>
+      <div>
+        <div class="strong">Your readiness score is 72.</div>
+        <div class="small" style="margin-top:2px">
+          Three roles below want 75 or more. Two more want React on your skills passport.
+        </div>
+      </div>
+      <a class="btn btn-sm btn-ghost" href="profile.html">See why</a>
+    </div>
+
+    <div class="toolbar mt-2">
+      <div class="search">
+        <svg class="ic ic-sm"><use href="#i-search"/></svg>
+        <input placeholder="Search roles or companies" aria-label="Search roles" />
+      </div>
+      <select class="select" aria-label="Sort by">
+        <option>Closing soonest</option>
+        <option>Newest</option>
+        <option>Highest band</option>
+      </select>
+    </div>
+
+    <!-- Chips rather than a filter panel: on a phone a panel is a second
+         screen, and the counts mean a learner knows what is behind a filter
+         before spending a tap on it. -->
+    <div class="inline" style="margin-bottom:14px">
+      <a class="chip is-on" href="#">All <span class="count">18</span></a>
+      <a class="chip" href="#"><svg class="ic ic-sm"><use href="#i-check"/></svg> Eligible <span class="count">11</span></a>
+      <a class="chip" href="#">Applied <span class="count">3</span></a>
+      <a class="chip" href="#">Graduate <span class="count">12</span></a>
+      <a class="chip" href="#">Placement year <span class="count">4</span></a>
+      <a class="chip" href="#">Remote <span class="count">5</span></a>
+      <a class="chip" href="#">Closing this week <span class="count">3</span></a>
+    </div>
+
+    <!-- A learner is choosing one thing to open, not comparing eighteen down a
+         column, so this is a .rowlist and not a table. Each row answers the
+         four questions in the order they are asked: what, where, how much,
+         how long have I got. -->
+    <section>
+      <div class="section-head">
+        <h2>Open roles</h2>
+        <span class="small muted">18 open · sorted by deadline</span>
+      </div>
+      <div class="rowlist">
+        <div class="row">
+          <span class="row-icon brand"><svg class="ic"><use href="#i-briefcase"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="job-detail.html">Graduate Software Engineer</a></div>
+            <div class="row-meta">
+              <span>Octopus Energy</span><span>·</span>
+              <span>London or remote</span><span>·</span>
+              <span>Graduate</span><span>·</span>
+              <span class="num">£38,000–£44,000</span>
+            </div>
+            <div class="inline" style="margin-top:6px">
+              <span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> Eligible</span>
+              <span class="pill late"><svg class="ic ic-sm"><use href="#i-clock"/></svg> Closes in 2 days</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm" href="job-detail.html">See the role</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="job-detail.html">Backend Engineer, graduate</a></div>
+            <div class="row-meta">
+              <span>Monzo</span><span>·</span>
+              <span>London</span><span>·</span>
+              <span>Graduate</span><span>·</span>
+              <span class="num">£42,000–£48,000</span>
+            </div>
+            <div class="inline" style="margin-top:6px">
+              <span class="pill good">Applied 6 days ago</span>
+              <span class="pill">Shortlisted</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm btn-ghost" href="job-detail.html">View</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon brand"><svg class="ic"><use href="#i-briefcase"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="job-detail.html">Graduate Data Analyst</a></div>
+            <div class="row-meta">
+              <span>Sage Group</span><span>·</span>
+              <span>Newcastle upon Tyne</span><span>·</span>
+              <span>Graduate</span><span>·</span>
+              <span class="num">£32,000–£36,000</span>
+            </div>
+            <div class="inline" style="margin-top:6px">
+              <span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> Eligible</span>
+              <span class="pill late"><svg class="ic ic-sm"><use href="#i-clock"/></svg> Closes in 5 days</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm" href="job-detail.html">See the role</a>
+          </div>
+        </div>
+
+        <!-- Not eligible is stated with the count and the reason, never with a
+             greyed-out row. "1 of 4 rules not met" is something you can act on;
+             a dimmed row is something you assume is broken. -->
+        <div class="row">
+          <span class="row-icon soon"><svg class="ic"><use href="#i-alert"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="job-detail.html">Frontend Engineer, graduate</a></div>
+            <div class="row-meta">
+              <span>Trainline</span><span>·</span>
+              <span>London (hybrid)</span><span>·</span>
+              <span>Graduate</span><span>·</span>
+              <span class="num">£40,000–£45,000</span>
+            </div>
+            <div class="inline" style="margin-top:6px">
+              <span class="pill soon"><svg class="ic ic-sm"><use href="#i-x"/></svg> 1 of 4 rules not met — React</span>
+              <span class="pill">Closes in 12 days</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm btn-ghost" href="job-detail.html">See the role</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon brand"><svg class="ic"><use href="#i-briefcase"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="job-detail.html">Software Engineer, graduate</a></div>
+            <div class="row-meta">
+              <span>Ocado Technology</span><span>·</span>
+              <span>Hatfield</span><span>·</span>
+              <span>Graduate</span><span>·</span>
+              <span class="num">£37,000–£41,000</span>
+            </div>
+            <div class="inline" style="margin-top:6px">
+              <span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> Eligible</span>
+              <span class="pill">Closes in 3 weeks</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm" href="job-detail.html">See the role</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon soon"><svg class="ic"><use href="#i-alert"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="job-detail.html">Cyber Analyst, graduate</a></div>
+            <div class="row-meta">
+              <span>Darktrace</span><span>·</span>
+              <span>Cambridge</span><span>·</span>
+              <span>Graduate</span><span>·</span>
+              <span class="num">£36,000–£42,000</span>
+            </div>
+            <div class="inline" style="margin-top:6px">
+              <span class="pill soon"><svg class="ic ic-sm"><use href="#i-x"/></svg> 1 of 3 rules not met — readiness 75</span>
+              <span class="pill">Closes in 3 weeks</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm btn-ghost" href="job-detail.html">See the role</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon brand"><svg class="ic"><use href="#i-briefcase"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="job-detail.html">Data Analyst placement year</a></div>
+            <div class="row-meta">
+              <span>Starling Bank</span><span>·</span>
+              <span>Remote</span><span>·</span>
+              <span>Placement year</span><span>·</span>
+              <span class="num">£24,000 pro rata</span>
+            </div>
+            <div class="inline" style="margin-top:6px">
+              <span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> Eligible</span>
+              <span class="pill">Closes in 4 weeks</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm" href="job-detail.html">See the role</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon"><svg class="ic"><use href="#i-briefcase"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="job-detail.html">Graduate QA Engineer</a></div>
+            <div class="row-meta">
+              <span>BAE Systems Digital Intelligence</span><span>·</span>
+              <span>Guildford</span><span>·</span>
+              <span>Graduate</span><span>·</span>
+              <span class="num">£33,000–£37,000</span>
+            </div>
+            <div class="inline" style="margin-top:6px">
+              <span class="pill">Closed 3 days ago</span>
+              <span class="pill">Not open to new applications</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm btn-ghost" href="job-detail.html">View</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Your own applications are the half of this screen a learner comes back
+         for. Status uses the platform's own words — "Not taken forward" rather
+         than "Rejected", because the second one is a verdict on a person. -->
+    <section class="section">
+      <div class="section-head">
+        <h2>Your applications</h2>
+        <span class="small muted">3 live</span>
+      </div>
+      <div class="rowlist">
+        <div class="row">
+          <span class="row-icon brand"><svg class="ic"><use href="#i-briefcase"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Backend Engineer, graduate</div>
+            <div class="row-meta">Monzo · applied 6 days ago · readiness 72 when you applied</div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill info">Shortlisted</span>
+            <a class="btn btn-sm btn-ghost" href="job-detail.html">Open</a>
+          </div>
+        </div>
+        <div class="row">
+          <span class="row-icon good"><svg class="ic"><use href="#i-award"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Software Engineer, graduate</div>
+            <div class="row-meta">Ocado Technology · offer made 2 days ago · reply within 12 days</div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill good">Offered</span>
+            <a class="btn btn-sm" href="job-detail.html">Respond</a>
+          </div>
+        </div>
+        <div class="row">
+          <span class="row-icon"><svg class="ic"><use href="#i-flag"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Graduate QA Engineer</div>
+            <div class="row-meta">BAE Systems Digital Intelligence · decided a week ago</div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill">Not taken forward</span>
+            <a class="btn btn-sm btn-ghost" href="job-detail.html">Open</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

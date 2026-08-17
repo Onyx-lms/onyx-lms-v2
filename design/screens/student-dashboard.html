@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Student dashboard</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search your courses…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">SS</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================
+       Exactly the groups navFor('student') returns, in its order: the four
+       everyday destinations unlabelled at the top, then Assessment, Campus,
+       Career, then Inbox on its own. A student's menu is not the admin's
+       menu with rows greyed out. -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item is-active" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees <span class="count">1</span></a>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">2</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Hi, Sam 👋</h1>
+        <!-- The subtitle is the one line the progress summary earns: lessons
+             remaining across every enrolment, phrased as a countable thing to
+             finish rather than a percentage to admire. -->
+        <p class="page-sub">You're 37 lessons from finishing your plan.</p>
+      </div>
+    </div>
+
+    <div class="cols">
+      <div>
+        <!-- Resume. The single most important control on the page, so it is
+             the first thing under the greeting and it is the only element
+             wearing the gradient. The button names the lesson, so nobody has
+             to click "continue" to discover what continuing means. -->
+        <section class="hero" aria-labelledby="resume-h">
+          <div class="hero-top">
+            <div style="min-width:0">
+              <div class="hero-eyebrow">Pick up where you left off</div>
+              <h2 class="hero-title" id="resume-h">Introduction to Programming</h2>
+              <p class="hero-sub">Control flow · Loops and iteration — 14:20</p>
+            </div>
+            <div class="hero-actions">
+              <a class="btn btn-light btn-lg" href="lesson-video.html">
+                <svg class="ic ic-sm"><use href="#i-play"/></svg> Resume lesson
+              </a>
+              <a class="btn btn-ghost-light btn-lg" href="courses.html">All courses</a>
+            </div>
+          </div>
+          <div class="mt-2">
+            <div class="meter on-dark" role="progressbar" aria-valuenow="33" aria-valuemin="0"
+                 aria-valuemax="100" aria-label="Introduction to Programming progress">
+              <span style="width:33%"></span>
+            </div>
+            <div class="hero-meta">
+              <span class="strong">33% complete</span>
+              <span class="dim">6 of 18 lessons</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Due next. Sorted soonest first and deliberately INCLUDING what is
+             already late — a missed deadline is the most important row on this
+             page, not the one to hide. Dates are relative because what someone
+             scans this list for is what is urgent. -->
+        <section class="section">
+          <div class="section-head">
+            <h2>Due next</h2>
+            <a class="link" href="assessments.html">All assignments</a>
+          </div>
+          <div class="rowlist">
+            <div class="row">
+              <span class="row-icon late"><svg class="ic"><use href="#i-edit"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="assessments.html">Hello World — first program</a></div>
+                <div class="row-meta">CS101 · Introduction to Programming</div>
+              </div>
+              <div class="row-trailing"><span class="pill late">2 days late</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon soon"><svg class="ic"><use href="#i-edit"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="assessments.html">Loops worksheet</a></div>
+                <div class="row-meta">CS101 · Introduction to Programming</div>
+              </div>
+              <div class="row-trailing"><span class="pill soon">Tomorrow</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon soon"><svg class="ic"><use href="#i-edit"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="assessments.html">ER diagram for the library catalogue</a></div>
+                <div class="row-meta">CS102 · Databases</div>
+              </div>
+              <div class="row-trailing"><span class="pill soon">in 3 days</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-edit"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="assessments.html">Truth tables problem set</a></div>
+                <div class="row-meta">MA110 · Discrete Mathematics</div>
+              </div>
+              <div class="row-trailing"><span class="pill">in 5 days</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-edit"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="assessments.html">Normalisation exercise 2</a></div>
+                <div class="row-meta">CS102 · Databases</div>
+              </div>
+              <div class="row-trailing"><span class="pill">in 2 weeks</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- What you are taking. Each card carries the course's OWN percentage,
+             read from that course's outline — an earlier build painted the
+             learner's platform-wide figure onto every card, so two different
+             courses both claimed the same number. -->
+        <section class="section">
+          <div class="section-head">
+            <h2>What you are taking</h2>
+            <a class="link" href="courses.html">Catalogue</a>
+          </div>
+          <div class="grid-2">
+            <a class="card card-pad inline" href="course-detail.html" style="gap:14px;text-decoration:none;color:inherit">
+              <span class="ring" style="--p:33%"><span>33%</span></span>
+              <span style="min-width:0">
+                <span class="row-title truncate" style="display:block">Introduction to Programming</span>
+                <span class="small muted">CS101 · 4 credits</span>
+              </span>
+            </a>
+            <a class="card card-pad inline" href="course-detail.html" style="gap:14px;text-decoration:none;color:inherit">
+              <span class="ring" style="--p:18%"><span>18%</span></span>
+              <span style="min-width:0">
+                <span class="row-title truncate" style="display:block">Databases</span>
+                <span class="small muted">CS102 · 3 credits</span>
+              </span>
+            </a>
+            <a class="card card-pad inline" href="course-detail.html" style="gap:14px;text-decoration:none;color:inherit">
+              <span class="ring" style="--p:56%"><span>56%</span></span>
+              <span style="min-width:0">
+                <span class="row-title truncate" style="display:block">Discrete Mathematics</span>
+                <span class="small muted">MA110 · 4 credits</span>
+              </span>
+            </a>
+            <a class="card card-pad inline" href="course-detail.html" style="gap:14px;text-decoration:none;color:inherit">
+              <span class="ring" style="--p:8%"><span>8%</span></span>
+              <span style="min-width:0">
+                <span class="row-title truncate" style="display:block">Professional Communication</span>
+                <span class="small muted">HU105 · 2 credits</span>
+              </span>
+            </a>
+          </div>
+        </section>
+
+        <!-- Attendance shortfall. Only courses the API flags below_threshold
+             appear here, so an empty section is the normal state and its
+             presence already means something before the number is read. -->
+        <section class="section">
+          <div class="section-head"><h2>Attendance needs attention</h2></div>
+          <div class="banner warn">
+            <svg class="ic"><use href="#i-flag"/></svg>
+            <div>
+              <strong>Discrete Mathematics</strong> — 68% (13 of 19 sessions).
+              Most programmes expect 75%.
+              <div class="small mt-0" style="margin-top:3px">Two more sessions attended brings you back over the line.</div>
+            </div>
+            <a class="btn btn-sm btn-ghost" href="timetable.html">Timetable</a>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ rail ============================ -->
+      <aside>
+        <!-- The streak, drawn as the week rather than as "current 3 · longest
+             11". Days are pills, not bare dots, because the colour is not
+             allowed to be the whole signal: a finished day shows a tick and
+             its letter, today is the one solid pill. -->
+        <section aria-labelledby="streak-h">
+          <div class="card card-pad">
+            <div class="inline" style="gap:12px">
+              <span class="stat-value" style="font-size:40px;color:var(--orange)">3</span>
+              <span>
+                <span class="strong" style="display:block" id="streak-h">day streak</span>
+                <span class="small muted">Best yet: 11 days</span>
+              </span>
+            </div>
+            <div class="inline mt-2" style="gap:5px">
+              <span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> M</span>
+              <span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> T</span>
+              <span class="pill solid">W</span>
+              <span class="pill">T</span>
+              <span class="pill">F</span>
+              <span class="pill">S</span>
+              <span class="pill">S</span>
+            </div>
+            <p class="small muted mt-1">
+              Counted from lessons finished, work submitted and code run — not from signing in.
+            </p>
+          </div>
+        </section>
+
+        <!-- This week. Two-by-two rather than the four-across .stats grid: at
+             320px of rail, four tiles across is four unreadable columns. -->
+        <section class="section">
+          <div class="section-head"><h2>This week</h2></div>
+          <div class="grid-2">
+            <div class="stat">
+              <div class="stat-label">Lessons</div>
+              <div class="stat-value">19</div>
+              <div class="stat-note">of 56</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Attendance</div>
+              <div class="stat-value">88%</div>
+              <div class="stat-note">52 of 59 sessions</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Solved</div>
+              <div class="stat-value">27</div>
+              <div class="stat-note">of 41 tried</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Submitted</div>
+              <div class="stat-value">8</div>
+              <div class="stat-note">1 outstanding</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Every nudge shows the signal behind it. A nudge whose reason is
+             invisible is indistinguishable from a nag, and the first thing
+             anyone does with a nag is stop reading them. Highest urgency
+             first; four at most, because a list of ten is a list of none. -->
+        <section class="section">
+          <div class="section-head"><h2>What to do next</h2></div>
+          <div class="stack-sm">
+            <div class="banner late">
+              <svg class="ic"><use href="#i-alert"/></svg>
+              <div>
+                <a href="assessments.html" style="color:inherit"><strong>"Hello World — first program" is past its due date. Submitting late is better than not.</strong></a>
+                <div class="small mt-0" style="margin-top:3px">Because: "Hello World — first program", due 2 days ago</div>
+              </div>
+            </div>
+            <div class="banner warn">
+              <svg class="ic"><use href="#i-clock"/></svg>
+              <div>
+                <a href="assessments.html" style="color:inherit"><strong>"Loops worksheet" is your next deadline.</strong></a>
+                <div class="small mt-0" style="margin-top:3px">Because: "Loops worksheet", due tomorrow</div>
+              </div>
+            </div>
+            <div class="banner">
+              <svg class="ic"><use href="#i-chart"/></svg>
+              <div>
+                <a href="courses.html" style="color:inherit"><strong>You are 34% through your lessons. Pick up where you left off.</strong></a>
+                <div class="small muted" style="margin-top:3px">Because: 19 of 56 lessons</div>
+              </div>
+            </div>
+            <div class="banner">
+              <svg class="ic"><use href="#i-sparkle"/></svg>
+              <div>
+                <a href="practice.html" style="color:inherit"><strong>Keep your 3-day streak: one problem today is enough.</strong></a>
+                <div class="small muted" style="margin-top:3px">Because: streak 3, inactive today</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Quick links</h2></div>
+          <div class="rowlist">
+            <a class="row" href="timetable.html" style="color:inherit">
+              <span style="color:var(--teal-600);display:flex"><svg class="ic"><use href="#i-calendar"/></svg></span>
+              <div class="row-main"><div class="row-title" style="font-size:14px">Timetable</div></div>
+              <span class="row-trailing muted"><svg class="ic ic-sm"><use href="#i-chevron"/></svg></span>
+            </a>
+            <a class="row" href="results.html" style="color:inherit">
+              <span style="color:var(--teal-600);display:flex"><svg class="ic"><use href="#i-award"/></svg></span>
+              <div class="row-main"><div class="row-title" style="font-size:14px">Results</div></div>
+              <span class="row-trailing muted"><svg class="ic ic-sm"><use href="#i-chevron"/></svg></span>
+            </a>
+            <a class="row" href="fees.html" style="color:inherit">
+              <span style="color:var(--teal-600);display:flex"><svg class="ic"><use href="#i-wallet"/></svg></span>
+              <div class="row-main"><div class="row-title" style="font-size:14px">Fees</div></div>
+              <span class="row-trailing"><span class="pill soon">1 due</span></span>
+            </a>
+            <a class="row" href="support.html" style="color:inherit">
+              <span style="color:var(--teal-600);display:flex"><svg class="ic"><use href="#i-help"/></svg></span>
+              <div class="row-main"><div class="row-title" style="font-size:14px">Ask for help</div></div>
+              <span class="row-trailing muted"><svg class="ic ic-sm"><use href="#i-chevron"/></svg></span>
+            </a>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<!-- Five tabs, the ones a student opens daily. Everything else stays one tap
+     away behind the header menu — stacking all fourteen links above the
+     content meant scrolling past a full viewport to reach any of your work. -->
+<nav class="tabbar" aria-label="Main">
+  <a class="tab is-active" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

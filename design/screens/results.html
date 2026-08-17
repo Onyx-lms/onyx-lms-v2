@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Results</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search your results…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">SS</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item is-active" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees <span class="count">1</span></a>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">2</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Results</h1>
+        <!-- Said plainly, because the alternative is a learner mistaking a
+             moderated-but-unreleased figure for their final mark. The API
+             refuses to send those; the page says so rather than leaving the
+             absence to be interpreted. -->
+        <p class="page-sub">Published results only. A mark appears here once the examinations office releases it.</p>
+      </div>
+      <div class="page-actions">
+        <!-- "Request", not "Download": this student has never been issued a
+             transcript, and a download button that produces nothing is the
+             fastest way to get a support ticket. -->
+        <a class="btn btn-ghost" href="support.html"><svg class="ic ic-sm"><use href="#i-flag"/></svg> Request a transcript</a>
+      </div>
+    </div>
+
+    <!-- The four numbers a learner is actually asked for — by a scholarship
+         form, by a placement office, by a parent. GPA is the headline because
+         it is the one that is quoted; the average is next to it because a GPA
+         with no marks behind it is a number nobody can check. -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">GPA</div>
+        <div class="stat-value">7.84</div>
+        <div class="stat-note">of 10 · across 3 semesters</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Average mark</div>
+        <div class="stat-value">72%</div>
+        <div class="stat-note"><span class="delta up">▲ 4</span> vs last semester</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Credits earned</div>
+        <div class="stat-value">46</div>
+        <div class="stat-note">of 120 for the degree</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Released</div>
+        <div class="stat-value">11</div>
+        <div class="stat-note">of 12 sat · 1 still with the examiners</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="segmented" role="tablist" aria-label="Semester">
+        <a class="is-on" href="#" role="tab" aria-selected="true">Semester 3 <span class="count">5</span></a>
+        <a href="#" role="tab" aria-selected="false">Semester 2 <span class="count">4</span></a>
+        <a href="#" role="tab" aria-selected="false">Semester 1 <span class="count">3</span></a>
+      </div>
+    </div>
+
+    <!-- The mark is what the page exists for, so it is the biggest thing on
+         the row rather than the middle cell of three. The band is never the
+         only signal: the number sits inside it, and the grade letter repeats
+         it in words for anyone the green and the red read the same to. -->
+    <section class="section">
+      <div class="section-head">
+        <h2>Semester 3 · Michaelmas 2026</h2>
+        <span class="small muted">5 assessments</span>
+      </div>
+      <div class="rowlist">
+        <div class="row">
+          <span class="row-icon good"><svg class="ic"><use href="#i-award"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Introduction to Programming — mid-term</div>
+            <div class="row-meta">CS101 · Grade A · 4 credits · released 5 days ago</div>
+          </div>
+          <div class="row-trailing">
+            <span class="score hi">86</span>
+            <span class="small muted num">of 100</span>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon good"><svg class="ic"><use href="#i-award"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Discrete Mathematics — class test 2</div>
+            <!-- moderation_delta is on the record, so it is shown. A mark that
+                 moved and does not say it moved is the thing that generates
+                 the appeal. -->
+            <div class="row-meta">MA110 · Grade B+ · 4 credits · moderated <span class="num">+3</span></div>
+          </div>
+          <div class="row-trailing">
+            <span class="score hi">74</span>
+            <span class="small muted num">of 100</span>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon soon"><svg class="ic"><use href="#i-award"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Databases — practical assessment</div>
+            <div class="row-meta">CS102 · Grade C · 3 credits · released 2 weeks ago</div>
+          </div>
+          <div class="row-trailing">
+            <span class="score mid">58</span>
+            <span class="small muted num">of 100</span>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon late"><svg class="ic"><use href="#i-award"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Databases — quiz 3</div>
+            <div class="row-meta">CS102 · Grade F · pass mark 40 · resit offered</div>
+          </div>
+          <div class="row-trailing">
+            <span class="score lo">31</span>
+            <span class="small muted num">of 100</span>
+          </div>
+        </div>
+
+        <!-- Sat but not released. The row exists so the sitting is accounted
+             for — a missing row reads as "lost", which is the support ticket
+             this page is meant to prevent. -->
+        <div class="row">
+          <span class="row-icon"><svg class="ic"><use href="#i-clock"/></svg></span>
+          <div class="row-main">
+            <div class="row-title muted">Professional Communication — presentation</div>
+            <div class="row-meta">HU105 · sat 3 days ago · with the examiners</div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill">Not released</span>
+            <span class="score none">—</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Semester 2 · Trinity 2026</h2>
+        <a class="link" href="#">Show all</a>
+      </div>
+      <div class="rowlist">
+        <div class="row">
+          <span class="row-icon good"><svg class="ic"><use href="#i-award"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Computer Systems — final examination</div>
+            <div class="row-meta">CS150 · Grade A− · 4 credits</div>
+          </div>
+          <div class="row-trailing">
+            <span class="score hi">79</span>
+            <span class="small muted num">of 100</span>
+          </div>
+        </div>
+        <div class="row">
+          <span class="row-icon good"><svg class="ic"><use href="#i-award"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Linear Algebra — final examination</div>
+            <div class="row-meta">MA105 · Grade B · 4 credits · moderated <span class="num">−2</span></div>
+          </div>
+          <div class="row-trailing">
+            <span class="score hi">71</span>
+            <span class="small muted num">of 100</span>
+          </div>
+        </div>
+        <div class="row">
+          <span class="row-icon soon"><svg class="ic"><use href="#i-award"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Databases — quiz 3 (resit)</div>
+            <div class="row-meta">CS102 · Grade D · capped at 50 by resit policy</div>
+          </div>
+          <div class="row-trailing">
+            <span class="score mid">50</span>
+            <span class="small muted num">of 100</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Transcripts. Genuinely empty for most students until they ask for one
+         or a programme office issues it, so the empty state has to explain
+         what a transcript is for and where it comes from rather than shrug. -->
+    <section class="section">
+      <div class="section-head">
+        <h2>Transcripts</h2>
+      </div>
+      <div class="card">
+        <div class="empty">
+          <svg class="ic ic-xl"><use href="#i-flag"/></svg>
+          <h3>No transcript has been issued to you yet</h3>
+          <p>A transcript is a sealed document of your published marks, with a checksum anyone
+            can verify without trusting the copy they were sent. The examinations office issues
+            one on request — usually within three working days.</p>
+          <a class="btn btn-sm" href="support.html">Request a transcript</a>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab is-active" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

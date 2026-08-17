@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Longest Substring Without Repeating Characters</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search problems, courses…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">NR</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student · BSc Computer Science</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item is-active" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments <span class="count">2</span></a>
+      <a class="nav-item" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees</a>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">2</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="practice.html">Practice</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <span>Strings</span>
+    </nav>
+
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Longest Substring Without Repeating Characters</h1>
+        <p class="page-sub">Medium, Strings, 2000&thinsp;ms and 256&thinsp;MB per case · 4 attempts so far</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-star"/></svg> Save</a>
+        <a class="btn btn-ghost btn-sm" href="support.html"><svg class="ic ic-sm"><use href="#i-help"/></svg> Ask a mentor</a>
+      </div>
+    </div>
+
+    <!-- Two even columns rather than a narrow rail: the statement is prose and
+         the editor is code, and neither survives being squeezed to 320px on a
+         laptop. The statement is FIRST in source order so a phone, which
+         stacks them, reads the problem before it is handed a text box. -->
+    <div class="cols-even">
+      <!-- ------------------------- statement ------------------------- -->
+      <!-- align-content:start, because the editor column is the taller of the
+           two and a stretched grid would silently pad the example blocks out
+           to match it. -->
+      <div class="stack" style="align-content:start">
+        <div class="inline">
+          <span class="pill soon">Medium</span>
+          <span class="pill brand">Strings</span>
+          <span class="pill">Sliding window</span>
+          <span class="pill">Hashing</span>
+        </div>
+
+        <div class="card card-pad">
+          <div class="prose">
+            <p>Given a string <code>s</code>, return the length of the longest
+               <strong>substring</strong> of <code>s</code> that contains no repeated character.</p>
+            <p>A substring is a contiguous run of characters. In <code>"pwwkew"</code> the answer
+               is <code>3</code>, for <code>"wke"</code> — <code>"pwke"</code> is a subsequence,
+               not a substring, so it does not count.</p>
+            <p>Read the string from standard input and print a single integer.</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="section-head"><h2>Constraints</h2></div>
+          <div class="kv">
+            <div class="kv-row"><span class="k">Length of s</span><span class="v num">1 – 50,000</span></div>
+            <div class="kv-row"><span class="k">Alphabet</span><span class="v">Printable ASCII</span></div>
+            <div class="kv-row"><span class="k">Time per case</span><span class="v num">2,000 ms</span></div>
+            <div class="kv-row"><span class="k">Memory per case</span><span class="v num">256 MB</span></div>
+          </div>
+        </div>
+
+        <!-- Worked examples come from the visible test cases themselves, so
+             what is printed here is exactly what Run will check. The count of
+             hidden cases is stated but never their content. -->
+        <section>
+          <div class="section-head"><h2>Examples</h2><span class="small muted">4 of 12 cases are visible</span></div>
+          <div class="stack-sm">
+            <div class="code">
+              <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span> Example 1 — no repeat until the fourth character</div>
+              <pre><span class="c"># stdin</span>
+abcabcbb
+<span class="c"># expected stdout</span>
+<span class="s">3</span></pre>
+            </div>
+            <div class="code">
+              <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span> Example 2 — every character the same</div>
+              <pre><span class="c"># stdin</span>
+bbbbb
+<span class="c"># expected stdout</span>
+<span class="s">1</span></pre>
+            </div>
+            <div class="code">
+              <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span> Example 3 — the answer is not a subsequence</div>
+              <pre><span class="c"># stdin</span>
+pwwkew
+<span class="c"># expected stdout</span>
+<span class="s">3</span></pre>
+            </div>
+            <div class="code">
+              <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span> Example 4 — a repeat that has already left the window</div>
+              <pre><span class="c"># stdin</span>
+abba
+<span class="c"># expected stdout</span>
+<span class="s">2</span></pre>
+            </div>
+          </div>
+          <p class="small muted mt-1">
+            8 further cases are hidden. Run checks the 4 visible cases; Submit checks those too.
+          </p>
+        </section>
+
+        <!-- A hint costs marks, so the price is on the button and not in a
+             dialog after the click. One at a time, in order. -->
+        <section class="card card-pad">
+          <div class="section-head"><h2>Hints</h2><span class="small muted">1 of 3 used</span></div>
+          <div class="prose small" style="font-size:14px">
+            <p><span class="strong">Hint 1.</span> Every window you need is defined by its left edge.
+               Ask what has to happen to that edge when the character you have just read is one you
+               have seen before — and whether the answer changes if you saw it a long way back.</p>
+          </div>
+          <div class="inline mt-2">
+            <a class="btn btn-ghost btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-eye"/></svg> Show hint 2 (costs 10%)</a>
+            <span class="small muted">Your best score would become 90%.</span>
+          </div>
+        </section>
+
+        <div class="banner">
+          <svg class="ic"><use href="#i-lock"/></svg>
+          <div class="small">The worked solution unlocks once you have met this problem’s release rule —
+            here, once you have solved it or the set closes.</div>
+        </div>
+      </div>
+
+      <!-- --------------------------- editor -------------------------- -->
+      <div class="stack">
+        <!-- Language, Run and Submit sit above the editor on a light bar: they
+             are page controls, not code. Run and Submit are deliberately not
+             the same weight — Submit spends an attempt and is the filled one. -->
+        <div class="toolbar" style="margin-bottom:0">
+          <label class="sr-only" for="language">Language</label>
+          <select class="select" id="language">
+            <option>python</option>
+            <option>javascript</option>
+            <option>java</option>
+            <option>cpp</option>
+          </select>
+          <a class="btn btn-ghost btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-refresh"/></svg> Reset to starter</a>
+          <div class="spacer"></div>
+          <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-play"/></svg> Run</a>
+          <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-upload"/></svg> Submit</a>
+        </div>
+
+        <div class="code">
+          <div class="code-bar" style="flex-wrap:wrap">
+            <span class="dots"><i></i><i></i><i></i></span>
+            solution.py
+            <span style="margin-left:auto;color:#64748B">Ctrl / Cmd + Enter to run</span>
+          </div>
+          <pre><span class="k">class</span> <span class="f">Solution</span>:
+    <span class="k">def</span> <span class="f">length_of_longest</span>(self, s: <span class="k">str</span>) -&gt; <span class="k">int</span>:
+        <span class="c">"""Sliding window: left edge never moves back."""</span>
+        seen = {}      <span class="c"># character -&gt; last index seen</span>
+        start = <span class="s">0</span>
+        best = <span class="s">0</span>
+
+        <span class="k">for</span> i, ch <span class="k">in</span> <span class="f">enumerate</span>(s):
+            <span class="k">if</span> ch <span class="k">in</span> seen:
+                start = seen[ch] + <span class="s">1</span>
+            seen[ch] = i
+            best = <span class="f">max</span>(best, i - start + <span class="s">1</span>)
+
+        <span class="k">return</span> best
+
+
+<span class="k">if</span> __name__ == <span class="s">"__main__"</span>:
+    <span class="k">import</span> sys
+    line = sys.stdin.<span class="f">readline</span>().<span class="f">strip</span>()
+    <span class="f">print</span>(<span class="f">Solution</span>().<span class="f">length_of_longest</span>(line))</pre>
+        </div>
+
+        <!-- The results panel. The header carries the only number that
+             matters — cases passed — and the per-case rows say pass or fail
+             in a word beside the dot, because a green dot on its own is not a
+             result for about one man in twelve. -->
+        <section class="card">
+          <div class="card-head" style="flex-wrap:wrap">
+            <h3>9 of 12 cases passed</h3>
+            <span class="score mid">30 / 40</span>
+            <span class="small muted num" style="margin-left:auto">412 ms · submitted 4 hours ago</span>
+          </div>
+
+          <div class="banner late" style="border:0;border-radius:0;border-bottom:1px solid var(--danger-line)">
+            <svg class="ic"><use href="#i-alert"/></svg>
+            <div class="small">Every failure is a string where a repeated character sits
+              <span class="strong">outside</span> the current window. The left edge is being dragged
+              backwards.</div>
+          </div>
+
+          <div class="rowlist" style="border:0;border-radius:0;box-shadow:none">
+            <div class="row" style="padding:10px 16px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Example 1 — no repeat until the fourth character</div>
+              </div>
+              <div class="row-trailing">
+                <span class="small muted num">21 ms</span>
+                <span class="status on"><span class="dot"></span> Passed</span>
+              </div>
+            </div>
+            <div class="row" style="padding:10px 16px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Example 2 — every character the same</div>
+              </div>
+              <div class="row-trailing">
+                <span class="small muted num">18 ms</span>
+                <span class="status on"><span class="dot"></span> Passed</span>
+              </div>
+            </div>
+            <div class="row" style="padding:10px 16px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Example 3 — the answer is not a subsequence</div>
+              </div>
+              <div class="row-trailing">
+                <span class="small muted num">19 ms</span>
+                <span class="status on"><span class="dot"></span> Passed</span>
+              </div>
+            </div>
+
+            <!-- A visible case that failed is the one row worth opening, so it
+                 is the only one carrying its output. -->
+            <div class="row" style="padding:10px 16px;align-items:flex-start">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Example 4 — a repeat that has already left the window</div>
+                <div class="code" style="margin-top:8px">
+                  <pre><span class="c"># stdin</span>
+abba
+<span class="c"># expected</span>
+<span class="s">2</span>
+<span class="c"># your output</span>
+3</pre>
+                </div>
+              </div>
+              <div class="row-trailing">
+                <span class="small muted num">17 ms</span>
+                <span class="status off"><span class="dot"></span> Failed</span>
+              </div>
+            </div>
+
+            <!-- Hidden cases arrive from the API with no input and no output
+                 at all, so there is nothing here that could print one. -->
+            <div class="row" style="padding:10px 16px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Case 5 <span class="pill" style="margin-left:6px">Hidden</span></div>
+              </div>
+              <div class="row-trailing">
+                <span class="small muted num">24 ms</span>
+                <span class="status on"><span class="dot"></span> Passed</span>
+              </div>
+            </div>
+            <div class="row" style="padding:10px 16px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Case 6 <span class="pill" style="margin-left:6px">Hidden</span></div>
+              </div>
+              <div class="row-trailing">
+                <span class="small muted num">22 ms</span>
+                <span class="status on"><span class="dot"></span> Passed</span>
+              </div>
+            </div>
+            <div class="row" style="padding:10px 16px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Case 7 <span class="pill" style="margin-left:6px">Hidden</span></div>
+              </div>
+              <div class="row-trailing">
+                <span class="small muted num">26 ms</span>
+                <span class="status off"><span class="dot"></span> Failed</span>
+              </div>
+            </div>
+            <div class="row" style="padding:10px 16px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Case 8 <span class="pill" style="margin-left:6px">Hidden</span></div>
+              </div>
+              <div class="row-trailing">
+                <span class="small muted num">25 ms</span>
+                <span class="status on"><span class="dot"></span> Passed</span>
+              </div>
+            </div>
+            <div class="row" style="padding:10px 16px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Case 9 <span class="pill" style="margin-left:6px">Hidden</span></div>
+              </div>
+              <div class="row-trailing">
+                <span class="small muted num">31 ms</span>
+                <span class="status off"><span class="dot"></span> Failed</span>
+              </div>
+            </div>
+            <div class="row" style="padding:10px 16px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Case 10 <span class="pill" style="margin-left:6px">Hidden</span></div>
+              </div>
+              <div class="row-trailing">
+                <span class="small muted num">88 ms</span>
+                <span class="status on"><span class="dot"></span> Passed</span>
+              </div>
+            </div>
+            <div class="row" style="padding:10px 16px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Case 11 — 50,000 characters <span class="pill" style="margin-left:6px">Hidden</span></div>
+              </div>
+              <div class="row-trailing">
+                <span class="small muted num">104 ms</span>
+                <span class="status on"><span class="dot"></span> Passed</span>
+              </div>
+            </div>
+            <div class="row" style="padding:10px 16px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Case 12 — one character <span class="pill" style="margin-left:6px">Hidden</span></div>
+              </div>
+              <div class="row-trailing">
+                <span class="small muted num">17 ms</span>
+                <span class="status on"><span class="dot"></span> Passed</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-foot inline">
+            <span class="small muted">Attempt 4 of unlimited · best so far 9 of 12</span>
+            <a class="btn btn-sm btn-ghost" href="results.html" style="margin-left:auto">All your attempts</a>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab is-active" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

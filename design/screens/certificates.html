@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Certificates</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search holders, credential ids…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">AO</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Examinations officer</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Examinations</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">6</span></a>
+      <a class="nav-item" href="exams.html"><svg class="ic"><use href="#i-calendar"/></svg> Examinations</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item is-active" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certificates</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Practice</div>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Certificates</h1>
+        <p class="page-sub">The institution's register of credentials · 812 in force of 842 issued</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Export register</a>
+        <!-- Issuing is the primary action on this screen: without it the only
+             way to give a learner a credential was to POST it by hand. -->
+        <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-award"/></svg> Issue a certificate</a>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Issued</div>
+        <div class="stat-value">842</div>
+        <div class="stat-note"><span class="delta up">▲ 64</span> since the term began</div>
+      </div>
+      <div class="stat is-good">
+        <div class="stat-label">In force</div>
+        <div class="stat-value">812</div>
+        <div class="stat-note">verifiable by anyone with the id</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Pending issue</div>
+        <div class="stat-value">26</div>
+        <div class="stat-note">results published, credential not yet cut</div>
+      </div>
+      <div class="stat is-alert">
+        <div class="stat-label">Revoked</div>
+        <div class="stat-value">4</div>
+        <div class="stat-note">still answer on the public page</div>
+      </div>
+    </div>
+
+    <div class="toolbar mt-3">
+      <div class="search">
+        <svg class="ic ic-sm"><use href="#i-search"/></svg>
+        <input placeholder="Holder name, course or credential id" aria-label="Search the register" />
+      </div>
+      <select class="select" aria-label="Kind">
+        <option>Every kind</option>
+        <option>Course</option>
+        <option>Assessment</option>
+        <option>Contest</option>
+        <option>Programme</option>
+      </select>
+      <div class="segmented spacer">
+        <a class="is-on" href="#">All <span class="count">842</span></a>
+        <a href="#">In force <span class="count">812</span></a>
+        <a href="#">Expired <span class="count">26</span></a>
+        <a href="#">Revoked <span class="count">4</span></a>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table class="table">
+          <caption class="sr-only">Certificates issued by this institution</caption>
+          <thead>
+            <tr>
+              <th scope="col">Credential</th>
+              <th scope="col">Recipient</th>
+              <th scope="col">Course or programme</th>
+              <th scope="col">Issued</th>
+              <th scope="col">Credential id</th>
+              <th scope="col">State</th>
+              <th scope="col" class="right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="who-name">Advanced Data Structures — Distinction</div>
+                <div class="who-sub">Course certificate</div>
+              </td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm">AN</span>
+                  <div>
+                    <div class="who-name">Amara Nwosu</div>
+                    <div class="who-sub">amara.nwosu@demo.edu</div>
+                  </div>
+                </div>
+              </td>
+              <td>CS2010 Data Structures<div class="who-sub">BSc Computer Science</div></td>
+              <td>2 days ago</td>
+              <!-- The credential id is a link to the page it exists for, not a
+                   string to copy by hand: the verification page is the
+                   deliverable, and this is the only route to it. -->
+              <td><a href="verify-credential.html"><code style="font-size:12.5px">8f3c1a…d4a91d</code></a></td>
+              <td><span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> In force</span></td>
+              <td>
+                <div class="inline" style="justify-content:flex-end;gap:6px">
+                  <a class="btn btn-sm btn-ghost" href="verify-credential.html">Verify</a>
+                  <a class="btn btn-sm btn-ghost" href="#">Revoke</a>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="who-name">Programming Fundamentals</div>
+                <div class="who-sub">Course certificate</div>
+              </td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--teal-500)">KA</span>
+                  <div>
+                    <div class="who-name">Kwame Adjei</div>
+                    <div class="who-sub">kwame.adjei@demo.edu</div>
+                  </div>
+                </div>
+              </td>
+              <td>CS1010 Programming Fundamentals<div class="who-sub">BSc Computer Science</div></td>
+              <td>5 days ago</td>
+              <td><a href="verify-credential.html"><code style="font-size:12.5px">2b07e5…19c30f</code></a></td>
+              <td><span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> In force</span></td>
+              <td>
+                <div class="inline" style="justify-content:flex-end;gap:6px">
+                  <a class="btn btn-sm btn-ghost" href="verify-credential.html">Verify</a>
+                  <a class="btn btn-sm btn-ghost" href="#">Revoke</a>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="who-name">Autumn Algorithms Contest — 3rd place</div>
+                <div class="who-sub">Contest certificate</div>
+              </td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--orange-700)">PR</span>
+                  <div>
+                    <div class="who-name">Priya Raghunathan</div>
+                    <div class="who-sub">priya.raghunathan@demo.edu</div>
+                  </div>
+                </div>
+              </td>
+              <td>Open to the whole institution<div class="who-sub">168 entrants</div></td>
+              <td>3 weeks ago</td>
+              <td><a href="verify-credential.html"><code style="font-size:12.5px">c19d84…7e2b60</code></a></td>
+              <td><span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> In force</span></td>
+              <td>
+                <div class="inline" style="justify-content:flex-end;gap:6px">
+                  <a class="btn btn-sm btn-ghost" href="verify-credential.html">Verify</a>
+                  <a class="btn btn-sm btn-ghost" href="#">Revoke</a>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="who-name">BSc Computer Science</div>
+                <div class="who-sub">Programme certificate</div>
+              </td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--teal-500)">SL</span>
+                  <div>
+                    <div class="who-name">Sara Lindqvist</div>
+                    <div class="who-sub">sara.lindqvist@demo.edu</div>
+                  </div>
+                </div>
+              </td>
+              <td>BSc Computer Science<div class="who-sub">2022 intake · 360 credits</div></td>
+              <td>2 months ago</td>
+              <td><a href="verify-credential.html"><code style="font-size:12.5px">4a5f22…b08e77</code></a></td>
+              <td><span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> In force</span></td>
+              <td>
+                <div class="inline" style="justify-content:flex-end;gap:6px">
+                  <a class="btn btn-sm btn-ghost" href="verify-credential.html">Verify</a>
+                  <a class="btn btn-sm btn-ghost" href="#">Revoke</a>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="who-name">Cloud Practitioner — assessed</div>
+                <div class="who-sub">Assessment certificate · expires yearly</div>
+              </td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm">DO</span>
+                  <div>
+                    <div class="who-name">Daniel Osei</div>
+                    <div class="who-sub">daniel.osei@demo.edu</div>
+                  </div>
+                </div>
+              </td>
+              <td>CS3110 Cloud Systems<div class="who-sub">BEng Software Engineering</div></td>
+              <td>14 months ago</td>
+              <td><a href="verify-credential.html"><code style="font-size:12.5px">7d2e90…5f1cc4</code></a></td>
+              <td><span class="pill"><svg class="ic ic-sm"><use href="#i-clock"/></svg> Expired</span>
+                <div class="who-sub" style="margin-top:3px">lapsed 2 months ago</div></td>
+              <td>
+                <div class="inline" style="justify-content:flex-end;gap:6px">
+                  <a class="btn btn-sm btn-ghost" href="verify-credential.html">Verify</a>
+                  <a class="btn btn-sm btn-ghost" href="#">Reissue</a>
+                </div>
+              </td>
+            </tr>
+
+            <!-- A revoked row stays in the register rather than disappearing.
+                 Somebody out there is still holding the certificate, and this
+                 list is the thing that has to explain what happened to it. -->
+            <tr>
+              <td>
+                <div class="who-name">Database Systems — Merit</div>
+                <div class="who-sub">Course certificate</div>
+              </td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--faint)">MB</span>
+                  <div>
+                    <div class="who-name">Mateusz Bąk</div>
+                    <div class="who-sub">mateusz.bak@demo.edu</div>
+                  </div>
+                </div>
+              </td>
+              <td>CS2140 Database Systems<div class="who-sub">BSc Data Science</div></td>
+              <td>7 months ago</td>
+              <td><a href="verify-credential.html"><code style="font-size:12.5px">e6b3f7…2c8410</code></a></td>
+              <td><span class="pill late"><svg class="ic ic-sm"><use href="#i-x"/></svg> Revoked</span>
+                <div class="who-sub" style="margin-top:3px">Issued against the wrong sitting</div></td>
+              <td>
+                <div class="inline" style="justify-content:flex-end;gap:6px">
+                  <a class="btn btn-sm btn-ghost" href="verify-credential.html">Verify</a>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-foot">
+        Showing 6 of 842 credentials
+        <div class="pager">
+          <a class="btn btn-sm btn-ghost" href="#">Previous</a>
+          <a class="btn btn-sm btn-ghost" href="#">Next</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending issue sits below the register rather than inside it: these are
+         not credentials yet, and mixing them in would make the count of what
+         has actually been issued a thing somebody has to work out. -->
+    <section class="section">
+      <div class="section-head">
+        <h2>Waiting to be issued</h2>
+        <a class="link" href="#">Issue all 26</a>
+      </div>
+      <div class="rowlist">
+        <div class="row">
+          <span class="row-icon soon"><svg class="ic"><use href="#i-award"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Programming Fundamentals — 22 passes</div>
+            <div class="row-meta">CS1010 · results published 4 days ago</div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill soon">22 credentials</span>
+            <a class="btn btn-sm" href="#">Issue</a>
+          </div>
+        </div>
+        <div class="row">
+          <span class="row-icon soon"><svg class="ic"><use href="#i-trophy"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Winter Data Challenge — top 3</div>
+            <div class="row-meta">Contest closed 9 days ago · leaderboard final</div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill soon">3 credentials</span>
+            <a class="btn btn-sm" href="#">Issue</a>
+          </div>
+        </div>
+        <div class="row">
+          <span class="row-icon"><svg class="ic"><use href="#i-layers"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">MSc Artificial Intelligence — 1 completion</div>
+            <div class="row-meta">Awaiting the board's sign-off on the final transcript</div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill">Blocked</span>
+            <a class="btn btn-sm btn-ghost" href="#">Open</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="small muted mt-2" style="max-width:70ch">
+      A credential is never deleted. Revoking records who did it and why, and the public page
+      keeps answering — it says the credential was revoked rather than that it was never issued,
+      which is the only answer useful to whoever is holding it. Both issuing and revoking are
+      written to the audit log.
+    </p>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="exams.html"><svg class="ic"><use href="#i-calendar"/></svg> Exams</a>
+  <a class="tab" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Watch</a>
+  <a class="tab is-active" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certs</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

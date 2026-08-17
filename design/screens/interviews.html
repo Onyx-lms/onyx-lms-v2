@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Interviews</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search courses, roles…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">AO</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees</a>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item is-active" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">5</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Interviews</h1>
+        <p class="page-sub">Practice and real rounds, with structured feedback afterwards</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-calendar"/></svg> Book a mock</a>
+      </div>
+    </div>
+
+    <!-- The next one is the whole screen. A countdown and a Join button in a
+         band you cannot miss, because someone opening this page 20 minutes
+         before a call is not here to browse a list. -->
+    <section>
+      <div class="hero">
+        <div class="hero-top">
+          <div style="min-width:0">
+            <div class="hero-eyebrow">Next interview</div>
+            <div class="hero-title">Technical interview — Monzo</div>
+            <div class="hero-sub">
+              Backend Engineer, graduate · 60 minutes · with Rebecca Aldridge, Engineering Manager
+            </div>
+          </div>
+          <div class="hero-actions">
+            <a class="btn btn-light" href="#"><svg class="ic ic-sm"><use href="#i-video"/></svg> Join the call</a>
+            <a class="btn btn-ghost-light" href="#">Details</a>
+          </div>
+        </div>
+        <div class="hero-meta">
+          <span class="strong">Starts in 18 minutes</span>
+          <span class="dim">Today, 14:00 · joining opened 10 minutes ago</span>
+        </div>
+        <div class="meter sm on-dark" style="margin-top:9px"><span style="width:92%"></span></div>
+      </div>
+    </section>
+
+    <div class="cols mt-3">
+      <div>
+        <!-- Everything else upcoming. Join is disabled until ten minutes
+             before, and the row says so rather than leaving a dead button to
+             be poked at — a disabled control with no explanation reads as a
+             bug in the product, not a rule about time. -->
+        <section>
+          <div class="section-head">
+            <h2>Upcoming</h2>
+            <span class="small muted">3 scheduled</span>
+          </div>
+          <div class="rowlist">
+            <div class="row is-active">
+              <span class="row-icon solid"><svg class="ic"><use href="#i-mic"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Technical interview — Monzo</div>
+                <div class="row-meta">
+                  <span>Today, 14:00</span><span>·</span><span>60 min</span><span>·</span>
+                  <span>Video call</span>
+                </div>
+                <div class="inline" style="margin-top:6px">
+                  <span class="status live"><span class="dot"></span> Starts in 18 minutes</span>
+                </div>
+              </div>
+              <div class="row-trailing">
+                <a class="btn btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-video"/></svg> Join</a>
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-mic"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Hiring manager — Octopus Energy</div>
+                <div class="row-meta">
+                  <span>In 3 days · Thursday, 11:30</span><span>·</span><span>45 min</span><span>·</span>
+                  <span>Kirkby Building, Hall B</span>
+                </div>
+                <div class="inline" style="margin-top:6px">
+                  <span class="pill soon"><svg class="ic ic-sm"><use href="#i-clock"/></svg> On campus — no call to join</span>
+                </div>
+              </div>
+              <div class="row-trailing">
+                <a class="btn btn-sm btn-ghost" href="#">Details</a>
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-mic"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Mock interview — system design</div>
+                <div class="row-meta">
+                  <span>In 8 days · Friday, 09:30</span><span>·</span><span>45 min</span><span>·</span>
+                  <span>with Dr S. Okonjo</span>
+                </div>
+                <div class="inline" style="margin-top:6px">
+                  <span class="pill">Practice · does not go to an employer</span>
+                </div>
+              </div>
+              <div class="row-trailing">
+                <a class="btn btn-sm is-disabled" href="#">Join opens in 8 days</a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Past interviews exist for one reason: the feedback. So the outcome
+             is the loudest thing in the row, and an unreleased score says it is
+             unreleased rather than showing an empty space that reads as zero. -->
+        <section class="section">
+          <div class="section-head">
+            <h2>Past</h2>
+            <a class="link" href="profile.html">Your profile</a>
+          </div>
+          <div class="rowlist">
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-award"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Technical interview — Ocado Technology</div>
+                <div class="row-meta">
+                  <span>2 weeks ago</span><span>·</span><span>60 min</span><span>·</span>
+                  <span>with T. Ferris</span>
+                </div>
+                <div class="inline" style="margin-top:6px">
+                  <span class="pill good">Offer made</span>
+                  <span class="pill">Recording kept with your consent</span>
+                </div>
+              </div>
+              <div class="row-trailing">
+                <span class="score hi">4.4 / 5</span>
+                <a class="btn btn-sm btn-ghost" href="#">Read feedback</a>
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="row-icon soon"><svg class="ic"><use href="#i-clock"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Mock interview — data structures</div>
+                <div class="row-meta">
+                  <span>5 days ago</span><span>·</span><span>45 min</span><span>·</span>
+                  <span>with Dr J. Mensah</span>
+                </div>
+                <div class="inline" style="margin-top:6px">
+                  <span class="pill soon">Feedback written, not yet released</span>
+                </div>
+              </div>
+              <div class="row-trailing">
+                <span class="score none">—</span>
+                <a class="btn btn-sm btn-ghost is-disabled" href="#">Not released</a>
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-flag"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Screening call — BAE Systems Digital Intelligence</div>
+                <div class="row-meta">
+                  <span>3 weeks ago</span><span>·</span><span>30 min</span><span>·</span>
+                  <span>with C. Whitfield</span>
+                </div>
+                <div class="inline" style="margin-top:6px">
+                  <span class="pill">Not taken forward</span>
+                </div>
+              </div>
+              <div class="row-trailing">
+                <span class="score mid">3.1 / 5</span>
+                <a class="btn btn-sm btn-ghost" href="#">Read feedback</a>
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-x"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Mock interview — behavioural</div>
+                <div class="row-meta">
+                  <span>A month ago</span><span>·</span><span>45 min</span><span>·</span>
+                  <span>with Dr S. Okonjo</span>
+                </div>
+                <div class="inline" style="margin-top:6px">
+                  <span class="pill late">You did not attend</span>
+                </div>
+              </div>
+              <div class="row-trailing">
+                <a class="btn btn-sm btn-ghost" href="#">Rebook</a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- The empty state, shown here because a static prototype cannot get
+             to it any other way. It names what would land here, so a learner
+             with nothing scheduled knows whether to wait or to go and book. -->
+        <section class="section">
+          <div class="section-head"><h2>The same screen, with nothing scheduled</h2></div>
+          <div class="rowlist">
+            <div class="empty">
+              <svg class="ic ic-xl"><use href="#i-mic"/></svg>
+              <h3>Nothing scheduled yet</h3>
+              <p>
+                Interviews an employer books through the placement office appear here, and
+                so do the mocks you arrange yourself. Booking a mock is the fastest way to
+                get feedback before a real round.
+              </p>
+              <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-calendar"/></svg> Book a mock interview</a>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ rail ============================ -->
+      <aside>
+        <section>
+          <div class="section-head"><h2>How you are scored</h2></div>
+          <div class="card card-pad">
+            <div class="inline" style="justify-content:space-between;align-items:center">
+              <div>
+                <div class="stat-label">Average across 3 released</div>
+                <div class="stat-value" style="font-size:28px">3.8 <span class="muted" style="font-size:15px;font-weight:600">/ 5</span></div>
+              </div>
+              <div class="ring lg" style="--p:76%"><span>76%</span></div>
+            </div>
+            <div class="divider"></div>
+            <div class="stack-sm">
+              <div>
+                <div class="kv-row"><span class="strong small">Technical depth</span><span class="small muted num">4.2 / 5</span></div>
+                <div class="meter sm good" style="margin-top:5px"><span style="width:84%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">Problem solving</span><span class="small muted num">4.0 / 5</span></div>
+                <div class="meter sm good" style="margin-top:5px"><span style="width:80%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">Communication</span><span class="small muted num">3.4 / 5</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:68%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">Worked examples</span><span class="small muted num">2.9 / 5</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:58%"></span></div>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="small muted">
+              Three interviewers have said the same thing about worked examples. That is
+              a pattern, not one person's opinion.
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Before you join</h2></div>
+          <div class="card card-pad">
+            <div class="kv">
+              <div class="kv-row"><span class="k">Camera and microphone</span><span class="v"><span class="status on"><span class="dot"></span> Working</span></span></div>
+              <div class="kv-row"><span class="k">Connection</span><span class="v"><span class="status on"><span class="dot"></span> Good</span></span></div>
+              <div class="kv-row"><span class="k">Recording</span><span class="v">Only with your consent</span></div>
+            </div>
+            <div class="divider"></div>
+            <a class="btn btn-ghost btn-block" href="#"><svg class="ic ic-sm"><use href="#i-camera"/></svg> Test your setup</a>
+          </div>
+        </section>
+
+        <div class="banner warn mt-2">
+          <svg class="ic"><use href="#i-alert"/></svg>
+          <div class="small">
+            Cannot make a slot? Tell the placement office more than 24 hours ahead — a
+            no-show is recorded against the drive, not against you.
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

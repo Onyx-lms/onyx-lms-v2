@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * `light`, not `light dark`.
+ *
+ * This used to claim both, and the claim was false: there is not one `dark:`
+ * style in the application. Every surface is a hardcoded light one. What the
+ * declaration actually did was tell the browser "I handle dark mode", so on a
+ * phone set to dark it rendered the controls IT owns -- inputs, selects,
+ * textareas -- with dark defaults while everything we style stayed white.
+ *
+ * The result on the sign-in page was a black field with the body's dark slate
+ * text still inside it: background rgb(59,59,59) against text rgb(30,41,59),
+ * about 1.1:1, so a candidate could not read their own email address as they
+ * typed it. Declaring the truth fixes it everywhere at once.
+ */
+:root { color-scheme: light; }
+
+@layer base {
+  body { @apply bg-white text-slate-800 antialiased; }
+
+  /*
+   * And belt-and-braces for the controls themselves.
+   *
+   * These live in @layer base, so any explicit background or text utility on
+   * an element still wins -- this only replaces the user agent's default,
+   * which is the thing that follows the platform theme. It also covers Android
+   * Chrome's "auto dark theme", which will re-tint an unstyled control even
+   * when color-scheme says light.
+   */
+  input, select, textarea { @apply bg-white text-ink; }
+  input::placeholder, textarea::placeholder { @apply text-muted; }
+
+  /*
+   * WCAG 2.2 AA -- 2.4.7 Focus Visible and 2.4.11 Focus Not Obscured.
+   *
+   * Tailwind's preflight removes the browser's focus ring, which leaves a
+   * keyboard user with no idea where they are. `:focus-visible` puts it back
+   * for keyboard navigation without drawing a ring around every clicked
+   * button, and `scroll-margin` keeps a focused element from landing under the
+   * sticky headers the timer and the toolbar use.
+   */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-600 ring-offset-2 ring-offset-white;
+    border-radius: 0.25rem;
+  }
+
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    scroll-margin-block: 6rem;
+  }
+
+  /*
+   * 2.4.1 Bypass Blocks. Every page puts the same navigation before its
+   * content, and a keyboard user should not have to walk through it each time.
+   * The target is #main, set on the <main> in the root layout.
+   */
+  .skip-link {
+    @apply absolute left-4 z-50 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white;
+    top: -100vh;
+  }
+  .skip-link:focus {
+    @apply top-4;
+  }
+
+  /*
+   * 2.3.3 Animation from Interactions. Onyx animates progress bars, the
+   * check-in countdown and card hovers; none of it carries meaning, so all of
+   * it goes when somebody has asked for less motion.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /*
+   * 1.4.11 Non-text Contrast. Placeholder text at the browser default sits
+   * around 2.5:1, which is below the 3:1 a form control needs to be readable.
+   */
+  ::placeholder { @apply text-slate-500 opacity-100; }
+}
+
+@layer components {
+  .container-page { @apply mx-auto w-full max-w-6xl px-4; }
+  .card { @apply rounded-xl border border-slate-200 bg-white overflow-hidden transition hover:shadow-md; }
+  .btn { @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition; }
+  .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
+  .btn-ghost { @apply btn border border-slate-300 text-slate-700 hover:bg-slate-50; }
+  .chip { @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium; }
+}

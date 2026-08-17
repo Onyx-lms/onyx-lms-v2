@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Sensor telemetry pipeline</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search projects, files…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">NR</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student · BSc Computer Science</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item is-active" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments <span class="count">2</span></a>
+      <a class="nav-item" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees</a>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">2</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="workspaces.html">Workspaces</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <span>CS2040 Data Structures</span>
+    </nav>
+
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Sensor telemetry pipeline</h1>
+        <p class="page-sub">Python, entry main.py · 5 files · saved 2 minutes ago</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Download zip</a>
+        <a class="btn btn-ghost btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-users"/></svg> Share for review</a>
+      </div>
+    </div>
+
+    <!-- One dark instrument: rail, tab bar, editor and console are the same
+         surface. A white toolbar bolted onto a black editor is the tell of an
+         unfinished screen, and every reference worth copying (VS Code,
+         Codespaces, Replit) keeps chrome and editor in one theme. -->
+    <div class="code">
+      <div class="code-bar" style="flex-wrap:wrap">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span style="color:#E2E8F0">Sensor telemetry pipeline</span>
+        <span class="pill pill-onDark" style="font-size:11px">Python 3.12</span>
+        <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+          <a class="btn btn-sm btn-ghost-light" href="#"><svg class="ic ic-sm"><use href="#i-save"/></svg> Save</a>
+          <a class="btn btn-sm btn-ghost-light" href="#"><svg class="ic ic-sm"><use href="#i-camera"/></svg> Snapshot</a>
+          <a class="btn btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-play"/></svg> Run</a>
+        </span>
+      </div>
+
+      <!-- Wrapping flex rather than a fixed two-column grid: at 320px the rail
+           and the editor cannot share a line, and wrapping stacks them without
+           needing a media query this file is not allowed to write. The editor
+           is given the growth, so on a laptop the rail settles at ~190px. -->
+      <div style="display:flex;flex-wrap:wrap">
+        <nav aria-label="Files" style="flex:1 1 190px;min-width:0;background:rgba(255,255,255,.03);padding:10px 8px">
+          <div style="padding:2px 8px 6px;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748B">Files</div>
+          <!-- The coloured dot is the extension, the shorthand every file tree
+               uses; the filename is still spelled out beside it. -->
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;background:rgba(255,255,255,.09);color:#F1F5F9;text-decoration:none">
+            <i style="width:6px;height:6px;border-radius:50%;background:#FBBF24;flex:none"></i> main.py
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;color:#94A3B8;text-decoration:none">
+            <i style="width:6px;height:6px;border-radius:50%;background:#FBBF24;flex:none"></i> sensors.py
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;color:#94A3B8;text-decoration:none">
+            <i style="width:6px;height:6px;border-radius:50%;background:#FBBF24;flex:none"></i> report.py
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;color:#94A3B8;text-decoration:none">
+            <i style="width:6px;height:6px;border-radius:50%;background:#94A3B8;flex:none"></i> README.md
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;color:#94A3B8;text-decoration:none">
+            <i style="width:6px;height:6px;border-radius:50%;background:#A3E635;flex:none"></i> data/readings.csv
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:9px 8px 5px;color:#64748B;text-decoration:none">
+            <svg class="ic ic-sm"><use href="#i-plus"/></svg> new file
+          </a>
+        </nav>
+
+        <div style="flex:99 1 300px;min-width:0">
+          <div class="code-bar" style="flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.08)">
+            <i style="width:6px;height:6px;border-radius:50%;background:#FBBF24;flex:none"></i>
+            <span>main.py</span>
+            <span style="margin-left:auto;color:#64748B">Ctrl / Cmd + Enter to save and run</span>
+          </div>
+
+          <pre><span class="k">from</span> statistics <span class="k">import</span> mean
+<span class="k">from</span> sensors <span class="k">import</span> read_batches   <span class="c"># stdlib only — the sandbox has no network</span>
+
+THRESHOLD_C = <span class="s">40.0</span>
+
+
+<span class="k">def</span> <span class="f">summarise</span>(readings):
+    <span class="c">"""Collapse one sensor's readings into a single row of the report."""</span>
+    values = [r.celsius <span class="k">for</span> r <span class="k">in</span> readings]
+    <span class="k">return</span> {
+        <span class="s">"sensor"</span>: readings[<span class="s">0</span>].sensor_id,
+        <span class="s">"n"</span>: <span class="f">len</span>(values),
+        <span class="s">"mean"</span>: <span class="f">round</span>(<span class="f">mean</span>(values), <span class="s">1</span>),
+        <span class="s">"peak"</span>: <span class="f">max</span>(values),
+        <span class="s">"over"</span>: <span class="f">sum</span>(<span class="s">1</span> <span class="k">for</span> v <span class="k">in</span> values <span class="k">if</span> v &gt; THRESHOLD_C),
+    }
+
+
+<span class="k">def</span> <span class="f">main</span>():
+    batches = <span class="f">read_batches</span>(<span class="s">"data/readings.csv"</span>)
+    hot = <span class="s">0</span>
+
+    <span class="k">for</span> sensor_id <span class="k">in</span> <span class="f">sorted</span>(batches):
+        row = <span class="f">summarise</span>(batches[sensor_id])
+        hot += <span class="s">1</span> <span class="k">if</span> row[<span class="s">"over"</span>] <span class="k">else</span> <span class="s">0</span>
+        flag = <span class="s">"OVER"</span> <span class="k">if</span> row[<span class="s">"over"</span>] <span class="k">else</span> <span class="s">"ok"</span>
+        <span class="f">print</span>(<span class="s">f"{row['sensor']:&lt;9} n={row['n']:&lt;4} "</span>
+              <span class="s">f"mean={row['mean']:&gt;5} peak={row['peak']:&gt;5}  {flag}"</span>)
+
+    <span class="f">print</span>(<span class="s">f"\n{len(batches)} sensors, {hot} above {THRESHOLD_C}C"</span>)
+
+
+<span class="k">if</span> __name__ == <span class="s">"__main__"</span>:
+    <span class="f">main</span>()</pre>
+
+          <!-- The console is the same surface, one rule down. Run answers in
+               the same request here — there is no queue to poll, because one
+               owner running one file has nothing to batch — so this is output,
+               not a grade: no pass or fail, only what the file printed. -->
+          <div class="code-bar" style="flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.08);border-bottom:0">
+            <i style="width:8px;height:8px;border-radius:50%;background:#86EFAC;flex:none"></i>
+            <span class="s">Ran</span>
+            <span style="color:#64748B">main.py · 214 ms · 18 MB · just now</span>
+            <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
+              <a href="#" style="color:#64748B"><svg class="ic ic-sm"><use href="#i-trash"/></svg><span class="sr-only">Clear output</span></a>
+            </span>
+          </div>
+          <pre style="background:#08161D">bay-01    n=288  mean= 31.4 peak= 38.2  ok
+bay-02    n=288  mean= 35.9 peak= 44.7  OVER
+roof-01   n=288  mean= 22.8 peak= 29.9  ok
+
+3 sensors, 1 above 40.0C</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Snapshots and review are page furniture, not part of the instrument,
+         so they come back onto the ordinary white surface below it. -->
+    <div class="cols-even mt-2" style="align-items:start">
+      <section class="card">
+        <div class="card-head">
+          <h3>Snapshots</h3>
+          <a class="link" href="#">Take one</a>
+        </div>
+        <div class="rowlist" style="border:0;border-radius:0;box-shadow:none">
+          <div class="row" style="padding:11px 16px">
+            <div class="row-main">
+              <div class="row-title" style="font-size:14px">Before splitting out report.py</div>
+              <div class="row-meta">4 hours ago · 4 files</div>
+            </div>
+            <div class="row-trailing"><a class="btn btn-sm btn-ghost" href="#">Restore</a></div>
+          </div>
+          <div class="row" style="padding:11px 16px">
+            <div class="row-main">
+              <div class="row-title" style="font-size:14px">Working CSV parser</div>
+              <div class="row-meta">2 days ago · 4 files</div>
+            </div>
+            <div class="row-trailing"><a class="btn btn-sm btn-ghost" href="#">Restore</a></div>
+          </div>
+          <div class="row" style="padding:11px 16px">
+            <div class="row-main">
+              <div class="row-title" style="font-size:14px">First version that ran</div>
+              <div class="row-meta">last week · 2 files</div>
+            </div>
+            <div class="row-trailing"><a class="btn btn-sm btn-ghost" href="#">Restore</a></div>
+          </div>
+        </div>
+        <!-- Restoring is the feature and is also destructive: it replaces the
+             tree exactly, deleting files added since. Saying so here is what
+             stops it being a single unlabelled click. -->
+        <div class="card-foot small muted">
+          Restoring replaces the file tree exactly as it was, including removing files added since.
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h3>Review</h3>
+          <span class="pill soon" style="margin-left:auto">2 open</span>
+        </div>
+        <div class="card-pad stack-sm">
+          <div class="inline" style="align-items:flex-start;gap:9px">
+            <span class="avatar avatar-sm" style="background:var(--teal-500)">JM</span>
+            <span class="small">
+              <span class="muted" style="font-family:ui-monospace,Menlo,Consolas,monospace">main.py:24</span>
+              <span style="display:block">Peak is the max of the raw values — worth saying in the README
+                whether a spike of one reading counts as over threshold.</span>
+              <span class="muted" style="display:block">Dr Mensah · 2 days ago</span>
+            </span>
+          </div>
+          <div class="divider" style="margin:4px 0"></div>
+          <div class="inline" style="align-items:flex-start;gap:9px">
+            <span class="avatar avatar-sm" style="background:var(--teal-500)">JM</span>
+            <span class="small">
+              <span class="muted" style="font-family:ui-monospace,Menlo,Consolas,monospace">sensors.py:11</span>
+              <span style="display:block">read_batches reads the whole file into memory. Fine for 288 rows;
+                say what happens at 2 million.</span>
+              <span class="muted" style="display:block">Dr Mensah · 2 days ago</span>
+            </span>
+          </div>
+          <div class="divider" style="margin:4px 0"></div>
+          <div class="inline" style="align-items:flex-start;gap:9px">
+            <span class="avatar avatar-sm" style="background:var(--faint)">NR</span>
+            <span class="small muted">
+              <span style="font-family:ui-monospace,Menlo,Consolas,monospace">report.py</span>
+              <span style="display:block">Column widths were off by one — fixed. <span class="strong">Resolved</span></span>
+              <span style="display:block">3 days ago</span>
+            </span>
+          </div>
+        </div>
+        <div class="card-foot inline">
+          <span class="small muted">A mentor comments; a mentor does not edit.</span>
+          <a class="btn btn-sm btn-ghost" href="#" style="margin-left:auto">
+            <svg class="ic ic-sm"><use href="#i-message"/></svg> Comment on main.py
+          </a>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

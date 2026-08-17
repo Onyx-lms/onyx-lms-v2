@@ -1,0 +1,55 @@
+{
+  "name": "onyx-lms",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Onyx LMS - React/Node/TypeScript/Supabase port of the Laravel LMS",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "gen:schema": "python tools/gen_schema.py",
+    "gen:types": "python tools/gen_types.py",
+    "gen:rls": "python tools/gen_rls_seed.py",
+    "gen:all": "npm run gen:schema && npm run gen:rls && npm run gen:types",
+    "verify:parity": "python tools/verify_parity.py",
+    "build": "tsc --build",
+    "typecheck": "tsc --build --force && npm run typecheck:web",
+    "typecheck:web": "tsc --noEmit -p apps/web/tsconfig.json",
+    "docs:api": "node tools/onyx/gen-api-docs.mjs",
+    "docs:check": "node tools/onyx/gen-api-docs.mjs --check",
+    "load:test": "node --env-file=.env tools/onyx/load-test.mjs",
+    "test": "node --test packages/core/test/*.test.ts",
+    "dev:api": "node --watch apps/api/src/server.ts",
+    "db:migrate": "node tools/db/migrate.mjs",
+    "db:reset": "node tools/db/migrate.mjs --reset",
+    "db:reload-cache": "node tools/db/reload-cache.mjs",
+    "db:verify": "node tools/db/verify-live.mjs",
+    "db:verify-rls": "node tools/db/verify-rls.mjs",
+    "dev:web": "npm run dev --workspace @onyx/web",
+    "build:web": "npm run build --workspace @onyx/web",
+    "db:audit": "node tools/db/audit.mjs",
+    "db:verify-storage": "node tools/db/verify-storage.mjs",
+    "db:import": "node tools/db/import-laravel.mjs",
+    "e2e": "node tools/e2e-run.mjs",
+    "e2e:only": "node --test tests/e2e/*.e2e.ts",
+    "browser": "playwright test",
+    "verify:all": "npm run verify:parity && npm test && npm run typecheck && npm run docs:check && npm run db:audit && npm run e2e",
+    "db:backup": "node tools/db/backup.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.21.0",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "pg": "^8.23.0"
+  },
+  "type": "module"
+}

@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Marking queue</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search assessments, students…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">JM</span>
+</header>
+
+<div class="layout">
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Faculty · Dr J. Mensah</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item is-active" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">2</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Teaching</div>
+      <a class="nav-item" href="programmes.html"><svg class="ic"><use href="#i-building"/></svg> Programmes</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="allocations.html"><svg class="ic"><use href="#i-chart"/></svg> Teaching load</a>
+      <a class="nav-item" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Support</div>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-help"/></svg> Mentor queue <span class="count">6</span></a>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+    </div>
+  </aside>
+
+  <main id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="assessments.html">Assessments</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <a href="assessment-detail.html">Data Structures — mid-term</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <span>Marking</span>
+    </nav>
+
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Marking queue</h1>
+        <p class="page-sub">Data Structures — mid-term · candidates are named on this paper</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="assessment-results.html"><svg class="ic ic-sm"><use href="#i-chart"/></svg> Results</a>
+        <a class="btn btn-lg" href="attempt-mark.html"><svg class="ic ic-sm"><use href="#i-play"/></svg> Mark next script</a>
+      </div>
+    </div>
+
+    <!-- A queue's job is to answer "how much is left and where do I start",
+         before it answers anything else. So progress is a band across the top
+         with one primary action in it, and the table below is only for when
+         you want to pick a particular script instead of the next one. -->
+    <div class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="hero-eyebrow">First marking</div>
+          <div class="hero-title">68 scripts left</div>
+          <div class="hero-sub">118 of 186 marked · at your pace over the last hour, about 2 h 50 min of work</div>
+        </div>
+        <div class="hero-actions">
+          <a class="btn btn-light btn-lg" href="attempt-mark.html">Mark next script <svg class="ic ic-sm"><use href="#i-arrow"/></svg></a>
+        </div>
+      </div>
+      <div class="meter on-dark mt-2"><span style="width:63%"></span></div>
+      <div class="hero-meta">
+        <span class="strong">63% marked</span>
+        <span class="dim">Turnaround promise: 10 working days · 8 used</span>
+      </div>
+    </div>
+
+    <!-- Flagged is deliberately its own filter and not just a column: an
+         invigilation flag changes who should mark the script, so it is a
+         different pile of paper, not a footnote on this one. -->
+    <div class="toolbar mt-3">
+      <div class="segmented" role="tablist" aria-label="Filter the queue">
+        <a href="#" class="is-on" role="tab" aria-selected="true">To mark <span class="count">68</span></a>
+        <a href="#" role="tab" aria-selected="false">Flagged <span class="count">5</span></a>
+        <a href="#" role="tab" aria-selected="false">Marked <span class="count">118</span></a>
+        <a href="#" role="tab" aria-selected="false">All <span class="count">186</span></a>
+      </div>
+      <div class="spacer"></div>
+      <div class="search">
+        <svg class="ic ic-sm"><use href="#i-search"/></svg>
+        <input placeholder="Find a candidate…" aria-label="Find a candidate" />
+      </div>
+      <select class="select" aria-label="Order">
+        <option>Oldest hand-in first</option>
+        <option>Newest hand-in first</option>
+        <option>Candidate number</option>
+        <option>Flagged first</option>
+      </select>
+    </div>
+
+    <!-- Row list, not a table: the marker is choosing one script to open, and
+         the only comparison that matters (who has waited longest) is already
+         the sort order. "Mark" sits at the end of every row because it is the
+         whole reason the screen exists. -->
+    <div class="rowlist">
+      <div class="row">
+        <span class="row-icon soon"><svg class="ic"><use href="#i-clock"/></svg></span>
+        <div class="row-main">
+          <div class="row-title">Amara Nwosu <span class="muted small num">· 20241188</span></div>
+          <div class="row-meta">
+            <span>Handed in 3 days ago</span><span>·</span>
+            <span>Attempt 1 of 1</span><span>·</span>
+            <span class="num">Auto 26 / 30</span>
+          </div>
+        </div>
+        <div class="row-trailing">
+          <span class="pill">Section B unmarked</span>
+          <a class="btn btn-sm" href="attempt-mark.html">Mark</a>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="row-icon soon"><svg class="ic"><use href="#i-clock"/></svg></span>
+        <div class="row-main">
+          <div class="row-title">Tobias Lindqvist <span class="muted small num">· 20241043</span></div>
+          <div class="row-meta">
+            <span>Handed in 3 days ago</span><span>·</span>
+            <span>Attempt 1 of 1</span><span>·</span>
+            <span class="num">Auto 21 / 30</span>
+          </div>
+        </div>
+        <div class="row-trailing">
+          <!-- The flag is a link, not an ornament. Marking a flagged script
+               without reading the timeline first is how a wrong call is made. -->
+          <a class="pill late" href="attempt-integrity.html"><svg class="ic ic-sm"><use href="#i-shield"/></svg> 14 points</a>
+          <a class="btn btn-sm" href="attempt-mark.html">Mark</a>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="row-icon soon"><svg class="ic"><use href="#i-clock"/></svg></span>
+        <div class="row-main">
+          <div class="row-title">Priya Raghunathan <span class="muted small num">· 20241207</span></div>
+          <div class="row-meta">
+            <span>Handed in 3 days ago</span><span>·</span>
+            <span class="num">Auto 28 / 30</span>
+          </div>
+        </div>
+        <div class="row-trailing">
+          <span class="pill">Section B unmarked</span>
+          <a class="btn btn-sm" href="attempt-mark.html">Mark</a>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="row-icon late"><svg class="ic"><use href="#i-alert"/></svg></span>
+        <div class="row-main">
+          <div class="row-title">Daniel Okafor <span class="muted small num">· 20241322</span></div>
+          <div class="row-meta">
+            <span>Handed in 3 days ago</span><span>·</span>
+            <span class="num">Auto 19 / 30</span>
+          </div>
+        </div>
+        <div class="row-trailing">
+          <!-- `status: 'expired'` said in English. It matters to a marker:
+               a thin Section B may be a clock problem, not a knowledge one. -->
+          <span class="pill late">Ran out of time</span>
+          <a class="btn btn-sm" href="attempt-mark.html">Mark</a>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="row-icon soon"><svg class="ic"><use href="#i-clock"/></svg></span>
+        <div class="row-main">
+          <div class="row-title">Wei Chen <span class="muted small num">· 20241019</span></div>
+          <div class="row-meta">
+            <span>Handed in 3 days ago</span><span>·</span>
+            <span class="num">Auto 30 / 30</span>
+          </div>
+        </div>
+        <div class="row-trailing">
+          <span class="pill">Section B unmarked</span>
+          <a class="btn btn-sm" href="attempt-mark.html">Mark</a>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="row-icon soon"><svg class="ic"><use href="#i-clock"/></svg></span>
+        <div class="row-main">
+          <div class="row-title">Sofia Marchetti <span class="muted small num">· 20241455</span></div>
+          <div class="row-meta">
+            <span>Handed in 2 days ago</span><span>·</span>
+            <span class="num">Auto 24 / 30</span>
+          </div>
+        </div>
+        <div class="row-trailing">
+          <span class="pill soon">Late · 18 min</span>
+          <a class="btn btn-sm" href="attempt-mark.html">Mark</a>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="row-icon soon"><svg class="ic"><use href="#i-clock"/></svg></span>
+        <div class="row-main">
+          <div class="row-title">Fatima Al-Sayed <span class="muted small num">· 20241164</span></div>
+          <div class="row-meta">
+            <span>Handed in 2 days ago</span><span>·</span>
+            <span>Extension approved</span><span>·</span>
+            <span class="num">Auto 27 / 30</span>
+          </div>
+        </div>
+        <div class="row-trailing">
+          <span class="pill">Section B unmarked</span>
+          <a class="btn btn-sm" href="attempt-mark.html">Mark</a>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="row-icon late"><svg class="ic"><use href="#i-alert"/></svg></span>
+        <div class="row-main">
+          <div class="row-title">Ngozi Eze <span class="muted small num">· 20241278</span></div>
+          <div class="row-meta">
+            <span>Handed in 2 days ago</span><span>·</span>
+            <span class="num">Auto 22 / 30</span>
+          </div>
+        </div>
+        <div class="row-trailing">
+          <a class="pill late" href="attempt-integrity.html"><svg class="ic ic-sm"><use href="#i-shield"/></svg> 8 points</a>
+          <a class="btn btn-sm" href="attempt-mark.html">Mark</a>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="row-icon soon"><svg class="ic"><use href="#i-clock"/></svg></span>
+        <div class="row-main">
+          <div class="row-title">James Whitcombe <span class="muted small num">· 20241091</span></div>
+          <div class="row-meta">
+            <span>Handed in 2 days ago</span><span>·</span>
+            <span class="num">Auto 25 / 30</span>
+          </div>
+        </div>
+        <div class="row-trailing">
+          <span class="pill">Section B unmarked</span>
+          <a class="btn btn-sm" href="attempt-mark.html">Mark</a>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="row-icon soon"><svg class="ic"><use href="#i-clock"/></svg></span>
+        <div class="row-main">
+          <div class="row-title">Hana Sato <span class="muted small num">· 20241510</span></div>
+          <div class="row-meta">
+            <span>Handed in 2 days ago</span><span>·</span>
+            <span class="num">Auto 29 / 30</span>
+          </div>
+        </div>
+        <div class="row-trailing">
+          <span class="pill">Section B unmarked</span>
+          <a class="btn btn-sm" href="attempt-mark.html">Mark</a>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="row-icon"><svg class="ic"><use href="#i-check"/></svg></span>
+        <div class="row-main">
+          <div class="row-title">Marcus Delacroix <span class="muted small num">· 20241386</span></div>
+          <div class="row-meta">
+            <span>Handed in 2 days ago</span><span>·</span>
+            <span>Second marking needed</span>
+          </div>
+        </div>
+        <div class="row-trailing">
+          <span class="score mid">58 / 80</span>
+          <a class="btn btn-sm btn-ghost" href="attempt-mark.html">Review</a>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="row-icon"><svg class="ic"><use href="#i-check"/></svg></span>
+        <div class="row-main">
+          <div class="row-title">Ayesha Iqbal <span class="muted small num">· 20241233</span></div>
+          <div class="row-meta">
+            <span>Handed in 2 days ago</span><span>·</span>
+            <span>Marked by you an hour ago</span>
+          </div>
+        </div>
+        <div class="row-trailing">
+          <span class="score hi">71 / 80</span>
+          <a class="btn btn-sm btn-ghost" href="attempt-mark.html">Review</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-foot mt-1 small muted" style="border:1px solid var(--line);border-radius:var(--r)">
+      Showing 12 of 68 unmarked · sorted oldest first, so nobody waits longer than they have to.
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab is-active" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate</a>
+  <a class="tab" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Sign in</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- No shell at all: no sidebar, no tab bar, no header. There is nothing to
+     navigate to before you are signed in, and every chrome element on an auth
+     page is another thing to look at instead of the two fields. -->
+<main id="main" style="max-width:412px;margin:0 auto;padding:48px 16px 32px">
+
+  <div class="card card-pad" style="padding:26px 24px">
+    <!-- The mark is centred and the product is named in full. Someone arriving
+         from an emailed link needs to know whose sign-in page this is before
+         they type a password into it. -->
+    <div class="brand" style="justify-content:center;margin-bottom:18px">
+      <span class="brand-mark" style="width:34px;height:34px;border-radius:11px;font-size:15px">O</span>
+      <span class="brand-name" style="font-size:18px">Onyx LMS</span>
+    </div>
+
+    <h1 class="page-title" style="font-size:22px;text-align:center">Sign in to Onyx</h1>
+    <p class="page-sub" style="text-align:center">
+      Your account works across every institution you belong to.
+    </p>
+
+    <form class="stack mt-2" style="gap:14px">
+      <div>
+        <label class="small strong" for="email" style="display:block;margin-bottom:6px">Email address</label>
+        <div class="search" style="max-width:none">
+          <svg class="ic ic-sm"><use href="#i-mail"/></svg>
+          <input id="email" name="email" type="email" autocomplete="email" placeholder="you@university.ac.uk" />
+        </div>
+      </div>
+
+      <div>
+        <div class="kv-row" style="margin-bottom:6px">
+          <label class="small strong" for="password">Password</label>
+          <a class="link small strong" href="#" style="text-decoration:underline">Forgotten it?</a>
+        </div>
+        <div class="search" style="max-width:none">
+          <svg class="ic ic-sm"><use href="#i-lock"/></svg>
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="••••••••••" />
+        </div>
+      </div>
+
+      <button class="btn btn-lg btn-block" type="submit">Sign in</button>
+    </form>
+
+    <div class="divider"></div>
+
+    <!-- The one thing about this product that is not obvious from the form:
+         the account is not owned by an institution. Said here rather than in a
+         help article, because the person who needs it is the one holding two
+         invitations and wondering which login to use. -->
+    <div class="inline small muted" style="align-items:flex-start;flex-wrap:nowrap;gap:9px">
+      <svg class="ic ic-sm" style="margin-top:2px"><use href="#i-building"/></svg>
+      <span>
+        One account, every institution. If you belong to more than one, you choose
+        which after signing in — and you can switch at any time.
+      </span>
+    </div>
+  </div>
+
+  <p class="small muted" style="text-align:center;margin-top:16px">
+    Setting up a new institution?
+    <!-- Underlined unconditionally. A link inside a sentence cannot rely on
+         colour alone to be found (WCAG 1.4.1), and hover-only underlining is
+         something a mouse user sees too late and a touch user never sees. -->
+    <a href="#" style="text-decoration:underline;font-weight:650">Start here</a>
+  </p>
+
+  <!-- ==================================================================
+       Second variant: the same card after a failed attempt. Shown on the
+       page because a static prototype has no way to click into it. In the
+       product this is the first card, not a second one.
+       ================================================================== -->
+  <div class="divider" style="margin:44px 0 20px"></div>
+  <div class="section-head"><h2>Variant · wrong details</h2></div>
+
+  <div class="card card-pad" style="padding:26px 24px">
+    <div class="brand" style="justify-content:center;margin-bottom:18px">
+      <span class="brand-mark" style="width:34px;height:34px;border-radius:11px;font-size:15px">O</span>
+      <span class="brand-name" style="font-size:18px">Onyx LMS</span>
+    </div>
+
+    <h1 class="page-title" style="font-size:22px;text-align:center">Sign in to Onyx</h1>
+    <p class="page-sub" style="text-align:center">
+      Your account works across every institution you belong to.
+    </p>
+
+    <!-- One message for both fields, and it does not say which of the two was
+         wrong: telling someone the email exists but the password does not is
+         how you confirm an account to a stranger. role="alert" so a screen
+         reader hears it without moving focus off the field. -->
+    <div class="banner late mt-2" role="alert">
+      <svg class="ic"><use href="#i-alert"/></svg>
+      <div>
+        <div class="strong">Those details do not match.</div>
+        <div class="small" style="margin-top:2px">
+          Check the email address and try the password again. Five more attempts before
+          the account is locked for 15 minutes.
+        </div>
+      </div>
+    </div>
+
+    <form class="stack mt-2" style="gap:14px">
+      <div>
+        <label class="small strong" for="email-2" style="display:block;margin-bottom:6px">Email address</label>
+        <div class="search" style="max-width:none;border-color:var(--danger-line);background:var(--danger-bg)">
+          <svg class="ic ic-sm" style="color:var(--danger)"><use href="#i-mail"/></svg>
+          <input id="email-2" name="email" type="email" autocomplete="email"
+                 value="a.okafor@demo.ac.uk" aria-invalid="true" aria-describedby="signin-error" />
+        </div>
+      </div>
+
+      <div>
+        <div class="kv-row" style="margin-bottom:6px">
+          <label class="small strong" for="password-2">Password</label>
+          <a class="link small strong" href="#" style="text-decoration:underline">Forgotten it?</a>
+        </div>
+        <div class="search" style="max-width:none;border-color:var(--danger-line);background:var(--danger-bg)">
+          <svg class="ic ic-sm" style="color:var(--danger)"><use href="#i-lock"/></svg>
+          <input id="password-2" name="password" type="password" autocomplete="current-password"
+                 aria-invalid="true" aria-describedby="signin-error" />
+        </div>
+        <!-- The message is repeated for assistive technology and hidden
+             visually, so the banner above is not the only place it exists. -->
+        <span id="signin-error" class="sr-only">Those details do not match.</span>
+      </div>
+
+      <button class="btn btn-lg btn-block" type="submit">Sign in</button>
+    </form>
+
+    <div class="divider"></div>
+
+    <div class="inline small muted" style="align-items:flex-start;flex-wrap:nowrap;gap:9px">
+      <svg class="ic ic-sm" style="margin-top:2px"><use href="#i-building"/></svg>
+      <span>
+        One account, every institution. If you belong to more than one, you choose
+        which after signing in — and you can switch at any time.
+      </span>
+    </div>
+  </div>
+
+  <p class="small muted" style="text-align:center;margin-top:16px">
+    Setting up a new institution?
+    <a href="#" style="text-decoration:underline;font-weight:650">Start here</a>
+  </p>
+</main>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

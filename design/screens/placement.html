@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Placement</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search employers, drives…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">HK</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================
+       The placement officer's menu, exactly as lib/onyx-nav.ts builds it:
+       two shared destinations, then the cell's own work, then the inbox.
+       Nothing about finance, people or invigilation — a placement account
+       cannot open those, so offering them would only teach a dead end. -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Placement</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Placement</div>
+      <a class="nav-item is-active" href="placement.html"><svg class="ic"><use href="#i-chart"/></svg> Placement</a>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+      <a class="nav-item" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certificates</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">6</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Placement</h1>
+        <p class="page-sub">Final year · 412 learners in the cohort · 38 employers on the register</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-building"/></svg> Add employer</a>
+        <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-plus"/></svg> Build a drive</a>
+      </div>
+    </div>
+
+    <!-- The cell is judged on one number, so it leads. The other three are the
+         only way that number can move: someone placed, someone mid-pipeline,
+         someone nobody has yet spoken to. -->
+    <div class="stats">
+      <div class="stat is-good">
+        <div class="stat-label">Placed</div>
+        <div class="stat-value">268</div>
+        <div class="stat-note"><span class="delta up">▲ 22</span> offers accepted this month</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">In process</div>
+        <div class="stat-value">78</div>
+        <div class="stat-note">Across 9 live drives</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Unplaced</div>
+        <div class="stat-value">66</div>
+        <div class="stat-note">41 have applied to nothing yet</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Placement rate</div>
+        <div class="stat-value">65%</div>
+        <div class="stat-note"><span class="delta up">▲ 6%</span> vs this point last year</div>
+      </div>
+    </div>
+
+    <div class="cols mt-3">
+      <div>
+        <!-- Where the cohort actually stands. A total then its parts, rather
+             than four tiles that never add up to anything: 412 is the number
+             the vice-chancellor asks about, and every bar below is a slice of
+             the same 412. -->
+        <section>
+          <div class="section-head">
+            <h2>The cohort</h2>
+            <a class="link" href="people.html">All finalists</a>
+          </div>
+          <div class="card card-pad">
+            <div class="inline" style="justify-content:space-between;align-items:flex-end">
+              <div>
+                <div class="stat-label">Final-year learners</div>
+                <div class="stat-value" style="font-size:32px">412</div>
+              </div>
+              <div class="stackbar" style="flex:1;max-width:340px;margin-left:auto">
+                <span style="width:65%;background:var(--success)"></span>
+                <span style="width:19%;background:var(--teal-400)"></span>
+                <span style="width:10%;background:var(--orange)"></span>
+                <span style="width:6%;background:var(--danger)"></span>
+              </div>
+            </div>
+            <div class="buckets mt-2">
+              <div class="bucket"><span class="dot" style="background:var(--success)"></span>
+                <span class="lbl">Offer accepted</span><span class="n num">268</span><span class="amt num">65%</span></div>
+              <div class="bucket"><span class="dot" style="background:var(--teal-400)"></span>
+                <span class="lbl">In a pipeline</span><span class="n num">78</span><span class="amt num">19%</span></div>
+              <div class="bucket"><span class="dot" style="background:var(--orange)"></span>
+                <span class="lbl">Applying, no offer yet</span><span class="n num">41</span><span class="amt num">10%</span></div>
+              <div class="bucket"><span class="dot" style="background:var(--danger)"></span>
+                <span class="lbl">Has applied to nothing</span><span class="n num">25</span><span class="amt num">6%</span></div>
+            </div>
+            <div class="divider"></div>
+            <div class="inline small muted">
+              <svg class="ic ic-sm"><use href="#i-alert"/></svg>
+              25 learners have made no application at all. They are the ones a drive never reaches.
+            </div>
+          </div>
+        </section>
+
+        <!-- Drives as a table, not a list: the officer is comparing dates and
+             registration counts down a column to decide which one still needs
+             chasing. The date is relative because "in 3 days" is the thing
+             being decided on, and 14/11/2026 is a subtraction. -->
+        <section class="section">
+          <div class="section-head">
+            <h2>Company drives</h2>
+            <a class="link" href="#">All drives</a>
+          </div>
+          <div class="toolbar">
+            <div class="search">
+              <svg class="ic ic-sm"><use href="#i-search"/></svg>
+              <input placeholder="Search drives" aria-label="Search drives" />
+            </div>
+            <div class="segmented">
+              <a class="is-on" href="#">Live <span class="count">9</span></a>
+              <a href="#">Scheduled <span class="count">5</span></a>
+              <a href="#">Closed <span class="count">23</span></a>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <div class="table-scroll">
+              <table class="table">
+                <caption class="sr-only">Recruitment drives, soonest first</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Drive</th>
+                    <th scope="col">When</th>
+                    <th scope="col" class="right">Registered</th>
+                    <th scope="col">Stage</th>
+                    <th scope="col"><span class="sr-only">Open</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="border-radius:9px;background:var(--teal-700)">OE</span>
+                        <span>
+                          <span class="who-name"><a href="drive-detail.html">Octopus Energy — graduate drive</a></span>
+                          <span class="who-sub">Graduate Software Engineer · 12 openings</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td><span class="pill late">In 3 days</span><span class="who-sub" style="display:block;margin-top:3px">Thu, on campus</span></td>
+                    <td class="right num">142</td>
+                    <td><span class="status live"><span class="dot"></span> Interviewing</span></td>
+                    <td class="right"><a class="btn btn-sm btn-ghost" href="drive-detail.html">Open</a></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="border-radius:9px;background:var(--teal-600)">MZ</span>
+                        <span>
+                          <span class="who-name"><a href="drive-detail.html">Monzo — engineering intake</a></span>
+                          <span class="who-sub">Backend Engineer, graduate · 8 openings</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td><span class="pill soon">In 9 days</span><span class="who-sub" style="display:block;margin-top:3px">Remote assessment</span></td>
+                    <td class="right num">208</td>
+                    <td><span class="status on"><span class="dot"></span> Shortlisting</span></td>
+                    <td class="right"><a class="btn btn-sm btn-ghost" href="drive-detail.html">Open</a></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="border-radius:9px;background:var(--teal-500)">AR</span>
+                        <span>
+                          <span class="who-name"><a href="drive-detail.html">Arm — silicon graduate scheme</a></span>
+                          <span class="who-sub">Graduate Hardware Engineer · 6 openings</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td><span class="pill">In 3 weeks</span><span class="who-sub" style="display:block;margin-top:3px">Cambridge</span></td>
+                    <td class="right num">64</td>
+                    <td><span class="status on"><span class="dot"></span> Registration open</span></td>
+                    <td class="right"><a class="btn btn-sm btn-ghost" href="drive-detail.html">Open</a></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="border-radius:9px;background:var(--orange-700)">OT</span>
+                        <span>
+                          <span class="who-name"><a href="drive-detail.html">Ocado Technology — autumn drive</a></span>
+                          <span class="who-sub">Software Engineer, graduate · 15 openings</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td><span class="pill">In 4 weeks</span><span class="who-sub" style="display:block;margin-top:3px">Hatfield</span></td>
+                    <td class="right num">31</td>
+                    <td><span class="status idle"><span class="dot"></span> Not yet advertised</span></td>
+                    <td class="right"><a class="btn btn-sm btn-ghost" href="drive-detail.html">Open</a></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="border-radius:9px;background:var(--teal-800)">DT</span>
+                        <span>
+                          <span class="who-name"><a href="drive-detail.html">Darktrace — analyst intake</a></span>
+                          <span class="who-sub">Cyber Analyst, graduate · 10 openings</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td><span class="pill">Ended 2 weeks ago</span><span class="who-sub" style="display:block;margin-top:3px">Cambridge</span></td>
+                    <td class="right num">96</td>
+                    <td><span class="status idle"><span class="dot"></span> 9 offers made</span></td>
+                    <td class="right"><a class="btn btn-sm btn-ghost" href="drive-detail.html">Open</a></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="table-foot">
+              <span>5 of 37 drives</span>
+              <span class="pager">
+                <a class="btn btn-sm btn-ghost is-disabled" href="#">Previous</a>
+                <a class="btn btn-sm btn-ghost" href="#">Next</a>
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Posts sit below drives because a post is a standing advert and a
+             drive is a date in the diary; only one of them can be missed. -->
+        <section class="section">
+          <div class="section-head">
+            <h2>Open posts</h2>
+            <a class="link" href="jobs.html">All posts</a>
+          </div>
+          <div class="rowlist">
+            <div class="row">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-briefcase"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="job-detail.html">Graduate Software Engineer</a></div>
+                <div class="row-meta">Octopus Energy · London or remote · £38,000–£44,000 · closes in 2 days</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill late">142 applied</span>
+                <a class="btn btn-sm btn-ghost" href="job-detail.html">Open</a>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-briefcase"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="job-detail.html">Backend Engineer, graduate</a></div>
+                <div class="row-meta">Monzo · London · £42,000–£48,000 · closes in 11 days</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill">208 applied</span>
+                <a class="btn btn-sm btn-ghost" href="job-detail.html">Open</a>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-briefcase"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="job-detail.html">Data Analyst placement year</a></div>
+                <div class="row-meta">Sage Group · Newcastle · £22,000 pro rata · draft, not visible to learners</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill soon">Draft</span>
+                <a class="btn btn-sm" href="job-detail.html">Publish</a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ rail ============================ -->
+      <aside>
+        <!-- Top recruiters is the slide the cell is asked for every term, so it
+             is a component rather than a spreadsheet someone rebuilds. Offers
+             is the ranking; the median is there because ten offers at £26k and
+             three at £52k are not the same result. -->
+        <section>
+          <div class="section-head"><h2>Top recruiters</h2><span class="small muted">This year</span></div>
+          <div class="card card-pad">
+            <div class="stack-sm">
+              <div>
+                <div class="kv-row"><span class="strong small">Ocado Technology</span><span class="small muted num">34 offers</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:100%"></span></div>
+                <div class="small muted" style="margin-top:3px">Median £39,500 · 4 drives</div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">Deloitte Digital</span><span class="small muted num">28 offers</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:82%"></span></div>
+                <div class="small muted" style="margin-top:3px">Median £36,000 · 3 drives</div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">Monzo</span><span class="small muted num">21 offers</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:62%"></span></div>
+                <div class="small muted" style="margin-top:3px">Median £45,000 · 2 drives</div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">BAE Systems Digital</span><span class="small muted num">17 offers</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:50%"></span></div>
+                <div class="small muted" style="margin-top:3px">Median £34,000 · 2 drives</div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">Starling Bank</span><span class="small muted num">12 offers</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:35%"></span></div>
+                <div class="small muted" style="margin-top:3px">Median £41,000 · 1 drive</div>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <a class="link small strong" href="#">Full recruiter register</a>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>This term</h2></div>
+          <div class="card card-pad">
+            <div class="kv">
+              <div class="kv-row"><span class="k">Offers made</span><span class="v num">311</span></div>
+              <div class="kv-row"><span class="k">Offers accepted</span><span class="v num">268</span></div>
+              <div class="kv-row"><span class="k">Median package</span><span class="v num">£38,000</span></div>
+              <div class="kv-row"><span class="k">Highest package</span><span class="v num">£62,000</span></div>
+              <div class="kv-row"><span class="k">Interviews this week</span><span class="v num">54</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- An employer with no login cannot see their own shortlist, which
+             means the cell is emailing spreadsheets. Worth a queue. -->
+        <section class="section">
+          <div class="section-head"><h2>Needs the office</h2></div>
+          <div class="card">
+            <div class="rowlist" style="border:0;border-radius:0;box-shadow:none">
+              <div class="row" style="padding:11px 16px">
+                <div class="row-main">
+                  <div class="row-title" style="font-size:14px">4 employers have no login</div>
+                  <div class="row-meta">Their shortlists are being emailed by hand</div>
+                </div>
+                <div class="row-trailing"><a class="btn btn-sm btn-ghost" href="#">Invite</a></div>
+              </div>
+              <div class="row" style="padding:11px 16px">
+                <div class="row-main">
+                  <div class="row-title" style="font-size:14px">Octopus drive: 3 rounds unrecorded</div>
+                  <div class="row-meta">Interviews were 2 days ago</div>
+                </div>
+                <div class="row-trailing"><a class="btn btn-sm" href="drive-detail.html">Record</a></div>
+              </div>
+              <div class="row" style="padding:11px 16px">
+                <div class="row-main">
+                  <div class="row-title" style="font-size:14px">1 offer without a cleared round</div>
+                  <div class="row-meta">Darktrace drive · needs a decision, not a fix</div>
+                </div>
+                <div class="row-trailing"><a class="btn btn-sm btn-ghost" href="drive-detail.html">Review</a></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab is-active" href="placement.html"><svg class="ic"><use href="#i-chart"/></svg> Placement</a>
+  <a class="tab" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+  <a class="tab" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+  <a class="tab" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

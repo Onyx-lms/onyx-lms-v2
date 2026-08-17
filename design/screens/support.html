@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Help</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search courses, roles…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">AO</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees</a>
+      <a class="nav-item is-active" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">5</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Help</h1>
+        <p class="page-sub">Answers first, then a person. Two of your questions are open.</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-plus"/></svg> Ask a question</a>
+      </div>
+    </div>
+
+    <!-- Search is the whole top of the page rather than a field in a toolbar:
+         most people arrive with a sentence in their head, and the fastest
+         resolution is the one that never becomes a ticket. -->
+    <div class="card card-pad">
+      <div class="search" style="max-width:none;height:48px">
+        <svg class="ic"><use href="#i-search"/></svg>
+        <input placeholder="What do you need help with?" aria-label="Search help articles" />
+      </div>
+      <div class="inline" style="margin-top:11px">
+        <span class="small muted">Common right now:</span>
+        <a class="chip" href="#">Resit a failed exam</a>
+        <a class="chip" href="#">Pay in instalments</a>
+        <a class="chip" href="#">Timetable clash</a>
+        <a class="chip" href="#">Certificate not showing</a>
+      </div>
+    </div>
+
+    <div class="cols mt-3">
+      <div>
+        <!-- Topic cards, not a list of 60 articles. The count on each card is
+             the honest version of "browse": you can see how deep it goes
+             before deciding to go in. -->
+        <section>
+          <div class="section-head">
+            <h2>Common topics</h2>
+            <a class="link" href="#">All articles</a>
+          </div>
+          <div class="grid">
+            <a class="card card-pad gcard" href="#" style="display:block">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-edit"/></svg></span>
+              <div class="n" style="margin-top:10px">Assessments and resits</div>
+              <div class="d">Deadlines, extensions, what happens if you miss a sitting, and how a resit is marked.</div>
+              <div class="r" style="font-family:inherit">12 articles</div>
+            </a>
+            <a class="card card-pad gcard" href="#" style="display:block">
+              <span class="row-icon soon"><svg class="ic"><use href="#i-wallet"/></svg></span>
+              <div class="n" style="margin-top:10px">Fees and payments</div>
+              <div class="d">Instalment plans, late-payment rules, receipts, and who to ask about a bursary.</div>
+              <div class="r" style="font-family:inherit">9 articles</div>
+            </a>
+            <a class="card card-pad gcard" href="#" style="display:block">
+              <span class="row-icon"><svg class="ic"><use href="#i-calendar"/></svg></span>
+              <div class="n" style="margin-top:10px">Timetable and attendance</div>
+              <div class="d">Room changes, clashes, how attendance is counted, and correcting a wrong register.</div>
+              <div class="r" style="font-family:inherit">8 articles</div>
+            </a>
+            <a class="card card-pad gcard" href="#" style="display:block">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-briefcase"/></svg></span>
+              <div class="n" style="margin-top:10px">Jobs and placement</div>
+              <div class="d">Eligibility rules, what an employer sees when you apply, and withdrawing an application.</div>
+              <div class="r" style="font-family:inherit">11 articles</div>
+            </a>
+            <a class="card card-pad gcard" href="#" style="display:block">
+              <span class="row-icon"><svg class="ic"><use href="#i-code"/></svg></span>
+              <div class="n" style="margin-top:10px">Practice and workspaces</div>
+              <div class="d">Why a submission failed, workspace limits, and getting a stuck environment restarted.</div>
+              <div class="r" style="font-family:inherit">14 articles</div>
+            </a>
+            <a class="card card-pad gcard" href="#" style="display:block">
+              <span class="row-icon"><svg class="ic"><use href="#i-lock"/></svg></span>
+              <div class="n" style="margin-top:10px">Your account</div>
+              <div class="d">Passwords, switching institution, and what a guardian linked to you can see.</div>
+              <div class="r" style="font-family:inherit">7 articles</div>
+            </a>
+          </div>
+        </section>
+
+        <!-- The learner's own tickets. Every one has a promised time, and the
+             one that has run past it says so in words as well as red — an SLA
+             nobody can see being missed is not an SLA. -->
+        <section class="section">
+          <div class="section-head">
+            <h2>Your tickets</h2>
+            <span class="small muted">2 open · 3 resolved</span>
+          </div>
+          <div class="rowlist">
+            <div class="row">
+              <span class="row-icon late"><svg class="ic"><use href="#i-flag"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="#">Resit fee charged twice on my account</a></div>
+                <div class="row-meta">
+                  <span>Raised 2 days ago</span><span>·</span>
+                  <span>Fees</span><span>·</span>
+                  <span>Owned by the finance office</span>
+                </div>
+                <div class="row-meta">Last reply 19 hours ago</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill late">3 h past its deadline</span>
+                <a class="btn btn-sm btn-ghost" href="#">Open</a>
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-help"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="#">Workspace will not start for Coursework 3</a></div>
+                <div class="row-meta">
+                  <span>Raised 5 hours ago</span><span>·</span>
+                  <span>Practice</span><span>·</span>
+                  <span>Owned by Dr J. Mensah</span>
+                </div>
+                <div class="row-meta">Last reply 40 minutes ago</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill soon">Answer due in 1 h 20 m</span>
+                <a class="btn btn-sm btn-ghost" href="#">Open</a>
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="#">Attendance missing for the Tuesday lab</a></div>
+                <div class="row-meta">
+                  <span>Raised a week ago</span><span>·</span>
+                  <span>Timetable</span><span>·</span>
+                  <span>Owned by S. Okonjo</span>
+                </div>
+                <div class="row-meta">Last reply 4 days ago</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill good">Resolved</span>
+                <a class="btn btn-sm btn-ghost" href="#">Open</a>
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="#">Certificate name spelt wrong</a></div>
+                <div class="row-meta">
+                  <span>Raised 3 weeks ago</span><span>·</span>
+                  <span>Your account</span><span>·</span>
+                  <span>Owned by the registry</span>
+                </div>
+                <div class="row-meta">Last reply 3 weeks ago</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill good">Resolved</span>
+                <a class="btn btn-sm btn-ghost" href="#">Open</a>
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-x"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="#">Can I take Advanced Databases next term?</a></div>
+                <div class="row-meta">
+                  <span>Raised a month ago</span><span>·</span>
+                  <span>Courses</span><span>·</span>
+                  <span>Answered on the course discussion instead</span>
+                </div>
+                <div class="row-meta">Last reply a month ago</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill">Closed</span>
+                <a class="btn btn-sm btn-ghost" href="#">Open</a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ rail ============================ -->
+      <aside>
+        <!-- Asking on the course first is not a brush-off: it is genuinely
+             faster, and the number is there so it reads as a fact rather than
+             an excuse for having no support team. -->
+        <section>
+          <div class="section-head"><h2>Before you raise one</h2></div>
+          <div class="card card-pad">
+            <div class="prose" style="font-size:14px">
+              <p>
+                Most questions are about a specific piece of work. Asking on the course
+                discussion reaches the person who set it, and the median answer there is
+                <span class="strong">47 minutes</span> — a ticket is promised in four hours.
+              </p>
+            </div>
+            <div class="divider"></div>
+            <a class="btn btn-block" href="courses.html"><svg class="ic ic-sm"><use href="#i-message"/></svg> Ask on your course</a>
+            <a class="btn btn-ghost btn-block" href="#" style="margin-top:8px">Raise a ticket anyway</a>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>How long it takes</h2></div>
+          <div class="card card-pad">
+            <div class="kv">
+              <div class="kv-row"><span class="k">Urgent · exam in progress</span><span class="v num">30 min</span></div>
+              <div class="kv-row"><span class="k">High · blocks your work</span><span class="v num">2 hours</span></div>
+              <div class="kv-row"><span class="k">Normal</span><span class="v num">4 hours</span></div>
+              <div class="kv-row"><span class="k">Low</span><span class="v num">2 working days</span></div>
+            </div>
+            <div class="divider"></div>
+            <div class="small muted">
+              Counted in working hours, 08:00 to 18:00, Monday to Friday.
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Somewhere else</h2></div>
+          <div class="card">
+            <div class="rowlist" style="border:0;border-radius:0;box-shadow:none">
+              <div class="row" style="padding:11px 16px">
+                <span class="row-icon" style="width:32px;height:32px;border-radius:10px"><svg class="ic ic-sm"><use href="#i-wallet"/></svg></span>
+                <div class="row-main">
+                  <div class="row-title" style="font-size:14px">Finance office</div>
+                  <div class="row-meta">Open until 17:00 today · Bramley Court</div>
+                </div>
+              </div>
+              <div class="row" style="padding:11px 16px">
+                <span class="row-icon" style="width:32px;height:32px;border-radius:10px"><svg class="ic ic-sm"><use href="#i-briefcase"/></svg></span>
+                <div class="row-main">
+                  <div class="row-title" style="font-size:14px">Placement office</div>
+                  <div class="row-meta">Drop-in Wednesdays, 13:00–16:00</div>
+                </div>
+              </div>
+              <div class="row" style="padding:11px 16px">
+                <span class="row-icon" style="width:32px;height:32px;border-radius:10px"><svg class="ic ic-sm"><use href="#i-shield"/></svg></span>
+                <div class="row-main">
+                  <div class="row-title" style="font-size:14px">Wellbeing</div>
+                  <div class="row-meta">Confidential, and never recorded on this platform</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

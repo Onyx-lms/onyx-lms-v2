@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# Secrets. .env holds real Supabase keys -- never commit it.
+.env
+.env.*
+!.env.example
+
+# Local runtime noise
+*.log
+npm-debug.log*
+coverage/
+.turbo/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code: the shared config is committed, per-developer overrides are not.
+.claude/settings.local.json
+
+# Supabase CLI scratch — holds the linked project ref
+supabase/.temp/
+
+# Playwright run artifacts (screenshots, traces) -- never meant to be committed.
+test-results/
+playwright-report/
+.vercel
+.env*
+
+# Generated credential exports hold plaintext passwords for real seeded
+# accounts -- never commit one of these, wherever it ends up.
+*Credentials*.xlsx
+*credentials*.csv

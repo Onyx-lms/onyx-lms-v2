@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Fees</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search your courses…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">AR</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <!-- The student's menu, not the administrator's: nothing on this page is
+       about anybody else's money, so nothing in the rail leads anywhere it
+       could be. -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item is-active" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees</a>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">2</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Fees</h1>
+        <p class="page-sub">Your invoices for the 2026–27 academic year.</p>
+      </div>
+    </div>
+
+    <!-- Overdue is said before anything else and in words, because a student
+         who owes £120 they did not know about needs to be told, not left to
+         work it out from a red row four sections down. -->
+    <div class="banner late">
+      <svg class="ic"><use href="#i-alert"/></svg>
+      <span><span class="strong">£120.00 is 6 days overdue.</span> A late charge of £25 is added at
+        14 days. If paying is a problem, ask for a payment plan — it stops the charge.</span>
+      <a class="btn btn-sm btn-danger" style="white-space:nowrap" href="#">Pay £120.00</a>
+    </div>
+
+    <!-- The band a learner came here for. The amount is the headline, the due
+         date is the thing that makes it urgent, and the button carries the
+         figure so nobody clicks "Pay" to find out how much. -->
+    <div class="hero mt-2">
+      <div class="hero-top">
+        <div>
+          <div class="hero-eyebrow">Outstanding balance</div>
+          <div class="hero-title">£2,420.00</div>
+          <div class="hero-sub">Next instalment £1,150.00 due in 9 days · £120.00 already overdue</div>
+        </div>
+        <div class="hero-actions">
+          <a class="btn btn-light" href="#"><svg class="ic ic-sm"><use href="#i-card"/></svg> Pay £2,420.00</a>
+          <a class="btn btn-ghost-light" href="#">Pay just what is due</a>
+        </div>
+      </div>
+      <div class="hero-meta">
+        <span class="strong">£1,150.00 paid</span>
+        <span class="dim">of £3,570.00 for the year</span>
+      </div>
+      <div class="meter on-dark" style="margin-top:8px"><span style="width:32%"></span></div>
+    </div>
+
+    <!-- min-width:0 on both columns. A grid item's automatic minimum size is
+         its content's minimum, and a table's minimum is the whole table — so
+         without this the single-column phone layout inherits the width of the
+         widest receipt row and the page scrolls sideways. -->
+    <div class="cols mt-3">
+      <div style="min-width:0">
+        <!-- The schedule is a .rowlist, not a table: a student is choosing one
+             instalment to settle, not comparing four down a column. Each row
+             states its own state as a word and offers the one action that
+             belongs to it. -->
+        <section>
+          <div class="section-head">
+            <h2>Instalment schedule</h2>
+            <span class="small muted">4 instalments · 2026–27</span>
+          </div>
+          <div class="rowlist">
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Tuition — instalment 1 of 3</div>
+                <div class="row-meta">INV-2026-0117 · paid 2 months ago by card</div>
+              </div>
+              <div class="row-trailing">
+                <span class="num strong">£1,150.00</span>
+                <span class="status on"><span class="dot"></span> Paid</span>
+                <a class="btn btn-sm btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Receipt</a>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon late"><svg class="ic"><use href="#i-alert"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Examination and library fee</div>
+                <div class="row-meta">INV-2026-0208 · was due 6 days ago</div>
+              </div>
+              <div class="row-trailing">
+                <span class="num strong">£120.00</span>
+                <span class="pill late"><span class="pill-dot"></span> 6 days overdue</span>
+                <a class="btn btn-sm btn-danger" href="#">Pay</a>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon soon"><svg class="ic"><use href="#i-clock"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Tuition — instalment 2 of 3</div>
+                <div class="row-meta">INV-2026-0231 · issued 3 weeks ago</div>
+              </div>
+              <div class="row-trailing">
+                <span class="num strong">£1,150.00</span>
+                <span class="pill soon"><span class="pill-dot"></span> Due in 9 days</span>
+                <a class="btn btn-sm" href="#">Pay</a>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-calendar"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Tuition — instalment 3 of 3</div>
+                <div class="row-meta">Not yet issued · the invoice arrives a month before it is due</div>
+              </div>
+              <div class="row-trailing">
+                <span class="num strong">£1,150.00</span>
+                <span class="pill"><span class="pill-dot"></span> Due in 4 months</span>
+                <a class="btn btn-sm btn-ghost is-disabled" href="#" aria-disabled="true">Pay early</a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- History is a table: here the student IS comparing down a column,
+             usually to find the one receipt a landlord or a sponsor asked for. -->
+        <section class="section">
+          <div class="section-head">
+            <h2>Payment history</h2>
+            <a class="link" href="#">Download all receipts</a>
+          </div>
+          <div class="table-wrap">
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Your payment history">
+              <table class="table">
+                <caption class="sr-only">Payments you have made, newest first</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Receipt</th>
+                    <th scope="col">What for</th>
+                    <th scope="col">Method</th>
+                    <th scope="col" class="right">Amount</th>
+                    <th scope="col">Paid</th>
+                    <!-- Positioned against the cell: an absolutely positioned
+                         label left to the document takes its static position
+                         inside a sideways-scrolling table and pulls the page's
+                         scroll width with it. -->
+                    <th scope="col" style="position:relative"><span class="sr-only">Download</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="small strong" style="white-space:nowrap">RCT-2026-0441</td>
+                    <td>Tuition — instalment 1
+                      <span class="muted small" style="display:block">INV-2026-0117</span></td>
+                    <td class="small muted">Visa ending 4021</td>
+                    <td class="right num strong">£1,150.00</td>
+                    <td class="muted" style="white-space:nowrap">2 months ago</td>
+                    <td class="right"><a class="btn btn-sm btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> PDF</a></td>
+                  </tr>
+                  <tr>
+                    <td class="small strong" style="white-space:nowrap">RCT-2026-0298</td>
+                    <td>Students' union membership
+                      <span class="muted small" style="display:block">INV-2026-0092</span></td>
+                    <td class="small muted">Visa ending 4021</td>
+                    <td class="right num strong">£60.00</td>
+                    <td class="muted" style="white-space:nowrap">3 months ago</td>
+                    <td class="right"><a class="btn btn-sm btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> PDF</a></td>
+                  </tr>
+                  <tr>
+                    <td class="small strong" style="white-space:nowrap">RCT-2026-0141</td>
+                    <td>Accommodation deposit
+                      <span class="muted small" style="display:block">INV-2026-0044</span></td>
+                    <td class="small muted">Bank transfer</td>
+                    <td class="right num strong">£300.00</td>
+                    <td class="muted" style="white-space:nowrap">5 months ago</td>
+                    <td class="right"><a class="btn btn-sm btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> PDF</a></td>
+                  </tr>
+                  <tr>
+                    <!-- A refund is part of the same story and belongs in the
+                         same list; hiding it makes the totals unexplainable. -->
+                    <td class="small strong" style="white-space:nowrap">RCT-2026-0139</td>
+                    <td>Accommodation deposit — refunded
+                      <span class="muted small" style="display:block">INV-2026-0044</span></td>
+                    <td class="small muted">Back to Visa ending 4021</td>
+                    <td class="right num strong">−£300.00</td>
+                    <td class="muted" style="white-space:nowrap">4 months ago</td>
+                    <td class="right"><a class="btn btn-sm btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> PDF</a></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="table-foot">
+              <span>4 receipts · <span class="strong num">£1,210.00</span> paid since September</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ rail ============================ -->
+      <aside style="min-width:0">
+        <section>
+          <div class="section-head"><h2>What you are charged</h2></div>
+          <div class="card card-pad">
+            <div class="kv">
+              <div class="kv-row"><span class="k">Tuition</span><span class="v num">£3,000.00</span></div>
+              <div class="kv-row"><span class="k">Examination fee</span><span class="v num">£120.00</span></div>
+              <div class="kv-row"><span class="k">Library and lab</span><span class="v num">£150.00</span></div>
+              <div class="kv-row"><span class="k">Students' union</span><span class="v num">£60.00</span></div>
+              <div class="kv-row"><span class="k">Sports and societies</span><span class="v num">£240.00</span></div>
+            </div>
+            <div class="divider"></div>
+            <div class="kv-row">
+              <span class="strong">Total for the year</span>
+              <span class="strong num" style="font-size:16px">£3,570.00</span>
+            </div>
+            <p class="small muted mt-1">Set when you enrolled. Changing the fee schedule later cannot
+              rewrite an invoice already issued to you.</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>If money is tight</h2></div>
+          <div class="card card-pad">
+            <div class="stack-sm">
+              <div class="inline" style="align-items:flex-start;gap:9px">
+                <svg class="ic" style="color:var(--teal-600)"><use href="#i-calendar"/></svg>
+                <span class="small"><span class="strong">Spread it further.</span> A four- or six-part
+                  plan costs nothing extra and stops late charges.</span>
+              </div>
+              <div class="inline" style="align-items:flex-start;gap:9px">
+                <svg class="ic" style="color:var(--teal-600)"><use href="#i-help"/></svg>
+                <span class="small"><span class="strong">Hardship fund.</span> Applications are read
+                  by the student services team, not by anyone who teaches you.</span>
+              </div>
+            </div>
+            <a class="btn btn-ghost btn-block mt-2" href="#">Ask for a payment plan</a>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Who can see this</h2></div>
+          <div class="card card-pad">
+            <div class="inline" style="align-items:flex-start;gap:9px">
+              <span class="avatar avatar-sm" style="background:var(--faint)">HR</span>
+              <span class="small"><span class="strong">Helen Reid</span> asked to see your fees.
+                <span class="muted" style="display:block">Invited 3 days ago · not yet allowed by you</span></span>
+            </div>
+            <div class="inline mt-2" style="gap:8px">
+              <a class="btn btn-sm" href="#">Allow</a>
+              <a class="btn btn-sm btn-ghost" href="#">Decline</a>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<!-- The student's five daily destinations. Fees is not one of them — it is
+     opened twice a term — so nothing here is active and Fees stays one tap
+     away behind the header menu rather than taking a thumb-width from work. -->
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

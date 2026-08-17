@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Teaching load</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search people, courses…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">RA</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Administrator</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">3</span></a>
+      <a class="nav-item" href="exams.html"><svg class="ic"><use href="#i-calendar"/></svg> Examinations</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+      <a class="nav-item" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certificates</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="programmes.html"><svg class="ic"><use href="#i-layers"/></svg> Programmes</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item is-active" href="allocations.html"><svg class="ic"><use href="#i-users"/></svg> Teaching load</a>
+      <a class="nav-item" href="people.html"><svg class="ic"><use href="#i-user"/></svg> People</a>
+      <a class="nav-item" href="finance.html"><svg class="ic"><use href="#i-wallet"/></svg> Finance</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="placement.html"><svg class="ic"><use href="#i-briefcase"/></svg> Placement</a>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+      <a class="nav-item" href="audit.html"><svg class="ic"><use href="#i-shield"/></svg> Audit log</a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Teaching load</h1>
+        <!-- Allocation is always "for this term", never in general, so the term
+             is named in the subtitle and picked in the toolbar rather than
+             quietly assumed to be the newest one. -->
+        <p class="page-sub">Michaelmas 2026 · week 6 of 12 · 214 allocations across 86 faculty</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Export</a>
+        <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-plus"/></svg> Allocate teaching</a>
+      </div>
+    </div>
+
+    <!-- Nobody allocated is the one thing on this page that is a fault rather
+         than a reading, so it is stated before the numbers and carries the
+         action that fixes it. Six weeks in, this is already late. -->
+    <div class="banner warn">
+      <svg class="ic"><use href="#i-alert"/></svg>
+      <span><span class="strong">4 faculty have no allocation this term.</span>
+        Dr K. Bassey, Ms R. Oyelaran, Dr E. Lindqvist and Dr O. Sanusi are teaching nothing in a term
+        that started 6 weeks ago.</span>
+      <a class="btn btn-sm" href="#">Allocate</a>
+    </div>
+
+    <div class="stats mt-2">
+      <div class="stat">
+        <div class="stat-label">Allocations</div>
+        <div class="stat-value">214</div>
+        <div class="stat-note">in Michaelmas 2026</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Hours allocated</div>
+        <div class="stat-value">846</div>
+        <div class="stat-note">per week, all staff</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Median load</div>
+        <div class="stat-value">11 h</div>
+        <div class="stat-note">Contract target is 12–18 h</div>
+      </div>
+      <div class="stat is-alert">
+        <div class="stat-label">Nobody allocated</div>
+        <div class="stat-value">4</div>
+        <div class="stat-note">faculty with no teaching</div>
+      </div>
+    </div>
+
+    <!-- The distribution before the roll call: a head of department wants to
+         know the shape of the problem before reading eighty-six names, and
+         "seven people over cap, four with nothing" is the shape. -->
+    <section class="section">
+      <div class="section-head"><h2>Load distribution</h2><span class="small muted">86 faculty</span></div>
+      <div class="card card-pad">
+        <div class="stackbar">
+          <span style="width:8%;background:var(--danger)"></span>
+          <span style="width:40%;background:var(--success)"></span>
+          <span style="width:47%;background:var(--teal-400)"></span>
+          <span style="width:5%;background:var(--faint)"></span>
+        </div>
+        <div class="buckets mt-2">
+          <div class="bucket"><span class="dot" style="background:var(--danger)"></span>
+            <span class="lbl">Over cap — more than 18 h</span><span class="n num">7 people</span><span class="amt num">8%</span></div>
+          <div class="bucket"><span class="dot" style="background:var(--success)"></span>
+            <span class="lbl">On target — 12 to 18 h</span><span class="n num">34 people</span><span class="amt num">40%</span></div>
+          <div class="bucket"><span class="dot" style="background:var(--teal-400)"></span>
+            <span class="lbl">Light — under 12 h</span><span class="n num">41 people</span><span class="amt num">47%</span></div>
+          <div class="bucket"><span class="dot" style="background:var(--faint)"></span>
+            <span class="lbl">No allocation at all</span><span class="n num">4 people</span><span class="amt num">5%</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="toolbar mt-3">
+      <select class="select" aria-label="Semester">
+        <option>Michaelmas 2026 — current</option>
+        <option>Lent 2026</option>
+        <option>Michaelmas 2025</option>
+      </select>
+      <div class="search">
+        <svg class="ic ic-sm"><use href="#i-search"/></svg>
+        <input placeholder="Faculty name…" aria-label="Search faculty" />
+      </div>
+      <a class="chip is-on" href="#">All <span class="count">86</span></a>
+      <a class="chip" href="#">Over cap <span class="count">7</span></a>
+      <a class="chip" href="#">Unallocated <span class="count">4</span></a>
+      <span class="spacer"></span>
+      <select class="select" aria-label="Sort by">
+        <option>Sort: hours, most first</option>
+        <option>Sort: hours, fewest first</option>
+        <option>Sort: name</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Teaching load per person">
+        <table class="table">
+          <caption class="sr-only">Teaching load per person for Michaelmas 2026</caption>
+          <thead>
+            <tr>
+              <th scope="col">Who</th>
+              <th scope="col">Courses allocated</th>
+              <th scope="col" class="right">Courses</th>
+              <th scope="col" class="right">Hours a week</th>
+              <th scope="col">Against a 18 h cap</th>
+              <!-- position:relative so the screen-reader label is positioned
+                   against this cell. Left to the document it takes its static
+                   position — 900px along a table that scrolls sideways — and
+                   drags the whole page's scroll width out with it. -->
+              <th scope="col" style="position:relative"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- The bar is scaled against the 18-hour cap and the pill names
+                 the verdict, so the two extremes — 24 hours and nothing at all
+                 — are legible from the length AND from a word. Neither one
+                 depends on the reader telling red from green. -->
+            <tr>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--orange-700)">JM</span>
+                  <span class="truncate">
+                    <span class="who-name">Dr Joseph Mensah</span>
+                    <span class="who-sub" style="display:block">School of Computing</span>
+                  </span>
+                </div>
+              </td>
+              <td class="small muted">CS2004, CS2011, CS3040, CS3102, AI5001, AI5008</td>
+              <td class="right num">6</td>
+              <td class="right num strong">24</td>
+              <td style="min-width:170px">
+                <div class="meter sm"><span style="width:100%;background:var(--danger)"></span></div>
+                <span class="pill late" style="margin-top:6px"><span class="pill-dot"></span> 6 h over cap</span>
+              </td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Dr Joseph Mensah"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--orange-700)">AW</span>
+                  <span class="truncate">
+                    <span class="who-name">Prof Alice Whitfield</span>
+                    <span class="who-sub" style="display:block">School of Computing</span>
+                  </span>
+                </div>
+              </td>
+              <td class="small muted">CS1002, CS1008, SE2020, SE3011, SE4002</td>
+              <td class="right num">5</td>
+              <td class="right num strong">21</td>
+              <td>
+                <div class="meter sm"><span style="width:100%;background:var(--danger)"></span></div>
+                <span class="pill late" style="margin-top:6px"><span class="pill-dot"></span> 3 h over cap</span>
+              </td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Prof Alice Whitfield"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--teal-800)">SO</span>
+                  <span class="truncate">
+                    <span class="who-name">Dr Sarah Okonjo</span>
+                    <span class="who-sub" style="display:block">School of Computing</span>
+                  </span>
+                </div>
+              </td>
+              <td class="small muted">DS2001, DS2014, DS3006, AI5002</td>
+              <td class="right num">4</td>
+              <td class="right num strong">16</td>
+              <td>
+                <div class="meter sm good"><span style="width:89%"></span></div>
+                <span class="pill good" style="margin-top:6px"><span class="pill-dot"></span> On target</span>
+              </td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Dr Sarah Okonjo"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--teal-600)">PN</span>
+                  <span class="truncate">
+                    <span class="who-name">Dr Paula Nakamura</span>
+                    <span class="who-sub" style="display:block">Mathematics</span>
+                  </span>
+                </div>
+              </td>
+              <td class="small muted">MA1004, MA2007, DS2014</td>
+              <td class="right num">3</td>
+              <td class="right num strong">14</td>
+              <td>
+                <div class="meter sm good"><span style="width:78%"></span></div>
+                <span class="pill good" style="margin-top:6px"><span class="pill-dot"></span> On target</span>
+              </td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Dr Paula Nakamura"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--teal-500)">HF</span>
+                  <span class="truncate">
+                    <span class="who-name">Dr Helena Ferreira</span>
+                    <span class="who-sub" style="display:block">Cyber Security</span>
+                  </span>
+                </div>
+              </td>
+              <td class="small muted">CYB5001, CYB5004, CS3102</td>
+              <td class="right num">3</td>
+              <td class="right num strong">12</td>
+              <td>
+                <div class="meter sm good"><span style="width:67%"></span></div>
+                <span class="pill good" style="margin-top:6px"><span class="pill-dot"></span> On target</span>
+              </td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Dr Helena Ferreira"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--teal-500)">LI</span>
+                  <span class="truncate">
+                    <span class="who-name">Dr Larisa Ivanova</span>
+                    <span class="who-sub" style="display:block">School of Computing</span>
+                  </span>
+                </div>
+              </td>
+              <td class="small muted">CS1002 <span class="pill" style="font-size:11px">Lab</span>, SE2020 <span class="pill" style="font-size:11px">Assistant</span></td>
+              <td class="right num">2</td>
+              <td class="right num strong">8</td>
+              <td>
+                <div class="meter sm"><span style="width:44%;background:var(--teal-400)"></span></div>
+                <span class="pill" style="margin-top:6px"><span class="pill-dot"></span> Light — 4 h spare</span>
+              </td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Dr Larisa Ivanova"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--teal-400)">TA</span>
+                  <span class="truncate">
+                    <span class="who-name">Mr Tunde Adeyemi</span>
+                    <span class="who-sub" style="display:block">Mathematics</span>
+                  </span>
+                </div>
+              </td>
+              <td class="small muted">MA1004 <span class="pill" style="font-size:11px">Lab</span></td>
+              <td class="right num">1</td>
+              <td class="right num strong">4</td>
+              <td>
+                <div class="meter sm"><span style="width:22%;background:var(--teal-400)"></span></div>
+                <span class="pill" style="margin-top:6px"><span class="pill-dot"></span> Light — 8 h spare</span>
+              </td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Mr Tunde Adeyemi"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <!-- Unallocated faculty are listed rather than filtered out. Zero
+                 hours is a state somebody has to answer for; leaving the row
+                 off the table is how four people went six weeks unnoticed. -->
+            <tr>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--faint)">KB</span>
+                  <span class="truncate">
+                    <span class="who-name">Dr Kwame Bassey</span>
+                    <span class="who-sub" style="display:block">School of Computing · joined 5 weeks ago</span>
+                  </span>
+                </div>
+              </td>
+              <td class="muted">Nothing allocated</td>
+              <td class="right num">0</td>
+              <td class="right num strong">0</td>
+              <td>
+                <div class="meter sm"><span style="width:0%"></span></div>
+                <span class="pill late" style="margin-top:6px"><svg class="ic ic-sm"><use href="#i-alert"/></svg> No allocation</span>
+              </td>
+              <td class="right"><a class="btn btn-sm" href="#">Allocate</a></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--faint)">RO</span>
+                  <span class="truncate">
+                    <span class="who-name">Ms Rachel Oyelaran</span>
+                    <span class="who-sub" style="display:block">Data Science · returned from leave</span>
+                  </span>
+                </div>
+              </td>
+              <td class="muted">Nothing allocated</td>
+              <td class="right num">0</td>
+              <td class="right num strong">0</td>
+              <td>
+                <div class="meter sm"><span style="width:0%"></span></div>
+                <span class="pill late" style="margin-top:6px"><svg class="ic ic-sm"><use href="#i-alert"/></svg> No allocation</span>
+              </td>
+              <td class="right"><a class="btn btn-sm" href="#">Allocate</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-foot">
+        <span>Showing <span class="strong">9</span> of <span class="strong">86</span> · 846 hours allocated</span>
+        <div class="pager">
+          <a class="btn btn-ghost btn-sm is-disabled" href="#" aria-disabled="true">Previous</a>
+          <a class="btn btn-ghost btn-sm" href="#">Next</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- The allocations themselves, under the roll-up. The order matters: the
+         question is "who is carrying twenty-four hours", and the answer is a
+         person, not a row in a join table. -->
+    <section class="section">
+      <div class="section-head">
+        <h2>Recent allocations</h2>
+        <a class="link" href="#">All 214</a>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Recent allocations">
+          <table class="table">
+            <caption class="sr-only">Allocations made in Michaelmas 2026, newest first</caption>
+            <thead>
+              <tr>
+                <th scope="col">Course</th>
+                <th scope="col">Who teaches it</th>
+                <th scope="col">Role</th>
+                <th scope="col">Batch</th>
+                <th scope="col" class="right">Hours</th>
+                <th scope="col">Added</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="strong">CS3102</span> — Computer Networks</td>
+                <td>Dr Helena Ferreira</td>
+                <td><span class="pill brand">Lead</span></td>
+                <td class="muted">Batch A 2025</td>
+                <td class="right num">4</td>
+                <td class="muted">2 hours ago</td>
+              </tr>
+              <tr>
+                <td><span class="strong">AI5008</span> — Deep Learning Systems</td>
+                <td>Dr Joseph Mensah</td>
+                <td><span class="pill brand">Lead</span></td>
+                <td class="muted">All</td>
+                <td class="right num">4</td>
+                <td class="muted">Yesterday</td>
+              </tr>
+              <tr>
+                <td><span class="strong">CS1002</span> — Programming Foundations</td>
+                <td>Dr Larisa Ivanova</td>
+                <td><span class="pill">Lab</span></td>
+                <td class="muted">Batch B 2026</td>
+                <td class="right num">4</td>
+                <td class="muted">2 days ago</td>
+              </tr>
+              <tr>
+                <td><span class="strong">SE2020</span> — Software Design</td>
+                <td>Dr Larisa Ivanova</td>
+                <td><span class="pill">Assistant</span></td>
+                <td class="muted">Batch A 2026</td>
+                <td class="right num">4</td>
+                <td class="muted">4 days ago</td>
+              </tr>
+              <tr>
+                <td><span class="strong">CYB5001</span> — Threat Modelling</td>
+                <td>Dr Helena Ferreira</td>
+                <td><span class="pill brand">Lead</span></td>
+                <td class="muted">Batch A 2026</td>
+                <td class="right num">4</td>
+                <td class="muted">1 week ago</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+  <a class="tab" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="finance.html"><svg class="ic"><use href="#i-wallet"/></svg> Finance</a>
+  <a class="tab" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

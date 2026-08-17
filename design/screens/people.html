@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — People</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search people, courses…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">RA</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Administrator</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">3</span></a>
+      <a class="nav-item" href="exams.html"><svg class="ic"><use href="#i-calendar"/></svg> Examinations</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+      <a class="nav-item" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certificates</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="programmes.html"><svg class="ic"><use href="#i-layers"/></svg> Programmes</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="allocations.html"><svg class="ic"><use href="#i-users"/></svg> Teaching load</a>
+      <a class="nav-item is-active" href="people.html"><svg class="ic"><use href="#i-user"/></svg> People</a>
+      <a class="nav-item" href="finance.html"><svg class="ic"><use href="#i-wallet"/></svg> Finance</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="placement.html"><svg class="ic"><use href="#i-briefcase"/></svg> Placement</a>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+      <a class="nav-item" href="audit.html"><svg class="ic"><use href="#i-shield"/></svg> Audit log</a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">People</h1>
+        <p class="page-sub">Everyone at Demo University. Nobody from anywhere else.</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-upload"/></svg> Import CSV</a>
+        <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-plus"/></svg> Invite people</a>
+      </div>
+    </div>
+
+    <!-- Two different questions, so two different controls. The strip answers
+         "who is here" — a headcount by role, which never changes as you filter.
+         The segmented tabs below answer "who needs doing something about",
+         which is a lifecycle state. Putting roles in both would have made the
+         same five numbers appear twice and disagree the moment you searched. -->
+    <div class="stats stats-5">
+      <div class="stat">
+        <div class="stat-label">Students</div>
+        <div class="stat-value">1,284</div>
+        <div class="stat-note"><span class="delta up">▲ 38</span> this week</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Faculty</div>
+        <div class="stat-value">86</div>
+        <div class="stat-note">4 with no allocation</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Staff</div>
+        <div class="stat-value">41</div>
+        <div class="stat-note">Registry, exams, careers</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Invited</div>
+        <div class="stat-value">37</div>
+        <div class="stat-note">11 sent over a week ago</div>
+      </div>
+      <div class="stat is-alert">
+        <div class="stat-label">Suspended</div>
+        <div class="stat-value">6</div>
+        <div class="stat-note">2 pending appeal</div>
+      </div>
+    </div>
+
+    <!-- The count belongs in the tab label, not behind it: otherwise finding
+         out whether anything is suspended costs a click and a page load. -->
+    <div class="toolbar mt-3">
+      <div class="segmented" role="tablist" aria-label="Filter by account state">
+        <a href="#" class="is-on" role="tab" aria-selected="true">All <span class="count">1,766</span></a>
+        <a href="#" role="tab" aria-selected="false">Active <span class="count">1,723</span></a>
+        <a href="#" role="tab" aria-selected="false">Invited <span class="count">37</span></a>
+        <a href="#" role="tab" aria-selected="false">Suspended <span class="count">6</span></a>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search">
+        <svg class="ic ic-sm"><use href="#i-search"/></svg>
+        <input placeholder="Name or email…" aria-label="Search people" />
+      </div>
+      <select class="select" aria-label="Filter by role">
+        <option>All roles</option>
+        <option>Student</option>
+        <option>Faculty</option>
+        <option>Administrator</option>
+        <option>Examinations</option>
+        <option>Placement</option>
+        <option>Employer</option>
+        <option>Parent or guardian</option>
+      </select>
+      <select class="select" aria-label="Filter by programme">
+        <option>All programmes</option>
+        <option>BSc Computer Science</option>
+        <option>BSc Data Science</option>
+        <option>MSc Artificial Intelligence</option>
+        <option>BEng Software Engineering</option>
+        <option>MSc Cyber Security</option>
+      </select>
+      <span class="spacer"></span>
+      <a class="btn btn-ghost btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Export</a>
+    </div>
+
+    <!-- Comparing a column down forty rows is what an operator is doing here,
+         so this is a table and not the .rowlist a learner screen would use. -->
+    <div class="table-wrap">
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Roster">
+        <table class="table">
+          <caption class="sr-only">Everyone at Demo University, newest sign-ins first</caption>
+          <thead>
+            <tr>
+              <th class="col-check" scope="col">
+                <input type="checkbox" aria-label="Select all people on this page" />
+              </th>
+              <th scope="col">Person</th>
+              <th scope="col">Role</th>
+              <th scope="col">Programme or department</th>
+              <th scope="col">Status</th>
+              <th scope="col">Last active</th>
+              <!-- position:relative so the screen-reader label is positioned
+                   against this cell. Left to the document it takes its static
+                   position — 900px along a table that scrolls sideways — and
+                   drags the whole page's scroll width out with it. -->
+              <th scope="col" style="position:relative"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="checkbox" checked aria-label="Select Amara Reid" /></td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm">AR</span>
+                  <span class="truncate">
+                    <span class="who-name">Amara Reid</span>
+                    <span class="who-sub" style="display:block">amara.reid@demo.ac.uk</span>
+                  </span>
+                </div>
+              </td>
+              <td><span class="pill">Student</span></td>
+              <td>BSc Computer Science <span class="muted small">· Batch A 2026</span></td>
+              <td><span class="status on"><span class="dot"></span> Active</span></td>
+              <td class="muted">12 minutes ago</td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Amara Reid"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" checked aria-label="Select Daniel Osei" /></td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--teal-500)">DO</span>
+                  <span class="truncate">
+                    <span class="who-name">Daniel Osei</span>
+                    <span class="who-sub" style="display:block">daniel.osei@demo.ac.uk</span>
+                  </span>
+                </div>
+              </td>
+              <td><span class="pill">Student</span></td>
+              <td>BSc Data Science <span class="muted small">· Batch B 2026</span></td>
+              <td><span class="status on"><span class="dot"></span> Active</span></td>
+              <td class="muted">1 hour ago</td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Daniel Osei"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" checked aria-label="Select Priya Raghunathan" /></td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--teal-700)">PR</span>
+                  <span class="truncate">
+                    <span class="who-name">Priya Raghunathan</span>
+                    <span class="who-sub" style="display:block">priya.raghunathan@demo.ac.uk</span>
+                  </span>
+                </div>
+              </td>
+              <td><span class="pill">Student</span></td>
+              <td>MSc Artificial Intelligence <span class="muted small">· Batch A 2026</span></td>
+              <td><span class="status on"><span class="dot"></span> Active</span></td>
+              <td class="muted">3 hours ago</td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Priya Raghunathan"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" aria-label="Select Dr Joseph Mensah" /></td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--orange-700)">JM</span>
+                  <span class="truncate">
+                    <span class="who-name">Dr Joseph Mensah</span>
+                    <span class="who-sub" style="display:block">j.mensah@demo.ac.uk</span>
+                  </span>
+                </div>
+              </td>
+              <td><span class="pill brand">Faculty</span></td>
+              <td>School of Computing <span class="muted small">· 6 courses</span></td>
+              <td><span class="status on"><span class="dot"></span> Active</span></td>
+              <td class="muted">25 minutes ago</td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Dr Joseph Mensah"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" aria-label="Select Prof Alice Whitfield" /></td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--orange-700)">AW</span>
+                  <span class="truncate">
+                    <span class="who-name">Prof Alice Whitfield</span>
+                    <span class="who-sub" style="display:block">a.whitfield@demo.ac.uk</span>
+                  </span>
+                </div>
+              </td>
+              <td><span class="pill brand">Faculty</span></td>
+              <td>School of Computing <span class="muted small">· 5 courses</span></td>
+              <td><span class="status on"><span class="dot"></span> Active</span></td>
+              <td class="muted">Yesterday</td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Prof Alice Whitfield"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" aria-label="Select Dr Sarah Okonjo" /></td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--teal-800)">SO</span>
+                  <span class="truncate">
+                    <span class="who-name">Dr Sarah Okonjo</span>
+                    <span class="who-sub" style="display:block">s.okonjo@demo.ac.uk</span>
+                  </span>
+                </div>
+              </td>
+              <td><span class="pill solid">Administrator</span></td>
+              <td>Registry</td>
+              <td><span class="status on"><span class="dot"></span> Active</span></td>
+              <td class="muted">8 minutes ago</td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Dr Sarah Okonjo"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" aria-label="Select Tomás Ferreira" /></td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--teal-600)">TF</span>
+                  <span class="truncate">
+                    <span class="who-name">Tomás Ferreira</span>
+                    <span class="who-sub" style="display:block">t.ferreira@demo.ac.uk</span>
+                  </span>
+                </div>
+              </td>
+              <td><span class="pill">Examinations</span></td>
+              <td>Registry <span class="muted small">· Exams office</span></td>
+              <td><span class="status on"><span class="dot"></span> Active</span></td>
+              <td class="muted">2 days ago</td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Tomás Ferreira"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" aria-label="Select Ngozi Bassey" /></td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--teal-500)">NB</span>
+                  <span class="truncate">
+                    <span class="who-name">Ngozi Bassey</span>
+                    <span class="who-sub" style="display:block">n.bassey@demo.ac.uk</span>
+                  </span>
+                </div>
+              </td>
+              <td><span class="pill">Placement</span></td>
+              <td>Careers service</td>
+              <td><span class="status on"><span class="dot"></span> Active</span></td>
+              <td class="muted">4 hours ago</td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Ngozi Bassey"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <!-- An employer is an outsider holding an account. The external
+                   email domain is the tell, so the email is never truncated
+                   away on this row's behalf. -->
+              <td><input type="checkbox" aria-label="Select Martin Kovač" /></td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--faint)">MK</span>
+                  <span class="truncate">
+                    <span class="who-name">Martin Kovač</span>
+                    <span class="who-sub" style="display:block">martin.kovac@northgate.co.uk</span>
+                  </span>
+                </div>
+              </td>
+              <td><span class="pill info">Employer</span></td>
+              <td>Northgate Systems <span class="muted small">· external</span></td>
+              <td><span class="status on"><span class="dot"></span> Active</span></td>
+              <td class="muted">6 days ago</td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Martin Kovač"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" aria-label="Select Helen Reid" /></td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--faint)">HR</span>
+                  <span class="truncate">
+                    <span class="who-name">Helen Reid</span>
+                    <span class="who-sub" style="display:block">helen.reid@outlook.com</span>
+                  </span>
+                </div>
+              </td>
+              <td><span class="pill">Parent or guardian</span></td>
+              <td>Parent of Amara Reid <span class="muted small">· link unconfirmed</span></td>
+              <td><span class="status idle"><span class="dot"></span> Invited</span></td>
+              <td class="muted">Never · invited 3 days ago</td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Helen Reid"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" aria-label="Select Yusuf Adeyemi" /></td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--faint)">YA</span>
+                  <span class="truncate">
+                    <span class="who-name">Yusuf Adeyemi</span>
+                    <span class="who-sub" style="display:block">y.adeyemi@demo.ac.uk</span>
+                  </span>
+                </div>
+              </td>
+              <td><span class="pill">Student</span></td>
+              <td>MSc Cyber Security <span class="muted small">· Batch A 2026</span></td>
+              <td><span class="status idle"><span class="dot"></span> Invited</span></td>
+              <td class="muted">Never · invited 9 days ago</td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Yusuf Adeyemi"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" aria-label="Select Luca Moretti" /></td>
+              <td>
+                <div class="who">
+                  <span class="avatar avatar-sm" style="background:var(--faint)">LM</span>
+                  <span class="truncate">
+                    <span class="who-name">Luca Moretti</span>
+                    <span class="who-sub" style="display:block">luca.moretti@demo.ac.uk</span>
+                  </span>
+                </div>
+              </td>
+              <td><span class="pill">Student</span></td>
+              <td>BEng Software Engineering <span class="muted small">· Batch C 2025</span></td>
+              <td><span class="status off"><span class="dot"></span> Suspended</span></td>
+              <td class="muted">2 weeks ago</td>
+              <td class="right"><button class="icon-btn" aria-label="Actions for Luca Moretti"><svg class="ic ic-sm"><use href="#i-dots"/></svg></button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-foot">
+        <span>Showing <span class="strong">12</span> of <span class="strong">1,766</span></span>
+        <div class="pager">
+          <a class="btn btn-ghost btn-sm is-disabled" href="#" aria-disabled="true">Previous</a>
+          <a class="btn btn-ghost btn-sm" href="#">Next</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- The bar arrives with the selection and stays in view while the list
+         scrolls, so the action never ends up above the fold you are reading.
+         Removing people sits apart and in red: it is the one thing here that
+         cannot be undone with a second click. -->
+    <div class="bulkbar" role="status" style="max-width:100%;flex-wrap:wrap">
+      <span><span class="num strong">3</span> selected</span>
+      <a class="btn btn-light btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-mail"/></svg> Message</a>
+      <a class="btn btn-light btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-layers"/></svg> Move batch</a>
+      <a class="btn btn-light btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Export</a>
+      <a class="btn btn-danger btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-lock"/></svg> Suspend</a>
+      <button class="icon-btn" style="color:#fff" aria-label="Clear selection"><svg class="ic ic-sm"><use href="#i-x"/></svg></button>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab is-active" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+  <a class="tab" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="finance.html"><svg class="ic"><use href="#i-wallet"/></svg> Finance</a>
+  <a class="tab" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

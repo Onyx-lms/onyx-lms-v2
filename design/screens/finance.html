@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Finance</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search people, courses…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">RA</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Administrator</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">3</span></a>
+      <a class="nav-item" href="exams.html"><svg class="ic"><use href="#i-calendar"/></svg> Examinations</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+      <a class="nav-item" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certificates</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="programmes.html"><svg class="ic"><use href="#i-layers"/></svg> Programmes</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="allocations.html"><svg class="ic"><use href="#i-users"/></svg> Teaching load</a>
+      <a class="nav-item" href="people.html"><svg class="ic"><use href="#i-user"/></svg> People</a>
+      <a class="nav-item is-active" href="finance.html"><svg class="ic"><use href="#i-wallet"/></svg> Finance</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="placement.html"><svg class="ic"><use href="#i-briefcase"/></svg> Placement</a>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+      <a class="nav-item" href="audit.html"><svg class="ic"><use href="#i-shield"/></svg> Audit log</a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Finance</h1>
+        <p class="page-sub">£248,600.00 outstanding across 318 invoices · Michaelmas 2026</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Reconcile</a>
+        <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-plus"/></svg> Raise an invoice</a>
+      </div>
+    </div>
+
+    <!-- Four numbers, and each one is a different question: how much came in,
+         how much is still coming, how much has stopped coming, and whether
+         this month is on pace. Collected without the percentage is a number
+         with nothing to be measured against. -->
+    <div class="stats">
+      <div class="stat is-good">
+        <div class="stat-label">Collected</div>
+        <div class="stat-value">£1.21m</div>
+        <div class="stat-note">83% of £1,462,000 billed</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Outstanding</div>
+        <div class="stat-value">£248,600</div>
+        <div class="stat-note">318 invoices unsettled</div>
+      </div>
+      <div class="stat is-alert">
+        <div class="stat-label">Overdue</div>
+        <div class="stat-value">£86,600</div>
+        <div class="stat-note">120 invoices past their due date</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">This month</div>
+        <div class="stat-value">£186,900</div>
+        <div class="stat-note"><span class="delta down">▼ 8%</span> vs the same month last year</div>
+      </div>
+    </div>
+
+    <!-- min-width:0 on both columns. A grid item's automatic minimum size is
+         its content's minimum, and a table's minimum is the whole table — so
+         without this the single-column phone layout inherits the width of the
+         widest transaction row and the page scrolls sideways. -->
+    <div class="cols mt-3">
+      <div style="min-width:0">
+        <!-- Ageing is the collections view: one bar for the shape, then the
+             rows for the amounts. What matters is not that £248,600 is owed
+             but that £16,800 of it has been owed for two months, and a single
+             total hides exactly that. -->
+        <section>
+          <div class="section-head">
+            <h2>Ageing breakdown</h2>
+            <span class="small muted num">£248,600.00 outstanding</span>
+          </div>
+          <div class="card card-pad">
+            <div class="stackbar">
+              <span style="width:65%;background:var(--teal-400)"></span>
+              <span style="width:16%;background:var(--orange)"></span>
+              <span style="width:13%;background:var(--orange-600)"></span>
+              <span style="width:6%;background:var(--danger)"></span>
+            </div>
+            <div class="buckets mt-2">
+              <div class="bucket">
+                <span class="dot" style="background:var(--teal-400)"></span>
+                <span class="lbl">Not yet due</span>
+                <span class="n num">198 invoices</span>
+                <span class="amt num">£162,000</span>
+              </div>
+              <div class="bucket">
+                <span class="dot" style="background:var(--orange)"></span>
+                <span class="lbl">0–30 days overdue</span>
+                <span class="n num">57 invoices</span>
+                <span class="amt num">£38,400</span>
+              </div>
+              <div class="bucket">
+                <span class="dot" style="background:var(--orange-600)"></span>
+                <span class="lbl">30–60 days overdue</span>
+                <span class="n num">41 invoices</span>
+                <span class="amt num">£31,400</span>
+              </div>
+              <div class="bucket">
+                <span class="dot" style="background:var(--danger)"></span>
+                <span class="lbl">60+ days overdue</span>
+                <span class="n num">22 invoices</span>
+                <span class="amt num">£16,800</span>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="inline">
+              <svg class="ic ic-sm" style="color:var(--danger)"><use href="#i-alert"/></svg>
+              <span class="small">£48,200 has been overdue for more than 30 days. 11 of those
+                63 students are already on a payment plan.</span>
+              <a class="btn btn-sm btn-ghost" style="margin-left:auto" href="#">Chase the rest</a>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>Recent transactions</h2>
+            <a class="link" href="#">All payments</a>
+          </div>
+
+          <div class="toolbar">
+            <div class="search">
+              <svg class="ic ic-sm"><use href="#i-search"/></svg>
+              <input placeholder="Reference, invoice or name…" aria-label="Search transactions" />
+            </div>
+            <select class="select" aria-label="Filter by gateway">
+              <option>All gateways</option>
+              <option>Card — Stripe</option>
+              <option>Direct debit — GoCardless</option>
+              <option>Bank transfer — recorded by hand</option>
+            </select>
+            <span class="spacer"></span>
+            <a class="btn btn-ghost btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Export</a>
+          </div>
+
+          <div class="table-wrap">
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Recent transactions">
+              <table class="table">
+                <caption class="sr-only">Payments received, newest first</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Reference</th>
+                    <th scope="col">Learner</th>
+                    <th scope="col">Invoice</th>
+                    <th scope="col">Method</th>
+                    <th scope="col" class="right">Amount</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">When</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="small muted">pay_9F2K4LQ7</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm">AR</span>
+                        <span class="truncate">
+                          <span class="who-name">Amara Reid</span>
+                          <span class="who-sub" style="display:block">BSc Computer Science</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="small">INV-2026-0117</td>
+                    <td class="small muted">Card · Stripe</td>
+                    <td class="right num strong">£1,150.00</td>
+                    <td><span class="status on"><span class="dot"></span> Captured</span></td>
+                    <td class="muted">18 minutes ago</td>
+                  </tr>
+                  <tr>
+                    <td class="small muted">pay_7T1M8XB2</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">DO</span>
+                        <span class="truncate">
+                          <span class="who-name">Daniel Osei</span>
+                          <span class="who-sub" style="display:block">BSc Data Science</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="small">INV-2026-0284</td>
+                    <td class="small muted">Direct debit · GoCardless</td>
+                    <td class="right num strong">£1,150.00</td>
+                    <td><span class="status on"><span class="dot"></span> Captured</span></td>
+                    <td class="muted">2 hours ago</td>
+                  </tr>
+                  <tr>
+                    <!-- Pending is not failure and not money: it is the state
+                         a bank leaves a transfer in for two days, so it gets
+                         its own word rather than being counted as collected. -->
+                    <td class="small muted">pay_4B6V0ZN9</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-700)">PR</span>
+                        <span class="truncate">
+                          <span class="who-name">Priya Raghunathan</span>
+                          <span class="who-sub" style="display:block">MSc Artificial Intelligence</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="small">INV-2026-0291</td>
+                    <td class="small muted">Bank transfer · recorded by hand</td>
+                    <td class="right num strong">£4,866.67</td>
+                    <td><span class="status idle"><span class="dot"></span> Pending</span></td>
+                    <td class="muted">5 hours ago</td>
+                  </tr>
+                  <tr>
+                    <td class="small muted">pay_2C9J5RH4</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--faint)">LM</span>
+                        <span class="truncate">
+                          <span class="who-name">Luca Moretti</span>
+                          <span class="who-sub" style="display:block">BEng Software Engineering</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="small">INV-2026-0163</td>
+                    <td class="small muted">Card · Stripe</td>
+                    <td class="right num strong">£1,150.00</td>
+                    <td><span class="status off"><span class="dot"></span> Failed</span></td>
+                    <td class="muted">Yesterday</td>
+                  </tr>
+                  <tr>
+                    <td class="small muted">pay_8W3P2GD6</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-600)">YA</span>
+                        <span class="truncate">
+                          <span class="who-name">Yusuf Adeyemi</span>
+                          <span class="who-sub" style="display:block">MSc Cyber Security</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="small">INV-2026-0302</td>
+                    <td class="small muted">Card · Stripe</td>
+                    <td class="right num strong">£120.00</td>
+                    <td><span class="status on"><span class="dot"></span> Captured</span></td>
+                    <td class="muted">Yesterday</td>
+                  </tr>
+                  <tr>
+                    <td class="small muted">pay_5N7Q1KS3</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--orange-700)">EN</span>
+                        <span class="truncate">
+                          <span class="who-name">Elena Novak</span>
+                          <span class="who-sub" style="display:block">BSc Computer Science</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="small">INV-2026-0208</td>
+                    <td class="small muted">Card · Stripe</td>
+                    <td class="right num strong">−£240.00</td>
+                    <td><span class="pill info"><span class="pill-dot"></span> Refunded</span></td>
+                    <td class="muted">2 days ago</td>
+                  </tr>
+                  <tr>
+                    <td class="small muted">pay_1H4D6YF8</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">SK</span>
+                        <span class="truncate">
+                          <span class="who-name">Samuel Kaur</span>
+                          <span class="who-sub" style="display:block">BEng Software Engineering</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="small">INV-2026-0174</td>
+                    <td class="small muted">Direct debit · GoCardless</td>
+                    <td class="right num strong">£1,150.00</td>
+                    <td><span class="status on"><span class="dot"></span> Captured</span></td>
+                    <td class="muted">3 days ago</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="table-foot">
+              <span>Showing <span class="strong">7</span> of <span class="strong">1,904</span> this term</span>
+              <div class="pager">
+                <a class="btn btn-ghost btn-sm is-disabled" href="#" aria-disabled="true">Previous</a>
+                <a class="btn btn-ghost btn-sm" href="#">Next</a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ rail ============================ -->
+      <aside style="min-width:0">
+        <section>
+          <div class="section-head"><h2>Collection rate</h2></div>
+          <div class="card card-pad">
+            <div class="inline" style="gap:14px">
+              <div class="ring lg" style="--p:83%"><span>83%</span></div>
+              <div>
+                <div class="small strong">£1,213,400 of £1,462,000</div>
+                <div class="small muted">Same week last year: 86%</div>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="kv">
+              <div class="kv-row"><span class="k">Billed this term</span><span class="v num">£1,462,000</span></div>
+              <div class="kv-row"><span class="k">Written off</span><span class="v num">£4,200</span></div>
+              <div class="kv-row"><span class="k">On a payment plan</span><span class="v num">£61,300</span></div>
+              <div class="kv-row"><span class="k">Refunded this term</span><span class="v num">£8,940</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Chasing is per person, not per invoice: one student with three
+             unpaid instalments is one phone call, not three. -->
+        <section class="section">
+          <div class="section-head"><h2>Largest overdue</h2><a class="link" href="#">All 120</a></div>
+          <div class="rowlist">
+            <div class="row" style="padding:11px 14px">
+              <span class="row-icon late"><svg class="ic"><use href="#i-wallet"/></svg></span>
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Marcus Delaney</div>
+                <div class="row-meta">MSc AI · 3 invoices · 74 days</div>
+              </div>
+              <div class="row-trailing"><span class="strong num small">£7,300</span></div>
+            </div>
+            <div class="row" style="padding:11px 14px">
+              <span class="row-icon late"><svg class="ic"><use href="#i-wallet"/></svg></span>
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Aisha Rahman</div>
+                <div class="row-meta">MSc Cyber Security · 2 invoices · 61 days</div>
+              </div>
+              <div class="row-trailing"><span class="strong num small">£4,870</span></div>
+            </div>
+            <div class="row" style="padding:11px 14px">
+              <span class="row-icon soon"><svg class="ic"><use href="#i-wallet"/></svg></span>
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Luca Moretti</div>
+                <div class="row-meta">BEng SE · 2 invoices · 38 days</div>
+              </div>
+              <div class="row-trailing"><span class="strong num small">£2,300</span></div>
+            </div>
+            <div class="row" style="padding:11px 14px">
+              <span class="row-icon soon"><svg class="ic"><use href="#i-wallet"/></svg></span>
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Grace Adeyinka</div>
+                <div class="row-meta">BSc Data Science · 1 invoice · 33 days</div>
+              </div>
+              <div class="row-trailing"><span class="strong num small">£1,150</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Where fees settle</h2><a class="link" href="#">Configure</a></div>
+          <div class="card card-pad">
+            <div class="stack-sm">
+              <div class="inline">
+                <svg class="ic"><use href="#i-card"/></svg>
+                <span class="small strong">Stripe</span>
+                <span class="status on" style="margin-left:auto"><span class="dot"></span> Live</span>
+              </div>
+              <div class="inline">
+                <svg class="ic"><use href="#i-refresh"/></svg>
+                <span class="small strong">GoCardless</span>
+                <span class="status on" style="margin-left:auto"><span class="dot"></span> Live</span>
+              </div>
+              <div class="inline">
+                <svg class="ic"><use href="#i-building"/></svg>
+                <span class="small strong">Bank transfer</span>
+                <span class="status idle" style="margin-left:auto"><span class="dot"></span> Manual</span>
+              </div>
+            </div>
+            <p class="small muted mt-1">Demo University's own merchant account. Two institutions are
+              two merchants — nothing settles to the platform.</p>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+  <a class="tab" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab is-active" href="finance.html"><svg class="ic"><use href="#i-wallet"/></svg> Finance</a>
+  <a class="tab" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

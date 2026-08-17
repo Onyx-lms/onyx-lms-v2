@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Audit log</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search people, courses…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">RA</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Administrator</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">3</span></a>
+      <a class="nav-item" href="exams.html"><svg class="ic"><use href="#i-calendar"/></svg> Examinations</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+      <a class="nav-item" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certificates</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="programmes.html"><svg class="ic"><use href="#i-layers"/></svg> Programmes</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="allocations.html"><svg class="ic"><use href="#i-users"/></svg> Teaching load</a>
+      <a class="nav-item" href="people.html"><svg class="ic"><use href="#i-user"/></svg> People</a>
+      <a class="nav-item" href="finance.html"><svg class="ic"><use href="#i-wallet"/></svg> Finance</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="placement.html"><svg class="ic"><use href="#i-briefcase"/></svg> Placement</a>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+      <a class="nav-item is-active" href="audit.html"><svg class="ic"><use href="#i-shield"/></svg> Audit log</a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Audit log</h1>
+        <p class="page-sub">Sensitive actions across Demo University, newest first.</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Export CSV</a>
+      </div>
+    </div>
+
+    <div class="stats stats-3">
+      <div class="stat">
+        <div class="stat-label">Entries</div>
+        <div class="stat-value">200</div>
+        <div class="stat-note">the most recent 200</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">People</div>
+        <div class="stat-value">18</div>
+        <div class="stat-note">acted in this window</div>
+      </div>
+      <div class="stat is-alert">
+        <div class="stat-label">Security relevant</div>
+        <div class="stat-value">9</div>
+        <div class="stat-note">permissions, sign-ins, suspensions</div>
+      </div>
+    </div>
+
+    <!-- Chips rather than a dropdown: an audit log is opened when something has
+         gone wrong and the reader already knows roughly what they are looking
+         for, so the categories are visible and one click wide. The count is in
+         the label because "Security 9" is itself the answer some days. -->
+    <div class="toolbar mt-3">
+      <a class="chip is-on" href="#"><svg class="ic ic-sm"><use href="#i-list"/></svg> Everything <span class="count">200</span></a>
+      <a class="chip" href="#"><svg class="ic ic-sm"><use href="#i-shield"/></svg> Security <span class="count">9</span></a>
+      <a class="chip" href="#"><svg class="ic ic-sm"><use href="#i-plus"/></svg> Created <span class="count">64</span></a>
+      <a class="chip" href="#"><svg class="ic ic-sm"><use href="#i-edit"/></svg> Changed <span class="count">71</span></a>
+      <a class="chip" href="#"><svg class="ic ic-sm"><use href="#i-trash"/></svg> Removed <span class="count">12</span></a>
+      <a class="chip" href="#"><svg class="ic ic-sm"><use href="#i-upload"/></svg> Published <span class="count">44</span></a>
+    </div>
+
+    <div class="toolbar">
+      <div class="search">
+        <svg class="ic ic-sm"><use href="#i-search"/></svg>
+        <input placeholder="Action, subject or IP…" aria-label="Search the audit log" />
+      </div>
+      <select class="select" aria-label="Filter by actor">
+        <option>Anyone</option>
+        <option>Root Admin</option>
+        <option>Dr Sarah Okonjo</option>
+        <option>Dr Joseph Mensah</option>
+        <option>Tomás Ferreira</option>
+        <option>System</option>
+      </select>
+      <select class="select" aria-label="Filter by period">
+        <option>Last 7 days</option>
+        <option>Last 24 hours</option>
+        <option>This term</option>
+      </select>
+      <span class="spacer"></span>
+      <a class="btn btn-ghost btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-refresh"/></svg> Refresh</a>
+    </div>
+
+    <!-- Grouped by day. The date was on all two hundred rows and carried no
+         information after the first; what a reader needs is "this happened
+         today, twelve minutes ago", not the same stamp two hundred times. -->
+    <section>
+      <div class="section-head"><h2>Today</h2><span class="small muted">41 entries</span></div>
+      <div class="table-wrap">
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Audit entries for today">
+          <table class="table">
+            <caption class="sr-only">Audit entries for today, newest first</caption>
+            <thead>
+              <tr>
+                <th scope="col" style="width:34px"><span class="sr-only">Security relevant</span></th>
+                <th scope="col">When</th>
+                <th scope="col">Who</th>
+                <th scope="col">Action</th>
+                <th scope="col">Subject</th>
+                <th scope="col">What changed</th>
+                <th scope="col">IP</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- A security row is marked three ways: the shield in the first
+                   column, the word in the action pill, and the tone. Anyone who
+                   cannot tell the red from the grey still has two of the three,
+                   which is the whole point — about one man in twelve reads them
+                   as the same colour. -->
+              <tr>
+                <td></td>
+                <td class="muted">12 minutes ago</td>
+                <td>
+                  <div class="who">
+                    <span class="avatar avatar-sm" style="background:var(--orange-700)">JM</span>
+                    <span class="who-name">Dr Joseph Mensah</span>
+                  </div>
+                </td>
+                <td><span class="pill brand">result.published</span></td>
+                <td class="muted small">exam #418</td>
+                <td class="small">Data Structures mid-term · 186 marks released</td>
+                <td class="muted small">10.14.2.61</td>
+              </tr>
+              <tr>
+                <td><svg class="ic ic-sm" style="color:var(--danger)"><use href="#i-shield"/></svg></td>
+                <td class="muted">25 minutes ago</td>
+                <td>
+                  <div class="who">
+                    <span class="avatar avatar-sm">RA</span>
+                    <span class="who-name">Root Admin</span>
+                  </div>
+                </td>
+                <td><span class="pill late">member.role_changed</span></td>
+                <td class="muted small">member #1204</td>
+                <td class="small"><span class="strong">role</span>
+                  <span class="muted" style="text-decoration:line-through">student</span> →
+                  <span class="strong">faculty</span></td>
+                <td class="muted small">10.14.2.9</td>
+              </tr>
+              <tr>
+                <td><svg class="ic ic-sm" style="color:var(--danger)"><use href="#i-shield"/></svg></td>
+                <td class="muted">40 minutes ago</td>
+                <td>
+                  <div class="who">
+                    <span class="avatar avatar-sm" style="background:var(--faint)">SY</span>
+                    <span class="who-name">System</span>
+                  </div>
+                </td>
+                <td><span class="pill late">auth.failed</span></td>
+                <td class="muted small">user #882</td>
+                <td class="small">5th failed sign-in in 4 minutes · from an unrecognised device</td>
+                <td class="muted small">92.40.118.7</td>
+              </tr>
+              <tr>
+                <td></td>
+                <td class="muted">1 hour ago</td>
+                <td>
+                  <div class="who">
+                    <span class="avatar avatar-sm">RA</span>
+                    <span class="who-name">Root Admin</span>
+                  </div>
+                </td>
+                <td><span class="pill soon">fee_structure.changed</span></td>
+                <td class="muted small">fee_structure #12</td>
+                <td class="small"><span class="strong">instalments</span>
+                  <span class="muted" style="text-decoration:line-through">3</span> →
+                  <span class="strong">4</span> · MSc AI</td>
+                <td class="muted small">10.14.2.9</td>
+              </tr>
+              <tr>
+                <td></td>
+                <td class="muted">2 hours ago</td>
+                <td>
+                  <div class="who">
+                    <span class="avatar avatar-sm" style="background:var(--teal-800)">SO</span>
+                    <span class="who-name">Dr Sarah Okonjo</span>
+                  </div>
+                </td>
+                <td><span class="pill good">allocation.created</span></td>
+                <td class="muted small">allocation #2214</td>
+                <td class="small">CS3102 → Dr Helena Ferreira · 4 h a week</td>
+                <td class="muted small">10.14.2.18</td>
+              </tr>
+              <tr>
+                <td><svg class="ic ic-sm" style="color:var(--danger)"><use href="#i-shield"/></svg></td>
+                <td class="muted">3 hours ago</td>
+                <td>
+                  <div class="who">
+                    <span class="avatar avatar-sm">RA</span>
+                    <span class="who-name">Root Admin</span>
+                  </div>
+                </td>
+                <td><span class="pill late">gateway.configured</span></td>
+                <td class="muted small">gateway #3</td>
+                <td class="small"><span class="strong">stripe</span> · secret key replaced
+                  <span class="muted">(never logged)</span></td>
+                <td class="muted small">10.14.2.9</td>
+              </tr>
+              <tr>
+                <td><svg class="ic ic-sm" style="color:var(--danger)"><use href="#i-shield"/></svg></td>
+                <td class="muted">5 hours ago</td>
+                <td>
+                  <div class="who">
+                    <span class="avatar avatar-sm" style="background:var(--faint)">SY</span>
+                    <span class="who-name">System</span>
+                  </div>
+                </td>
+                <td><span class="pill late">member.suspended</span></td>
+                <td class="muted small">member #977</td>
+                <td class="small">Automatic · 10 failed sign-ins in 6 minutes</td>
+                <td class="muted small">92.40.118.7</td>
+              </tr>
+              <tr>
+                <td></td>
+                <td class="muted">6 hours ago</td>
+                <td>
+                  <div class="who">
+                    <span class="avatar avatar-sm" style="background:var(--teal-600)">TF</span>
+                    <span class="who-name">Tomás Ferreira</span>
+                  </div>
+                </td>
+                <td><span class="pill brand">exam.moderated</span></td>
+                <td class="muted small">exam_mark #8841</td>
+                <td class="small"><span class="strong">moderation_delta</span>
+                  <span class="muted" style="text-decoration:line-through">0</span> →
+                  <span class="strong">+4</span></td>
+                <td class="muted small">10.14.2.30</td>
+              </tr>
+              <tr>
+                <td></td>
+                <td class="muted">8 hours ago</td>
+                <td>
+                  <div class="who">
+                    <span class="avatar avatar-sm" style="background:var(--orange-700)">AW</span>
+                    <span class="who-name">Prof Alice Whitfield</span>
+                  </div>
+                </td>
+                <td><span class="pill brand">timetable.published</span></td>
+                <td class="muted small">semester #7</td>
+                <td class="small">38 draft sessions became visible to learners</td>
+                <td class="muted small">10.14.2.22</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Yesterday</h2><span class="small muted">57 entries</span></div>
+      <div class="table-wrap">
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Audit entries for yesterday">
+          <table class="table">
+            <caption class="sr-only">Audit entries for yesterday, newest first</caption>
+            <thead>
+              <tr>
+                <th scope="col" style="width:34px"><span class="sr-only">Security relevant</span></th>
+                <th scope="col">When</th>
+                <th scope="col">Who</th>
+                <th scope="col">Action</th>
+                <th scope="col">Subject</th>
+                <th scope="col">What changed</th>
+                <th scope="col">IP</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><svg class="ic ic-sm" style="color:var(--danger)"><use href="#i-shield"/></svg></td>
+                <td class="muted">Yesterday evening</td>
+                <td>
+                  <div class="who">
+                    <span class="avatar avatar-sm">RA</span>
+                    <span class="who-name">Root Admin</span>
+                  </div>
+                </td>
+                <td><span class="pill late">permission.granted</span></td>
+                <td class="muted small">member #1204</td>
+                <td class="small"><span class="strong">finance.read</span> granted · was not held before</td>
+                <td class="muted small">10.14.2.9</td>
+              </tr>
+              <tr>
+                <td><svg class="ic ic-sm" style="color:var(--danger)"><use href="#i-shield"/></svg></td>
+                <td class="muted">Yesterday evening</td>
+                <td>
+                  <div class="who">
+                    <span class="avatar avatar-sm" style="background:var(--teal-500)">NB</span>
+                    <span class="who-name">Ngozi Bassey</span>
+                  </div>
+                </td>
+                <td><span class="pill late">member.removed</span></td>
+                <td class="muted small">member #1130</td>
+                <td class="small">Employer account · Northgate Systems contact left the company</td>
+                <td class="muted small">10.14.2.44</td>
+              </tr>
+              <tr>
+                <td><svg class="ic ic-sm" style="color:var(--danger)"><use href="#i-shield"/></svg></td>
+                <td class="muted">Yesterday afternoon</td>
+                <td>
+                  <div class="who">
+                    <span class="avatar avatar-sm" style="background:var(--faint)">SY</span>
+                    <span class="who-name">System</span>
+                  </div>
+                </td>
+                <td><span class="pill late">session.revoked</span></td>
+                <td class="muted small">session #45120</td>
+                <td class="small">Signed in from two countries within 20 minutes</td>
+                <td class="muted small">41.203.74.12</td>
+              </tr>
+              <tr>
+                <td></td>
+                <td class="muted">Yesterday afternoon</td>
+                <td>
+                  <div class="who">
+                    <span class="avatar avatar-sm" style="background:var(--teal-800)">SO</span>
+                    <span class="who-name">Dr Sarah Okonjo</span>
+                  </div>
+                </td>
+                <td><span class="pill good">guardian.linked</span></td>
+                <td class="muted small">guardian_link #91</td>
+                <td class="small">Helen Reid → Amara Reid · unconfirmed until the guardian accepts</td>
+                <td class="muted small">10.14.2.18</td>
+              </tr>
+              <tr>
+                <td></td>
+                <td class="muted">Yesterday morning</td>
+                <td>
+                  <div class="who">
+                    <span class="avatar avatar-sm" style="background:var(--teal-600)">TF</span>
+                    <span class="who-name">Tomás Ferreira</span>
+                  </div>
+                </td>
+                <td><span class="pill brand">transcript.generated</span></td>
+                <td class="muted small">transcript #2201</td>
+                <td class="small">Serial DU-2026-2201 · checksum sealed</td>
+                <td class="muted small">10.14.2.30</td>
+              </tr>
+              <tr>
+                <td></td>
+                <td class="muted">Yesterday morning</td>
+                <td>
+                  <div class="who">
+                    <span class="avatar avatar-sm">RA</span>
+                    <span class="who-name">Root Admin</span>
+                  </div>
+                </td>
+                <td><span class="pill good">invoice.issued</span></td>
+                <td class="muted small">invoice #2026-0231</td>
+                <td class="small">£1,150.00 to Amara Reid · instalment 2 of 3</td>
+                <td class="muted small">10.14.2.9</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-foot">
+          <span>Showing <span class="strong">15</span> of the most recent <span class="strong">200</span></span>
+          <div class="pager">
+            <a class="btn btn-ghost btn-sm" href="#">Load 50 more</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+  <a class="tab" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="finance.html"><svg class="ic"><use href="#i-wallet"/></svg> Finance</a>
+  <a class="tab" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Admin dashboard</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search people, courses…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">RA</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Administrator</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item is-active" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">3</span></a>
+      <a class="nav-item" href="exams.html"><svg class="ic"><use href="#i-calendar"/></svg> Examinations</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+      <a class="nav-item" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certificates</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="programmes.html"><svg class="ic"><use href="#i-layers"/></svg> Programmes</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="allocations.html"><svg class="ic"><use href="#i-users"/></svg> Teaching load</a>
+      <a class="nav-item" href="people.html"><svg class="ic"><use href="#i-user"/></svg> People</a>
+      <a class="nav-item" href="finance.html"><svg class="ic"><use href="#i-wallet"/></svg> Finance</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="placement.html"><svg class="ic"><use href="#i-briefcase"/></svg> Placement</a>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+      <a class="nav-item" href="audit.html"><svg class="ic"><use href="#i-shield"/></svg> Audit log</a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Good morning, Root</h1>
+        <p class="page-sub">Michaelmas term · week 6 of 12 · 1,284 students enrolled</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="audit.html"><svg class="ic ic-sm"><use href="#i-download"/></svg> Export</a>
+        <a class="btn" href="people.html"><svg class="ic ic-sm"><use href="#i-plus"/></svg> Add people</a>
+      </div>
+    </div>
+
+    <!-- The institution in four numbers. Delta is what makes a number mean
+         something: 1,284 students is a fact, "+38 this week" is a signal. -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Students</div>
+        <div class="stat-value">1,284</div>
+        <div class="stat-note"><span class="delta up">▲ 38</span> enrolled this week</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Faculty</div>
+        <div class="stat-value">86</div>
+        <div class="stat-note">4 unallocated to any course</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Active courses</div>
+        <div class="stat-value">142</div>
+        <div class="stat-note">9 awaiting approval</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Fees collected</div>
+        <div class="stat-value">82%</div>
+        <div class="stat-note"><span class="delta down">▼ 3%</span> vs last term</div>
+      </div>
+    </div>
+
+    <div class="cols mt-3">
+      <div>
+        <!-- Needs attention: the whole point of an operator's home screen.
+             Each row is a queue with a number and one place to go, ordered by
+             how much it hurts to ignore. -->
+        <section>
+          <div class="section-head">
+            <h2>Needs attention</h2>
+            <a class="link" href="#">Dismiss all</a>
+          </div>
+          <div class="rowlist">
+            <div class="row">
+              <span class="row-icon late"><svg class="ic"><use href="#i-shield"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">7 integrity flags awaiting review</div>
+                <div class="row-meta">Data Structures mid-term · flagged in the last 24 hours</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill late">Urgent</span>
+                <a class="btn btn-sm" href="invigilate.html">Review</a>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon soon"><svg class="ic"><use href="#i-edit"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">148 submissions unmarked</div>
+                <div class="row-meta">Across 12 assessments · oldest waiting 9 days</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill soon">9 days</span>
+                <a class="btn btn-sm btn-ghost" href="assessments.html">Open</a>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon soon"><svg class="ic"><use href="#i-wallet"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">£48,200 in fees more than 30 days overdue</div>
+                <div class="row-meta">63 students · 11 already on a payment plan</div>
+              </div>
+              <div class="row-trailing">
+                <a class="btn btn-sm btn-ghost" href="finance.html">Chase</a>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-users"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">4 faculty have no course allocation</div>
+                <div class="row-meta">Term started 6 weeks ago</div>
+              </div>
+              <div class="row-trailing">
+                <a class="btn btn-sm btn-ghost" href="allocations.html">Allocate</a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Enrolment by programme. A bar per programme rather than a pie:
+             the question is "which programme is biggest / emptiest", and that
+             is a length comparison, not an angle one. -->
+        <section class="section">
+          <div class="section-head">
+            <h2>Enrolment by programme</h2>
+            <a class="link" href="programmes.html">All programmes</a>
+          </div>
+          <div class="card card-pad">
+            <div class="stack-sm">
+              <div>
+                <div class="kv-row"><span class="strong small">BSc Computer Science</span><span class="small muted num">412 / 450</span></div>
+                <div class="meter sm mt-0" style="margin-top:5px"><span style="width:92%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">BSc Data Science</span><span class="small muted num">318 / 360</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:88%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">MSc Artificial Intelligence</span><span class="small muted num">204 / 240</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:85%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">BEng Software Engineering</span><span class="small muted num">246 / 300</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:82%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">MSc Cyber Security</span><span class="small muted num">104 / 200</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:52%"></span></div>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="inline small muted">
+              <svg class="ic ic-sm"><use href="#i-alert"/></svg>
+              MSc Cyber Security is at 52% of cap with enrolment closing in 9 days.
+            </div>
+          </div>
+        </section>
+
+        <!-- Assessment pipeline, as a total plus its breakdown (Deel's shape).
+             One number then where it sits — not four disconnected tiles. -->
+        <section class="section">
+          <div class="section-head"><h2>Assessment pipeline</h2></div>
+          <div class="card card-pad">
+            <div class="inline" style="justify-content:space-between;align-items:flex-end">
+              <div>
+                <div class="stat-label">Attempts this term</div>
+                <div class="stat-value" style="font-size:32px">3,940</div>
+              </div>
+              <div class="stackbar" style="flex:1;max-width:340px;margin-left:auto">
+                <span style="width:58%;background:var(--success)"></span>
+                <span style="width:22%;background:var(--orange)"></span>
+                <span style="width:13%;background:var(--teal-400)"></span>
+                <span style="width:7%;background:var(--danger)"></span>
+              </div>
+            </div>
+            <div class="buckets mt-2">
+              <div class="bucket"><span class="dot" style="background:var(--success)"></span>
+                <span class="lbl">Marked and released</span><span class="n num">2,285</span><span class="amt num">58%</span></div>
+              <div class="bucket"><span class="dot" style="background:var(--orange)"></span>
+                <span class="lbl">Awaiting marking</span><span class="n num">867</span><span class="amt num">22%</span></div>
+              <div class="bucket"><span class="dot" style="background:var(--teal-400)"></span>
+                <span class="lbl">In progress</span><span class="n num">512</span><span class="amt num">13%</span></div>
+              <div class="bucket"><span class="dot" style="background:var(--danger)"></span>
+                <span class="lbl">Flagged for integrity</span><span class="n num">276</span><span class="amt num">7%</span></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ rail ============================ -->
+      <aside>
+        <!-- Live now. An invigilator's screen is the one thing here that is
+             time-critical, so it is the top of the rail and it pulses. -->
+        <section>
+          <div class="section-head"><h2>Live now</h2><a class="link" href="invigilate.html">Invigilate</a></div>
+          <div class="card">
+            <div class="card-pad" style="padding-bottom:10px">
+              <div class="inline" style="justify-content:space-between">
+                <span class="status live"><span class="dot"></span> 3 exams running</span>
+                <span class="small muted num">412 candidates</span>
+              </div>
+            </div>
+            <div class="rowlist" style="border:0;border-radius:0;box-shadow:none">
+              <div class="row" style="padding:10px 16px">
+                <div class="row-main">
+                  <div class="row-title" style="font-size:14px">Data Structures — mid-term</div>
+                  <div class="row-meta">Ends in 42 min · 186 candidates</div>
+                </div>
+                <div class="row-trailing"><span class="pill late">4 flags</span></div>
+              </div>
+              <div class="row" style="padding:10px 16px">
+                <div class="row-main">
+                  <div class="row-title" style="font-size:14px">Linear Algebra — quiz 3</div>
+                  <div class="row-meta">Ends in 18 min · 140 candidates</div>
+                </div>
+                <div class="row-trailing"><span class="pill">Clear</span></div>
+              </div>
+              <div class="row" style="padding:10px 16px">
+                <div class="row-main">
+                  <div class="row-title" style="font-size:14px">Networks — practical</div>
+                  <div class="row-meta">Ends in 1 h 5 min · 86 candidates</div>
+                </div>
+                <div class="row-trailing"><span class="pill soon">2 flags</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Today</h2></div>
+          <div class="card card-pad">
+            <div class="kv">
+              <div class="kv-row"><span class="k">Attendance captured</span><span class="v num">94%</span></div>
+              <div class="kv-row"><span class="k">Sessions scheduled</span><span class="v num">38</span></div>
+              <div class="kv-row"><span class="k">Sessions with no register</span><span class="v num" style="color:var(--danger)">3</span></div>
+              <div class="kv-row"><span class="k">Support tickets open</span><span class="v num">11</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Recent activity</h2><a class="link" href="audit.html">Audit log</a></div>
+          <div class="card">
+            <ul class="stack-sm card-pad" style="gap:12px">
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm">JM</span>
+                <span class="small"><span class="strong">J. Mensah</span> released results for
+                  <span class="strong">Data Structures mid-term</span>
+                  <span class="muted" style="display:block">12 minutes ago</span></span>
+              </li>
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm" style="background:var(--orange-700)">RA</span>
+                <span class="small"><span class="strong">Root Admin</span> changed the fee schedule for
+                  <span class="strong">MSc AI</span>
+                  <span class="muted" style="display:block">1 hour ago</span></span>
+              </li>
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm" style="background:var(--teal-500)">SO</span>
+                <span class="small"><span class="strong">S. Okonjo</span> approved
+                  <span class="strong">Advanced Databases</span>
+                  <span class="muted" style="display:block">3 hours ago</span></span>
+              </li>
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm" style="background:var(--faint)">SY</span>
+                <span class="small"><span class="strong">System</span> suspended 2 accounts after 10 failed sign-ins
+                  <span class="muted" style="display:block">5 hours ago</span></span>
+              </li>
+            </ul>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab is-active" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+  <a class="tab" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="finance.html"><svg class="ic"><use href="#i-wallet"/></svg> Finance</a>
+  <a class="tab" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

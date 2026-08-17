@@ -1,0 +1,69 @@
+# LAB-02a -- the sandbox, as something you can actually run.
+#
+# The adapter (packages/core/src/onyx/execution.provider.ts) was written against
+# this and tested against a protocol stub, so every flag below has a counterpart
+# in the request Onyx already sends. What did not exist was anything to point it
+# at: `ONYX_JUDGE0_URL` was unset, so Code Lab answered 503 and the one
+# requirement the proposal calls "sandboxed execution" could not be shown
+# working end to end.
+#
+#   docker compose -f deploy/judge0/docker-compose.yml up -d
+#   ONYX_JUDGE0_URL=http://127.0.0.1:2358 npm run dev:api
+#   node --env-file=.env tools/onyx/verify-sandbox.mjs
+#
+# That last line is the part that matters. A container that is running is not a
+# container that is isolating, and the difference is invisible until somebody
+# submits a fork bomb. The verifier submits one.
+#
+# **cgroup v2.** Judge0's isolate needs cgroup v1 accounting. On a host running
+# v2 only (most current Linux, and Docker Desktop's VM), boot the host with
+# `systemd.unified_cgroup_hierarchy=0` or run this on a v1 host -- otherwise
+# limits are silently not enforced, which the verifier will catch and report.
+
+name: onyx-judge0
+
+services:
+  server:
+    image: judge0/judge0:1.13.1
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    ports:
+      # Bound to loopback on purpose. Judge0 has no authentication worth the
+      # name in this configuration, and an open port here is a remote code
+      # execution endpoint on your network. Put it behind the API, never in
+      # front of it.
+      - "127.0.0.1:2358:2358"
+    privileged: true
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+
+  workers:
+    image: judge0/judge0:1.13.1
+    command: ["./scripts/workers"]
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    privileged: true
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0
+      POSTGRES_DB: judge0
+    volumes:
+      - judge0-db:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "judge0", "--appendonly", "no"]
+    restart: unless-stopped
+
+volumes:
+  judge0-db:

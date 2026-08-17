@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Workspaces</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search projects, files…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">NR</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student · BSc Computer Science</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item is-active" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments <span class="count">2</span></a>
+      <a class="nav-item" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees</a>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">2</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Workspaces</h1>
+        <p class="page-sub">Multi-file projects, with snapshots you can go back to.</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-upload"/></svg> Import a folder</a>
+        <a class="btn" href="workspace-detail.html"><svg class="ic ic-sm"><use href="#i-plus"/></svg> New workspace</a>
+      </div>
+    </div>
+
+    <div class="stats stats-3">
+      <div class="stat">
+        <div class="stat-label">Projects</div>
+        <div class="stat-value">6</div>
+        <div class="stat-note">4 attached to a course</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Snapshots kept</div>
+        <div class="stat-value">23</div>
+        <div class="stat-note">Oldest 3 months ago</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Review comments open</div>
+        <div class="stat-value">2</div>
+        <div class="stat-note">Both from Dr Mensah, 2 days ago</div>
+      </div>
+    </div>
+
+    <!-- A card grid rather than a row list: a project is recognised by its
+         name and its language together, and the language is the thing being
+         scanned for — "where is my Python one" — which a single-line row
+         buries at the end of the line. -->
+    <section class="section">
+      <div class="section-head">
+        <h2>Your workspaces <span class="muted">· 6</span></h2>
+        <a class="link" href="#">Sort: recently opened</a>
+      </div>
+
+      <!-- The cards stretch to a common height in each row, so the footer is
+           pushed to the bottom rather than left floating under whichever card
+           happened to have the shortest body. -->
+      <div class="grid">
+        <article class="card" style="display:flex;flex-direction:column">
+          <div class="card-pad">
+            <div class="inline" style="justify-content:space-between;align-items:flex-start">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-layers"/></svg></span>
+              <span class="pill">Python</span>
+            </div>
+            <h3 style="margin-top:11px;font-size:15.5px;font-weight:700">Sensor telemetry pipeline</h3>
+            <p class="small muted" style="margin-top:3px">CS2040 Data Structures</p>
+            <div class="kv mt-2">
+              <div class="kv-row"><span class="k">Files</span><span class="v num">5 · entry main.py</span></div>
+              <div class="kv-row"><span class="k">Snapshots</span><span class="v num">6</span></div>
+            </div>
+            <!-- Review state is the one thing here that asks for action, so it
+                 is a pill and not a line of grey text under the file count. -->
+            <div class="inline mt-2"><span class="pill soon">2 comments open</span></div>
+          </div>
+          <div class="card-foot inline" style="margin-top:auto">
+            <span class="small muted">Opened 2 hours ago</span>
+            <a class="btn btn-sm" href="workspace-detail.html" style="margin-left:auto">Open</a>
+          </div>
+        </article>
+
+        <article class="card" style="display:flex;flex-direction:column">
+          <div class="card-pad">
+            <div class="inline" style="justify-content:space-between;align-items:flex-start">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-layers"/></svg></span>
+              <span class="pill">JavaScript</span>
+            </div>
+            <h3 style="margin-top:11px;font-size:15.5px;font-weight:700">Portfolio site</h3>
+            <p class="small muted" style="margin-top:3px">Personal project · no course</p>
+            <div class="kv mt-2">
+              <div class="kv-row"><span class="k">Files</span><span class="v num">8 · entry index.js</span></div>
+              <div class="kv-row"><span class="k">Snapshots</span><span class="v num">4</span></div>
+            </div>
+            <div class="inline mt-2"><span class="status idle"><span class="dot"></span> Private</span></div>
+          </div>
+          <div class="card-foot inline" style="margin-top:auto">
+            <span class="small muted">Opened yesterday</span>
+            <a class="btn btn-sm btn-ghost" href="workspace-detail.html" style="margin-left:auto">Open</a>
+          </div>
+        </article>
+
+        <article class="card" style="display:flex;flex-direction:column">
+          <div class="card-pad">
+            <div class="inline" style="justify-content:space-between;align-items:flex-start">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-layers"/></svg></span>
+              <span class="pill">TypeScript</span>
+            </div>
+            <h3 style="margin-top:11px;font-size:15.5px;font-weight:700">Dijkstra visualiser</h3>
+            <p class="small muted" style="margin-top:3px">CS3110 Graph Algorithms</p>
+            <div class="kv mt-2">
+              <div class="kv-row"><span class="k">Files</span><span class="v num">12 · entry main.ts</span></div>
+              <div class="kv-row"><span class="k">Snapshots</span><span class="v num">9</span></div>
+            </div>
+            <div class="inline mt-2"><span class="status on"><span class="dot"></span> Review resolved</span></div>
+          </div>
+          <div class="card-foot inline" style="margin-top:auto">
+            <span class="small muted">Opened 3 days ago</span>
+            <a class="btn btn-sm btn-ghost" href="workspace-detail.html" style="margin-left:auto">Open</a>
+          </div>
+        </article>
+
+        <article class="card" style="display:flex;flex-direction:column">
+          <div class="card-pad">
+            <div class="inline" style="justify-content:space-between;align-items:flex-start">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-layers"/></svg></span>
+              <span class="pill">Java</span>
+            </div>
+            <h3 style="margin-top:11px;font-size:15.5px;font-weight:700">Bank ledger kata</h3>
+            <p class="small muted" style="margin-top:3px">CS2020 Object-Oriented Programming</p>
+            <div class="kv mt-2">
+              <div class="kv-row"><span class="k">Files</span><span class="v num">6 · entry Main.java</span></div>
+              <div class="kv-row"><span class="k">Snapshots</span><span class="v num">3</span></div>
+            </div>
+            <div class="inline mt-2"><span class="status idle"><span class="dot"></span> No review requested</span></div>
+          </div>
+          <div class="card-foot inline" style="margin-top:auto">
+            <span class="small muted">Opened last week</span>
+            <a class="btn btn-sm btn-ghost" href="workspace-detail.html" style="margin-left:auto">Open</a>
+          </div>
+        </article>
+
+        <article class="card" style="display:flex;flex-direction:column">
+          <div class="card-pad">
+            <div class="inline" style="justify-content:space-between;align-items:flex-start">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-layers"/></svg></span>
+              <span class="pill">C++</span>
+            </div>
+            <h3 style="margin-top:11px;font-size:15.5px;font-weight:700">Matrix library</h3>
+            <p class="small muted" style="margin-top:3px">CS2150 Numerical Methods</p>
+            <div class="kv mt-2">
+              <div class="kv-row"><span class="k">Files</span><span class="v num">4 · entry main.cpp</span></div>
+              <div class="kv-row"><span class="k">Snapshots</span><span class="v num">1</span></div>
+            </div>
+            <div class="inline mt-2"><span class="status idle"><span class="dot"></span> No review requested</span></div>
+          </div>
+          <div class="card-foot inline" style="margin-top:auto">
+            <span class="small muted">Opened 2 weeks ago</span>
+            <a class="btn btn-sm btn-ghost" href="workspace-detail.html" style="margin-left:auto">Open</a>
+          </div>
+        </article>
+
+        <article class="card" style="display:flex;flex-direction:column">
+          <div class="card-pad">
+            <div class="inline" style="justify-content:space-between;align-items:flex-start">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-layers"/></svg></span>
+              <span class="pill">Python</span>
+            </div>
+            <h3 style="margin-top:11px;font-size:15.5px;font-weight:700">Scrapyard notebook</h3>
+            <p class="small muted" style="margin-top:3px">Personal project · no course</p>
+            <div class="kv mt-2">
+              <div class="kv-row"><span class="k">Files</span><span class="v num">3 · entry scratch.py</span></div>
+              <div class="kv-row"><span class="k">Snapshots</span><span class="v num">0</span></div>
+            </div>
+            <div class="inline mt-2"><span class="status idle"><span class="dot"></span> Private</span></div>
+          </div>
+          <div class="card-foot inline" style="margin-top:auto">
+            <span class="small muted">Opened a month ago</span>
+            <a class="btn btn-sm btn-ghost" href="workspace-detail.html" style="margin-left:auto">Open</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- The empty state is shown rather than the section being hidden: a
+         learner who has been asked to review a classmate's project needs to
+         know where it would appear, and a section that only exists once it has
+         content is a section nobody learns about. -->
+    <section class="section">
+      <div class="section-head">
+        <h2>Shared with you for review</h2>
+      </div>
+      <div class="card">
+        <div class="empty">
+          <svg class="ic ic-xl"><use href="#i-users"/></svg>
+          <h3>Nothing to review</h3>
+          <p>When a classmate or a mentor shares a project with you it lands here.
+             You can comment on any line, but you cannot edit their files.</p>
+          <a class="btn btn-ghost btn-sm" href="support.html">How review works</a>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Inbox</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search courses, roles…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">AO</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees</a>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item is-active" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">5</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Inbox</h1>
+        <p class="page-sub">5 unread · everything this institution has told you</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-ghost"><svg class="ic ic-sm"><use href="#i-check"/></svg> Mark all read</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search">
+        <svg class="ic ic-sm"><use href="#i-search"/></svg>
+        <input placeholder="Search your inbox" aria-label="Search your inbox" />
+      </div>
+      <div class="segmented">
+        <a class="is-on" href="#">All <span class="count">24</span></a>
+        <a href="#">Unread <span class="count">5</span></a>
+        <a href="#">Mentions <span class="count">2</span></a>
+      </div>
+    </div>
+
+    <!-- Grouped by how recent, not paged: an inbox is read from the top and
+         abandoned partway down, so the boundary between "this needs me today"
+         and "this is history" has to be a heading you can stop at. -->
+    <section>
+      <div class="section-head">
+        <h2>Today</h2>
+        <span class="small muted">3 unread</span>
+      </div>
+      <div class="rowlist">
+        <!-- Unread is carried by weight AND a dot AND a word for a screen
+             reader. Weight alone is a difference nobody notices in a list
+             where most rows are unread. -->
+        <div class="row is-active">
+          <span class="row-icon brand"><svg class="ic"><use href="#i-award"/></svg></span>
+          <div class="row-main">
+            <div class="row-title strong">Your Data Structures mid-term result is out</div>
+            <div class="row-meta">You scored 74 of 100. The cohort median was 61.</div>
+            <div class="row-meta">2 hours ago</div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm btn-ghost" href="results.html">Open</a>
+            <span class="pill-dot" style="color:var(--teal-600)"></span>
+            <span class="sr-only">Unread</span>
+          </div>
+        </div>
+
+        <div class="row is-active">
+          <span class="row-icon brand"><svg class="ic"><use href="#i-mic"/></svg></span>
+          <div class="row-main">
+            <div class="row-title strong">Interview scheduled — Monzo</div>
+            <div class="row-meta">Technical interview, today at 14:00. Joining opens 10 minutes before.</div>
+            <div class="row-meta">4 hours ago</div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm" href="interviews.html">Join</a>
+            <span class="pill-dot" style="color:var(--teal-600)"></span>
+            <span class="sr-only">Unread</span>
+          </div>
+        </div>
+
+        <div class="row is-active">
+          <span class="row-icon soon"><svg class="ic"><use href="#i-wallet"/></svg></span>
+          <div class="row-main">
+            <div class="row-title strong">Tuition instalment 2 is due</div>
+            <div class="row-meta">£1,240 due in 6 days. A payment plan is still available.</div>
+            <div class="row-meta">This morning</div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm btn-ghost" href="fees.html">Pay</a>
+            <span class="pill-dot" style="color:var(--teal-600)"></span>
+            <span class="sr-only">Unread</span>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon"><svg class="ic"><use href="#i-help"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Dr Mensah replied to your question</div>
+            <div class="row-meta">“Big-O of the second loop” · Advanced Algorithms</div>
+            <div class="row-meta">6 hours ago · read</div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill good">Answered</span>
+            <a class="btn btn-sm btn-ghost" href="support.html">Open</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>This week</h2>
+        <span class="small muted">2 unread</span>
+      </div>
+      <div class="rowlist">
+        <div class="row is-active">
+          <span class="row-icon brand"><svg class="ic"><use href="#i-briefcase"/></svg></span>
+          <div class="row-main">
+            <div class="row-title strong">Octopus Energy shortlisted you</div>
+            <div class="row-meta">Graduate Software Engineer. The office will book your slot.</div>
+            <div class="row-meta">2 days ago</div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm btn-ghost" href="job-detail.html">Open</a>
+            <span class="pill-dot" style="color:var(--teal-600)"></span>
+            <span class="sr-only">Unread</span>
+          </div>
+        </div>
+
+        <div class="row is-active">
+          <span class="row-icon brand"><svg class="ic"><use href="#i-help"/></svg></span>
+          <div class="row-main">
+            <div class="row-title strong">Ffion Llewellyn mentioned you</div>
+            <div class="row-meta">“…@amara had a neat fix for the deadlock” · Operating Systems</div>
+            <div class="row-meta">3 days ago</div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm btn-ghost" href="#">Open</a>
+            <span class="pill-dot" style="color:var(--teal-600)"></span>
+            <span class="sr-only">Unread</span>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon"><svg class="ic"><use href="#i-edit"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Coursework 2 returned with comments</div>
+            <div class="row-meta">Operating Systems · 68 of 100 · resubmission not required</div>
+            <div class="row-meta">4 days ago · read</div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm btn-ghost" href="assessments.html">Open</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon"><svg class="ic"><use href="#i-shield"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">You changed what your guardian can see</div>
+            <div class="row-meta">Fees are now shared with Nkechi Okafor. Results and attendance were already shared.</div>
+            <div class="row-meta">5 days ago · read</div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm btn-ghost" href="profile.html">Review</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Earlier</h2>
+        <a class="link" href="#">Everything from this year</a>
+      </div>
+      <div class="rowlist">
+        <div class="row">
+          <span class="row-icon"><svg class="ic"><use href="#i-award"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Certificate issued — Cloud Fundamentals</div>
+            <div class="row-meta">Credential ONX-2F41-8C. Shareable, and it verifies without a login.</div>
+            <div class="row-meta">2 weeks ago · read</div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm btn-ghost" href="certificates.html">Open</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon"><svg class="ic"><use href="#i-users"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">You joined Demo University</div>
+            <div class="row-meta">Invitation accepted. Your account also works at any other institution that invites you.</div>
+            <div class="row-meta">3 weeks ago · read</div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill">Membership</span>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon"><svg class="ic"><use href="#i-wallet"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">Invoice INV-2027-0418 paid</div>
+            <div class="row-meta">£1,240 received by card. Receipt attached.</div>
+            <div class="row-meta">A month ago · read</div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill good">Paid</span>
+            <a class="btn btn-sm btn-ghost" href="fees.html">Receipt</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-foot" style="border:1px solid var(--line);border-top:0;border-radius:0 0 var(--r-lg) var(--r-lg);margin-top:-1px">
+        <span>10 of 24 shown</span>
+        <span class="pager"><a class="btn btn-sm btn-ghost" href="#">Load older</a></span>
+      </div>
+    </section>
+
+    <!-- Kept as a note rather than a settings page of its own: a learner who
+         wonders why they were told something wants the answer here, not two
+         screens away. -->
+    <div class="banner info mt-3">
+      <svg class="ic"><use href="#i-bell"/></svg>
+      <div class="small">
+        Results, fees, interviews and anything a mentor sends you always arrive here.
+        Email is a copy of this, not the other way round.
+      </div>
+      <a class="btn btn-sm btn-ghost" href="#">Notification settings</a>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

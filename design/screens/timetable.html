@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Timetable</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search people, courses…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">RA</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Administrator</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">3</span></a>
+      <a class="nav-item" href="exams.html"><svg class="ic"><use href="#i-calendar"/></svg> Examinations</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+      <a class="nav-item" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certificates</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="programmes.html"><svg class="ic"><use href="#i-layers"/></svg> Programmes</a>
+      <a class="nav-item is-active" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="allocations.html"><svg class="ic"><use href="#i-users"/></svg> Teaching load</a>
+      <a class="nav-item" href="people.html"><svg class="ic"><use href="#i-user"/></svg> People</a>
+      <a class="nav-item" href="finance.html"><svg class="ic"><use href="#i-wallet"/></svg> Finance</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="placement.html"><svg class="ic"><use href="#i-briefcase"/></svg> Placement</a>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+      <a class="nav-item" href="audit.html"><svg class="ic"><use href="#i-shield"/></svg> Audit log</a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Timetable</h1>
+        <p class="page-sub">Michaelmas 2026 · week 6 of 12 · published to 1,284 learners</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-building"/></svg> Rooms</a>
+        <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-plus"/></svg> Schedule a class</a>
+      </div>
+    </div>
+
+    <!-- Drafts are the registrar's real question on this page: what have I
+         built that nobody can see yet. Published rows are already on eleven
+         hundred phones, so the only thing worth a banner is the ones that
+         are not. -->
+    <div class="banner warn">
+      <svg class="ic"><use href="#i-alert"/></svg>
+      <span><span class="strong">3 sessions are still drafts.</span> They are not on any learner's
+        timetable until the semester is published again, and one of them clashes with Lab 2 on
+        Thursday.</span>
+      <a class="btn btn-sm" style="white-space:nowrap" href="#">Review and publish</a>
+    </div>
+
+    <div class="toolbar mt-2">
+      <select class="select" aria-label="Semester">
+        <option>Michaelmas 2026 — current</option>
+        <option>Lent 2026</option>
+      </select>
+      <select class="select" aria-label="Batch">
+        <option>BSc Computer Science · Batch A 2026</option>
+        <option>BSc Data Science · Batch B 2026</option>
+        <option>MSc Artificial Intelligence · Batch A 2026</option>
+        <option>Everything</option>
+      </select>
+      <span class="spacer"></span>
+      <div class="inline">
+        <button class="icon-btn" aria-label="Previous week"><svg class="ic ic-sm" style="transform:rotate(180deg)"><use href="#i-chevron"/></svg></button>
+        <span class="small strong">10–14 · week 6</span>
+        <button class="icon-btn" aria-label="Next week"><svg class="ic ic-sm"><use href="#i-chevron"/></svg></button>
+      </div>
+      <a class="btn btn-ghost btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Export</a>
+    </div>
+
+    <!-- The grid scrolls inside .cal-scroll, never the page: a week of five
+         columns cannot be read at 320px and squeezing it there produces five
+         unreadable slivers instead of two legible ones. Sideways is the right
+         axis to give up, and only here. tabindex makes that scroll reachable
+         without a trackpad. -->
+    <div class="cal">
+      <div class="cal-scroll" tabindex="0" role="region" aria-label="Weekly timetable, scrolls sideways">
+        <div class="cal-grid">
+          <div class="cal-head"><span class="sr-only">Time</span></div>
+          <div class="cal-head">Mon <span class="d">10</span></div>
+          <!-- Today gets the column, not just the header: an eye scanning for
+               "what is on now" lands on the tint before it reads a date. -->
+          <div class="cal-head is-today">Tue <span class="d">11</span><span class="sr-only"> — today</span></div>
+          <div class="cal-head">Wed <span class="d">12</span></div>
+          <div class="cal-head">Thu <span class="d">13</span></div>
+          <div class="cal-head">Fri <span class="d">14</span></div>
+
+          <div class="cal-time">09:00</div>
+          <div class="cal-cell">
+            <div class="evt"><span class="t">CS1002 Programming Foundations</span><span class="m">LT1 · Prof Whitfield</span></div>
+          </div>
+          <div class="cal-cell is-today">
+            <div class="evt"><span class="t">CS2004 Data Structures</span><span class="m">LT1 · Dr Mensah</span></div>
+          </div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell">
+            <div class="evt"><span class="t">MA1004 Discrete Mathematics</span><span class="m">LT3 · Dr Nakamura</span></div>
+          </div>
+          <div class="cal-cell"></div>
+
+          <div class="cal-time">10:00</div>
+          <div class="cal-cell">
+            <div class="evt"><span class="t">DS2001 Statistical Methods</span><span class="m">LT2 · Dr Okonjo</span></div>
+          </div>
+          <div class="cal-cell is-today">
+            <div class="evt warn"><span class="t">CS2004 Lab</span><span class="m">Lab 2 · Dr Ivanova</span></div>
+          </div>
+          <div class="cal-cell">
+            <div class="evt"><span class="t">SE2020 Software Design</span><span class="m">LT1 · Prof Whitfield</span></div>
+          </div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell">
+            <div class="evt"><span class="t">CYB5001 Threat Modelling</span><span class="m">Seminar 4 · Dr Ferreira</span></div>
+          </div>
+
+          <div class="cal-time">11:00</div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell is-today"></div>
+          <div class="cal-cell">
+            <div class="evt"><span class="t">CS3102 Computer Networks</span><span class="m">LT2 · Dr Ferreira</span></div>
+          </div>
+          <div class="cal-cell">
+            <div class="evt warn"><span class="t">DS2014 Visualisation Lab</span><span class="m">Lab 1 · Dr Nakamura</span></div>
+          </div>
+          <div class="cal-cell"></div>
+
+          <div class="cal-time">12:00</div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell is-today"></div>
+          <div class="cal-cell">
+            <div class="evt"><span class="t">AI5001 Machine Learning</span><span class="m">LT1 · Dr Mensah</span></div>
+          </div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell"></div>
+
+          <div class="cal-time">13:00</div>
+          <div class="cal-cell">
+            <div class="evt warn"><span class="t">CS1002 Lab</span><span class="m">Lab 3 · Dr Ivanova</span></div>
+          </div>
+          <div class="cal-cell is-today">
+            <div class="evt late"><span class="t">CS2004 mid-term exam</span><span class="m">Exam Hall A · 186 candidates</span></div>
+          </div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell">
+            <div class="evt"><span class="t">SE3011 Systems Architecture</span><span class="m">LT2 · Prof Whitfield</span></div>
+          </div>
+          <div class="cal-cell">
+            <div class="evt"><span class="t">MA1004 Tutorial</span><span class="m">Seminar 2 · Mr Adeyemi</span></div>
+          </div>
+
+          <div class="cal-time">14:00</div>
+          <div class="cal-cell">
+            <div class="evt"><span class="t">AI5008 Deep Learning Systems</span><span class="m">LT4 · Dr Mensah</span></div>
+          </div>
+          <!-- Cancelled is struck through and says the word. Greying it out
+               alone would read as "not yet loaded" to anyone who cannot see
+               the difference between this tint and the lecture one. -->
+          <div class="cal-cell is-today">
+            <div class="evt" style="border-left-color:var(--faint);background:#F1F5F9;color:var(--muted)">
+              <span class="t"><s>CS2011 Operating Systems</s></span>
+              <span class="m">Cancelled · Dr Mensah invigilating</span>
+            </div>
+          </div>
+          <div class="cal-cell">
+            <div class="evt warn"><span class="t">DS3006 ML Ops Lab</span><span class="m">Lab 1 · Dr Okonjo</span></div>
+          </div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell"></div>
+
+          <div class="cal-time">15:00</div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell is-today">
+            <div class="evt"><span class="t">CYB5004 Applied Cryptography</span><span class="m">Seminar 4 · Dr Ferreira</span></div>
+          </div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell">
+            <div class="evt"><span class="t">CS3040 Compilers</span><span class="m">LT3 · Dr Mensah</span></div>
+          </div>
+          <div class="cal-cell">
+            <div class="evt"><span class="t">SE4002 Capstone supervision</span><span class="m">Studio 1 · Prof Whitfield</span></div>
+          </div>
+
+          <div class="cal-time">16:00</div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell is-today"></div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell">
+            <div class="evt"><span class="t">DS2001 Tutorial</span><span class="m">Seminar 1 · Dr Okonjo</span></div>
+          </div>
+          <div class="cal-cell"></div>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--teal-500)"></i> Lecture or seminar</span>
+        <span><i style="background:var(--orange)"></i> Lab or practical</span>
+        <span><i style="background:var(--danger)"></i> Examination</span>
+        <span><i style="background:var(--faint)"></i> Cancelled</span>
+        <span style="margin-left:auto"><span class="strong">21</span> sessions this week · 38 contact hours</span>
+      </div>
+    </div>
+
+    <!-- What the grid cannot show without becoming a puzzle: rooms are a
+         capacity problem, not a time one, so they get their own numbers. -->
+    <div class="cols mt-3">
+      <div>
+        <section>
+          <div class="section-head">
+            <h2>Today at a glance</h2>
+            <a class="link" href="invigilate.html">Invigilate</a>
+          </div>
+          <div class="rowlist">
+            <div class="row">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-book"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">CS2004 Data Structures</div>
+                <div class="row-meta">09:00–10:00 · LT1 · Dr Mensah · finished 4 hours ago</div>
+              </div>
+              <div class="row-trailing"><span class="pill good"><span class="pill-dot"></span> Register taken</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon soon"><svg class="ic"><use href="#i-code"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">CS2004 Lab</div>
+                <div class="row-meta">10:00–11:00 · Lab 2 · Dr Ivanova · finished 3 hours ago</div>
+              </div>
+              <div class="row-trailing"><span class="pill late"><span class="pill-dot"></span> No register</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon late"><svg class="ic"><use href="#i-edit"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">CS2004 mid-term exam</div>
+                <div class="row-meta">Exam Hall A · 186 candidates · ends in 42 minutes</div>
+              </div>
+              <div class="row-trailing">
+                <span class="status live"><span class="dot"></span> Running</span>
+                <a class="btn btn-sm btn-ghost" href="invigilate.html">Watch</a>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-x"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">CS2011 Operating Systems</div>
+                <div class="row-meta">14:00–15:00 · cancelled 2 days ago · 94 learners notified</div>
+              </div>
+              <div class="row-trailing"><span class="pill"><span class="pill-dot"></span> Cancelled</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-book"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">CYB5004 Applied Cryptography</div>
+                <div class="row-meta">15:00–16:00 · Seminar 4 · Dr Ferreira · starts in 1 h 20 min</div>
+              </div>
+              <div class="row-trailing"><span class="pill soon"><span class="pill-dot"></span> Next</span></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside>
+        <section>
+          <div class="section-head"><h2>Room pressure</h2><a class="link" href="#">All rooms</a></div>
+          <div class="card card-pad">
+            <div class="stack-sm">
+              <div>
+                <div class="kv-row"><span class="strong small">LT1 · Lecture Theatre 1</span><span class="small muted num">34 of 40 h</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:85%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">Lab 2 · Computing Lab</span><span class="small muted num">31 of 40 h</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:78%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">LT3 · Lecture Theatre 3</span><span class="small muted num">22 of 40 h</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:55%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">Studio 1</span><span class="small muted num">8 of 40 h</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:20%"></span></div>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="inline small muted">
+              <svg class="ic ic-sm"><use href="#i-alert"/></svg>
+              LT1 is booked past 85%. The next clash there cannot be moved within the same hour.
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Unpublished drafts</h2></div>
+          <div class="card">
+            <ul class="stack-sm card-pad" style="gap:12px">
+              <li class="small"><span class="strong">SE3011 tutorial</span> · Thu 11:00 · Lab 2
+                <span class="muted" style="display:block">Clashes with DS2014 Visualisation Lab</span></li>
+              <li class="small"><span class="strong">AI5002 reading group</span> · Wed 16:00 · Seminar 3
+                <span class="muted" style="display:block">Added 2 days ago by Dr Mensah</span></li>
+              <li class="small"><span class="strong">CYB5004 lab</span> · Fri 11:00 · Lab 3
+                <span class="muted" style="display:block">Added 6 hours ago by Dr Ferreira</span></li>
+            </ul>
+            <div class="card-foot">
+              <a class="btn btn-sm btn-block" href="#"><svg class="ic ic-sm"><use href="#i-check"/></svg> Publish the semester</a>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+  <a class="tab" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="finance.html"><svg class="ic"><use href="#i-wallet"/></svg> Finance</a>
+  <a class="tab" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

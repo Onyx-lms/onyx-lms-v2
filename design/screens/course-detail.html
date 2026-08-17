@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Introduction to Programming</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search this course…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">SS</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item is-active" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees <span class="count">1</span></a>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">2</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb" style="flex-wrap:wrap">
+      <a href="courses.html">Courses</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <span>Introduction to Programming</span>
+    </nav>
+
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Introduction to Programming</h1>
+        <p class="page-sub">CS101 · 4 credits · Dr Amara Nwosu</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="support.html"><svg class="ic ic-sm"><use href="#i-help"/></svg> Ask a question</a>
+      </div>
+    </div>
+
+    <div class="cols">
+      <div>
+        <!-- Up next, not "continue". Progress alone tells you where you are and
+             not what to do; the point of a course page is the next lesson, so
+             the band names it and the button opens it. -->
+        <section class="hero" aria-labelledby="upnext-h">
+          <div class="hero-top">
+            <div style="min-width:0">
+              <div class="hero-eyebrow">Up next</div>
+              <h2 class="hero-title" id="upnext-h">Loops and iteration</h2>
+              <p class="hero-sub">Module 02 · Control flow — 14:20</p>
+            </div>
+            <div class="hero-actions">
+              <a class="btn btn-light btn-lg" href="lesson-video.html">
+                <svg class="ic ic-sm"><use href="#i-play"/></svg> Resume
+              </a>
+            </div>
+          </div>
+          <div class="mt-2">
+            <div class="meter on-dark" role="progressbar" aria-valuenow="33" aria-valuemin="0"
+                 aria-valuemax="100" aria-label="Course progress">
+              <span style="width:33%"></span>
+            </div>
+            <div class="hero-meta">
+              <span class="strong">33% complete</span>
+              <span class="dim">6 of 18 lessons</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Modules are numbered because a course IS an order: "02" tells a
+             learner where they are in a way a bare title never does. Each
+             lesson carries its own state — a tick when it is done, the next
+             one marked, a lock where it is not open yet — so the list can be
+             read for what to do rather than only for what exists. -->
+        <section class="section">
+          <div class="inline" style="justify-content:space-between;margin-bottom:10px">
+            <span class="inline" style="gap:10px">
+              <span class="strong num" style="color:var(--orange-700)">01</span>
+              <span class="section-title" style="font-size:15px">Getting started</span>
+            </span>
+            <span class="small muted num">4 lessons</span>
+          </div>
+          <p class="small muted" style="margin:-4px 0 10px">What a program is, and getting one to run on your own machine.</p>
+          <div class="rowlist">
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="lesson-video.html">What a program is</a></div>
+                <div class="row-meta"><span class="num">8:40</span> <span>· free preview</span></div>
+              </div>
+              <div class="row-trailing"><span class="pill good">Done</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="lesson-video.html">Setting up your environment</a></div>
+                <div class="row-meta"><span class="num">12:05</span> <span>· free preview</span></div>
+              </div>
+              <div class="row-trailing"><span class="pill good">Done</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="lesson-video.html">Your first program</a></div>
+                <div class="row-meta"><span class="num">9:30</span></div>
+              </div>
+              <div class="row-trailing"><span class="pill good">Done</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="lesson-reading.html">How code becomes output</a></div>
+                <div class="row-meta"><span class="num">6:00</span> <span>· reading</span></div>
+              </div>
+              <div class="row-trailing"><span class="pill good">Done</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="inline" style="justify-content:space-between;margin-bottom:10px">
+            <span class="inline" style="gap:10px">
+              <span class="strong num" style="color:var(--orange-700)">02</span>
+              <span class="section-title" style="font-size:15px">Control flow</span>
+            </span>
+            <span class="small muted num">5 lessons</span>
+          </div>
+          <p class="small muted" style="margin:-4px 0 10px">Making a program decide, and making it repeat.</p>
+          <div class="rowlist">
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="lesson-video.html">Conditionals and truth</a></div>
+                <div class="row-meta"><span class="num">11:15</span></div>
+              </div>
+              <div class="row-trailing"><span class="pill good">Done</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="lesson-video.html">Nested conditions</a></div>
+                <div class="row-meta"><span class="num">10:40</span></div>
+              </div>
+              <div class="row-trailing"><span class="pill good">Done</span></div>
+            </div>
+            <!-- The one row the whole page is arranged around: is-active tints
+                 it, and it is the only lesson wearing a brand pill. -->
+            <div class="row is-active">
+              <span class="row-icon solid"><svg class="ic"><use href="#i-play"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="lesson-video.html">Loops and iteration</a></div>
+                <div class="row-meta"><span class="num">14:20</span> <span>· free preview</span></div>
+              </div>
+              <div class="row-trailing"><span class="pill brand">Next</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-book"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="lesson-reading.html">When a loop will not end</a></div>
+                <div class="row-meta"><span class="num">7:00</span> <span>· reading</span></div>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-play"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="lesson-video.html">FizzBuzz, walked through</a></div>
+                <div class="row-meta"><span class="num">13:05</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="inline" style="justify-content:space-between;margin-bottom:10px">
+            <span class="inline" style="gap:10px">
+              <span class="strong num" style="color:var(--orange-700)">03</span>
+              <span class="section-title" style="font-size:15px">Functions and scope</span>
+            </span>
+            <span class="small muted num">5 lessons</span>
+          </div>
+          <div class="rowlist">
+            <div class="row">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-play"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="lesson-video.html">Defining a function</a></div>
+                <div class="row-meta"><span class="num">9:55</span></div>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-play"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="lesson-video.html">Arguments and returns</a></div>
+                <div class="row-meta"><span class="num">12:30</span></div>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-play"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="lesson-video.html">Scope and shadowing</a></div>
+                <div class="row-meta"><span class="num">10:10</span></div>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-book"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="lesson-reading.html">Naming things</a></div>
+                <div class="row-meta"><span class="num">5:00</span> <span>· reading</span></div>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-play"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="lesson-video.html">Recursion, gently</a></div>
+                <div class="row-meta"><span class="num">15:40</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- A locked module still shows its titles. Hiding them entirely tells
+             a learner nothing about where the course is going; the lock plus a
+             plain sentence about what opens it is the honest version. -->
+        <section class="section">
+          <div class="inline" style="justify-content:space-between;margin-bottom:10px">
+            <span class="inline" style="gap:10px">
+              <span class="strong num" style="color:var(--faint)">04</span>
+              <span class="section-title" style="font-size:15px;color:var(--muted)">Working with data</span>
+            </span>
+            <span class="small muted num">4 lessons</span>
+          </div>
+          <p class="small muted" style="margin:-4px 0 10px">Opens when Control flow is complete.</p>
+          <div class="rowlist">
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-lock"/></svg></span>
+              <div class="row-main">
+                <div class="row-title muted">Lists and indexing</div>
+                <div class="row-meta"><span class="num">11:20</span></div>
+              </div>
+              <div class="row-trailing"><span class="pill">Locked</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-lock"/></svg></span>
+              <div class="row-main">
+                <div class="row-title muted">Dictionaries</div>
+                <div class="row-meta"><span class="num">12:50</span></div>
+              </div>
+              <div class="row-trailing"><span class="pill">Locked</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-lock"/></svg></span>
+              <div class="row-main">
+                <div class="row-title muted">Choosing a structure</div>
+                <div class="row-meta"><span class="num">6:00</span> <span>· reading</span></div>
+              </div>
+              <div class="row-trailing"><span class="pill">Locked</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-lock"/></svg></span>
+              <div class="row-main">
+                <div class="row-title muted">Files and input</div>
+                <div class="row-meta"><span class="num">13:35</span></div>
+              </div>
+              <div class="row-trailing"><span class="pill">Locked</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Questions live on the course, not in a separate forum: being stuck
+             happens here, and a question asked three clicks away is a question
+             not asked. Resolved threads keep their tick so the list doubles as
+             the answers people already found. -->
+        <section class="section">
+          <div class="section-head">
+            <h2>Questions</h2>
+            <a class="btn btn-sm btn-ghost" href="support.html"><svg class="ic ic-sm"><use href="#i-plus"/></svg> Ask</a>
+          </div>
+          <div class="rowlist">
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="support.html">Why does my while loop never stop?</a></div>
+                <div class="row-meta">6 replies · last reply 2 days ago</div>
+              </div>
+              <div class="row-trailing"><span class="pill good">Resolved</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="support.html">Is range() inclusive of the last number?</a></div>
+                <div class="row-meta">3 replies · last reply 4 days ago</div>
+              </div>
+              <div class="row-trailing"><span class="pill good">Resolved</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-help"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="support.html">Worksheet 2, question 4 — is the answer 27 or 28?</a></div>
+                <div class="row-meta">1 reply · asked yesterday</div>
+              </div>
+              <div class="row-trailing"><span class="pill soon">Open</span></div>
+            </div>
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-help"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="support.html">Does the lab machine have Python 3.12?</a></div>
+                <div class="row-meta">No replies yet · asked 6 hours ago</div>
+              </div>
+              <div class="row-trailing"><span class="pill soon">Open</span></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ rail ============================ -->
+      <aside>
+        <section>
+          <div class="section-head"><h2>Due</h2><a class="link" href="assessments.html">All</a></div>
+          <div class="rowlist">
+            <div class="row" style="padding:11px 14px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px"><a href="assessments.html">Hello World — first program</a></div>
+                <div class="row-meta"><span class="pill late">2 days late</span></div>
+              </div>
+            </div>
+            <div class="row" style="padding:11px 14px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px"><a href="assessments.html">Loops worksheet</a></div>
+                <div class="row-meta"><span class="pill soon">Tomorrow</span></div>
+              </div>
+            </div>
+            <div class="row" style="padding:11px 14px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px"><a href="assessments.html">Functions mini-project</a></div>
+                <div class="row-meta"><span class="pill">in 2 weeks</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sessions carry a day and a time, never "11/8/2026, 12:11:13 am".
+             Seconds have never told anybody when a lecture is. An open session
+             is the one you can check in to right now, so it is the only one
+             with a green pill. -->
+        <section class="section">
+          <div class="section-head"><h2>Sessions</h2></div>
+          <div class="rowlist">
+            <div class="row" style="padding:10px 14px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px"><a href="timetable.html">Lecture 9 — Loops</a></div>
+                <div class="row-meta">Today, 11:00 · Kelvin LT2</div>
+              </div>
+              <div class="row-trailing"><span class="pill good">Open</span></div>
+            </div>
+            <div class="row" style="padding:10px 14px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px"><a href="timetable.html">Lab 5 — Iteration drills</a></div>
+                <div class="row-meta">Thu, 14:00 · Lab B</div>
+              </div>
+              <div class="row-trailing"><span class="pill">Closed</span></div>
+            </div>
+            <div class="row" style="padding:10px 14px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px"><a href="timetable.html">Lecture 8 — Nested conditions</a></div>
+                <div class="row-meta">Mon, 11:00 · Kelvin LT2</div>
+              </div>
+              <div class="row-trailing"><span class="pill">Closed</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Resources</h2></div>
+          <div class="card card-pad stack-sm">
+            <a class="inline" href="#"><svg class="ic ic-sm"><use href="#i-file"/></svg> Course handbook 2026.pdf <span class="small muted num">1.2 MB</span></a>
+            <a class="inline" href="#"><svg class="ic ic-sm"><use href="#i-file"/></svg> Week 5 slides.pdf <span class="small muted num">840 KB</span></a>
+            <a class="inline" href="#"><svg class="ic ic-sm"><use href="#i-file"/></svg> Loops cheat sheet.pdf <span class="small muted num">220 KB</span></a>
+            <a class="inline" href="#"><svg class="ic ic-sm"><use href="#i-file"/></svg> starter-code.zip <span class="small muted num">18 KB</span></a>
+            <div class="divider" style="margin:8px 0"></div>
+            <p class="small muted">Download links are issued when you click and expire in five minutes.</p>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab is-active" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

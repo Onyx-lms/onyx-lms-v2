@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Results</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search assessments, students…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">JM</span>
+</header>
+
+<div class="layout">
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Faculty · Dr J. Mensah</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item is-active" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">2</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Teaching</div>
+      <a class="nav-item" href="programmes.html"><svg class="ic"><use href="#i-building"/></svg> Programmes</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="allocations.html"><svg class="ic"><use href="#i-chart"/></svg> Teaching load</a>
+      <a class="nav-item" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Support</div>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-help"/></svg> Mentor queue <span class="count">6</span></a>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+    </div>
+  </aside>
+
+  <main id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="assessments.html">Assessments</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <a href="assessment-detail.html">Data Structures — mid-term</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <span>Results</span>
+    </nav>
+
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Results</h1>
+        <p class="page-sub">Data Structures — mid-term · not published, so no candidate can see any of this</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> CSV</a>
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-file"/></svg> PDF</a>
+        <a class="btn" href="assessment-marking.html"><svg class="ic ic-sm"><use href="#i-edit"/></svg> Mark 68 scripts</a>
+      </div>
+    </div>
+
+    <!-- Said once, at the top, in words: every number below is drawn from 118
+         of 186 scripts. A cohort statistic on a partial cohort is not wrong,
+         it is provisional, and the difference has to be on the screen rather
+         than in someone's memory. -->
+    <div class="banner warn">
+      <svg class="ic"><use href="#i-alert"/></svg>
+      <span><span class="strong">Provisional.</span> These figures cover the 118 scripts marked so far.
+        The remaining 68 will move the mean — the last 30 shifted it by 1.4 marks.</span>
+    </div>
+
+    <div class="stats mt-2">
+      <div class="stat">
+        <div class="stat-label">Marked</div>
+        <div class="stat-value">118</div>
+        <div class="stat-note">of 186 who sat</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Mean</div>
+        <div class="stat-value">46.7</div>
+        <div class="stat-note">out of 80 · 58%</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Median</div>
+        <div class="stat-value">47</div>
+        <div class="stat-note">out of 80 · 59%</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Pass rate</div>
+        <div class="stat-value">88%</div>
+        <div class="stat-note">104 of 118 at or above 32</div>
+      </div>
+    </div>
+
+    <div class="cols mt-3">
+      <div>
+        <section>
+          <div class="section-head">
+            <h2>Grade distribution</h2>
+            <span class="small muted num">118 scripts</span>
+          </div>
+          <div class="card card-pad">
+            <!-- Bars, one per band, not a curve. The questions a marking
+                 meeting asks are "how many failed" and "is the middle where we
+                 expected", and both are length comparisons. Every bar carries
+                 its own count in figures, so nothing depends on eyeballing a
+                 length or on seeing the colour at all. -->
+            <div class="stack-sm">
+              <div>
+                <div class="kv-row">
+                  <span class="strong small">0–39% <span class="muted" style="font-weight:400">· below the pass mark</span></span>
+                  <span class="small muted num">14</span>
+                </div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:45%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">40–49%</span><span class="small muted num">19</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:61%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">50–59%</span><span class="small muted num">28</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:90%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">60–69%</span><span class="small muted num">31</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:100%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">70–79%</span><span class="small muted num">19</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:61%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">80–100%</span><span class="small muted num">7</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:23%"></span></div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- The same 118 as one bar, split at the pass mark. The histogram
+                 answers "what shape"; this answers "how many are in trouble",
+                 which is the number that leaves the room. -->
+            <div class="stackbar">
+              <span style="width:11.9%;background:var(--danger)"></span>
+              <span style="width:66.9%;background:var(--orange)"></span>
+              <span style="width:21.2%;background:var(--success)"></span>
+            </div>
+            <div class="buckets mt-2">
+              <div class="bucket"><span class="dot" style="background:var(--danger)"></span>
+                <span class="lbl">Below 40% — did not pass</span><span class="n num">14</span><span class="amt num">12%</span></div>
+              <div class="bucket"><span class="dot" style="background:var(--orange)"></span>
+                <span class="lbl">40–69% — passed</span><span class="n num">79</span><span class="amt num">67%</span></div>
+              <div class="bucket"><span class="dot" style="background:var(--success)"></span>
+                <span class="lbl">70% and above — strong</span><span class="n num">26</span><span class="amt num">21%</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>Candidates</h2>
+            <a class="link" href="#">Sort by score</a>
+          </div>
+          <div class="table-wrap">
+            <div class="table-scroll">
+              <table class="table">
+                <caption class="sr-only">Per-candidate results for the Data Structures mid-term</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Candidate</th>
+                    <th scope="col" class="right">Score</th>
+                    <th scope="col" class="right">Percent</th>
+                    <th scope="col">Outcome</th>
+                    <th scope="col">Integrity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm">WC</span>
+                        <span><span class="who-name">Wei Chen</span>
+                          <span class="who-sub" style="display:block">20241019</span></span>
+                      </div>
+                    </td>
+                    <!-- The band is never the only signal: the number lives
+                         inside the chip, so the chip is emphasis and not
+                         information anyone can be locked out of. -->
+                    <td class="right"><span class="score hi">74 / 80</span></td>
+                    <td class="right num">93%</td>
+                    <td><span class="status on"><span class="dot"></span> Passed</span></td>
+                    <td class="small muted">Clean</td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">HS</span>
+                        <span><span class="who-name">Hana Sato</span>
+                          <span class="who-sub" style="display:block">20241510</span></span>
+                      </div>
+                    </td>
+                    <td class="right"><span class="score hi">71 / 80</span></td>
+                    <td class="right num">89%</td>
+                    <td><span class="status on"><span class="dot"></span> Passed</span></td>
+                    <td class="small muted">Clean</td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">PR</span>
+                        <span><span class="who-name">Priya Raghunathan</span>
+                          <span class="who-sub" style="display:block">20241207</span></span>
+                      </div>
+                    </td>
+                    <td class="right"><span class="score hi">66 / 80</span></td>
+                    <td class="right num">83%</td>
+                    <td><span class="status on"><span class="dot"></span> Passed</span></td>
+                    <td class="small muted">Clean</td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--orange-700)">AI</span>
+                        <span><span class="who-name">Ayesha Iqbal</span>
+                          <span class="who-sub" style="display:block">20241233</span></span>
+                      </div>
+                    </td>
+                    <td class="right"><span class="score hi">57 / 80</span></td>
+                    <td class="right num">71%</td>
+                    <td><span class="status on"><span class="dot"></span> Passed</span></td>
+                    <td class="small muted">Clean</td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm">AN</span>
+                        <span><span class="who-name">Amara Nwosu</span>
+                          <span class="who-sub" style="display:block">20241188</span></span>
+                      </div>
+                    </td>
+                    <td class="right"><span class="score mid">52 / 80</span></td>
+                    <td class="right num">65%</td>
+                    <td><span class="status on"><span class="dot"></span> Passed</span></td>
+                    <td class="small muted">Clean</td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">MD</span>
+                        <span><span class="who-name">Marcus Delacroix</span>
+                          <span class="who-sub" style="display:block">20241386</span></span>
+                      </div>
+                    </td>
+                    <td class="right"><span class="score mid">48 / 80</span></td>
+                    <td class="right num">60%</td>
+                    <td><span class="status on"><span class="dot"></span> Passed</span></td>
+                    <td class="small muted">Clean</td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--faint)">TL</span>
+                        <span><span class="who-name">Tobias Lindqvist</span>
+                          <span class="who-sub" style="display:block">20241043</span></span>
+                      </div>
+                    </td>
+                    <!-- Held, not zero. A score withheld pending an integrity
+                         decision must not look like a bad mark. -->
+                    <td class="right"><span class="score none">Held</span></td>
+                    <td class="right muted">—</td>
+                    <td><span class="status idle"><span class="dot"></span> Under review</span></td>
+                    <td class="small"><a href="attempt-integrity.html">14 points · review</a></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--orange-700)">JW</span>
+                        <span><span class="who-name">James Whitcombe</span>
+                          <span class="who-sub" style="display:block">20241091</span></span>
+                      </div>
+                    </td>
+                    <td class="right"><span class="score mid">44 / 80</span></td>
+                    <td class="right num">55%</td>
+                    <td><span class="status on"><span class="dot"></span> Passed</span></td>
+                    <td class="small muted">Clean</td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm">FA</span>
+                        <span><span class="who-name">Fatima Al-Sayed</span>
+                          <span class="who-sub" style="display:block">20241164</span></span>
+                      </div>
+                    </td>
+                    <td class="right"><span class="score mid">39 / 80</span></td>
+                    <td class="right num">49%</td>
+                    <td><span class="status on"><span class="dot"></span> Passed</span></td>
+                    <td class="small muted">Clean</td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">NE</span>
+                        <span><span class="who-name">Ngozi Eze</span>
+                          <span class="who-sub" style="display:block">20241278</span></span>
+                      </div>
+                    </td>
+                    <td class="right"><span class="score lo">31 / 80</span></td>
+                    <td class="right num">39%</td>
+                    <td><span class="status off"><span class="dot"></span> Not passed</span></td>
+                    <td class="small"><a href="attempt-integrity.html">8 points · upheld</a></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--faint)">DO</span>
+                        <span><span class="who-name">Daniel Okafor</span>
+                          <span class="who-sub" style="display:block">20241322</span></span>
+                      </div>
+                    </td>
+                    <td class="right"><span class="score lo">24 / 80</span></td>
+                    <td class="right num">30%</td>
+                    <td><span class="status off"><span class="dot"></span> Not passed</span></td>
+                    <td class="small muted">Ran out of time</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="table-foot">
+              <span>Showing 11 of 118 marked · 68 not yet marked</span>
+              <span class="pager">
+                <button class="btn btn-sm btn-ghost" disabled>Previous</button>
+                <button class="btn btn-sm btn-ghost">Next</button>
+              </span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ rail ============================ -->
+      <aside>
+        <section>
+          <div class="section-head"><h2>Release results</h2></div>
+          <div class="card card-pad">
+            <p class="small muted">Publishing shows every candidate their score, their rubric comments
+              and whether they passed. Marking closes at the same moment and cannot be reopened.</p>
+            <div class="banner warn mt-2" style="padding:10px 12px">
+              <svg class="ic ic-sm"><use href="#i-lock"/></svg>
+              <span class="small">68 scripts unmarked · moderation sample not signed off</span>
+            </div>
+            <button class="btn btn-block mt-2" disabled>Release to 186 candidates</button>
+            <p class="small muted mt-1">Both gates clear on their own once the work is done — nobody
+              has to come back and unlock anything.</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Cohort</h2></div>
+          <div class="card card-pad">
+            <div class="kv">
+              <div class="kv-row"><span class="k">Spread (σ)</span><span class="v num">12.4</span></div>
+              <div class="kv-row"><span class="k">Highest</span><span class="v num">74 / 80</span></div>
+              <div class="kv-row"><span class="k">Lowest</span><span class="v num">18 / 80</span></div>
+              <div class="kv-row"><span class="k">Auto-marked mean</span><span class="v num">24.1 / 30</span></div>
+              <div class="kv-row"><span class="k">Written mean</span><span class="v num">22.6 / 50</span></div>
+              <div class="kv-row"><span class="k">Flagged for integrity</span><span class="v num">9</span></div>
+            </div>
+            <div class="divider"></div>
+            <div class="inline small muted">
+              <svg class="ic ic-sm"><use href="#i-alert"/></svg>
+              Section B is pulling the cohort down 12 points below Section A.
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Questions worth a look</h2><a class="link" href="#">Item analysis</a></div>
+          <div class="rowlist">
+            <div class="row" style="padding:11px 14px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Q5 · Primary clustering</div>
+                <div class="row-meta">Facility 0.19 · weaker candidates did better — check the key</div>
+              </div>
+              <div class="row-trailing"><span class="pill late">Suspect</span></div>
+            </div>
+            <div class="row" style="padding:11px 14px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Q3 · O(n) heap build</div>
+                <div class="row-meta">Facility 0.98 · everybody got it right</div>
+              </div>
+              <div class="row-trailing"><span class="pill soon">Tells you nothing</span></div>
+            </div>
+            <div class="row" style="padding:11px 14px">
+              <div class="row-main">
+                <div class="row-title" style="font-size:14px">Q12 · Amortised analysis</div>
+                <div class="row-meta">Discrimination 0.61 · separates the cohort cleanly</div>
+              </div>
+              <div class="row-trailing"><span class="pill good">Keep</span></div>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab is-active" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate</a>
+  <a class="tab" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+# F-09 -- scheduled audit of the live database.
+#
+# Catches drift applied outside the migration pipeline (a hand edit in the
+# Supabase dashboard, a half-applied change), which schema-parity alone cannot
+# see because it only compares generated files.
+#
+# Paths are relative to the checkout root so this works whether the project is
+# the repository or a subdirectory of one -- see the note in ci.yml.
+name: Live deployment audit
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm, cache-dependency-path: package-lock.json }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: npm ci
+
+      # Without the secrets this cannot audit anything, and a weekly red cross
+      # that means "nobody has configured this yet" teaches people to ignore the
+      # badge. Say so and stop instead.
+      - name: Are the audit credentials configured?
+        id: creds
+        env:
+          URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          if [ -n "$URL" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::SUPABASE_URL is not set in repository secrets; skipping the live audit."
+          fi
+
+      - name: Audit live schema, RLS, seed and storage
+        if: steps.creds.outputs.present == 'true'
+        run: npm run db:audit
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Must be the pooler host: db.<ref>.supabase.co is IPv6-only and
+          # GitHub runners are IPv4, so the direct URL does not resolve.
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_REGION: ap-south-1

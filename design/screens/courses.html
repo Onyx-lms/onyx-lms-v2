@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Courses</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search your courses…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">SS</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item is-active" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees <span class="count">1</span></a>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">2</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Courses</h1>
+        <p class="page-sub">You are taking 4 courses</p>
+      </div>
+    </div>
+
+    <!-- Two different questions on one page. "Where was I" wants progress and
+         one button; "what else is there" wants enough of a course to judge it
+         by. The old four-column table answered both badly — a table is for
+         comparing values down a column, and it cannot carry a progress bar at
+         all, which is the single most useful thing a learner's own list has. -->
+    <section>
+      <div class="section-head">
+        <h2>Continue</h2>
+        <a class="link" href="student-dashboard.html">Your dashboard</a>
+      </div>
+      <div class="grid">
+        <div class="card card-pad stack-sm">
+          <div class="inline" style="justify-content:space-between;align-items:flex-start">
+            <div style="min-width:0">
+              <a class="row-title" href="course-detail.html" style="font-size:16px">Introduction to Programming</a>
+              <div class="small muted">CS101 · BSc Computer Science</div>
+            </div>
+          </div>
+          <div>
+            <div class="meter" role="progressbar" aria-valuenow="33" aria-valuemin="0"
+                 aria-valuemax="100" aria-label="Introduction to Programming progress">
+              <span style="width:33%"></span>
+            </div>
+            <div class="kv-row small" style="margin-top:6px">
+              <span class="strong num">33%</span><span class="muted num">6 of 18 lessons</span>
+            </div>
+          </div>
+          <a class="btn btn-sm btn-block" href="course-detail.html">
+            <svg class="ic ic-sm"><use href="#i-play"/></svg> Resume
+          </a>
+        </div>
+
+        <div class="card card-pad stack-sm">
+          <div class="inline" style="justify-content:space-between;align-items:flex-start">
+            <div style="min-width:0">
+              <a class="row-title" href="course-detail.html" style="font-size:16px">Databases</a>
+              <div class="small muted">CS102 · BSc Computer Science</div>
+            </div>
+          </div>
+          <div>
+            <div class="meter" role="progressbar" aria-valuenow="18" aria-valuemin="0"
+                 aria-valuemax="100" aria-label="Databases progress">
+              <span style="width:18%"></span>
+            </div>
+            <div class="kv-row small" style="margin-top:6px">
+              <span class="strong num">18%</span><span class="muted num">4 of 22 lessons</span>
+            </div>
+          </div>
+          <a class="btn btn-sm btn-block" href="course-detail.html">
+            <svg class="ic ic-sm"><use href="#i-play"/></svg> Resume
+          </a>
+        </div>
+
+        <div class="card card-pad stack-sm">
+          <div class="inline" style="justify-content:space-between;align-items:flex-start">
+            <div style="min-width:0">
+              <a class="row-title" href="course-detail.html" style="font-size:16px">Discrete Mathematics</a>
+              <div class="small muted">MA110 · BSc Computer Science</div>
+            </div>
+          </div>
+          <div>
+            <div class="meter" role="progressbar" aria-valuenow="56" aria-valuemin="0"
+                 aria-valuemax="100" aria-label="Discrete Mathematics progress">
+              <span style="width:56%"></span>
+            </div>
+            <div class="kv-row small" style="margin-top:6px">
+              <span class="strong num">56%</span><span class="muted num">9 of 16 lessons</span>
+            </div>
+          </div>
+          <a class="btn btn-sm btn-block" href="course-detail.html">
+            <svg class="ic ic-sm"><use href="#i-play"/></svg> Resume
+          </a>
+        </div>
+
+        <!-- One lesson in, so this still says Resume. A course with nothing
+             finished behind it would say Start instead — "resume" on a course
+             never opened is a small lie, and the kind a learner notices. -->
+        <div class="card card-pad stack-sm">
+          <div class="inline" style="justify-content:space-between;align-items:flex-start">
+            <div style="min-width:0">
+              <a class="row-title" href="course-detail.html" style="font-size:16px">Professional Communication</a>
+              <div class="small muted">HU105 · BSc Computer Science</div>
+            </div>
+          </div>
+          <div>
+            <div class="meter" role="progressbar" aria-valuenow="8" aria-valuemin="0"
+                 aria-valuemax="100" aria-label="Professional Communication progress">
+              <span style="width:8%"></span>
+            </div>
+            <div class="kv-row small" style="margin-top:6px">
+              <span class="strong num">8%</span><span class="muted num">1 of 12 lessons</span>
+            </div>
+          </div>
+          <a class="btn btn-sm btn-block" href="course-detail.html">
+            <svg class="ic ic-sm"><use href="#i-play"/></svg> Resume
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Catalogue</h2>
+        <span class="small muted">Courses you are already taking are not repeated here</span>
+      </div>
+
+      <!-- The header search disappears below 900px, so the catalogue carries
+           its own. Programme is the filter that actually narrows this list:
+           a computer scientist is rarely shopping in the MSc AI register. -->
+      <div class="toolbar">
+        <div class="search">
+          <svg class="ic ic-sm"><use href="#i-search"/></svg>
+          <input placeholder="Search the catalogue…" aria-label="Search the catalogue" />
+        </div>
+        <select class="select" aria-label="Programme">
+          <option>Every programme</option>
+          <option selected>BSc Computer Science</option>
+          <option>BSc Data Science</option>
+          <option>BEng Software Engineering</option>
+          <option>MSc Artificial Intelligence</option>
+          <option>MSc Cyber Security</option>
+        </select>
+        <a class="chip is-on" href="#">Open to join <span class="count">3</span></a>
+      </div>
+
+      <div class="grid">
+        <div class="card card-pad stack-sm">
+          <div class="inline">
+            <span class="small strong muted">CS201</span>
+            <span class="pill brand">Open to join</span>
+          </div>
+          <a class="row-title" href="course-detail.html" style="font-size:15.5px">Data Structures and Algorithms</a>
+          <!-- Two lines and then it stops. A card whose height follows its own
+               description makes a grid of them look broken. -->
+          <p class="small muted clamp-2">Lists, trees, hashing and graphs, with the cost of each
+            operation argued rather than asserted. Weekly lab in the code workspace.</p>
+          <div class="inline small muted" style="margin-top:auto;gap:12px">
+            <span class="inline" style="gap:5px"><svg class="ic ic-sm"><use href="#i-building"/></svg> BSc Computer Science</span>
+            <span class="num">4 credits</span>
+          </div>
+          <a class="btn btn-sm btn-block" href="course-detail.html">Join this course</a>
+        </div>
+
+        <div class="card card-pad stack-sm">
+          <div class="inline">
+            <span class="small strong muted">CS210</span>
+          </div>
+          <a class="row-title" href="course-detail.html" style="font-size:15.5px">Operating Systems</a>
+          <p class="small muted clamp-2">Processes, scheduling, memory and file systems, taught against
+            a teaching kernel you build up over the term.</p>
+          <div class="inline small muted" style="margin-top:auto;gap:12px">
+            <span class="inline" style="gap:5px"><svg class="ic ic-sm"><use href="#i-building"/></svg> BSc Computer Science</span>
+            <span class="num">4 credits</span>
+          </div>
+          <!-- No join button: self_enroll is off, so enrolment goes through the
+               programme office. Offering a button the API would refuse is how
+               the catalogue used to say "open to join" and mean nothing. -->
+          <p class="small muted">Enrolment is handled by the programme office.</p>
+        </div>
+
+        <div class="card card-pad stack-sm">
+          <div class="inline">
+            <span class="small strong muted">SE220</span>
+            <span class="pill brand">Open to join</span>
+          </div>
+          <a class="row-title" href="course-detail.html" style="font-size:15.5px">Software Engineering Practice</a>
+          <p class="small muted clamp-2">Version control, code review, testing and the habits of working
+            on something with other people in it.</p>
+          <div class="inline small muted" style="margin-top:auto;gap:12px">
+            <span class="inline" style="gap:5px"><svg class="ic ic-sm"><use href="#i-building"/></svg> BEng Software Engineering</span>
+            <span class="num">3 credits</span>
+          </div>
+          <a class="btn btn-sm btn-block" href="course-detail.html">Join this course</a>
+        </div>
+
+        <div class="card card-pad stack-sm">
+          <div class="inline">
+            <span class="small strong muted">DS150</span>
+            <span class="pill brand">Open to join</span>
+          </div>
+          <a class="row-title" href="course-detail.html" style="font-size:15.5px">Statistics for Data Science</a>
+          <p class="small muted clamp-2">Distributions, estimation and hypothesis testing, with every
+            example worked on a real dataset rather than a coin.</p>
+          <div class="inline small muted" style="margin-top:auto;gap:12px">
+            <span class="inline" style="gap:5px"><svg class="ic ic-sm"><use href="#i-building"/></svg> BSc Data Science</span>
+            <span class="num">3 credits</span>
+          </div>
+          <a class="btn btn-sm btn-block" href="course-detail.html">Join this course</a>
+        </div>
+
+        <div class="card card-pad stack-sm">
+          <div class="inline">
+            <span class="small strong muted">CS305</span>
+          </div>
+          <a class="row-title" href="course-detail.html" style="font-size:15.5px">Computer Networks</a>
+          <p class="small muted clamp-2">From the wire to HTTP: framing, addressing, routing and the
+            reasons the layers were drawn where they were.</p>
+          <div class="inline small muted" style="margin-top:auto;gap:12px">
+            <span class="inline" style="gap:5px"><svg class="ic ic-sm"><use href="#i-building"/></svg> BSc Computer Science</span>
+            <span class="num">3 credits</span>
+          </div>
+          <p class="small muted">Requires CS210 · not open this term.</p>
+        </div>
+
+        <div class="card card-pad stack-sm">
+          <div class="inline">
+            <span class="small strong muted">AI410</span>
+          </div>
+          <a class="row-title" href="course-detail.html" style="font-size:15.5px">Machine Learning Foundations</a>
+          <p class="small muted clamp-2">Linear models, trees and gradient descent, with the mathematics
+            kept in front of you rather than behind a library call.</p>
+          <div class="inline small muted" style="margin-top:auto;gap:12px">
+            <span class="inline" style="gap:5px"><svg class="ic ic-sm"><use href="#i-building"/></svg> MSc Artificial Intelligence</span>
+            <span class="num">4 credits</span>
+          </div>
+          <p class="small muted">Postgraduate — not open to your programme.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab is-active" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

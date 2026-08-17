@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Practice</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search problems, courses…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">NR</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student · BSc Computer Science</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item is-active" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments <span class="count">2</span></a>
+      <a class="nav-item" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees</a>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">2</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Practice</h1>
+        <p class="page-sub">Work through problems and get graded instantly.</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="results.html"><svg class="ic ic-sm"><use href="#i-chart"/></svg> Your submissions</a>
+        <a class="btn" href="practice-problem.html"><svg class="ic ic-sm"><use href="#i-play"/></svg> Resume last problem</a>
+      </div>
+    </div>
+
+    <!-- The progress summary answers "how far in am I" before the list makes
+         anyone count rows. The ring carries the fraction, the three meters say
+         where the gap is — 3 of 20 Hard is the sentence the tile is written
+         for, and it is not visible from "34 of 96" alone. -->
+    <div class="card card-pad">
+      <div class="inline" style="justify-content:space-between;align-items:flex-start;gap:20px">
+        <div class="inline" style="gap:14px">
+          <div class="ring lg" style="--p:35%"><span>35%</span></div>
+          <div>
+            <div class="stat-label">Solved</div>
+            <div class="stat-value">34 <span class="muted" style="font-size:15px;font-weight:600">of 96</span></div>
+            <div class="stat-note">7 more attempted but not yet passing</div>
+          </div>
+        </div>
+        <div class="stack-sm" style="flex:1 1 240px;min-width:0;max-width:420px">
+          <div>
+            <div class="kv-row"><span class="strong small">Easy</span><span class="small muted num">18 / 32</span></div>
+            <div class="meter sm" style="margin-top:5px"><span style="width:56%"></span></div>
+          </div>
+          <div>
+            <div class="kv-row"><span class="strong small">Medium</span><span class="small muted num">13 / 44</span></div>
+            <div class="meter sm" style="margin-top:5px"><span style="width:30%"></span></div>
+          </div>
+          <div>
+            <div class="kv-row"><span class="strong small">Hard</span><span class="small muted num">3 / 20</span></div>
+            <div class="meter sm" style="margin-top:5px"><span style="width:15%"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters, in the order the question is actually asked: what state is it
+         in for me, then how hard, then what topic. Status is a segmented
+         control because the counts belong to the label — you should know what
+         is behind a filter before you spend a click finding out. -->
+    <div class="section">
+      <div class="toolbar">
+        <div class="search">
+          <svg class="ic ic-sm"><use href="#i-search"/></svg>
+          <input placeholder="Search problems" aria-label="Search problems" />
+        </div>
+        <label class="sr-only" for="lang">Language</label>
+        <select class="select" id="lang">
+          <option>Any language</option>
+          <option>Python</option>
+          <option>JavaScript</option>
+          <option>Java</option>
+          <option>C++</option>
+        </select>
+        <div class="spacer"></div>
+        <nav class="segmented" aria-label="Filter by status">
+          <a class="is-on" href="#">All <span class="count">96</span></a>
+          <a href="#">Unsolved <span class="count">55</span></a>
+          <a href="#">Attempted <span class="count">7</span></a>
+          <a href="#">Solved <span class="count">34</span></a>
+        </nav>
+      </div>
+
+      <div class="inline" style="margin-bottom:12px">
+        <a class="chip is-on" href="#">All</a>
+        <a class="chip" href="#">Easy <span class="count">32</span></a>
+        <a class="chip" href="#">Medium <span class="count">44</span></a>
+        <a class="chip" href="#">Hard <span class="count">20</span></a>
+        <span aria-hidden="true" style="width:1px;height:20px;background:var(--line);margin:0 4px"></span>
+        <a class="chip" href="#">Arrays</a>
+        <a class="chip" href="#">Strings</a>
+        <a class="chip" href="#">Hashing</a>
+        <a class="chip" href="#">Graphs</a>
+        <a class="chip" href="#">Dynamic programming</a>
+        <a class="chip" href="#">Heaps</a>
+        <a class="chip" href="#">Binary search</a>
+      </div>
+
+      <div class="section-head">
+        <h2>Problems <span class="muted">· 96</span></h2>
+        <a class="link" href="#">Sort: acceptance</a>
+      </div>
+      <!-- The band on the right is the share of all submissions that pass. It
+           is not the same thing as the difficulty label and it is often the
+           more honest of the two — Coin Change is filed Medium and only a
+           third of attempts clear it. -->
+      <p class="small muted" style="margin:-4px 0 10px">
+        <svg class="ic ic-sm"><use href="#i-target"/></svg>
+        The figure on the right is how many submissions are accepted, not how many people eventually solve it.
+      </p>
+
+      <div class="rowlist">
+        <!-- Solved rows lead with a check in a green tile: the state is a
+             glyph AND a word in the meta line, never the tile colour alone. -->
+        <div class="row">
+          <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="practice-problem.html">Two Sum</a></div>
+            <div class="row-meta">
+              <span>Hashing</span> · <span>Arrays</span> · <span>Solved 3 weeks ago on the first attempt</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill good">Easy</span>
+            <span class="score hi" title="74% of submissions are accepted">74%</span>
+            <a class="btn btn-sm btn-ghost" href="practice-problem.html">Review</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="practice-problem.html">Valid Parentheses</a></div>
+            <div class="row-meta">
+              <span>Stacks</span> · <span>Strings</span> · <span>Solved 12 days ago after 2 attempts</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill good">Easy</span>
+            <span class="score hi" title="68% of submissions are accepted">68%</span>
+            <a class="btn btn-sm btn-ghost" href="practice-problem.html">Review</a>
+          </div>
+        </div>
+
+        <!-- In-progress work is the row a learner came back for, so it says
+             what happened last rather than only that something did. -->
+        <div class="row is-active">
+          <span class="row-icon soon"><svg class="ic"><use href="#i-refresh"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="practice-problem.html">Longest Substring Without Repeating Characters</a></div>
+            <div class="row-meta">
+              <span>Strings</span> · <span>Sliding window</span> ·
+              <span>4 attempts · 9 of 12 cases passed 4 hours ago</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill soon">Medium</span>
+            <span class="score mid" title="41% of submissions are accepted">41%</span>
+            <a class="btn btn-sm" href="practice-problem.html">Continue</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="practice-problem.html">Number of Islands</a></div>
+            <div class="row-meta">
+              <span>Graphs</span> · <span>Flood fill</span> · <span>Solved yesterday after 3 attempts</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill soon">Medium</span>
+            <span class="score mid" title="52% of submissions are accepted">52%</span>
+            <a class="btn btn-sm btn-ghost" href="practice-problem.html">Review</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon brand"><svg class="ic"><use href="#i-code"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="practice-problem.html">Course Prerequisite Order</a></div>
+            <div class="row-meta">
+              <span>Graphs</span> · <span>Topological sort</span> · <span>Not attempted</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill soon">Medium</span>
+            <span class="score mid" title="38% of submissions are accepted">38%</span>
+            <a class="btn btn-sm btn-ghost" href="practice-problem.html">Solve</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon soon"><svg class="ic"><use href="#i-refresh"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="practice-problem.html">Coin Change</a></div>
+            <div class="row-meta">
+              <span>Dynamic programming</span> · <span>1 attempt · timed out 6 days ago</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill soon">Medium</span>
+            <span class="score lo" title="34% of submissions are accepted">34%</span>
+            <a class="btn btn-sm btn-ghost" href="practice-problem.html">Continue</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon brand"><svg class="ic"><use href="#i-code"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="practice-problem.html">Kth Largest Element in a Stream</a></div>
+            <div class="row-meta">
+              <span>Heaps</span> · <span>Design</span> · <span>Not attempted</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill soon">Medium</span>
+            <span class="score mid" title="47% of submissions are accepted">47%</span>
+            <a class="btn btn-sm btn-ghost" href="practice-problem.html">Solve</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon soon"><svg class="ic"><use href="#i-refresh"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="practice-problem.html">Median of Two Sorted Arrays</a></div>
+            <div class="row-meta">
+              <span>Binary search</span> · <span>Arrays</span> · <span>5 attempts · best 7 of 15 cases, last week</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill late">Hard</span>
+            <span class="score lo" title="19% of submissions are accepted">19%</span>
+            <a class="btn btn-sm btn-ghost" href="practice-problem.html">Continue</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon brand"><svg class="ic"><use href="#i-code"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="practice-problem.html">Merge k Sorted Lists</a></div>
+            <div class="row-meta">
+              <span>Heaps</span> · <span>Linked lists</span> · <span>Not attempted</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill late">Hard</span>
+            <span class="score lo" title="26% of submissions are accepted">26%</span>
+            <a class="btn btn-sm btn-ghost" href="practice-problem.html">Solve</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="row-icon brand"><svg class="ic"><use href="#i-code"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="practice-problem.html">Word Ladder</a></div>
+            <div class="row-meta">
+              <span>Graphs</span> · <span>Breadth-first search</span> · <span>Not attempted</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill late">Hard</span>
+            <span class="score lo" title="23% of submissions are accepted">23%</span>
+            <a class="btn btn-sm btn-ghost" href="practice-problem.html">Solve</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="inline mt-2" style="justify-content:center">
+        <a class="btn btn-ghost btn-sm" href="#">Show 10 more</a>
+      </div>
+    </div>
+
+    <!-- Set by a course, not by the bank: these are the ones that count
+         towards a mark, which is why they are pulled out of the 96 above. -->
+    <section class="section">
+      <div class="section-head">
+        <h2>Set by your courses</h2>
+        <a class="link" href="courses.html">All courses</a>
+      </div>
+      <div class="rowlist">
+        <div class="row">
+          <span class="row-icon soon"><svg class="ic"><use href="#i-clock"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">CS2040 Data Structures — problem set 6</div>
+            <div class="row-meta">4 problems · 2 solved · due in 3 days</div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill soon">Due Friday</span>
+            <a class="btn btn-sm btn-ghost" href="#">Open set</a>
+          </div>
+        </div>
+        <div class="row">
+          <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+          <div class="row-main">
+            <div class="row-title">CS3110 Graph Algorithms — warm-up</div>
+            <div class="row-meta">3 problems · all solved · submitted 2 weeks ago</div>
+          </div>
+          <div class="row-trailing">
+            <span class="score hi">100</span>
+            <a class="btn btn-sm btn-ghost" href="results.html">Results</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab is-active" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

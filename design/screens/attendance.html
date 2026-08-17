@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Attendance, CS2010</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search learners, sessions…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">JM</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <!-- Faculty nav: this screen belongs to whoever teaches the course, not to
+       the exams office. Same shell, different menu, same API boundaries. -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Faculty</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item is-active" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">6</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Teaching</div>
+      <a class="nav-item" href="programmes.html"><svg class="ic"><use href="#i-building"/></svg> Programmes</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="allocations.html"><svg class="ic"><use href="#i-chart"/></svg> Teaching load</a>
+      <a class="nav-item" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Support</div>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Mentor queue <span class="count">3</span></a>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">2</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="courses.html">Courses</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <a href="course-detail.html">CS2010 Data Structures</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <span>Attendance</span>
+    </nav>
+
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Attendance</h1>
+        <p class="page-sub">CS2010 Data Structures · 92 enrolled · Michaelmas term, week 9 of 12</p>
+      </div>
+      <div class="page-actions">
+        <!-- One row per learner per session, so it opens in a spreadsheet as a
+             register rather than as a summary somebody has to re-derive. -->
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Export CSV</a>
+        <a class="btn" href="attendance-session.html"><svg class="ic ic-sm"><use href="#i-plus"/></svg> New session</a>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Cohort attendance</div>
+        <div class="stat-value">88%</div>
+        <div class="stat-note">across 92 learners</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Sessions held</div>
+        <div class="stat-value">18</div>
+        <div class="stat-note">of 24 scheduled this term</div>
+      </div>
+      <div class="stat is-alert">
+        <div class="stat-label">Below threshold</div>
+        <div class="stat-value">6</div>
+        <div class="stat-note">under 75% attendance</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Register missing</div>
+        <div class="stat-value">1</div>
+        <div class="stat-note">week 7 lab · nobody marked it</div>
+      </div>
+    </div>
+
+    <!-- min-width:0 on the main column: without it the widest table row sets
+         the grid track and the whole page scrolls sideways on a phone, rather
+         than the table scrolling inside .table-scroll where it belongs. -->
+    <div class="cols mt-3">
+      <div style="min-width:0">
+        <!-- Shortfall is the point of the screen, so it is what the page opens
+             on and what the table sorts by. A list ordered by name buries the
+             six people this report exists to find in the middle of ninety. -->
+        <div class="banner warn">
+          <svg class="ic"><use href="#i-alert"/></svg>
+          <div>
+            <div class="strong">Six learners are below the 75% threshold.</div>
+            <div class="small" style="margin-top:2px">Present and late both count as attended. An excused session leaves the denominator; a session nobody marked counts as an absence.</div>
+          </div>
+        </div>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>Attendance per learner</h2>
+            <span class="small muted">Worst first</span>
+          </div>
+
+          <div class="toolbar">
+            <div class="search">
+              <svg class="ic ic-sm"><use href="#i-search"/></svg>
+              <input placeholder="Find a learner" aria-label="Find a learner" />
+            </div>
+            <div class="segmented spacer">
+              <a class="is-on" href="#">All <span class="count">92</span></a>
+              <a href="#">Shortfall <span class="count">6</span></a>
+              <a href="#">Perfect <span class="count">31</span></a>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <div class="table-scroll">
+              <table class="table">
+                <caption class="sr-only">Attendance per learner on CS2010 Data Structures</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Learner</th>
+                    <th scope="col" class="right">Held</th>
+                    <th scope="col" class="right">Attended</th>
+                    <th scope="col" class="right">Absent</th>
+                    <th scope="col" class="right">Excused</th>
+                    <th scope="col">Attendance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- The percentage is a banded chip with the number inside
+                       it: the band is the meaning, and the band alone would be
+                       unreadable to about one man in twelve. The Shortfall pill
+                       spells the same thing out in a word. -->
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--faint)">TH</span>
+                        <div>
+                          <div class="who-name">Tomás Herrera</div>
+                          <div class="who-sub">tomas.herrera@demo.edu</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="num">18</td>
+                    <td class="num">9</td>
+                    <td class="num">8</td>
+                    <td class="num">1</td>
+                    <td>
+                      <div class="inline" style="gap:8px">
+                        <span class="score lo">53%</span>
+                        <span class="pill late"><svg class="ic ic-sm"><use href="#i-alert"/></svg> Shortfall</span>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">MB</span>
+                        <div>
+                          <div class="who-name">Mateusz Bąk</div>
+                          <div class="who-sub">mateusz.bak@demo.edu</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="num">18</td>
+                    <td class="num">11</td>
+                    <td class="num">7</td>
+                    <td class="num">0</td>
+                    <td>
+                      <div class="inline" style="gap:8px">
+                        <span class="score lo">61%</span>
+                        <span class="pill late"><svg class="ic ic-sm"><use href="#i-alert"/></svg> Shortfall</span>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm">DO</span>
+                        <div>
+                          <div class="who-name">Daniel Osei</div>
+                          <div class="who-sub">daniel.osei@demo.edu</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="num">18</td>
+                    <td class="num">10</td>
+                    <td class="num">6</td>
+                    <td class="num">2</td>
+                    <td>
+                      <div class="inline" style="gap:8px">
+                        <span class="score lo">63%</span>
+                        <span class="pill late"><svg class="ic ic-sm"><use href="#i-alert"/></svg> Shortfall</span>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--orange-700)">AY</span>
+                        <div>
+                          <div class="who-name">Amina Yusuf</div>
+                          <div class="who-sub">amina.yusuf@demo.edu</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="num">18</td>
+                    <td class="num">12</td>
+                    <td class="num">6</td>
+                    <td class="num">0</td>
+                    <td>
+                      <div class="inline" style="gap:8px">
+                        <span class="score lo">67%</span>
+                        <span class="pill late"><svg class="ic ic-sm"><use href="#i-alert"/></svg> Shortfall</span>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--orange-700)">PR</span>
+                        <div>
+                          <div class="who-name">Priya Raghunathan</div>
+                          <div class="who-sub">priya.raghunathan@demo.edu</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="num">18</td>
+                    <td class="num">12</td>
+                    <td class="num">5</td>
+                    <td class="num">1</td>
+                    <td>
+                      <div class="inline" style="gap:8px">
+                        <span class="score mid">71%</span>
+                        <span class="pill late"><svg class="ic ic-sm"><use href="#i-alert"/></svg> Shortfall</span>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">LF</span>
+                        <div>
+                          <div class="who-name">Lucia Ferreira</div>
+                          <div class="who-sub">lucia.ferreira@demo.edu</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="num">18</td>
+                    <td class="num">13</td>
+                    <td class="num">5</td>
+                    <td class="num">0</td>
+                    <td>
+                      <div class="inline" style="gap:8px">
+                        <span class="score mid">72%</span>
+                        <span class="pill late"><svg class="ic ic-sm"><use href="#i-alert"/></svg> Shortfall</span>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">KA</span>
+                        <div>
+                          <div class="who-name">Kwame Adjei</div>
+                          <div class="who-sub">kwame.adjei@demo.edu</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="num">18</td>
+                    <td class="num">14</td>
+                    <td class="num">4</td>
+                    <td class="num">0</td>
+                    <td><span class="score mid">78%</span></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">SL</span>
+                        <div>
+                          <div class="who-name">Sara Lindqvist</div>
+                          <div class="who-sub">sara.lindqvist@demo.edu</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="num">18</td>
+                    <td class="num">14</td>
+                    <td class="num">3</td>
+                    <td class="num">1</td>
+                    <td><span class="score mid">82%</span></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm">AN</span>
+                        <div>
+                          <div class="who-name">Amara Nwosu</div>
+                          <div class="who-sub">amara.nwosu@demo.edu</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="num">18</td>
+                    <td class="num">16</td>
+                    <td class="num">2</td>
+                    <td class="num">0</td>
+                    <td><span class="score hi">89%</span></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--orange-700)">ZH</span>
+                        <div>
+                          <div class="who-name">Zainab Hassan</div>
+                          <div class="who-sub">zainab.hassan@demo.edu</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="num">18</td>
+                    <td class="num">17</td>
+                    <td class="num">1</td>
+                    <td class="num">0</td>
+                    <td><span class="score hi">94%</span></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">CW</span>
+                        <div>
+                          <div class="who-name">Chen Wei</div>
+                          <div class="who-sub">chen.wei@demo.edu</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="num">18</td>
+                    <td class="num">18</td>
+                    <td class="num">0</td>
+                    <td class="num">0</td>
+                    <td><span class="score hi">100%</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="table-foot">
+              Showing 11 of 92 learners · sorted by attendance, then by name so the order is stable between loads
+              <div class="pager">
+                <a class="btn btn-sm btn-ghost" href="#">Next</a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>Sessions</h2>
+            <a class="link" href="#">All 18</a>
+          </div>
+          <div class="rowlist">
+            <div class="row">
+              <span class="row-icon late"><svg class="ic"><use href="#i-clock"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="attendance-session.html">Week 9 · Balanced trees</a></div>
+                <div class="row-meta">Started 12 min ago · Lecture Theatre 2 · check-in open</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill late"><span class="pill-dot"></span> Open</span>
+                <a class="btn btn-sm" href="attendance-session.html">Register</a>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="attendance-session.html">Week 9 · Heaps lab</a></div>
+                <div class="row-meta">2 days ago · Lab Block C · 84 of 92 present</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill good">Closed</span>
+                <a class="btn btn-sm btn-ghost" href="attendance-session.html">View</a>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="attendance-session.html">Week 8 · Hash tables</a></div>
+                <div class="row-meta">6 days ago · Lecture Theatre 2 · 88 of 92 present</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill good">Closed</span>
+                <a class="btn btn-sm btn-ghost" href="attendance-session.html">View</a>
+              </div>
+            </div>
+            <!-- An unmarked register is not an empty one: every learner in it
+                 counts as absent until somebody says otherwise, which is why
+                 it is flagged rather than quietly listed as 0%. -->
+            <div class="row">
+              <span class="row-icon soon"><svg class="ic"><use href="#i-alert"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="attendance-session.html">Week 7 · Graphs lab</a></div>
+                <div class="row-meta">13 days ago · Lab Block C · nobody marked this register</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill soon">No register</span>
+                <a class="btn btn-sm btn-ghost" href="attendance-session.html">Mark now</a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ rail ============================ -->
+      <aside>
+        <section>
+          <div class="section-head"><h2>Threshold</h2></div>
+          <div class="card card-pad">
+            <p class="small muted">The line the shortfall report is drawn at. Changing it re-runs the figures; it does not change any register.</p>
+            <div class="inline mt-1">
+              <select class="select" aria-label="Attendance threshold">
+                <option>75% — institution default</option>
+                <option>80%</option>
+                <option>85%</option>
+                <option>Programme rule (70%)</option>
+              </select>
+              <button class="btn btn-sm">Apply</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>By week</h2></div>
+          <div class="card card-pad">
+            <div class="stack-sm">
+              <div>
+                <div class="kv-row"><span class="strong small">Week 9</span><span class="small muted num">91%</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:91%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">Week 8</span><span class="small muted num">94%</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:94%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">Week 7</span><span class="small muted num">78%</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:78%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">Week 6</span><span class="small muted num">89%</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:89%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row"><span class="strong small">Week 5</span><span class="small muted num">92%</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:92%"></span></div>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="inline small muted">
+              <svg class="ic ic-sm"><use href="#i-alert"/></svg>
+              Week 7 is low because one of its two registers was never marked.
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Who to write to</h2></div>
+          <div class="card card-pad">
+            <p class="small muted">Six learners are under the threshold with three teaching weeks left. Two are already with the mentor queue.</p>
+            <div class="divider"></div>
+            <a class="btn btn-sm btn-block" href="#"><svg class="ic ic-sm"><use href="#i-mail"/></svg> Message the six</a>
+            <a class="btn btn-sm btn-ghost btn-block mt-1" href="support.html">Open mentor queue</a>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab is-active" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

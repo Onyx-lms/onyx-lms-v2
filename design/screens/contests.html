@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Contests</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search contests…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">NR</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student · BSc Computer Science</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments <span class="count">2</span></a>
+      <a class="nav-item" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item is-active" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests <span class="count">2</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees</a>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">2</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Contests</h1>
+        <p class="page-sub">Timed events, judged by the same evaluator as Code Lab.</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="results.html"><svg class="ic ic-sm"><use href="#i-chart"/></svg> Your history</a>
+        <a class="btn" href="contest-detail.html"><svg class="ic ic-sm"><use href="#i-play"/></svg> Enter live contest</a>
+      </div>
+    </div>
+
+    <!-- A contest you are already in and that is ending is the most perishable
+         thing on this screen, so it is a banner above everything, not a row
+         you have to find. -->
+    <div class="banner late" style="flex-wrap:wrap">
+      <svg class="ic"><use href="#i-clock"/></svg>
+      <div>
+        <span class="strong">Autumn Algorithms Cup ends in 1 h 12 min.</span>
+        <span class="small" style="display:block">You are 14th of 212 with 3 of 6 solved. The board freezes in 42 minutes.</span>
+      </div>
+      <a class="btn btn-sm" href="contest-detail.html">Go to contest</a>
+    </div>
+
+    <div class="stats stats-3 mt-2">
+      <div class="stat">
+        <div class="stat-label">Contests entered</div>
+        <div class="stat-value">6</div>
+        <div class="stat-note">2 this term</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Best finish</div>
+        <div class="stat-value">9th</div>
+        <div class="stat-note">of 180 · Summer Code Sprint</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Contest problems solved</div>
+        <div class="stat-value">23</div>
+        <div class="stat-note"><span class="delta up">▲ 6</span> in the last month</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <nav class="segmented" aria-label="Filter contests">
+        <a class="is-on" href="#">All <span class="count">13</span></a>
+        <a href="#">Live <span class="count">2</span></a>
+        <a href="#">Upcoming <span class="count">3</span></a>
+        <a href="#">Past <span class="count">8</span></a>
+      </nav>
+    </div>
+
+    <!-- Three sections rather than one list sorted by date: live, upcoming and
+         past ask for three different things — compete, register, review — and
+         a single ordered list makes you work out which is which from a
+         timestamp. -->
+    <section class="section">
+      <div class="section-head">
+        <h2>Live now</h2>
+        <span class="status live"><span class="dot"></span> 2 running</span>
+      </div>
+      <div class="rowlist">
+        <div class="row is-active">
+          <span class="row-icon solid"><svg class="ic"><use href="#i-trophy"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="contest-detail.html">Autumn Algorithms Cup</a></div>
+            <div class="row-meta">
+              <span class="status live"><span class="dot"></span> Ends in 1 h 12 min</span> ·
+              <span>212 competing</span> · <span>Individual</span> · <span>6 problems, 800 points</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill brand">Rank 14</span>
+            <span class="score mid">3 / 6</span>
+            <a class="btn btn-sm" href="contest-detail.html">Compete</a>
+          </div>
+        </div>
+        <div class="row">
+          <span class="row-icon brand"><svg class="ic"><use href="#i-trophy"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="contest-detail.html">CS2040 Weekly Ladder #9</a></div>
+            <div class="row-meta">
+              <span class="status live"><span class="dot"></span> Ends in 4 h 20 min</span> ·
+              <span>64 competing</span> · <span>Individual</span> · <span>4 problems, 400 points</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill">Not entered</span>
+            <a class="btn btn-sm btn-ghost" href="contest-detail.html">Join</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Upcoming</h2>
+        <a class="link" href="timetable.html">Add to timetable</a>
+      </div>
+      <div class="rowlist">
+        <div class="row">
+          <span class="row-icon soon"><svg class="ic"><use href="#i-clock"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="contest-detail.html">Winter Hackathon 2026</a></div>
+            <div class="row-meta">
+              <span>Starts in 6 days</span> · <span>runs 36 hours</span> ·
+              <span>teams of up to 4</span> · <span>38 teams registered</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill good"><span class="pill-dot"></span> Registered</span>
+            <a class="btn btn-sm btn-ghost" href="contest-detail.html">Your team</a>
+          </div>
+        </div>
+        <div class="row">
+          <span class="row-icon soon"><svg class="ic"><use href="#i-clock"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="contest-detail.html">Graph Theory Sprint</a></div>
+            <div class="row-meta">
+              <span>Starts in 12 days</span> · <span>runs 2 hours</span> ·
+              <span>Individual</span> · <span>91 registered</span> ·
+              <span>board freezes for the last 20 minutes</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <a class="btn btn-sm" href="contest-detail.html">Register</a>
+          </div>
+        </div>
+        <div class="row">
+          <span class="row-icon"><svg class="ic"><use href="#i-calendar"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="contest-detail.html">Placement Prep Mock Contest</a></div>
+            <div class="row-meta">
+              <span>Starts in 3 weeks</span> · <span>runs 90 minutes</span> ·
+              <span>Individual</span> · <span>registration opens in 8 days</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill info">Placement</span>
+            <a class="btn btn-sm btn-ghost is-disabled" href="#">Not open</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Past</h2>
+        <a class="link" href="#">All 8</a>
+      </div>
+      <!-- A finished contest is read for one thing: where you came. The rank
+           carries the band, and the number is inside it — the colour is never
+           doing the work on its own. -->
+      <div class="rowlist">
+        <div class="row">
+          <span class="row-icon good"><svg class="ic"><use href="#i-award"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="contest-detail.html">Summer Code Sprint</a></div>
+            <div class="row-meta">
+              <span>Finished 5 weeks ago</span> · <span>180 competed</span> ·
+              <span>4 of 6 solved</span> · <span>penalty 214</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="pill good">Top 10%</span>
+            <span class="score hi">9th</span>
+            <a class="btn btn-sm btn-ghost" href="contest-detail.html">Review</a>
+          </div>
+        </div>
+        <div class="row">
+          <span class="row-icon"><svg class="ic"><use href="#i-trophy"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="contest-detail.html">Data Structures Grand Prix</a></div>
+            <div class="row-meta">
+              <span>Finished 2 months ago</span> · <span>240 competed</span> ·
+              <span>3 of 8 solved</span> · <span>penalty 331</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="score mid">27th</span>
+            <a class="btn btn-sm btn-ghost" href="contest-detail.html">Review</a>
+          </div>
+        </div>
+        <div class="row">
+          <span class="row-icon"><svg class="ic"><use href="#i-trophy"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="contest-detail.html">Spring Team Relay</a></div>
+            <div class="row-meta">
+              <span>Finished 3 months ago</span> · <span>52 teams</span> ·
+              <span>team “Segfault Society”</span> · <span>5 of 9 solved</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="score mid">11th</span>
+            <a class="btn btn-sm btn-ghost" href="contest-detail.html">Review</a>
+          </div>
+        </div>
+        <!-- Not having entered is a fact worth showing rather than hiding the
+             row: it is how you find the event you meant to enter and missed. -->
+        <div class="row">
+          <span class="row-icon"><svg class="ic"><use href="#i-trophy"/></svg></span>
+          <div class="row-main">
+            <div class="row-title"><a href="contest-detail.html">Freshers’ Warm-up</a></div>
+            <div class="row-meta">
+              <span>Finished 4 months ago</span> · <span>310 competed</span> · <span>you did not enter</span>
+            </div>
+          </div>
+          <div class="row-trailing">
+            <span class="score none">—</span>
+            <a class="btn btn-sm btn-ghost" href="practice.html">Practise the set</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

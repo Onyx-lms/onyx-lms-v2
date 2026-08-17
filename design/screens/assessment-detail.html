@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Data Structures mid-term</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search assessments, students…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">JM</span>
+</header>
+
+<div class="layout">
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Faculty · Dr J. Mensah</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item is-active" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">2</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Teaching</div>
+      <a class="nav-item" href="programmes.html"><svg class="ic"><use href="#i-building"/></svg> Programmes</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="allocations.html"><svg class="ic"><use href="#i-chart"/></svg> Teaching load</a>
+      <a class="nav-item" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Support</div>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-help"/></svg> Mentor queue <span class="count">6</span></a>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+    </div>
+  </aside>
+
+  <main id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="assessments.html">Assessments</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <span>Data Structures — mid-term</span>
+    </nav>
+
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Data Structures — mid-term</h1>
+        <p class="page-sub">CS-2041 Data Structures · 90 minutes · 80 marks · pass mark 32</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="assessment-results.html"><svg class="ic ic-sm"><use href="#i-chart"/></svg> Results</a>
+        <a class="btn" href="assessment-marking.html"><svg class="ic ic-sm"><use href="#i-edit"/></svg> Mark 68 scripts</a>
+      </div>
+    </div>
+
+    <!-- The lifecycle as a stepper rather than a status pill. A pill says
+         "closed"; this says closed AND that release is still two gates away,
+         which is the question anybody opening this page is really asking.
+         Draft/Published/Closed come off `status`; Marked and Released are
+         derived from the grade rows and `results_published_at`. -->
+    <div class="stepper" aria-label="Assessment lifecycle">
+      <span class="step is-done"><svg class="ic ic-sm"><use href="#i-check"/></svg> Draft</span>
+      <span class="sep" aria-hidden="true">›</span>
+      <span class="step is-done"><svg class="ic ic-sm"><use href="#i-check"/></svg> Published</span>
+      <span class="sep" aria-hidden="true">›</span>
+      <span class="step is-done"><svg class="ic ic-sm"><use href="#i-check"/></svg> Closed</span>
+      <span class="sep" aria-hidden="true">›</span>
+      <span class="step is-on"><svg class="ic ic-sm"><use href="#i-clock"/></svg> Marked <span class="num">118/186</span></span>
+      <span class="sep" aria-hidden="true">›</span>
+      <span class="step">Released</span>
+    </div>
+
+    <div class="cols mt-3">
+      <div>
+        <!-- What came back, in four numbers. "Ran out of time" is its own
+             tile because `status: 'expired'` is not the same as a hand-in and
+             gets read differently in a marking meeting. -->
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">Sat the paper</div>
+            <div class="stat-value">186</div>
+            <div class="stat-note">of 192 enrolled</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Handed in</div>
+            <div class="stat-value">182</div>
+            <div class="stat-note">before the paper closed</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Ran out of time</div>
+            <div class="stat-value">4</div>
+            <div class="stat-note">auto-submitted by the server</div>
+          </div>
+          <div class="stat is-alert">
+            <div class="stat-label">Integrity flags</div>
+            <div class="stat-value">9</div>
+            <div class="stat-note">5 still to review</div>
+          </div>
+        </div>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>Marking progress</h2>
+            <a class="link" href="assessment-marking.html">Marking queue</a>
+          </div>
+          <div class="card card-pad">
+            <div class="inline" style="justify-content:space-between;align-items:flex-end">
+              <div>
+                <div class="stat-label">First marking</div>
+                <div class="stat-value" style="font-size:30px">118 <span class="muted" style="font-size:17px">/ 186</span></div>
+              </div>
+              <span class="ring lg" style="--p:63%" role="img" aria-label="63 percent marked"><span>63%</span></span>
+            </div>
+            <div class="meter mt-2"><span style="width:63%"></span></div>
+            <div class="divider"></div>
+            <div class="kv">
+              <div class="kv-row"><span class="k">First marker · Dr J. Mensah</span><span class="v num">118 / 186</span></div>
+              <div class="kv-row"><span class="k">Second marker · Dr S. Okonjo</span><span class="v num">40 / 186</span></div>
+              <div class="kv-row"><span class="k">Moderation sample (10%)</span><span class="v num">0 / 19</span></div>
+            </div>
+            <div class="divider"></div>
+            <div class="inline small muted">
+              <svg class="ic ic-sm"><use href="#i-lock"/></svg>
+              This paper is moderated, so results cannot be released until the sample is signed off.
+            </div>
+          </div>
+        </section>
+
+        <!-- The paper itself. Sections are kept as sections because that is
+             how it was set: each one names its bank and how many questions it
+             draws, so two candidates did not sit the same twenty questions and
+             the page should not pretend otherwise. -->
+        <section class="section">
+          <div class="section-head">
+            <h2>Questions</h2>
+            <a class="link" href="question-bank.html">Edit paper</a>
+          </div>
+
+          <div class="card">
+            <div class="card-head" style="flex-wrap:wrap">
+              <h3>Section A — Objective</h3>
+              <span class="pill">18 drawn from 46</span>
+              <span class="small muted num" style="margin-left:auto">30 marks</span>
+            </div>
+            <div class="rowlist" style="border:0;border-radius:0;box-shadow:none">
+              <div class="row">
+                <span class="row-icon">1</span>
+                <div class="row-main">
+                  <div class="row-title">Which structure gives amortised O(1) insertion and removal at one end only?</div>
+                  <div class="row-meta"><span>One answer</span><span>·</span><span>4 options</span><span>·</span><span>v2</span></div>
+                </div>
+                <div class="row-trailing"><span class="pill">2 marks</span></div>
+              </div>
+              <div class="row">
+                <span class="row-icon">2</span>
+                <div class="row-main">
+                  <div class="row-title">Select every operation that runs in O(log n) on a height-balanced BST.</div>
+                  <div class="row-meta"><span>Several answers</span><span>·</span><span>5 options</span><span>·</span><span>v1</span></div>
+                </div>
+                <div class="row-trailing"><span class="pill">3 marks</span></div>
+              </div>
+              <div class="row">
+                <span class="row-icon">3</span>
+                <div class="row-main">
+                  <div class="row-title">A binary min-heap of n elements can be built in O(n) time.</div>
+                  <div class="row-meta"><span>True/false</span><span>·</span><span>v1</span></div>
+                </div>
+                <div class="row-trailing"><span class="pill">1 mark</span></div>
+              </div>
+              <div class="row">
+                <span class="row-icon">4</span>
+                <div class="row-main">
+                  <div class="row-title">Given the array [7, 3, 9, 1, 8], which element is at the root after heapify?</div>
+                  <div class="row-meta"><span>One answer</span><span>·</span><span>4 options</span><span>·</span><span>v1</span></div>
+                </div>
+                <div class="row-trailing"><span class="pill">2 marks</span></div>
+              </div>
+              <div class="row">
+                <span class="row-icon">5</span>
+                <div class="row-main">
+                  <div class="row-title">Which collision strategy suffers primary clustering?</div>
+                  <div class="row-meta"><span>One answer</span><span>·</span><span>4 options</span><span>·</span><span>v3</span></div>
+                </div>
+                <div class="row-trailing"><span class="pill">2 marks</span></div>
+              </div>
+            </div>
+            <div class="card-foot small muted">
+              13 more objective questions are drawn per candidate from
+              <a href="question-bank.html">Data structures — core</a>. Scored automatically against the key
+              as it stood when each paper was sat.
+            </div>
+          </div>
+
+          <div class="card mt-2">
+            <div class="card-head" style="flex-wrap:wrap">
+              <h3>Section B — Written</h3>
+              <span class="pill soon">Marked by hand</span>
+              <span class="small muted num" style="margin-left:auto">50 marks</span>
+            </div>
+            <div class="rowlist" style="border:0;border-radius:0;box-shadow:none">
+              <div class="row">
+                <span class="row-icon">19</span>
+                <div class="row-main">
+                  <div class="row-title">Explain why a hash table's expected O(1) lookup degrades to O(n), and what a resize does about it.</div>
+                  <div class="row-meta"><span>Essay</span><span>·</span><span>4 rubric criteria</span><span>·</span><span>v2</span></div>
+                </div>
+                <div class="row-trailing"><span class="pill">12 marks</span></div>
+              </div>
+              <div class="row">
+                <span class="row-icon">20</span>
+                <div class="row-main">
+                  <div class="row-title">Compare an adjacency list with an adjacency matrix for a sparse graph, in space and in traversal cost.</div>
+                  <div class="row-meta"><span>Essay</span><span>·</span><span>4 rubric criteria</span><span>·</span><span>v1</span></div>
+                </div>
+                <div class="row-trailing"><span class="pill">14 marks</span></div>
+              </div>
+              <div class="row">
+                <span class="row-icon">21</span>
+                <div class="row-main">
+                  <div class="row-title">Write the loop invariant that makes binary search correct, and show it holds after one iteration.</div>
+                  <div class="row-meta"><span>Short answer</span><span>·</span><span>3 rubric criteria</span><span>·</span><span>v1</span></div>
+                </div>
+                <div class="row-trailing"><span class="pill">10 marks</span></div>
+              </div>
+              <div class="row">
+                <span class="row-icon">22</span>
+                <div class="row-main">
+                  <div class="row-title">Trace Dijkstra from vertex A on the graph overleaf and state the final distance to F.</div>
+                  <div class="row-meta"><span>Short answer</span><span>·</span><span>3 rubric criteria</span><span>·</span><span>v2</span></div>
+                </div>
+                <div class="row-trailing"><span class="pill">14 marks</span></div>
+              </div>
+            </div>
+            <div class="card-foot small muted">
+              22 questions · 80 marks in total · every written question carries a rubric, so two markers
+              score the same thing.
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ rail ============================ -->
+      <aside>
+        <section>
+          <div class="section-head"><h2>Settings</h2><a class="link" href="#">Edit</a></div>
+          <div class="card card-pad">
+            <div class="kv">
+              <div class="kv-row"><span class="k">Opened</span><span class="v">3 days ago</span></div>
+              <div class="kv-row"><span class="k">Due</span><span class="v">Closed 2 days ago</span></div>
+              <div class="kv-row"><span class="k">Duration</span><span class="v num">90 min</span></div>
+              <div class="kv-row"><span class="k">Attempts allowed</span><span class="v num">1</span></div>
+              <!-- late_policy / late_penalty_percent come off the coursework
+                   record, not the exam window — a timed paper simply closes,
+                   but this one accepted approved extensions. -->
+              <div class="kv-row"><span class="k">Late policy</span><span class="v">Accepted, −10%</span></div>
+              <div class="kv-row"><span class="k">Total points</span><span class="v num">80</span></div>
+              <div class="kv-row"><span class="k">Pass mark</span><span class="v num">32 <span class="muted small">(40%)</span></span></div>
+            </div>
+            <div class="divider"></div>
+            <div class="stack-sm">
+              <div class="inline small"><span class="status on"><span class="dot"></span> Monitored</span>
+                <span class="muted">camera required, screen not</span></div>
+              <div class="inline small"><span class="status idle"><span class="dot"></span> Names shown</span>
+                <span class="muted">anonymous marking is off</span></div>
+              <div class="inline small"><span class="status on"><span class="dot"></span> Moderated</span>
+                <span class="muted">10% sample before release</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Release</h2></div>
+          <div class="card card-pad">
+            <p class="small muted">Releasing closes marking for good and shows every candidate their
+              score, their rubric comments and whether they passed. It cannot be undone.</p>
+            <div class="banner warn mt-2" style="padding:10px 12px">
+              <svg class="ic ic-sm"><use href="#i-lock"/></svg>
+              <span class="small">Blocked: 68 scripts unmarked and the moderation sample is not signed off.</span>
+            </div>
+            <!-- Disabled with the reason next to it. A greyed button that does
+                 not say why is the single most-reported confusion in the old
+                 exams tool. -->
+            <button class="btn btn-block mt-2" disabled>Release results</button>
+            <a class="btn btn-ghost btn-block mt-1" href="assessment-marking.html">Carry on marking</a>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Recent</h2><a class="link" href="#">All activity</a></div>
+          <div class="card">
+            <ul class="stack-sm card-pad" style="gap:12px">
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm">JM</span>
+                <span class="small"><span class="strong">You</span> marked 24 scripts
+                  <span class="muted" style="display:block">about an hour ago</span></span>
+              </li>
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm" style="background:var(--teal-500)">SO</span>
+                <span class="small"><span class="strong">Dr S. Okonjo</span> second-marked 12 scripts
+                  <span class="muted" style="display:block">yesterday</span></span>
+              </li>
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm" style="background:var(--orange-700)">SY</span>
+                <span class="small"><span class="strong">System</span> auto-submitted 4 papers at the time limit
+                  <span class="muted" style="display:block">2 days ago</span></span>
+              </li>
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm" style="background:var(--faint)">SY</span>
+                <span class="small"><span class="strong">System</span> raised 9 integrity flags across 6 attempts
+                  <span class="muted" style="display:block">2 days ago</span></span>
+              </li>
+            </ul>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab is-active" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate</a>
+  <a class="tab" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

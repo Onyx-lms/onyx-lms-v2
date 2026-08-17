@@ -1,0 +1,1731 @@
+/**
+ * The platform layer -- the operator who sits above every institution.
+ *
+ * Not a tenant role, and not one of the seven in `Role`. A platform admin is
+ * not a member of any institution by virtue of holding this; they can create
+ * one, look at the shape of any of them, and suspend one that has stopped
+ * paying or started misbehaving, all without a tenant token that would make
+ * them subject to (or a hole in) that institution's own RLS boundary.
+ *
+ * Every read and write in this file goes through the service-role client --
+ * the same one tenant creation already uses -- because there is no tenant
+ * claim for RLS to check a platform admin's token against. See 0009_platform
+ * for why a permissive policy here would be the wrong shape of trust.
+ */
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Role } from '@onyx/types';
+import type { OnyxDb } from './db.ts';
+import { onyxAuthAdmin, onyxAuthClient } from './db.ts';
+import { HttpError } from '../http/errors.ts';
+import { slugify } from '../authoring/slug.ts';
+import { ROLES } from './tenancy.service.ts';
+import { gradeFor } from './examinations.service.ts';
+
+const TENANT_COLUMNS = 'id, name, slug, status, plan, created_at, updated_at';
+const ADMIN_COLUMNS = 'id, user_id, granted_by, created_at';
+
+/**
+ * Caps.
+ *
+ * An operator opening an institution should get a page, not a table scan. Every
+ * list below is bounded, and every bounded list reports whether it hit the
+ * bound so the screen can say "showing the first N" rather than quietly lying
+ * about how much there is. ROW_CAP bounds what an operator reads directly;
+ * SCAN_CAP bounds the one-query-then-tally passes used to attach counts to
+ * those rows (a per-row count query would be N round trips).
+ */
+const ROW_CAP = 200;
+const SCAN_CAP = 5000;
+
+const num = (v: unknown): number => Number(v ?? 0);
+const clampLimit = (v: number | undefined, fallback = ROW_CAP) =>
+  Math.min(Math.max(Number.isFinite(v) && v! > 0 ? Math.trunc(v!) : fallback, 1), ROW_CAP);
+
+/** Mean to one decimal, or null when there is nothing to average. */
+function mean(values: number[]): number | null {
+  if (!values.length) return null;
+  return Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10;
+}
+
+interface PersonRow {
+  membership_id: number; user_id: number; name: string; email: string; phone: string | null;
+  role: string; membership_status: number; account_status: number; joined_at: string;
+  batch: { id: number; name: string; code: string } | null;
+  programme: { id: number; name: string; code: string } | null;
+  enrollment_count: number; teaching_count: number;
+}
+
+export class PlatformService {
+  #db: OnyxDb;
+  #authClientOverride: SupabaseClient | undefined;
+  constructor(db: OnyxDb, authClient?: SupabaseClient) {
+    this.#db = db;
+    this.#authClientOverride = authClient;
+  }
+  get #authClient(): SupabaseClient { return this.#authClientOverride ?? onyxAuthClient(); }
+
+  // -------------------------------------------------------------------------
+  // Who gets in
+  // -------------------------------------------------------------------------
+
+  /**
+   * Signing in as a platform admin uses the same email and password as any
+   * other Onyx account -- there is one identity per person, same as
+   * tenancy.service.ts's signIn(). What differs is what it checks
+   * afterwards: not "do you belong to an institution" but "are you listed in
+   * onyx_platform_admins", and what it carries: no tenant_id at all -- the
+   * Custom Access Token Hook checks onyx_platform_admins first and stamps
+   * `platform: true` instead (0015_auth_claims_hook.sql), so there is
+   * nothing this method needs to point at a tenant the way tenancy
+   * service's signIn() does.
+   */
+  async authenticate(email: string, password: string) {
+    const { data: signed, error: signError } = await this.#authClient.auth.signInWithPassword({
+      email: email.trim().toLowerCase(), password,
+    });
+    // The same message either way: which emails exist, and which of those
+    // are platform admins, is not public.
+    if (signError || !signed.user || !signed.session) throw new HttpError(401, 'Those details do not match.');
+
+    const { data: user } = await this.#db.from('onyx_users')
+      .select('id, email, name, status').eq('id', signed.user.id).maybeSingle();
+    if (!user || user.status !== 1) throw new HttpError(403, 'That account is not active.');
+
+    const { data: grant } = await this.#db.from('onyx_platform_admins')
+      .select(ADMIN_COLUMNS).eq('user_id', user.id).maybeSingle();
+    if (!grant) throw new HttpError(401, 'Those details do not match.');
+
+    // No tenant pointer to set and no refresh needed: the hook reads
+    // onyx_platform_admins directly, so this first-minted session already
+    // carries `platform: true`.
+    return { session: signed.session, user: { id: user.id, email: user.email, name: user.name } };
+  }
+
+  async isPlatformAdmin(userId: string): Promise<boolean> {
+    const { data } = await this.#db.from('onyx_platform_admins')
+      .select('id').eq('user_id', userId).maybeSingle();
+    return Boolean(data);
+  }
+
+  async admins() {
+    const { data } = await this.#db.from('onyx_platform_admins')
+      .select(ADMIN_COLUMNS).order('created_at', { ascending: true });
+    const rows = data ?? [];
+    if (!rows.length) return [];
+    const { data: people } = await this.#db.from('onyx_users').select('id, name, email')
+      .in('id', rows.map((r) => String(r.user_id)));
+    const byId = new Map((people ?? []).map((p) => [String(p.id), p]));
+    return rows.map((r) => ({ ...r, user: byId.get(String(r.user_id)) ?? null }));
+  }
+
+  /**
+   * Grant platform admin to an existing account, or a brand new one.
+   *
+   * Bootstrapping the very first platform admin -- when this table is empty
+   * and nobody holds a token that could pass requirePlatformAdmin() to call
+   * this -- is deliberately NOT this method's job. That happens once, from
+   * the machine, via tools/onyx/grant-platform-admin.mjs, which writes the
+   * row directly with the service-role connection this same class uses. This
+   * method is for the second admin onward, granted by the first.
+   *
+   * A brand-new account's identity is created in auth.users first (the
+   * Admin API, same as tenancy.service.ts's upsertUser()) -- see
+   * docs/ADR-011-supabase-auth-migration.md.
+   */
+  async grant(email: string, name: string, password: string | null, grantedBy: string | null) {
+    const normalised = email.trim().toLowerCase();
+    const { data: existing } = await this.#db.from('onyx_users')
+      .select('id, name').eq('email', normalised).maybeSingle();
+
+    let userId: string;
+    if (existing) {
+      userId = String(existing.id);
+    } else {
+      if (!password) throw new HttpError(422, 'A new account needs a password.');
+      const { data: authUser, error: authError } = await onyxAuthAdmin().auth.admin.createUser({
+        email: normalised, password, email_confirm: true,
+      });
+      if (authError || !authUser?.user) {
+        throw new HttpError(500, 'Could not create the account: ' + (authError?.message ?? 'unknown error'));
+      }
+      const { error } = await this.#db.from('onyx_users').insert({
+        id: authUser.user.id, email: normalised, name: name.trim(), status: 1,
+      });
+      if (error) {
+        throw new HttpError(500, 'Could not create the account: ' + error.message);
+      }
+      userId = authUser.user.id;
+    }
+
+    const { data, error } = await this.#db.from('onyx_platform_admins').insert({
+      user_id: userId, granted_by: grantedBy,
+    }).select(ADMIN_COLUMNS).maybeSingle();
+    if (error) {
+      if (/duplicate key|unique/i.test(error.message)) {
+        throw new HttpError(409, 'That person is already a platform admin.');
+      }
+      throw new HttpError(500, 'Could not grant platform admin: ' + error.message);
+    }
+
+    await this.#log(grantedBy, 'platform_admin.granted', 'platform_admin', Number(data!.id),
+      null, { user_id: userId, email: normalised });
+    return data;
+  }
+
+  async revoke(id: number, actorId: string | null) {
+    const { data: row } = await this.#db.from('onyx_platform_admins')
+      .select(ADMIN_COLUMNS).eq('id', id).maybeSingle();
+    if (!row) throw new HttpError(404, 'No such platform admin.');
+
+    // The last one is not removable through this path: a platform with nobody
+    // able to sign in to it is not "more secure", it is unrecoverable short
+    // of the same direct-database step bootstrapping used.
+    const { data: all } = await this.#db.from('onyx_platform_admins').select('id');
+    if ((all ?? []).length <= 1) {
+      throw new HttpError(422, 'That is the last platform admin. Grant another one first.');
+    }
+
+    await this.#db.from('onyx_platform_admins').delete().eq('id', id);
+    await this.#log(actorId, 'platform_admin.revoked', 'platform_admin', id,
+      { user_id: row.user_id }, null);
+    return { ok: true };
+  }
+
+  // -------------------------------------------------------------------------
+  // Every institution
+  // -------------------------------------------------------------------------
+
+  async tenants(filters: { search?: string; status?: number; plan?: string } = {}) {
+    let q = this.#db.from('onyx_tenants').select(TENANT_COLUMNS);
+    if (filters.status !== undefined) q = q.eq('status', filters.status);
+    if (filters.plan) q = q.eq('plan', filters.plan);
+    const { data } = await q.order('created_at', { ascending: false });
+    let rows = data ?? [];
+    // Search is a substring match on name or address -- there are too few
+    // institutions per platform for this to need a database-side ilike, and
+    // it keeps this one query rather than two different code paths.
+    if (filters.search?.trim()) {
+      const needle = filters.search.trim().toLowerCase();
+      rows = rows.filter((t) =>
+        String(t.name).toLowerCase().includes(needle)
+        || String(t.slug).toLowerCase().includes(needle));
+    }
+    if (!rows.length) return [];
+
+    // One count query per table rather than a join, because these tables
+    // have no foreign key to lean on in a single request through PostgREST,
+    // and this page is read by one operator at a time, not per learner.
+    const { data: memberships } = await this.#db.from('onyx_memberships')
+      .select('tenant_id').in('tenant_id', rows.map((t) => Number(t.id))).eq('status', 1);
+    const counts = new Map<number, number>();
+    for (const m of memberships ?? []) {
+      const id = Number(m.tenant_id);
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+
+    return rows.map((t) => ({ ...t, member_count: counts.get(Number(t.id)) ?? 0 }));
+  }
+
+  /**
+   * One institution's headline shape.
+   *
+   * The role breakdown was all this returned, which answers "how many people"
+   * and nothing about whether the place is actually being used. The counts
+   * added here are the cheap ones -- HEAD requests that come back as a number
+   * from Postgres rather than rows over the wire -- so the drill-in page can
+   * lead with what an operator actually wants to know before scrolling.
+   */
+  async tenant(id: number) {
+    const { data } = await this.#db.from('onyx_tenants')
+      .select(TENANT_COLUMNS).eq('id', id).maybeSingle();
+    if (!data) throw new HttpError(404, 'No such institution.');
+
+    const { data: memberships } = await this.#db.from('onyx_memberships')
+      .select('role').eq('tenant_id', id).eq('status', 1);
+    const byRole: Record<string, number> = {};
+    for (const m of memberships ?? []) {
+      byRole[String(m.role)] = (byRole[String(m.role)] ?? 0) + 1;
+    }
+
+    const head = { count: 'exact' as const, head: true };
+    const [
+      courses, assessments, assignments, enrollments,
+      programs, batches, exams, examMarks, submissions, attempts,
+    ] = await Promise.all([
+      this.#db.from('onyx_courses').select('id', head).eq('tenant_id', id),
+      this.#db.from('onyx_assessments').select('id', head).eq('tenant_id', id),
+      this.#db.from('onyx_assignments').select('id', head).eq('tenant_id', id),
+      this.#db.from('onyx_enrollments').select('id', head).eq('tenant_id', id),
+      this.#db.from('onyx_programs').select('id', head).eq('tenant_id', id),
+      this.#db.from('onyx_batches').select('id', head).eq('tenant_id', id),
+      this.#db.from('onyx_exams').select('id', head).eq('tenant_id', id),
+      this.#db.from('onyx_exam_marks').select('id', head).eq('tenant_id', id),
+      this.#db.from('onyx_assignment_submissions').select('id', head).eq('tenant_id', id),
+      this.#db.from('onyx_assessment_attempts').select('id', head).eq('tenant_id', id),
+    ]);
+
+    return {
+      ...data,
+      members_by_role: byRole,
+      member_count: Object.values(byRole).reduce((sum, n) => sum + n, 0),
+      counts: {
+        courses: courses.count ?? 0,
+        assessments: assessments.count ?? 0,
+        assignments: assignments.count ?? 0,
+        enrollments: enrollments.count ?? 0,
+        programmes: programs.count ?? 0,
+        batches: batches.count ?? 0,
+        exams: exams.count ?? 0,
+        exam_marks: examMarks.count ?? 0,
+        submissions: submissions.count ?? 0,
+        attempts: attempts.count ?? 0,
+      },
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // Looking inside one institution
+  //
+  // These three read a customer's own records -- their students, their marks --
+  // from outside their tenancy. Three rules hold for all of them and are worth
+  // stating once rather than three times:
+  //
+  //   1. Every query filters on tenant_id. There is no RLS underneath the
+  //      service-role client to catch a forgotten one, so the filter IS the
+  //      boundary. The one exception is onyx_users, which has no tenant_id by
+  //      design (one identity per person, many memberships) -- so it is only
+  //      ever read by an id list already derived from a tenant-filtered query.
+  //   2. Every list is capped and says so, because "the operator's browser hung"
+  //      is how a big customer finds out this page exists.
+  //   3. Reading grades is audited. See tenantGrades().
+  // -------------------------------------------------------------------------
+
+  /** Cheap existence check -- 404 before doing eight more queries for nothing. */
+  async #requireTenant(id: number) {
+    const { data } = await this.#db.from('onyx_tenants')
+      .select('id, name, slug').eq('id', id).maybeSingle();
+    if (!data) throw new HttpError(404, 'No such institution.');
+    return data;
+  }
+
+  /**
+   * onyx_users is the one table here without a tenant_id, so it is never
+   * queried by tenant -- only by a list of ids that a tenant-scoped query
+   * produced. Passing ids from anywhere else would leak across institutions.
+   */
+  async #usersById(ids: number[]) {
+    const out = new Map<number,
+      { id: number; name: string; email: string; phone: string | null; status: number }>();
+    if (!ids.length) return out;
+    const { data } = await this.#db.from('onyx_users')
+      .select('id, name, email, phone, status').in('id', ids);
+    for (const u of data ?? []) {
+      out.set(num(u.id), {
+        id: num(u.id), name: String(u.name), email: String(u.email),
+        phone: u.phone == null ? null : String(u.phone), status: num(u.status),
+      });
+    }
+    return out;
+  }
+
+  /**
+   * The institution's people: who is on the roll, what they are, and enough
+   * context (batch, programme, how much they are enrolled in) to tell an active
+   * student from a name that was imported once and never used.
+   */
+  async tenantPeople(id: number, opts: { role?: string; limit?: number } = {}) {
+    const tenant = await this.#requireTenant(id);
+    const limit = clampLimit(opts.limit);
+
+    const scoped = this.#db.from('onyx_memberships')
+      .select('id, user_id, role, status, created_at').eq('tenant_id', id);
+
+    // limit + 1 so "there is more" is a fact, not a guess from a full page.
+    const listing = opts.role ? scoped.eq('role', opts.role as Role) : scoped;
+    const { data: rows } = await listing
+      .order('role', { ascending: true }).order('id', { ascending: true })
+      .limit(limit + 1);
+    const page = (rows ?? []).slice(0, limit);
+    const capped = (rows ?? []).length > limit;
+
+    // The total counts the same set the page is a window onto -- with the role
+    // filter applied -- so "showing 200 of 4,312" is about one comparable thing.
+    const counting = this.#db.from('onyx_memberships')
+      .select('id', { count: 'exact', head: true }).eq('tenant_id', id);
+    const { count: total } = await (opts.role
+      ? counting.eq('role', opts.role as Role) : counting);
+
+    const userIds = page.map((m) => num(m.user_id));
+    const users = await this.#usersById(userIds);
+
+    // Everything below is keyed on userIds, which came from a tenant-filtered
+    // read, and is tenant-filtered again anyway.
+    const [enrolQ, batchMemQ, facultyQ] = userIds.length ? await Promise.all([
+      this.#db.from('onyx_enrollments').select('user_id, batch_id')
+        .eq('tenant_id', id).eq('status', 1).in('user_id', userIds).limit(SCAN_CAP),
+      this.#db.from('onyx_batch_members').select('user_id, batch_id')
+        .eq('tenant_id', id).in('user_id', userIds).limit(SCAN_CAP),
+      this.#db.from('onyx_course_faculty').select('user_id, course_id')
+        .eq('tenant_id', id).in('user_id', userIds).limit(SCAN_CAP),
+    ]) : [{ data: [] }, { data: [] }, { data: [] }];
+
+    const enrolCount = new Map<number, number>();
+    const batchOf = new Map<number, number>();
+    for (const e of enrolQ.data ?? []) {
+      const uid = num(e.user_id);
+      enrolCount.set(uid, (enrolCount.get(uid) ?? 0) + 1);
+      if (e.batch_id != null && !batchOf.has(uid)) batchOf.set(uid, num(e.batch_id));
+    }
+    // An explicit batch membership beats one inferred from an enrolment.
+    for (const b of batchMemQ.data ?? []) batchOf.set(num(b.user_id), num(b.batch_id));
+    const teachCount = new Map<number, number>();
+    for (const f of facultyQ.data ?? []) {
+      const uid = num(f.user_id);
+      teachCount.set(uid, (teachCount.get(uid) ?? 0) + 1);
+    }
+
+    const batchIds = [...new Set(batchOf.values())];
+    const { data: batchRows } = batchIds.length
+      ? await this.#db.from('onyx_batches').select('id, name, code, program_id')
+        .eq('tenant_id', id).in('id', batchIds)
+      : { data: [] };
+    const programIds = [...new Set((batchRows ?? [])
+      .map((b) => num(b.program_id)).filter((n) => n > 0))];
+    const { data: programRows } = programIds.length
+      ? await this.#db.from('onyx_programs').select('id, name, code')
+        .eq('tenant_id', id).in('id', programIds)
+      : { data: [] };
+    const programmes = new Map((programRows ?? []).map((p) => [num(p.id),
+      { id: num(p.id), name: String(p.name), code: String(p.code) }]));
+    const batches = new Map((batchRows ?? []).map((b) => [num(b.id), {
+      batch: { id: num(b.id), name: String(b.name), code: String(b.code) },
+      programme: programmes.get(num(b.program_id)) ?? null,
+    }]));
+
+    const people: PersonRow[] = page.map((m) => {
+      const uid = num(m.user_id);
+      const user = users.get(uid);
+      const linked = batches.get(batchOf.get(uid) ?? -1) ?? null;
+      return {
+        membership_id: num(m.id),
+        user_id: uid,
+        name: user?.name ?? 'Unknown',
+        email: user?.email ?? '',
+        phone: user?.phone ?? null,
+        role: String(m.role),
+        membership_status: num(m.status),
+        account_status: user?.status ?? 0,
+        joined_at: String(m.created_at),
+        batch: linked?.batch ?? null,
+        programme: linked?.programme ?? null,
+        enrollment_count: enrolCount.get(uid) ?? 0,
+        teaching_count: teachCount.get(uid) ?? 0,
+      };
+    });
+
+    const byRole: Record<string, number> = {};
+    for (const p of people) byRole[p.role] = (byRole[p.role] ?? 0) + 1;
+
+    return {
+      tenant: { id: num(tenant.id), name: String(tenant.name), slug: String(tenant.slug) },
+      role: opts.role ?? null,
+      limit, capped, total: total ?? people.length,
+      counts_by_role: byRole,
+      people,
+    };
+  }
+
+  /**
+   * What the institution teaches and what it sets: courses with how many people
+   * are on them, and the assignments and assessments hanging off those courses
+   * with how much work has actually come back.
+   */
+  async tenantAcademics(id: number, opts: { limit?: number } = {}) {
+    const tenant = await this.#requireTenant(id);
+    const limit = clampLimit(opts.limit);
+
+    const [courseQ, assignmentQ, assessmentQ, examQ] = await Promise.all([
+      this.#db.from('onyx_courses')
+        .select('id, code, title, credits, status, program_id, semester_id, self_enroll, created_at')
+        .eq('tenant_id', id).order('code', { ascending: true }).limit(limit + 1),
+      this.#db.from('onyx_assignments')
+        .select('id, course_id, title, due_at, total_points, status, created_at')
+        .eq('tenant_id', id).order('due_at', { ascending: false, nullsFirst: false })
+        .limit(limit + 1),
+      this.#db.from('onyx_assessments')
+        // One literal, not a concatenation: supabase-js infers the row type
+        // from the select string as a literal type, and `a + b` is just string.
+        .select('id, course_id, title, opens_at, closes_at, status, pass_mark, duration_minutes, attempts_allowed, created_at')
+        .eq('tenant_id', id).order('created_at', { ascending: false }).limit(limit + 1),
+      // Examinations (CMP-02): scheduled papers, not the marks off them --
+      // those are still tenantGrades()'s job, audited the same as ever.
+      this.#db.from('onyx_exams')
+        .select('id, course_id, title, starts_at, duration_minutes, max_marks, pass_marks, status, created_at')
+        .eq('tenant_id', id).order('starts_at', { ascending: false, nullsFirst: false })
+        .limit(limit + 1),
+    ]);
+
+    const courseRows = (courseQ.data ?? []).slice(0, limit);
+    const assignmentRows = (assignmentQ.data ?? []).slice(0, limit);
+    const assessmentRows = (assessmentQ.data ?? []).slice(0, limit);
+    const examRows = (examQ.data ?? []).slice(0, limit);
+
+    // Counts by one scan-and-tally per table rather than one query per row.
+    const [enrolQ, facQ, subQ, attemptQ, progQ, markQ, seatQ] = await Promise.all([
+      this.#db.from('onyx_enrollments').select('course_id, status')
+        .eq('tenant_id', id).limit(SCAN_CAP),
+      this.#db.from('onyx_course_faculty').select('course_id, user_id')
+        .eq('tenant_id', id).limit(SCAN_CAP),
+      assignmentRows.length
+        ? this.#db.from('onyx_assignment_submissions').select('assignment_id, status')
+          .eq('tenant_id', id).in('assignment_id', assignmentRows.map((a) => num(a.id)))
+          .limit(SCAN_CAP)
+        : Promise.resolve({ data: [] }),
+      assessmentRows.length
+        ? this.#db.from('onyx_assessment_attempts').select('assessment_id, status, score')
+          .eq('tenant_id', id).in('assessment_id', assessmentRows.map((a) => num(a.id)))
+          .limit(SCAN_CAP)
+        : Promise.resolve({ data: [] }),
+      this.#db.from('onyx_programs').select('id, name, code').eq('tenant_id', id).limit(ROW_CAP),
+      examRows.length
+        ? this.#db.from('onyx_exam_marks').select('exam_id, status')
+          .eq('tenant_id', id).in('exam_id', examRows.map((e) => num(e.id)))
+          .limit(SCAN_CAP)
+        : Promise.resolve({ data: [] }),
+      examRows.length
+        ? this.#db.from('onyx_seat_allocations').select('exam_id')
+          .eq('tenant_id', id).in('exam_id', examRows.map((e) => num(e.id)))
+          .limit(SCAN_CAP)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const enrolBy = new Map<number, number>();
+    for (const e of enrolQ.data ?? []) {
+      if (num(e.status) !== 1) continue;
+      const c = num(e.course_id);
+      enrolBy.set(c, (enrolBy.get(c) ?? 0) + 1);
+    }
+    const facBy = new Map<number, number>();
+    for (const f of facQ.data ?? []) {
+      const c = num(f.course_id);
+      facBy.set(c, (facBy.get(c) ?? 0) + 1);
+    }
+    const programmes = new Map((progQ.data ?? []).map((p) => [num(p.id), String(p.name)]));
+
+    const courses = courseRows.map((c) => ({
+      id: num(c.id),
+      code: String(c.code),
+      title: String(c.title),
+      credits: num(c.credits),
+      status: num(c.status),
+      self_enroll: num(c.self_enroll) === 1,
+      programme: c.program_id == null ? null : programmes.get(num(c.program_id)) ?? null,
+      enrollment_count: enrolBy.get(num(c.id)) ?? 0,
+      faculty_count: facBy.get(num(c.id)) ?? 0,
+      created_at: String(c.created_at),
+    }));
+    const courseLabel = new Map(courses.map((c) => [c.id, { code: c.code, title: c.title }]));
+
+    const subTotal = new Map<number, number>();
+    const subGraded = new Map<number, number>();
+    for (const s of subQ.data ?? []) {
+      const a = num(s.assignment_id);
+      subTotal.set(a, (subTotal.get(a) ?? 0) + 1);
+      if (s.status === 'graded' || s.status === 'returned') {
+        subGraded.set(a, (subGraded.get(a) ?? 0) + 1);
+      }
+    }
+    const attTotal = new Map<number, number>();
+    const attDone = new Map<number, number>();
+    for (const a of attemptQ.data ?? []) {
+      const k = num(a.assessment_id);
+      attTotal.set(k, (attTotal.get(k) ?? 0) + 1);
+      if (a.status !== 'in_progress') attDone.set(k, (attDone.get(k) ?? 0) + 1);
+    }
+
+    const markTotal = new Map<number, number>();
+    const markPublished = new Map<number, number>();
+    for (const m of markQ.data ?? []) {
+      const e = num(m.exam_id);
+      markTotal.set(e, (markTotal.get(e) ?? 0) + 1);
+      if (m.status === 'published') markPublished.set(e, (markPublished.get(e) ?? 0) + 1);
+    }
+    const seatCount = new Map<number, number>();
+    for (const s of seatQ.data ?? []) {
+      const e = num(s.exam_id);
+      seatCount.set(e, (seatCount.get(e) ?? 0) + 1);
+    }
+
+    return {
+      tenant: { id: num(tenant.id), name: String(tenant.name), slug: String(tenant.slug) },
+      limit,
+      capped: {
+        courses: (courseQ.data ?? []).length > limit,
+        assignments: (assignmentQ.data ?? []).length > limit,
+        assessments: (assessmentQ.data ?? []).length > limit,
+        exams: (examQ.data ?? []).length > limit,
+      },
+      courses,
+      exams: examRows.map((e) => ({
+        id: num(e.id),
+        title: String(e.title),
+        course_id: e.course_id == null ? null : num(e.course_id),
+        course: e.course_id == null ? null : courseLabel.get(num(e.course_id)) ?? null,
+        starts_at: e.starts_at ? String(e.starts_at) : null,
+        duration_minutes: num(e.duration_minutes),
+        max_marks: num(e.max_marks),
+        pass_marks: num(e.pass_marks),
+        status: String(e.status),
+        seats_allocated: seatCount.get(num(e.id)) ?? 0,
+        marks_entered: markTotal.get(num(e.id)) ?? 0,
+        marks_published: markPublished.get(num(e.id)) ?? 0,
+      })),
+      assignments: assignmentRows.map((a) => ({
+        id: num(a.id),
+        title: String(a.title),
+        course_id: num(a.course_id),
+        course: courseLabel.get(num(a.course_id)) ?? null,
+        due_at: a.due_at ? String(a.due_at) : null,
+        total_points: num(a.total_points),
+        status: String(a.status),
+        submission_count: subTotal.get(num(a.id)) ?? 0,
+        graded_count: subGraded.get(num(a.id)) ?? 0,
+      })),
+      assessments: assessmentRows.map((a) => ({
+        id: num(a.id),
+        title: String(a.title),
+        course_id: a.course_id == null ? null : num(a.course_id),
+        course: a.course_id == null ? null : courseLabel.get(num(a.course_id)) ?? null,
+        opens_at: a.opens_at ? String(a.opens_at) : null,
+        closes_at: a.closes_at ? String(a.closes_at) : null,
+        status: String(a.status),
+        pass_mark: a.pass_mark == null ? null : num(a.pass_mark),
+        duration_minutes: num(a.duration_minutes),
+        attempt_count: attTotal.get(num(a.id)) ?? 0,
+        submitted_count: attDone.get(num(a.id)) ?? 0,
+      })),
+    };
+  }
+
+  /**
+   * The institution's timetable, read from outside it.
+   *
+   * Everything -- drafts included -- the same as an institution's own admin
+   * sees, because a platform operator watching a build-out in progress needs
+   * to see it exists, not just that it is finished. Read-only: the console
+   * that builds and publishes a timetable is the institution's own, this is
+   * oversight, not a second door to write through.
+   */
+  async tenantTimetable(id: number, opts: { semester_id?: number } = {}) {
+    await this.#requireTenant(id);
+
+    // One literal, not a concatenation: supabase-js infers the row type from
+    // the select string as a literal type, and `a + b` is just string.
+    let q = this.#db.from('onyx_timetable_slots')
+      .select('id, semester_id, course_id, batch_id, room_id, faculty_id, day_of_week, starts_at, ends_at, status')
+      .eq('tenant_id', id);
+    if (opts.semester_id) q = q.eq('semester_id', opts.semester_id);
+    const { data } = await q
+      .order('day_of_week', { ascending: true }).order('starts_at', { ascending: true })
+      .limit(SCAN_CAP);
+    const slots = data ?? [];
+
+    const courseIds = [...new Set(slots.map((s) => num(s.course_id)))];
+    const roomIds = [...new Set(slots.map((s) => num(s.room_id)))];
+    const facultyIds = [...new Set(slots.map((s) => num(s.faculty_id)))];
+    const batchIds = [...new Set(slots.map((s) => num(s.batch_id)))];
+
+    const [courseQ, roomQ, facultyQ, batchQ, semQ] = await Promise.all([
+      courseIds.length
+        ? this.#db.from('onyx_courses').select('id, code, title').eq('tenant_id', id)
+          .in('id', courseIds)
+        : Promise.resolve({ data: [] }),
+      roomIds.length
+        ? this.#db.from('onyx_rooms').select('id, code, name, kind').eq('tenant_id', id)
+          .in('id', roomIds)
+        : Promise.resolve({ data: [] }),
+      facultyIds.length
+        ? this.#db.from('onyx_users').select('id, name').in('id', facultyIds)
+        : Promise.resolve({ data: [] }),
+      batchIds.length
+        ? this.#db.from('onyx_batches').select('id, name').eq('tenant_id', id).in('id', batchIds)
+        : Promise.resolve({ data: [] }),
+      this.#db.from('onyx_semesters').select('id, name').eq('tenant_id', id).limit(ROW_CAP),
+    ]);
+    const courseById = new Map((courseQ.data ?? []).map((c) => [num(c.id), c]));
+    const roomById = new Map((roomQ.data ?? []).map((r) => [num(r.id), r]));
+    const facultyById = new Map((facultyQ.data ?? []).map((u) => [num(u.id), u]));
+    const batchById = new Map((batchQ.data ?? []).map((b) => [num(b.id), b]));
+    const semesterById = new Map((semQ.data ?? []).map((s) => [num(s.id), s]));
+
+    return {
+      semesters: (semQ.data ?? []).map((s) => ({ id: num(s.id), name: String(s.name) })),
+      slots: slots.map((s) => ({
+        id: num(s.id),
+        semester: semesterById.get(num(s.semester_id))?.name ?? null,
+        course: courseById.get(num(s.course_id)) ?? null,
+        room: roomById.get(num(s.room_id)) ?? null,
+        faculty: facultyById.get(num(s.faculty_id)) ?? null,
+        batch: batchById.get(num(s.batch_id))?.name ?? null,
+        day_of_week: num(s.day_of_week),
+        starts_at: String(s.starts_at),
+        ends_at: String(s.ends_at),
+        status: String(s.status),
+      })),
+    };
+  }
+
+  /**
+   * The institution's results, read from outside it.
+   *
+   * This is the most privileged read in the file. A platform admin has a real
+   * reason to look -- a customer disputing a marks import, a moderation bug --
+   * but "who looked at our students' marks, and when" is exactly the question
+   * that institution is entitled to be able to ask afterwards. So unlike
+   * tenantPeople() and tenantAcademics(), this one writes an audit row on the
+   * way past, the same as grant()/revoke()/suspend() do for writes. An
+   * unlogged read here would be indistinguishable from an exfiltration.
+   */
+  async tenantGrades(id: number, actorId: string | null, opts: {
+    limit?: number; examId?: number; assessmentId?: number;
+  } = {}) {
+    const tenant = await this.#requireTenant(id);
+    const limit = clampLimit(opts.limit);
+    // Grades are read one exam or one assessment at a time now -- an
+    // operator picks which from the Examinations/Assessments list first, the
+    // same drill-down every other platform screen already uses, rather than
+    // one flat "most recent 200 marks, mixing every exam and assessment at
+    // this institution" table. Scoped to one exam/assessment, the 200-row
+    // cap that made sense for an institution-wide feed no longer applies --
+    // a single exam's cohort is naturally bounded -- so it reads the whole
+    // set instead of just the most recent slice of it.
+    const scoped = Boolean(opts.examId) || Boolean(opts.assessmentId);
+    const rowCap = scoped ? SCAN_CAP : limit + 1;
+
+    const [markQ, attemptQ] = await Promise.all([
+      opts.assessmentId ? Promise.resolve({ data: [] as Record<string, unknown>[] }) : (() => {
+        let q = this.#db.from('onyx_exam_marks')
+          .select('id, exam_id, user_id, raw_marks, moderation_delta, final_marks, grade, grade_points, status, published_at, created_at')
+          .eq('tenant_id', id);
+        if (opts.examId) q = q.eq('exam_id', opts.examId);
+        return q.order('created_at', { ascending: false }).limit(rowCap);
+      })(),
+      opts.examId ? Promise.resolve({ data: [] as Record<string, unknown>[] }) : (() => {
+        let q = this.#db.from('onyx_assessment_attempts')
+          .select('id, assessment_id, user_id, attempt, score, max_score, status, submitted_at')
+          .eq('tenant_id', id).not('score', 'is', null);
+        if (opts.assessmentId) q = q.eq('assessment_id', opts.assessmentId);
+        return q.order('submitted_at', { ascending: false, nullsFirst: false }).limit(rowCap);
+      })(),
+    ]);
+
+    const markRows = scoped ? (markQ.data ?? []) : (markQ.data ?? []).slice(0, limit);
+    const attemptRows = scoped ? (attemptQ.data ?? []) : (attemptQ.data ?? []).slice(0, limit);
+
+    const examIds = [...new Set(markRows.map((m) => num(m.exam_id)))];
+    const assessmentIds = [...new Set(attemptRows.map((a) => num(a.assessment_id)))];
+    const [examQ, assessQ, gradeQ] = await Promise.all([
+      examIds.length
+        ? this.#db.from('onyx_exams')
+          .select('id, title, course_id, max_marks, pass_marks, starts_at, status')
+          .eq('tenant_id', id).in('id', examIds)
+        : Promise.resolve({ data: [] }),
+      assessmentIds.length
+        ? this.#db.from('onyx_assessments').select('id, title, course_id, pass_mark')
+          .eq('tenant_id', id).in('id', assessmentIds)
+        : Promise.resolve({ data: [] }),
+      attemptRows.length
+        ? this.#db.from('onyx_assessment_grades').select('attempt_id, role, manual_score')
+          .eq('tenant_id', id).in('attempt_id', attemptRows.map((a) => num(a.id)))
+          .limit(SCAN_CAP)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const courseIds = [...new Set([
+      ...(examQ.data ?? []).map((e) => num(e.course_id)),
+      ...(assessQ.data ?? []).map((a) => (a.course_id == null ? 0 : num(a.course_id))),
+    ].filter((n) => n > 0))];
+    const { data: courseRows } = courseIds.length
+      ? await this.#db.from('onyx_courses').select('id, code, title')
+        .eq('tenant_id', id).in('id', courseIds)
+      : { data: [] };
+    const courses = new Map((courseRows ?? []).map((c) => [num(c.id),
+      { id: num(c.id), code: String(c.code), title: String(c.title) }]));
+
+    const exams = new Map((examQ.data ?? []).map((e) => [num(e.id), e]));
+    const assessments = new Map((assessQ.data ?? []).map((a) => [num(a.id), a]));
+    const markerCount = new Map<number, number>();
+    for (const g of gradeQ.data ?? []) {
+      const k = num(g.attempt_id);
+      markerCount.set(k, (markerCount.get(k) ?? 0) + 1);
+    }
+
+    const users = await this.#usersById([...new Set([
+      ...markRows.map((m) => num(m.user_id)), ...attemptRows.map((a) => num(a.user_id)),
+    ])]);
+    const person = (uid: number) => {
+      const u = users.get(uid);
+      return { id: uid, name: u?.name ?? 'Unknown', email: u?.email ?? '' };
+    };
+
+    const examMarks = markRows.map((m) => {
+      const exam = exams.get(num(m.exam_id));
+      return {
+        id: num(m.id),
+        kind: 'exam' as const,
+        student: person(num(m.user_id)),
+        exam: exam
+          ? { id: num(exam.id), title: String(exam.title), starts_at: String(exam.starts_at) }
+          : null,
+        course: exam ? courses.get(num(exam.course_id)) ?? null : null,
+        raw_marks: num(m.raw_marks),
+        moderation_delta: num(m.moderation_delta),
+        final_marks: num(m.final_marks),
+        max_marks: exam ? num(exam.max_marks) : null,
+        pass_marks: exam ? num(exam.pass_marks) : null,
+        grade: m.grade == null ? null : String(m.grade),
+        grade_points: m.grade_points == null ? null : num(m.grade_points),
+        status: String(m.status),
+        published_at: m.published_at ? String(m.published_at) : null,
+        recorded_at: String(m.created_at),
+      };
+    });
+
+    const assessmentGrades = attemptRows.map((a) => {
+      const assessment = assessments.get(num(a.assessment_id));
+      const courseId = assessment?.course_id == null ? 0 : num(assessment.course_id);
+      return {
+        id: num(a.id),
+        kind: 'assessment' as const,
+        student: person(num(a.user_id)),
+        assessment: assessment
+          ? { id: num(assessment.id), title: String(assessment.title) }
+          : null,
+        course: courses.get(courseId) ?? null,
+        attempt: num(a.attempt),
+        score: a.score == null ? null : num(a.score),
+        max_score: num(a.max_score),
+        pass_mark: assessment?.pass_mark == null ? null : num(assessment.pass_mark),
+        status: String(a.status),
+        marker_count: markerCount.get(num(a.id)) ?? 0,
+        submitted_at: a.submitted_at ? String(a.submitted_at) : null,
+      };
+    });
+
+    // A cohort summary over the rows actually read. When the list is capped
+    // this describes the most recent `limit`, not the whole institution --
+    // hence `over_rows`, which the page prints rather than implying a census.
+    const examScored = examMarks.filter((m) => m.max_marks && m.max_marks > 0);
+    const examPercents = examScored.map((m) => (m.final_marks / m.max_marks!) * 100);
+    const examPassable = examScored.filter((m) => m.pass_marks != null);
+    const assessScored = assessmentGrades
+      .filter((g) => g.score != null && g.max_score > 0);
+    const assessPercents = assessScored.map((g) => (g.score! / g.max_score) * 100);
+    const assessPassable = assessScored.filter((g) => g.pass_mark != null);
+    const rate = (hits: number, of: number) =>
+      (of === 0 ? null : Math.round((hits / of) * 1000) / 10);
+
+    const summary = {
+      exams: {
+        count: examMarks.length,
+        mean_percent: mean(examPercents),
+        mean_marks: mean(examScored.map((m) => m.final_marks)),
+        pass_rate: rate(examPassable.filter((m) => m.final_marks >= m.pass_marks!).length,
+          examPassable.length),
+        published: examMarks.filter((m) => m.status === 'published').length,
+        over_rows: examMarks.length,
+      },
+      assessments: {
+        count: assessmentGrades.length,
+        mean_percent: mean(assessPercents),
+        pass_rate: rate(
+          assessPassable.filter((g) => (g.score! / g.max_score) * 100 >= g.pass_mark!).length,
+          assessPassable.length),
+        over_rows: assessmentGrades.length,
+      },
+    };
+
+    await this.#log(actorId, 'tenant.grades_read', 'tenant', num(tenant.id), null, {
+      slug: tenant.slug,
+      exam_marks_read: examMarks.length,
+      assessment_grades_read: assessmentGrades.length,
+      limit,
+      exam_id: opts.examId ?? null,
+      assessment_id: opts.assessmentId ?? null,
+    });
+
+    return {
+      tenant: { id: num(tenant.id), name: String(tenant.name), slug: String(tenant.slug) },
+      limit,
+      capped: {
+        exam_marks: !scoped && (markQ.data ?? []).length > limit,
+        assessment_grades: !scoped && (attemptQ.data ?? []).length > limit,
+      },
+      exam_marks: examMarks,
+      assessment_grades: assessmentGrades,
+      summary,
+    };
+  }
+
+  /**
+   * The same shape public signup uses (tenancy.service.ts's createTenant),
+   * duplicated rather than shared: signup's version is deliberately
+   * unauthenticated, because that is how the first institution can exist at
+   * all. This one is deliberately gated, because an operator provisioning an
+   * institution on someone's behalf is a different act worth its own audit
+   * entry, not the same code path with the door left open.
+   */
+  async createTenant(input: {
+    name: string; slug?: string; plan?: string | null;
+    admin: { name: string; email: string; password: string };
+  }, actorId: string | null) {
+    const slug = slugify(input.slug ?? input.name);
+    if (!slug) throw new HttpError(422, 'That name does not make a usable address.');
+    const { data: clash } = await this.#db.from('onyx_tenants')
+      .select('id').eq('slug', slug).maybeSingle();
+    if (clash) throw new HttpError(422, 'An institution with that address already exists.');
+
+    const { data: tenant, error } = await this.#db.from('onyx_tenants').insert({
+      name: input.name.trim(), slug, status: 1, plan: input.plan ?? null,
+    }).select(TENANT_COLUMNS).maybeSingle();
+    if (error) throw new HttpError(500, 'Could not create the institution: ' + error.message);
+
+    const email = input.admin.email.trim().toLowerCase();
+    const { data: existingUser } = await this.#db.from('onyx_users')
+      .select('id, email, name').eq('email', email).maybeSingle();
+    let admin = existingUser;
+    if (!admin) {
+      // Supabase Auth owns the credential now -- see tenancy.service.ts's
+      // upsertUser(), the same pattern duplicated here for the reason the
+      // doc comment above gives.
+      const { data: authUser, error: authError } = await onyxAuthAdmin().auth.admin.createUser({
+        email, password: input.admin.password, email_confirm: true,
+      });
+      if (authError || !authUser?.user) {
+        throw new HttpError(500, 'Could not create the account: ' + (authError?.message ?? 'unknown error'));
+      }
+      const { data: created } = await this.#db.from('onyx_users').insert({
+        id: authUser.user.id, email, name: input.admin.name.trim(), status: 1,
+      }).select('id, email, name').maybeSingle();
+      admin = created!;
+    }
+    await this.#db.from('onyx_memberships').insert({
+      tenant_id: Number(tenant!.id), user_id: admin!.id, role: 'admin', status: 1,
+    });
+
+    await this.#log(actorId, 'tenant.created', 'tenant', Number(tenant!.id),
+      null, { name: tenant!.name, slug: tenant!.slug, provisioned_by: 'platform' });
+    return { tenant, admin: { id: admin!.id, email: admin!.email } };
+  }
+
+  /**
+   * Permanently remove an institution and everything in it.
+   *
+   * Every one of the 75 onyx_* tables carries `tenant_id` with `ON DELETE
+   * CASCADE` back to onyx_tenants (verified against the schema, not assumed --
+   * see the tenant-purge work this same guarantee was checked for). Deleting
+   * the tenant row is deleting all of it: every membership, course,
+   * enrolment, mark, invoice. onyx_users is the one exception, by design --
+   * identities are global, so a person who also belongs to another
+   * institution keeps existing; only their membership here is gone with it.
+   *
+   * `confirmName` has to match the institution's name exactly, the same
+   * "type it to confirm" shape as GitHub's repo delete: a click is reversible
+   * by nobody meaning to, typing the name is a second, deliberate act.
+   * suspend() already exists for "stop this without destroying it" -- this is
+   * the other thing, and it does not ask twice in the API, only once, hard.
+   */
+  async deleteTenant(id: number, actorId: string | null, confirmName: string) {
+    const { data: tenant } = await this.#db.from('onyx_tenants')
+      .select(TENANT_COLUMNS).eq('id', id).maybeSingle();
+    if (!tenant) throw new HttpError(404, 'No such institution.');
+    if (confirmName.trim() !== tenant.name) {
+      throw new HttpError(422, 'That does not match the institution\'s name.');
+    }
+    const { error } = await this.#db.from('onyx_tenants').delete().eq('id', id);
+    if (error) throw new HttpError(500, 'Could not delete the institution: ' + error.message);
+    await this.#log(actorId, 'tenant.deleted', 'tenant', id,
+      { name: tenant.name, slug: tenant.slug, plan: tenant.plan }, null);
+    return { ok: true };
+  }
+
+  async suspend(id: number, actorId: string | null) {
+    const before = await this.tenant(id);
+    const { data } = await this.#db.from('onyx_tenants')
+      .update({ status: 0, updated_at: new Date().toISOString() })
+      .eq('id', id).select(TENANT_COLUMNS).maybeSingle();
+    await this.#log(actorId, 'tenant.suspended', 'tenant', id,
+      { status: before.status }, { status: 0 });
+    return data;
+  }
+
+  async activate(id: number, actorId: string | null) {
+    const before = await this.tenant(id);
+    const { data } = await this.#db.from('onyx_tenants')
+      .update({ status: 1, updated_at: new Date().toISOString() })
+      .eq('id', id).select(TENANT_COLUMNS).maybeSingle();
+    await this.#log(actorId, 'tenant.activated', 'tenant', id,
+      { status: before.status }, { status: 1 });
+    return data;
+  }
+
+  // -------------------------------------------------------------------------
+  // Editing inside an institution
+  //
+  // Everything above this line only ever read another institution's records.
+  // These write to them -- the same trust boundary as suspend()/activate()
+  // above (service-role client, tenant_id as the only filter, no RLS backstop),
+  // extended from "flip a status bit" to "change what is there". Every write
+  // is audited with before/after, the same as a grant or a revoke, because an
+  // operator changing a customer's data without a trace would be
+  // indistinguishable from someone else changing it.
+  // -------------------------------------------------------------------------
+
+  /** Edit a tenant's own identity: its name, its address, or its plan label. */
+  async updateTenant(id: number, actorId: string | null, patch: {
+    name?: string; slug?: string; plan?: string | null;
+  }) {
+    const { data: tenant } = await this.#db.from('onyx_tenants')
+      .select(TENANT_COLUMNS).eq('id', id).maybeSingle();
+    if (!tenant) throw new HttpError(404, 'No such institution.');
+
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+    if (patch.name !== undefined && patch.name.trim() && patch.name.trim() !== tenant.name) {
+      before.name = tenant.name; after.name = patch.name.trim();
+    }
+    if (patch.slug !== undefined) {
+      const slug = slugify(patch.slug);
+      if (!slug) throw new HttpError(422, 'That address is not usable.');
+      if (slug !== tenant.slug) {
+        const { data: clash } = await this.#db.from('onyx_tenants')
+          .select('id').eq('slug', slug).neq('id', id).maybeSingle();
+        if (clash) throw new HttpError(422, 'An institution with that address already exists.');
+        before.slug = tenant.slug; after.slug = slug;
+      }
+    }
+    if (patch.plan !== undefined && patch.plan !== tenant.plan) {
+      before.plan = tenant.plan; after.plan = patch.plan;
+    }
+    if (!Object.keys(after).length) return tenant;
+
+    const { data } = await this.#db.from('onyx_tenants')
+      .update({ ...after, updated_at: new Date().toISOString() }).eq('id', id)
+      .select(TENANT_COLUMNS).maybeSingle();
+    await this.#log(actorId, 'tenant.updated', 'tenant', id, before, after);
+    return data;
+  }
+
+  /** Add someone to an institution -- the platform-console version of
+   * tenancy.service.ts's invite(): finds or creates the identity by email,
+   * then attaches a membership. */
+  async addMember(tenantId: number, actorId: string | null, input: {
+    name: string; email: string; role: Role; password?: string;
+  }) {
+    if (!ROLES.includes(input.role)) throw new HttpError(422, 'That is not a role.');
+    const email = input.email.trim().toLowerCase();
+    let { data: user } = await this.#db.from('onyx_users')
+      .select('id, name, email').eq('email', email).maybeSingle();
+    if (!user) {
+      if (!input.password) throw new HttpError(422, 'A new account needs a password.');
+      // Supabase Auth owns the credential now -- see tenancy.service.ts's
+      // upsertUser().
+      const { data: authUser, error: authError } = await onyxAuthAdmin().auth.admin.createUser({
+        email, password: input.password, email_confirm: true,
+      });
+      if (authError || !authUser?.user) {
+        throw new HttpError(500, 'Could not create the account: ' + (authError?.message ?? 'unknown error'));
+      }
+      const { data: created, error } = await this.#db.from('onyx_users').insert({
+        id: authUser.user.id, email, name: input.name.trim(), status: 1,
+      }).select('id, name, email').maybeSingle();
+      if (error) throw new HttpError(500, 'Could not create the account: ' + error.message);
+      user = created!;
+    }
+    const { data: existing } = await this.#db.from('onyx_memberships')
+      .select('id').eq('tenant_id', tenantId).eq('user_id', user.id).maybeSingle();
+    if (existing) throw new HttpError(422, 'They are already a member of this institution.');
+
+    const { data: membership, error } = await this.#db.from('onyx_memberships')
+      .insert({ tenant_id: tenantId, user_id: user.id, role: input.role, status: 1 })
+      .select('id, role, status, created_at').maybeSingle();
+    if (error) throw new HttpError(500, 'Could not add them: ' + error.message);
+    await this.#log(actorId, 'member.added', 'membership', Number(membership!.id), null,
+      { user_id: user.id, email: user.email, role: input.role });
+    return { user, membership };
+  }
+
+  /** Remove someone from an institution. The last admin cannot be removed
+   * this way, same guard as tenancy.service.ts's removeMember(). */
+  async removeMember(tenantId: number, membershipId: number, actorId: string | null) {
+    const { data: membership } = await this.#db.from('onyx_memberships')
+      .select('id, tenant_id, user_id, role').eq('id', membershipId).maybeSingle();
+    if (!membership || Number(membership.tenant_id) !== tenantId) {
+      throw new HttpError(404, 'No such member at this institution.');
+    }
+    if (membership.role === 'admin') {
+      const { data: admins } = await this.#db.from('onyx_memberships')
+        .select('id').eq('tenant_id', tenantId).eq('role', 'admin').eq('status', 1);
+      const ids = (admins ?? []).map((a) => Number(a.id));
+      if (ids.length <= 1 && ids.includes(membershipId)) {
+        throw new HttpError(422, 'This is the only administrator. Appoint another first.');
+      }
+    }
+    await this.#db.from('onyx_memberships').delete().eq('id', membershipId);
+    await this.#log(actorId, 'member.removed', 'membership', membershipId,
+      { user_id: membership.user_id, role: membership.role }, null);
+    return { ok: true };
+  }
+
+  /**
+   * Edit a member: their identity (name/email/phone/account status) and their
+   * standing at this institution (role/membership status), in one call. Saved
+   * together because they are one "edit" action on the People tab, but
+   * audited as two different sentences -- "renamed someone" is not "made
+   * someone an admin" -- so each only writes a row when it actually changed.
+   */
+  async updateMember(tenantId: number, membershipId: number, actorId: string | null, patch: {
+    name?: string; email?: string; phone?: string | null; account_status?: number;
+    role?: Role; membership_status?: number;
+  }) {
+    const { data: membership } = await this.#db.from('onyx_memberships')
+      .select('id, tenant_id, user_id, role, status').eq('id', membershipId).maybeSingle();
+    if (!membership || Number(membership.tenant_id) !== tenantId) {
+      throw new HttpError(404, 'No such member at this institution.');
+    }
+    const userId = String(membership.user_id);
+    const { data: user } = await this.#db.from('onyx_users')
+      .select('id, name, email, phone, status').eq('id', userId).maybeSingle();
+    if (!user) throw new HttpError(404, 'No such account.');
+
+    // Demoting or disabling this institution's last admin from outside it
+    // would leave it unrecoverable the same way removing them would -- so the
+    // same guard tenancy.service.ts's changeRole() applies from inside.
+    if (patch.role !== undefined && patch.role !== membership.role) {
+      if (!ROLES.includes(patch.role)) throw new HttpError(422, 'That is not a role.');
+      if (membership.role === 'admin') {
+        const { data: admins } = await this.#db.from('onyx_memberships')
+          .select('id').eq('tenant_id', tenantId).eq('role', 'admin').eq('status', 1);
+        const ids = (admins ?? []).map((a) => Number(a.id));
+        if (ids.length <= 1 && ids.includes(membershipId)) {
+          throw new HttpError(422, 'This is the only administrator. Appoint another first.');
+        }
+      }
+    }
+
+    const userPatch: Record<string, unknown> = {};
+    const userBefore: Record<string, unknown> = {};
+    if (patch.name !== undefined && patch.name.trim() && patch.name.trim() !== user.name) {
+      userBefore.name = user.name; userPatch.name = patch.name.trim();
+    }
+    if (patch.email !== undefined) {
+      const email = patch.email.trim().toLowerCase();
+      if (email !== user.email) {
+        const { data: clash } = await this.#db.from('onyx_users')
+          .select('id').eq('email', email).neq('id', userId).maybeSingle();
+        if (clash) throw new HttpError(409, 'That email is already in use.');
+        userBefore.email = user.email; userPatch.email = email;
+      }
+    }
+    if (patch.phone !== undefined && patch.phone !== user.phone) {
+      userBefore.phone = user.phone; userPatch.phone = patch.phone;
+    }
+    if (patch.account_status !== undefined && patch.account_status !== user.status) {
+      userBefore.status = user.status; userPatch.status = patch.account_status;
+    }
+    if (Object.keys(userPatch).length) {
+      const { error } = await this.#db.from('onyx_users')
+        .update({ ...userPatch, updated_at: new Date().toISOString() }).eq('id', userId);
+      if (error) throw new HttpError(500, 'Could not update the account: ' + error.message);
+      // entity_id is bigint (shared across every entity type this log
+      // covers, most of which are still bigint-keyed) and userId is a uuid
+      // since the auth migration -- carried in the payload instead of a
+      // column that cannot hold it.
+      await this.#log(actorId, 'user.updated', 'user', null,
+        { ...userBefore, user_id: userId }, { ...userPatch, user_id: userId });
+    }
+
+    const memberPatch: Record<string, unknown> = {};
+    const memberBefore: Record<string, unknown> = {};
+    if (patch.role !== undefined && patch.role !== membership.role) {
+      memberBefore.role = membership.role; memberPatch.role = patch.role;
+    }
+    if (patch.membership_status !== undefined && patch.membership_status !== membership.status) {
+      memberBefore.status = membership.status; memberPatch.status = patch.membership_status;
+    }
+    if (Object.keys(memberPatch).length) {
+      const { error } = await this.#db.from('onyx_memberships')
+        .update({ ...memberPatch, updated_at: new Date().toISOString() }).eq('id', membershipId);
+      if (error) throw new HttpError(500, 'Could not update the membership: ' + error.message);
+      await this.#log(actorId, 'membership.updated', 'membership', membershipId,
+        memberBefore, memberPatch);
+    }
+
+    return { ok: true };
+  }
+
+  /**
+   * Override one exam mark directly -- a data-entry fix or a dispute, not a
+   * moderation pass across a whole paper (examinations.service's moderate()
+   * stays the faculty/exams-office act, with its own delta+reason shape and
+   * its own "not after publish" rule). This is the platform-level escape
+   * hatch: change the number, recompute the grade band from it, and it works
+   * regardless of status -- an operator resolving a dispute cannot be blocked
+   * by the same publish lock that protects faculty from themselves.
+   */
+  async updateExamMark(tenantId: number, markId: number, actorId: string | null, patch: {
+    raw_marks?: number; final_marks?: number;
+  }) {
+    const { data: mark } = await this.#db.from('onyx_exam_marks')
+      .select('id, tenant_id, exam_id, raw_marks, final_marks, grade, grade_points, status')
+      .eq('id', markId).maybeSingle();
+    if (!mark || Number(mark.tenant_id) !== tenantId) throw new HttpError(404, 'No such mark.');
+    const { data: exam } = await this.#db.from('onyx_exams')
+      .select('max_marks, pass_marks').eq('id', mark.exam_id).maybeSingle();
+    const maxMarks = Number(exam?.max_marks ?? 0);
+    const passMarks = Number(exam?.pass_marks ?? 0);
+
+    const raw = patch.raw_marks ?? Number(mark.raw_marks);
+    const final = patch.final_marks ?? raw;
+    if (maxMarks > 0 && (final < 0 || final > maxMarks)) {
+      throw new HttpError(422, 'A mark has to be between 0 and ' + maxMarks + '.');
+    }
+    const band = gradeFor(final, maxMarks || 100, passMarks);
+
+    const before = { raw_marks: mark.raw_marks, final_marks: mark.final_marks, grade: mark.grade };
+    const after = {
+      raw_marks: raw, final_marks: final, grade: band.grade, grade_points: band.points,
+    };
+    await this.#db.from('onyx_exam_marks')
+      .update({ ...after, updated_at: new Date().toISOString() }).eq('id', markId);
+    await this.#log(actorId, 'marks.overridden', 'exam_mark', markId, before, after);
+    return { id: markId, ...after };
+  }
+
+  /** The same override, for an assessment attempt's score. */
+  async updateAssessmentAttemptScore(tenantId: number, attemptId: number, actorId: string | null,
+    score: number) {
+    const { data: attempt } = await this.#db.from('onyx_assessment_attempts')
+      .select('id, tenant_id, max_score, score').eq('id', attemptId).maybeSingle();
+    if (!attempt || Number(attempt.tenant_id) !== tenantId) {
+      throw new HttpError(404, 'No such attempt.');
+    }
+    const maxScore = Number(attempt.max_score ?? 0);
+    if (maxScore > 0 && (score < 0 || score > maxScore)) {
+      throw new HttpError(422, 'A score has to be between 0 and ' + maxScore + '.');
+    }
+    const before = { score: attempt.score };
+    await this.#db.from('onyx_assessment_attempts')
+      .update({ score, updated_at: new Date().toISOString() }).eq('id', attemptId);
+    await this.#log(actorId, 'assessment_attempt.score_overridden', 'assessment_attempt',
+      attemptId, before, { score });
+    return { id: attemptId, score };
+  }
+
+  /**
+   * One piece of submitted work, in full -- not the count tenantAcademics()
+   * gives, the actual body and file an assignment's submission page would
+   * show a marker. What an operator needs to resolve "the student says they
+   * submitted this" without needing a tenant login to go look.
+   */
+  async submission(tenantId: number, submissionId: number) {
+    const { data: row } = await this.#db.from('onyx_assignment_submissions')
+      .select('id, tenant_id, assignment_id, user_id, body, file_path, status, attempt, submitted_at, is_late, score, feedback, graded_at')
+      .eq('id', submissionId).maybeSingle();
+    if (!row || Number(row.tenant_id) !== tenantId) throw new HttpError(404, 'No such submission.');
+    const [{ data: assignment }, users] = await Promise.all([
+      this.#db.from('onyx_assignments').select('id, title, total_points, course_id')
+        .eq('id', row.assignment_id).maybeSingle(),
+      this.#usersById([Number(row.user_id)]),
+    ]);
+    return { ...row, student: users.get(Number(row.user_id)) ?? null, assignment: assignment ?? null };
+  }
+
+  /** Every submission for one assignment, for the "view submissions" list. */
+  async assignmentSubmissions(tenantId: number, assignmentId: number) {
+    const { data: assignment } = await this.#db.from('onyx_assignments')
+      .select('id, tenant_id, title, total_points').eq('id', assignmentId).maybeSingle();
+    if (!assignment || Number(assignment.tenant_id) !== tenantId) {
+      throw new HttpError(404, 'No such assignment.');
+    }
+    const { data: rows } = await this.#db.from('onyx_assignment_submissions')
+      .select('id, user_id, status, attempt, submitted_at, is_late, score, feedback')
+      .eq('tenant_id', tenantId).eq('assignment_id', assignmentId).neq('status', 'draft')
+      .order('submitted_at', { ascending: false }).limit(SCAN_CAP);
+    const submissions = rows ?? [];
+    const users = await this.#usersById([...new Set(submissions.map((s) => num(s.user_id)))]);
+    return {
+      assignment: { id: num(assignment.id), title: String(assignment.title),
+        total_points: num(assignment.total_points) },
+      submissions: submissions.map((s) => ({
+        ...s, student: users.get(num(s.user_id)) ?? null,
+      })),
+    };
+  }
+
+  /** Override a submission's score/feedback directly, same shape as an exam mark. */
+  async updateSubmissionGrade(tenantId: number, submissionId: number, actorId: string | null,
+    patch: { score?: number; feedback?: string | null }) {
+    const { data: submission } = await this.#db.from('onyx_assignment_submissions')
+      .select('id, tenant_id, assignment_id, score, feedback').eq('id', submissionId).maybeSingle();
+    if (!submission || Number(submission.tenant_id) !== tenantId) {
+      throw new HttpError(404, 'No such submission.');
+    }
+    const { data: assignment } = await this.#db.from('onyx_assignments')
+      .select('total_points').eq('id', submission.assignment_id).maybeSingle();
+    const max = Number(assignment?.total_points ?? 0);
+    if (patch.score !== undefined && max > 0 && (patch.score < 0 || patch.score > max)) {
+      throw new HttpError(422, 'This assignment is out of ' + max + '.');
+    }
+
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+    if (patch.score !== undefined && patch.score !== submission.score) {
+      before.score = submission.score; after.score = patch.score;
+    }
+    if (patch.feedback !== undefined && patch.feedback !== submission.feedback) {
+      before.feedback = submission.feedback; after.feedback = patch.feedback;
+    }
+    if (!Object.keys(after).length) return submission;
+
+    await this.#db.from('onyx_assignment_submissions').update({
+      ...after, status: 'graded', updated_at: new Date().toISOString(),
+    }).eq('id', submissionId);
+    await this.#log(actorId, 'submission.grade_overridden', 'submission', submissionId,
+      before, after);
+    return { id: submissionId, ...after };
+  }
+
+  /** One assessment attempt, with the candidate's actual answers -- the "view submission" for CBT. */
+  async assessmentAttempt(tenantId: number, attemptId: number) {
+    const { data: row } = await this.#db.from('onyx_assessment_attempts')
+      .select('id, tenant_id, assessment_id, user_id, attempt, status, started_at, submitted_at, auto_score, manual_score, score, max_score')
+      .eq('id', attemptId).maybeSingle();
+    if (!row || Number(row.tenant_id) !== tenantId) throw new HttpError(404, 'No such attempt.');
+    const [{ data: assessment }, { data: answers }, users] = await Promise.all([
+      this.#db.from('onyx_assessments').select('id, title, course_id')
+        .eq('id', row.assessment_id).maybeSingle(),
+      this.#db.from('onyx_assessment_answers')
+        .select('id, question_id, response, auto_points, manual_points, marker_comment')
+        .eq('tenant_id', tenantId).eq('attempt_id', attemptId),
+      this.#usersById([Number(row.user_id)]),
+    ]);
+    return {
+      ...row, student: users.get(Number(row.user_id)) ?? null,
+      assessment: assessment ?? null, answers: answers ?? [],
+    };
+  }
+
+  /** Edit a course's own fields, the same trust boundary as everything above. */
+  /** Semesters, for the exam-scheduling form's dropdown -- nothing more. */
+  async tenantSemesters(id: number) {
+    await this.#requireTenant(id);
+    const { data } = await this.#db.from('onyx_semesters')
+      .select('id, name, status').eq('tenant_id', id).order('starts_on', { ascending: false });
+    return data ?? [];
+  }
+
+  /**
+   * Create a course from the platform console.
+   *
+   * A thinner copy of AcademicsService.createCourse() -- that one takes an
+   * actor's role for its own tenant-side guard, which platform routes never
+   * have (there is no tenant token here). Same slug/code rules, same insert
+   * shape, called with the service-role client like everything else in this
+   * file.
+   */
+  async createCourse(tenantId: number, actorId: string | null, input: {
+    code: string; title: string; credits?: number; self_enroll?: boolean; status?: number;
+  }) {
+    const slug = slugify(input.title);
+    if (!slug) throw new HttpError(422, 'That title does not make a usable address.');
+    const { data, error } = await this.#db.from('onyx_courses').insert({
+      tenant_id: tenantId, code: input.code.trim().toUpperCase(), title: input.title.trim(),
+      slug, credits: input.credits ?? 0, self_enroll: input.self_enroll ? 1 : 0,
+      status: input.status ?? 0, created_by: actorId,
+    }).select('id, code, title, credits, status, created_at').maybeSingle();
+    if (error?.code === '23505') {
+      throw new HttpError(422, 'That course code or address is already in use.');
+    }
+    if (error) throw new HttpError(500, 'Could not create the course: ' + error.message);
+    await this.#log(actorId, 'course.created', 'course', Number(data!.id), null,
+      { code: data!.code, title: data!.title });
+    return data;
+  }
+
+  async updateCourse(tenantId: number, courseId: number, actorId: string | null, patch: {
+    title?: string; code?: string; credits?: number; status?: number;
+  }) {
+    const { data: course } = await this.#db.from('onyx_courses')
+      .select('id, tenant_id, title, code, credits, status').eq('id', courseId).maybeSingle();
+    if (!course || Number(course.tenant_id) !== tenantId) throw new HttpError(404, 'No such course.');
+
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+    for (const key of ['title', 'code', 'credits', 'status'] as const) {
+      const value = patch[key];
+      if (value !== undefined && value !== course[key]) { before[key] = course[key]; after[key] = value; }
+    }
+    if (!Object.keys(after).length) return course;
+    await this.#db.from('onyx_courses')
+      .update({ ...after, updated_at: new Date().toISOString() }).eq('id', courseId);
+    await this.#log(actorId, 'course.updated', 'course', courseId, before, after);
+    return { ...course, ...after };
+  }
+
+  /**
+   * Removes a course outright, from the platform console -- an operator
+   * acting on a tenant's behalf, same as createCourse/updateCourse above.
+   * Everything that hangs off it cascades at the database (see
+   * AcademicsService.remove()'s own comment for the full table list); a
+   * question bank, assessment, problem/workspace, certificate or ticket
+   * that drew on it survives with course_id set to null instead.
+   */
+  async deleteCourse(tenantId: number, courseId: number, actorId: string | null): Promise<void> {
+    const { data: course } = await this.#db.from('onyx_courses')
+      .select('id, tenant_id, title, code').eq('id', courseId).maybeSingle();
+    if (!course || Number(course.tenant_id) !== tenantId) throw new HttpError(404, 'No such course.');
+
+    const { error } = await this.#db.from('onyx_courses').delete().eq('id', courseId);
+    if (error) throw new HttpError(500, 'Could not remove the course: ' + error.message);
+    await this.#log(actorId, 'course.removed', 'course', courseId,
+      { code: course.code, title: course.title }, null);
+  }
+
+  async createAssignment(tenantId: number, actorId: string | null, input: {
+    course_id: number; title: string; due_at?: string | null; total_points?: number;
+  }) {
+    const { data: course } = await this.#db.from('onyx_courses')
+      .select('id').eq('tenant_id', tenantId).eq('id', input.course_id).maybeSingle();
+    if (!course) throw new HttpError(404, 'No such course.');
+    const total = input.total_points ?? 100;
+    if (total <= 0) throw new HttpError(422, 'An assignment has to be worth something.');
+
+    const { data, error } = await this.#db.from('onyx_assignments').insert({
+      tenant_id: tenantId, course_id: input.course_id, title: input.title.trim(),
+      due_at: input.due_at ?? null, total_points: total, late_policy: 'accept',
+      late_penalty_percent: 0, allow_resubmission: 1, status: 'draft', created_by: actorId,
+    }).select('id, title, course_id, due_at, total_points, status').maybeSingle();
+    if (error) throw new HttpError(500, 'Could not create the assignment: ' + error.message);
+    await this.#log(actorId, 'assignment.created', 'assignment', Number(data!.id), null,
+      { title: data!.title, course_id: input.course_id });
+    return data;
+  }
+
+  async updateAssignment(tenantId: number, assignmentId: number, actorId: string | null, patch: {
+    title?: string; due_at?: string | null; total_points?: number; status?: string;
+  }) {
+    const { data: a } = await this.#db.from('onyx_assignments')
+      .select('id, tenant_id, title, due_at, total_points, status').eq('id', assignmentId).maybeSingle();
+    if (!a || Number(a.tenant_id) !== tenantId) throw new HttpError(404, 'No such assignment.');
+
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+    for (const key of ['title', 'due_at', 'total_points', 'status'] as const) {
+      const value = patch[key];
+      if (value !== undefined && value !== a[key]) { before[key] = a[key]; after[key] = value; }
+    }
+    if (!Object.keys(after).length) return a;
+    await this.#db.from('onyx_assignments')
+      .update({ ...after, updated_at: new Date().toISOString() }).eq('id', assignmentId);
+    await this.#log(actorId, 'assignment.updated', 'assignment', assignmentId, before, after);
+    return { ...a, ...after };
+  }
+
+  /**
+   * Schedule an exam from the platform console.
+   *
+   * examinations.service.ts's schedule() also refuses a clash -- two papers
+   * that would sit the same learner twice at once. That check exists for the
+   * examinations office working one institution at a time; a platform
+   * operator fixing a customer's calendar by hand is already the override
+   * path, the same trust level updateExamMark() extends past a published
+   * mark's normal lock. It is not skipped by accident.
+   */
+  async createExam(tenantId: number, actorId: string | null, input: {
+    semester_id: number; course_id: number; title: string; starts_at: string;
+    duration_minutes?: number; max_marks?: number; pass_marks?: number;
+  }) {
+    const { data: course } = await this.#db.from('onyx_courses')
+      .select('id').eq('tenant_id', tenantId).eq('id', input.course_id).maybeSingle();
+    if (!course) throw new HttpError(404, 'No such course.');
+    const { data: semester } = await this.#db.from('onyx_semesters')
+      .select('id').eq('tenant_id', tenantId).eq('id', input.semester_id).maybeSingle();
+    if (!semester) throw new HttpError(404, 'No such semester.');
+
+    const start = Date.parse(input.starts_at);
+    if (!Number.isFinite(start)) throw new HttpError(422, 'That is not a valid start time.');
+    const maxMarks = input.max_marks ?? 100;
+    const passMarks = input.pass_marks ?? 40;
+    if (passMarks > maxMarks) throw new HttpError(422, 'The pass mark cannot be above the maximum.');
+
+    const { data, error } = await this.#db.from('onyx_exams').insert({
+      tenant_id: tenantId, semester_id: input.semester_id, course_id: input.course_id,
+      title: input.title.trim(), starts_at: new Date(start).toISOString(),
+      duration_minutes: input.duration_minutes ?? 180, max_marks: maxMarks, pass_marks: passMarks,
+      status: 'scheduled', created_by: actorId,
+    }).select('id, title, course_id, starts_at, duration_minutes, max_marks, pass_marks, status')
+      .maybeSingle();
+    if (error) throw new HttpError(500, 'Could not schedule the exam: ' + error.message);
+    await this.#log(actorId, 'exam.scheduled', 'exam', Number(data!.id), null,
+      { title: data!.title, starts_at: data!.starts_at });
+    return data;
+  }
+
+  async updateExam(tenantId: number, examId: number, actorId: string | null, patch: {
+    title?: string; starts_at?: string | null; duration_minutes?: number;
+    max_marks?: number; pass_marks?: number; status?: string;
+  }) {
+    const { data: e } = await this.#db.from('onyx_exams')
+      .select('id, tenant_id, title, starts_at, duration_minutes, max_marks, pass_marks, status')
+      .eq('id', examId).maybeSingle();
+    if (!e || Number(e.tenant_id) !== tenantId) throw new HttpError(404, 'No such exam.');
+
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+    for (const key of
+      ['title', 'starts_at', 'duration_minutes', 'max_marks', 'pass_marks', 'status'] as const) {
+      const value = patch[key];
+      if (value !== undefined && value !== e[key]) { before[key] = e[key]; after[key] = value; }
+    }
+    if (!Object.keys(after).length) return e;
+    await this.#db.from('onyx_exams')
+      .update({ ...after, updated_at: new Date().toISOString() }).eq('id', examId);
+    await this.#log(actorId, 'exam.updated', 'exam', examId, before, after);
+    return { ...e, ...after };
+  }
+
+  /** A basic assessment -- no sections/proctoring here, same as any assessment
+   * created without a question bank on hand. Course faculty add sections once
+   * a bank exists; this just gets it on the calendar. */
+  async createAssessment(tenantId: number, actorId: string | null, input: {
+    course_id?: number | null; title: string; opens_at?: string | null;
+    closes_at?: string | null; duration_minutes?: number; pass_mark?: number | null;
+  }) {
+    if (input.course_id) {
+      const { data: course } = await this.#db.from('onyx_courses')
+        .select('id').eq('tenant_id', tenantId).eq('id', input.course_id).maybeSingle();
+      if (!course) throw new HttpError(404, 'No such course.');
+    }
+    const duration = input.duration_minutes ?? 60;
+    if (duration < 1 || duration > 1440) throw new HttpError(422, 'That is not a usable duration.');
+    if (input.opens_at && input.closes_at
+      && Date.parse(input.closes_at) <= Date.parse(input.opens_at)) {
+      throw new HttpError(422, 'The window closes before it opens.');
+    }
+
+    const { data, error } = await this.#db.from('onyx_assessments').insert({
+      tenant_id: tenantId, course_id: input.course_id ?? null, title: input.title.trim(),
+      opens_at: input.opens_at ?? null, closes_at: input.closes_at ?? null,
+      duration_minutes: duration, attempts_allowed: 1, pass_mark: input.pass_mark ?? null,
+      status: 'draft', created_by: actorId,
+    }).select('id, title, course_id, opens_at, closes_at, status').maybeSingle();
+    if (error) throw new HttpError(500, 'Could not create the assessment: ' + error.message);
+    await this.#log(actorId, 'assessment.created', 'assessment', Number(data!.id), null,
+      { title: data!.title, course_id: input.course_id ?? null });
+    return data;
+  }
+
+  async updateAssessment(tenantId: number, assessmentId: number, actorId: string | null, patch: {
+    title?: string; opens_at?: string | null; closes_at?: string | null;
+    pass_mark?: number | null; duration_minutes?: number; status?: string;
+  }) {
+    const { data: a } = await this.#db.from('onyx_assessments')
+      .select('id, tenant_id, title, opens_at, closes_at, pass_mark, duration_minutes, status')
+      .eq('id', assessmentId).maybeSingle();
+    if (!a || Number(a.tenant_id) !== tenantId) throw new HttpError(404, 'No such assessment.');
+
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+    for (const key of
+      ['title', 'opens_at', 'closes_at', 'pass_mark', 'duration_minutes', 'status'] as const) {
+      const value = patch[key];
+      if (value !== undefined && value !== a[key]) { before[key] = a[key]; after[key] = value; }
+    }
+    if (!Object.keys(after).length) return a;
+    await this.#db.from('onyx_assessments')
+      .update({ ...after, updated_at: new Date().toISOString() }).eq('id', assessmentId);
+    await this.#log(actorId, 'assessment.updated', 'assessment', assessmentId, before, after);
+    return { ...a, ...after };
+  }
+
+  // -------------------------------------------------------------------------
+  // Fees (CMP-03) -- fee heads, structures and what is outstanding. Not read
+  // through FinanceService: every one of its methods takes an `actor`/`viewer`
+  // shaped for a tenant token's role, which platform routes never have (same
+  // reason every other method in this file writes its own queries).
+  // -------------------------------------------------------------------------
+
+  /** Heads, structures (with their line totals) and what is outstanding, in
+   * one call -- the platform Fees page is one screen, not three round trips. */
+  async tenantFees(id: number) {
+    const tenant = await this.#requireTenant(id);
+    const [{ data: heads }, { data: structures }, { data: lines }, { data: invoices }] =
+      await Promise.all([
+        this.#db.from('onyx_fee_heads')
+          .select('id, code, name, category, refundable').eq('tenant_id', id)
+          .order('code', { ascending: true }),
+        this.#db.from('onyx_fee_structures')
+          .select('id, name, currency, instalments, status, created_at').eq('tenant_id', id)
+          .order('created_at', { ascending: false }),
+        this.#db.from('onyx_fee_structure_lines')
+          .select('structure_id, amount_minor').eq('tenant_id', id).limit(SCAN_CAP),
+        this.#db.from('onyx_invoices')
+          .select('id, user_id, structure_id, number, total_minor, paid_minor, status, due_at')
+          .eq('tenant_id', id).in('status', ['issued', 'part_paid'])
+          .order('due_at', { ascending: true, nullsFirst: false }).limit(ROW_CAP),
+      ]);
+
+    const totalByStructure = new Map<number, number>();
+    for (const l of lines ?? []) {
+      const s = num(l.structure_id);
+      totalByStructure.set(s, (totalByStructure.get(s) ?? 0) + num(l.amount_minor));
+    }
+    const rows = invoices ?? [];
+    const users = await this.#usersById([...new Set(rows.map((r) => num(r.user_id)))]);
+    const now = Date.now();
+
+    return {
+      tenant: { id: num(tenant.id), name: String(tenant.name), slug: String(tenant.slug) },
+      heads: heads ?? [],
+      structures: (structures ?? []).map((s) => ({
+        ...s, total_minor: totalByStructure.get(num(s.id)) ?? 0,
+      })),
+      outstanding: {
+        total_minor: rows.reduce((sum, r) => sum + (num(r.total_minor) - num(r.paid_minor)), 0),
+        invoices: rows.map((r) => ({
+          ...r,
+          student: users.get(num(r.user_id)) ?? null,
+          balance_minor: num(r.total_minor) - num(r.paid_minor),
+          overdue: Boolean(r.due_at && Date.parse(String(r.due_at)) < now),
+        })),
+      },
+    };
+  }
+
+  async createFeeHead(tenantId: number, actorId: string | null, input: {
+    code: string; name: string;
+    category?: 'tuition' | 'exam' | 'hostel' | 'transport' | 'library' | 'misc';
+    refundable?: boolean;
+  }) {
+    const code = input.code.trim().toUpperCase();
+    if (!code) throw new HttpError(422, 'A fee head needs a code.');
+    const { data, error } = await this.#db.from('onyx_fee_heads').insert({
+      tenant_id: tenantId, code, name: input.name.trim(),
+      category: input.category ?? 'tuition', refundable: input.refundable ? 1 : 0,
+    }).select('id, code, name, category, refundable').maybeSingle();
+    if (error) {
+      if (/duplicate key|unique/i.test(error.message)) {
+        throw new HttpError(409, 'A fee head with the code ' + code + ' already exists.');
+      }
+      throw new HttpError(500, 'Could not create the fee head: ' + error.message);
+    }
+    await this.#log(actorId, 'fee_head.created', 'fee_head', Number(data!.id), null,
+      { code: data!.code, name: data!.name });
+    return data;
+  }
+
+  async createFeeStructure(tenantId: number, actorId: string | null, input: {
+    name: string; instalments?: number; currency?: string;
+    lines: { head_id: number; amount_minor: number }[];
+  }) {
+    if (!input.lines.length) throw new HttpError(422, 'A fee structure needs at least one line.');
+    const instalments = input.instalments ?? 1;
+    if (instalments < 1 || instalments > 12) {
+      throw new HttpError(422, 'Instalments must be between 1 and 12.');
+    }
+    const { data: heads } = await this.#db.from('onyx_fee_heads')
+      .select('id').eq('tenant_id', tenantId);
+    const known = new Set((heads ?? []).map((h) => Number(h.id)));
+    for (const line of input.lines) {
+      if (!known.has(Number(line.head_id))) {
+        throw new HttpError(422, 'No such fee head: ' + line.head_id + '.');
+      }
+      if (!Number.isInteger(line.amount_minor) || line.amount_minor < 0) {
+        throw new HttpError(422, 'An amount is a whole number of paise, and not negative.');
+      }
+    }
+
+    const { data, error } = await this.#db.from('onyx_fee_structures').insert({
+      tenant_id: tenantId, name: input.name.trim(), currency: input.currency ?? 'INR',
+      instalments, status: 'draft',
+    }).select('id, name, currency, instalments, status, created_at').maybeSingle();
+    if (error || !data) {
+      throw new HttpError(500, 'Could not create the structure: ' + (error?.message ?? 'no row'));
+    }
+    const { error: lineError } = await this.#db.from('onyx_fee_structure_lines').insert(
+      input.lines.map((l) => ({
+        tenant_id: tenantId, structure_id: Number(data.id),
+        head_id: l.head_id, amount_minor: l.amount_minor,
+      })));
+    if (lineError) throw new HttpError(500, 'Could not write the lines: ' + lineError.message);
+
+    await this.#log(actorId, 'fee_structure.created', 'fee_structure', Number(data.id), null,
+      { name: data.name, lines: input.lines.length });
+    return data;
+  }
+
+  /** A structure moves out of draft once it can be invoiced against -- the
+   * same "status is the delete equivalent" pattern as courses/assignments/
+   * assessments/exams: nothing here is ever hard-deleted once it might be
+   * referenced by an invoice, so the platform surface for retiring one is
+   * the same status flip the tenant side uses. */
+  async updateFeeStructureStatus(tenantId: number, structureId: number, actorId: string | null,
+    status: 'draft' | 'published' | 'archived') {
+    const { data: structure } = await this.#db.from('onyx_fee_structures')
+      .select('id, tenant_id, status').eq('id', structureId).maybeSingle();
+    if (!structure || Number(structure.tenant_id) !== tenantId) {
+      throw new HttpError(404, 'No such fee structure.');
+    }
+    if (structure.status === status) return structure;
+    await this.#db.from('onyx_fee_structures')
+      .update({ status, updated_at: new Date().toISOString() }).eq('id', structureId);
+    await this.#log(actorId, 'fee_structure.status_changed', 'fee_structure', structureId,
+      { status: structure.status }, { status });
+    return { ...structure, status };
+  }
+
+  // -------------------------------------------------------------------------
+
+  async auditLog(filters: { limit?: number; action?: string; entityType?: string } = {}) {
+    let q = this.#db.from('onyx_platform_audit_logs')
+      .select('id, actor_id, action, entity_type, entity_id, before, after, created_at');
+    if (filters.action) q = q.eq('action', filters.action);
+    if (filters.entityType) q = q.eq('entity_type', filters.entityType);
+    const { data } = await q.order('created_at', { ascending: false }).limit(filters.limit ?? 100);
+    const rows = data ?? [];
+    if (!rows.length) return [];
+
+    const actors = await this.#usersById([...new Set(
+      rows.map((r) => r.actor_id).filter((id): id is number => id != null).map(num))]);
+    return rows.map((r) => ({
+      ...r, actor: r.actor_id == null ? null : actors.get(num(r.actor_id)) ?? null,
+    }));
+  }
+
+  /**
+   * Every distinct action and entity type recorded, for the audit page's two
+   * filter dropdowns -- read off the data itself, not guessed from splitting
+   * the action string on its dot (that undercounts: "marks.overridden"'s
+   * entity_type is "exam_mark", not "marks" -- the column is the only source
+   * of truth for what #log() actually wrote).
+   */
+  async auditFilterOptions() {
+    const { data } = await this.#db.from('onyx_platform_audit_logs')
+      .select('action, entity_type').limit(5000);
+    const rows = data ?? [];
+    return {
+      actions: [...new Set(rows.map((r) => String(r.action)))].sort(),
+      entityTypes: [...new Set(rows.map((r) => String(r.entity_type)))].sort(),
+    };
+  }
+
+  async #log(actorId: string | null, action: string, entityType: string, entityId: number | null,
+    before: unknown, after: unknown) {
+    // Never throw: an audit row describes work that already happened.
+    await this.#db.from('onyx_platform_audit_logs').insert({
+      actor_id: actorId, action, entity_type: entityType, entity_id: entityId,
+      before: before as never, after: after as never,
+    });
+  }
+}

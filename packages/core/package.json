@@ -1,0 +1,27 @@
+{
+  "name": "@onyx/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@onyx/types": "*",
+    "@supabase/supabase-js": "^2.47.10",
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.9.6",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^9.0.5",
+    "qrcode": "^1.5.4",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/nodemailer": "^8.0.1",
+    "@types/qrcode": "^1.5.6"
+  }
+}

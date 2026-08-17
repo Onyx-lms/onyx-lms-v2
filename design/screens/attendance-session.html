@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Week 9, Balanced trees</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search learners…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">JM</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Faculty</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item is-active" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">6</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Teaching</div>
+      <a class="nav-item" href="programmes.html"><svg class="ic"><use href="#i-building"/></svg> Programmes</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="allocations.html"><svg class="ic"><use href="#i-chart"/></svg> Teaching load</a>
+      <a class="nav-item" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Support</div>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Mentor queue <span class="count">3</span></a>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">2</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="courses.html">Courses</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <a href="course-detail.html">CS2010</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <a href="attendance.html">Attendance</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <span>Week 9 · Balanced trees</span>
+    </nav>
+
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Week 9 · Balanced trees</h1>
+        <p class="page-sub">Started 12 minutes ago · 90 minutes · Lecture Theatre 2 · 92 enrolled</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-lock"/></svg> Pause check-in</a>
+        <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-check"/></svg> Close register</a>
+      </div>
+    </div>
+
+    <div class="cols-even">
+      <!-- The code panel is the front of the room: it gets projected, so it is
+           the biggest thing on the screen and everything on it has to read
+           from the back row. The rotation is what makes it worth doing at all
+           — a screenshot passed to somebody in a café stops working before
+           they can use it — so the countdown is stated, not implied. -->
+      <div class="card card-pad">
+        <div class="inline" style="justify-content:space-between">
+          <span class="status live"><span class="dot"></span> Check-in open</span>
+          <span class="small muted">Rotates every 15 s</span>
+        </div>
+
+        <!-- Stand-in for the real code. It is drawn rather than iconified
+             because the panel has to be argued about at projector size, and a
+             tidy glyph in the middle of a white square tells you nothing about
+             whether the thing reads from row 14. -->
+        <div style="max-width:230px;margin:16px auto 0">
+          <div role="img" aria-label="QR code for checking in to this session"
+               style="position:relative;aspect-ratio:1;background:repeating-conic-gradient(var(--ink) 0 25%, #fff 0 50%) 0 0/15px 15px;border:10px solid #fff;border-radius:var(--r);box-shadow:var(--shadow-sm),0 0 0 1px var(--line)">
+            <i style="position:absolute;top:0;left:0;width:44px;height:44px;background:#fff;border:8px solid var(--ink);box-shadow:inset 0 0 0 7px #fff"></i>
+            <i style="position:absolute;top:0;right:0;width:44px;height:44px;background:#fff;border:8px solid var(--ink);box-shadow:inset 0 0 0 7px #fff"></i>
+            <i style="position:absolute;bottom:0;left:0;width:44px;height:44px;background:#fff;border:8px solid var(--ink);box-shadow:inset 0 0 0 7px #fff"></i>
+          </div>
+        </div>
+
+        <!-- Not everyone can point a camera at a screen from row 14, and some
+             phones have no working camera at all — the typed code is the same
+             check-in, not a fallback bolted on afterwards. -->
+        <div style="text-align:center;margin-top:14px">
+          <div class="stat-label">Or type this code</div>
+          <div class="num" style="font-size:32px;font-weight:800;letter-spacing:.12em;margin-top:4px">K4T 92R</div>
+        </div>
+
+        <div class="mt-2">
+          <div class="kv-row"><span class="small strong">Rotates in 9 s</span><span class="small muted num">code 41 today</span></div>
+          <div class="meter sm" style="margin-top:6px"><span style="width:60%"></span></div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="inline" style="justify-content:space-between">
+          <span class="small muted">Learners scan from <span class="strong">Courses › CS2010</span></span>
+          <button class="btn btn-sm btn-ghost"><svg class="ic ic-sm"><use href="#i-refresh"/></svg> New code</button>
+        </div>
+      </div>
+
+      <div>
+        <!-- Counts are live, and they are the reason to keep this screen open.
+             "Not yet" rather than "absent": nobody is absent while the door is
+             still open, and calling them absent early is how a register ends
+             up wrong and a learner ends up appealing it. -->
+        <div class="stats stats-3">
+          <div class="stat is-good">
+            <div class="stat-label">Present</div>
+            <div class="stat-value">64</div>
+            <div class="stat-note">of 92 enrolled</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Late</div>
+            <div class="stat-value">5</div>
+            <div class="stat-note">after the 10 min mark</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Not yet</div>
+            <div class="stat-value">23</div>
+            <div class="stat-note">2 already excused</div>
+          </div>
+        </div>
+
+        <div class="card card-pad mt-2">
+          <div class="kv-row"><span class="strong small">Checked in</span><span class="small muted num">69 of 92</span></div>
+          <div class="meter" style="margin-top:7px"><span style="width:75%"></span></div>
+          <div class="divider"></div>
+          <div class="kv">
+            <div class="kv-row"><span class="k">By QR code</span><span class="v num">61</span></div>
+            <div class="kv-row"><span class="k">Marked by you</span><span class="v num">8</span></div>
+            <div class="kv-row"><span class="k">Last check-in</span><span class="v">40 seconds ago</span></div>
+            <div class="kv-row"><span class="k">Rejected — code expired</span><span class="v num">3</span></div>
+          </div>
+        </div>
+
+        <div class="banner info mt-2">
+          <svg class="ic"><use href="#i-shield"/></svg>
+          <div class="small">A rejected code is not an accusation. Three learners scanned one that had already rotated; they only need to scan again.</div>
+        </div>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Register</h2>
+        <a class="link" href="attendance.html">Course attendance</a>
+      </div>
+
+      <div class="toolbar">
+        <div class="search">
+          <svg class="ic ic-sm"><use href="#i-search"/></svg>
+          <input placeholder="Find a learner" aria-label="Find a learner" />
+        </div>
+        <div class="segmented spacer">
+          <a class="is-on" href="#">All <span class="count">92</span></a>
+          <a href="#">Not yet <span class="count">23</span></a>
+          <a href="#">Late <span class="count">5</span></a>
+          <a href="#">Excused <span class="count">2</span></a>
+        </div>
+      </div>
+
+      <!-- A rowlist, not a table: this is marking one person at a time from
+           the front of a room, not comparing ninety down a column. The four
+           states sit on the row as a segmented control so a correction is one
+           tap and not a dialog, and it is a direct child of the row rather
+           than of .row-trailing — .row-trailing never shrinks, so at 320px the
+           last two states would be clipped off the edge of the card.
+
+           Each row also says how the state got there: "scanned in" and
+           "marked by you" answer different questions when somebody disputes
+           an absence six weeks later. -->
+      <div class="rowlist">
+
+        <div class="row">
+          <span class="avatar avatar-sm">AN</span>
+          <div class="row-main">
+            <div class="row-title">Amara Nwosu</div>
+            <div class="row-meta">Scanned in 11 min ago · QR</div>
+          </div>
+          <div class="segmented">
+            <a class="is-on" href="#">Present</a>
+            <a href="#">Late</a>
+            <a href="#">Absent</a>
+            <a href="#">Excused</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="avatar avatar-sm" style="background:var(--teal-500)">KA</span>
+          <div class="row-main">
+            <div class="row-title">Kwame Adjei</div>
+            <div class="row-meta">Scanned in 10 min ago · QR</div>
+          </div>
+          <div class="segmented">
+            <a class="is-on" href="#">Present</a>
+            <a href="#">Late</a>
+            <a href="#">Absent</a>
+            <a href="#">Excused</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="avatar avatar-sm" style="background:var(--orange-700)">PR</span>
+          <div class="row-main">
+            <div class="row-title">Priya Raghunathan</div>
+            <div class="row-meta">Scanned in 2 min ago · QR · after the 10 min mark</div>
+          </div>
+          <div class="segmented">
+            <a href="#">Present</a>
+            <a class="is-on" href="#">Late</a>
+            <a href="#">Absent</a>
+            <a href="#">Excused</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="avatar avatar-sm" style="background:var(--faint)">TH</span>
+          <div class="row-main">
+            <div class="row-title">Tomás Herrera</div>
+            <div class="row-meta">
+              <span>Not checked in</span>
+              <span>·</span>
+              <span class="pill late"><svg class="ic ic-sm"><use href="#i-alert"/></svg> 53% this term</span>
+            </div>
+          </div>
+          <div class="segmented">
+            <a href="#">Present</a>
+            <a href="#">Late</a>
+            <a href="#">Absent</a>
+            <a href="#">Excused</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="avatar avatar-sm" style="background:var(--teal-500)">LF</span>
+          <div class="row-main">
+            <div class="row-title">Lucia Ferreira</div>
+            <div class="row-meta">Marked present by you · 6 min ago · phone had no signal</div>
+          </div>
+          <div class="segmented">
+            <a class="is-on" href="#">Present</a>
+            <a href="#">Late</a>
+            <a href="#">Absent</a>
+            <a href="#">Excused</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="avatar avatar-sm">DO</span>
+          <div class="row-main">
+            <div class="row-title">Daniel Osei</div>
+            <div class="row-meta">Excused · placement interview, note on file</div>
+          </div>
+          <div class="segmented">
+            <a href="#">Present</a>
+            <a href="#">Late</a>
+            <a href="#">Absent</a>
+            <a class="is-on" href="#">Excused</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="avatar avatar-sm" style="background:var(--teal-500)">SL</span>
+          <div class="row-main">
+            <div class="row-title">Sara Lindqvist</div>
+            <div class="row-meta">Scanned in 9 min ago · QR</div>
+          </div>
+          <div class="segmented">
+            <a class="is-on" href="#">Present</a>
+            <a href="#">Late</a>
+            <a href="#">Absent</a>
+            <a href="#">Excused</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="avatar avatar-sm" style="background:var(--teal-500)">MB</span>
+          <div class="row-main">
+            <div class="row-title">Mateusz Bąk</div>
+            <div class="row-meta">
+              <span>Not checked in</span>
+              <span>·</span>
+              <span class="pill late"><svg class="ic ic-sm"><use href="#i-alert"/></svg> 61% this term</span>
+            </div>
+          </div>
+          <div class="segmented">
+            <a href="#">Present</a>
+            <a href="#">Late</a>
+            <a href="#">Absent</a>
+            <a href="#">Excused</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="avatar avatar-sm" style="background:var(--orange-700)">ZH</span>
+          <div class="row-main">
+            <div class="row-title">Zainab Hassan</div>
+            <div class="row-meta">Scanned in 12 min ago · QR</div>
+          </div>
+          <div class="segmented">
+            <a class="is-on" href="#">Present</a>
+            <a href="#">Late</a>
+            <a href="#">Absent</a>
+            <a href="#">Excused</a>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="avatar avatar-sm" style="background:var(--teal-500)">CW</span>
+          <div class="row-main">
+            <div class="row-title">Chen Wei</div>
+            <div class="row-meta">Marked absent by you · 1 min ago</div>
+          </div>
+          <div class="segmented">
+            <a href="#">Present</a>
+            <a href="#">Late</a>
+            <a class="is-on" href="#">Absent</a>
+            <a href="#">Excused</a>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="table-foot" style="border:1px solid var(--line);border-top:0;border-radius:0 0 var(--r-lg) var(--r-lg)">
+        Showing 10 of 92 · anyone still unmarked is recorded absent when the register closes
+        <div class="pager">
+          <a class="btn btn-sm btn-ghost" href="#">Next 10</a>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab is-active" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

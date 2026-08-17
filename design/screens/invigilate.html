@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Invigilate</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search candidates, exams…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">AO</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Examinations officer</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Examinations</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item is-active" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">6</span></a>
+      <a class="nav-item" href="exams.html"><svg class="ic"><use href="#i-calendar"/></svg> Examinations</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certificates</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Practice</div>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Invigilation</h1>
+        <!-- A flag is what a browser noticed, not proof of anything. The
+             subtitle says so before anyone opens a case, because a console
+             that implies otherwise is how proctoring earns its bad name. -->
+        <p class="page-sub">A flag is evidence, not a verdict. Nothing here fails anybody on its own.</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Export log</a>
+        <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-message"/></svg> Notice to all halls</a>
+      </div>
+    </div>
+
+    <!-- The live bar is the whole reason this screen exists, so it is the
+         first thing under the title and it pulses: everything below is
+         historical the moment a sitting ends. The "updated" stamp is there
+         because a stale proctoring console is worse than none. -->
+    <div class="card card-pad" style="border-color:var(--danger-line)">
+      <div class="inline" style="justify-content:space-between">
+        <div class="inline" style="gap:16px">
+          <span class="status live"><span class="dot"></span> 3 sittings running</span>
+          <span class="small muted num">410 of 418 candidates present · 6 flags awaiting review</span>
+        </div>
+        <div class="inline" style="margin-left:auto">
+          <span class="small muted"><svg class="ic ic-sm"><use href="#i-refresh"/></svg> Updated 8 seconds ago</span>
+          <button class="btn btn-sm btn-ghost">Refresh</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- One card per sitting. Time remaining leads, because it decides what an
+         invigilator can still do about anything else on the card: a flag with
+         four minutes left is a different job from one with an hour. -->
+    <section class="section">
+      <div class="section-head">
+        <h2>Sittings running now</h2>
+        <a class="link" href="exams.html">Full schedule</a>
+      </div>
+      <div class="grid-3">
+
+        <div class="card card-pad">
+          <div class="inline" style="justify-content:space-between">
+            <span class="pill late"><svg class="ic ic-sm"><use href="#i-flag"/></svg> 4 flags</span>
+            <span class="small muted">Main Hall A</span>
+          </div>
+          <div class="row-title mt-1">Data Structures — mid-term</div>
+          <div class="row-meta">CS2010 · started 1 h 38 min ago</div>
+          <div class="kv mt-2">
+            <div class="kv-row"><span class="k">Time remaining</span><span class="v num" style="color:var(--orange-700)">42 min</span></div>
+            <div class="kv-row"><span class="k">Candidates present</span><span class="v num">186 of 190</span></div>
+          </div>
+          <div class="meter sm" style="margin-top:10px"><span style="width:70%"></span></div>
+          <div class="inline mt-2">
+            <a class="btn btn-sm" href="exam-detail.html">Watch</a>
+            <a class="btn btn-sm btn-ghost" href="exam-detail.html">Register</a>
+          </div>
+        </div>
+
+        <div class="card card-pad">
+          <div class="inline" style="justify-content:space-between">
+            <span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> No flags</span>
+            <span class="small muted">Online</span>
+          </div>
+          <div class="row-title mt-1">Linear Algebra — quiz 3</div>
+          <div class="row-meta">MA1201 · started 1 h 02 min ago</div>
+          <div class="kv mt-2">
+            <div class="kv-row"><span class="k">Time remaining</span><span class="v num" style="color:var(--danger)">18 min</span></div>
+            <div class="kv-row"><span class="k">Candidates present</span><span class="v num">138 of 140</span></div>
+          </div>
+          <div class="meter sm" style="margin-top:10px"><span style="width:85%"></span></div>
+          <div class="inline mt-2">
+            <a class="btn btn-sm" href="exam-detail.html">Watch</a>
+            <a class="btn btn-sm btn-ghost" href="exam-detail.html">Register</a>
+          </div>
+        </div>
+
+        <div class="card card-pad">
+          <div class="inline" style="justify-content:space-between">
+            <span class="pill soon"><svg class="ic ic-sm"><use href="#i-flag"/></svg> 2 flags</span>
+            <span class="small muted">Lab Block C</span>
+          </div>
+          <div class="row-title mt-1">Computer Networks — practical</div>
+          <div class="row-meta">CS3040 · started 25 min ago</div>
+          <div class="kv mt-2">
+            <div class="kv-row"><span class="k">Time remaining</span><span class="v num">1 h 05 min</span></div>
+            <div class="kv-row"><span class="k">Candidates present</span><span class="v num">86 of 88</span></div>
+          </div>
+          <div class="meter sm" style="margin-top:10px"><span style="width:28%"></span></div>
+          <div class="inline mt-2">
+            <a class="btn btn-sm" href="exam-detail.html">Watch</a>
+            <a class="btn btn-sm btn-ghost" href="exam-detail.html">Register</a>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <div class="cols mt-3">
+      <div>
+        <!-- The feed. Severity is a word and an icon as well as a tone, since
+             about one man in twelve reads the red and the amber as the same —
+             and severity here decides whether somebody walks into a hall. -->
+        <section>
+          <div class="section-head">
+            <h2>Incident feed</h2>
+            <span class="small muted">Newest first</span>
+          </div>
+
+          <div class="toolbar">
+            <div class="segmented">
+              <a class="is-on" href="#">Awaiting review <span class="count">6</span></a>
+              <a href="#">High <span class="count">2</span></a>
+              <a href="#">Cleared today <span class="count">14</span></a>
+              <a href="#">All <span class="count">62</span></a>
+            </div>
+            <select class="select spacer" aria-label="Sitting">
+              <option>All three sittings</option>
+              <option>Data Structures — mid-term</option>
+              <option>Linear Algebra — quiz 3</option>
+              <option>Computer Networks — practical</option>
+            </select>
+          </div>
+
+          <div class="rowlist">
+            <div class="row">
+              <span class="row-icon late"><svg class="ic"><use href="#i-users"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">More than one face visible</div>
+                <div class="row-meta">
+                  <span>Kwame Adjei · seat A-114</span>
+                  <span>·</span>
+                  <span>Data Structures — mid-term</span>
+                  <span>·</span>
+                  <span>2 min ago</span>
+                </div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill late"><span class="pill-dot"></span> High</span>
+                <a class="btn btn-sm" href="#">Review</a>
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="row-icon late"><svg class="ic"><use href="#i-file"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Pasted into the paper</div>
+                <div class="row-meta">
+                  <span>Priya Raghunathan · seat A-072</span>
+                  <span>·</span>
+                  <span>Data Structures — mid-term</span>
+                  <span>·</span>
+                  <span>4 min ago</span>
+                </div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill late"><span class="pill-dot"></span> High</span>
+                <a class="btn btn-sm" href="#">Review</a>
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="row-icon soon"><svg class="ic"><use href="#i-external"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Left the tab — third time this attempt</div>
+                <div class="row-meta">
+                  <span>Daniel Osei · online</span>
+                  <span>·</span>
+                  <span>Linear Algebra — quiz 3</span>
+                  <span>·</span>
+                  <span>6 min ago</span>
+                </div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill soon"><span class="pill-dot"></span> Medium</span>
+                <a class="btn btn-sm btn-ghost" href="#">Review</a>
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="row-icon soon"><svg class="ic"><use href="#i-camera"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">No face visible for 40 seconds</div>
+                <div class="row-meta">
+                  <span>Lucia Ferreira · online</span>
+                  <span>·</span>
+                  <span>Linear Algebra — quiz 3</span>
+                  <span>·</span>
+                  <span>9 min ago</span>
+                </div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill soon"><span class="pill-dot"></span> Medium</span>
+                <a class="btn btn-sm btn-ghost" href="#">Review</a>
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-grid"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Left full screen</div>
+                <div class="row-meta">
+                  <span>Tomás Herrera · seat C-018</span>
+                  <span>·</span>
+                  <span>Computer Networks — practical</span>
+                  <span>·</span>
+                  <span>12 min ago</span>
+                </div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill"><span class="pill-dot"></span> Low</span>
+                <a class="btn btn-sm btn-ghost" href="#">Review</a>
+              </div>
+            </div>
+
+            <div class="row">
+              <span class="row-icon"><svg class="ic"><use href="#i-camera"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Camera stopped, restarted 11 seconds later</div>
+                <div class="row-meta">
+                  <span>Amina Yusuf · seat C-004</span>
+                  <span>·</span>
+                  <span>Computer Networks — practical</span>
+                  <span>·</span>
+                  <span>14 min ago</span>
+                </div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill"><span class="pill-dot"></span> Low</span>
+                <a class="btn btn-sm btn-ghost" href="#">Review</a>
+              </div>
+            </div>
+
+            <!-- A cleared event stays in the feed rather than vanishing. Who
+                 decided, and when, is the half of the record that matters if
+                 the candidate ever asks. -->
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title">Left the tab — cleared</div>
+                <div class="row-meta">
+                  <span>Sara Lindqvist · online</span>
+                  <span>·</span>
+                  <span>Cleared by A. Owusu, 22 min ago</span>
+                  <span>·</span>
+                  <span>“Notification banner, back in 2 s”</span>
+                </div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> Cleared</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-foot" style="border:1px solid var(--line);border-top:0;border-radius:0 0 var(--r-lg) var(--r-lg)">
+            Showing 7 of 62 events from today
+            <div class="pager">
+              <a class="btn btn-sm btn-ghost" href="#">Older</a>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ rail ============================ -->
+      <aside>
+        <section>
+          <div class="section-head"><h2>Your decisions</h2></div>
+          <div class="card card-pad">
+            <div class="kv">
+              <div class="kv-row"><span class="k">Awaiting review</span><span class="v num" style="color:var(--danger)">6</span></div>
+              <div class="kv-row"><span class="k">Cleared today</span><span class="v num">14</span></div>
+              <div class="kv-row"><span class="k">Escalated to the board</span><span class="v num">1</span></div>
+              <div class="kv-row"><span class="k">Oldest still open</span><span class="v">14 min</span></div>
+            </div>
+            <div class="divider"></div>
+            <a class="btn btn-block btn-ghost" href="#">Open the review queue</a>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Invigilators on duty</h2><a class="link" href="exams.html">Rota</a></div>
+          <div class="card">
+            <ul class="stack-sm card-pad" style="gap:12px">
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm">AO</span>
+                <span class="small"><span class="strong">A. Owusu</span> — chief, Main Hall A
+                  <span class="muted" style="display:block">On station · you</span></span>
+              </li>
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm" style="background:var(--teal-500)">JM</span>
+                <span class="small"><span class="strong">J. Mensah</span> — Main Hall A
+                  <span class="muted" style="display:block">Checked in 1 h 40 min ago</span></span>
+              </li>
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm" style="background:var(--orange-700)">RK</span>
+                <span class="small"><span class="strong">R. Kaur</span> — Lab Block C
+                  <span class="muted" style="display:block">Checked in 27 min ago</span></span>
+              </li>
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm" style="background:var(--faint)">—</span>
+                <span class="small"><span class="strong">Online sitting</span> — remote proctor unassigned
+                  <span class="muted" style="display:block">Linear Algebra ends in 18 min</span></span>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Absent from a register</h2></div>
+          <div class="card card-pad">
+            <p class="small muted">Eight candidates seated but never started a paper. Somebody has to walk the row before the sitting closes.</p>
+            <div class="stack-sm mt-2">
+              <div class="kv-row"><span class="small strong">Main Hall A</span><span class="small num muted">4 seats</span></div>
+              <div class="kv-row"><span class="small strong">Lab Block C</span><span class="small num muted">2 seats</span></div>
+              <div class="kv-row"><span class="small strong">Online</span><span class="small num muted">2 candidates</span></div>
+            </div>
+            <div class="divider"></div>
+            <a class="btn btn-sm btn-ghost btn-block" href="exam-detail.html">See who</a>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="exams.html"><svg class="ic"><use href="#i-calendar"/></svg> Exams</a>
+  <a class="tab" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab is-active" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Watch</a>
+  <a class="tab" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certs</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

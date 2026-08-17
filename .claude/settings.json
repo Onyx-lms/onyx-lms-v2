@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(npm test)",
+      "Bash(npm test:*)",
+      "Bash(npm run verify:*)",
+      "Bash(npm run db:audit)",
+      "Bash(npm run db:verify)",
+      "Bash(npm run db:reload-cache)",
+      "Bash(npm run gen:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run e2e)",
+      "Bash(npm run e2e:*)",
+      "Bash(npx tsc --build:*)",
+      "Bash(node --test:*)",
+      "Bash(python tools/*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git check-ignore:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Write(../app/**)",
+      "Write(../database/**)",
+      "Write(../resources/**)",
+      "Write(../routes/**)",
+      "Edit(../app/**)",
+      "Edit(../database/**)",
+      "Edit(../resources/**)",
+      "Edit(../routes/**)",
+      "Write(./supabase/migrations/0001_schema.sql)",
+      "Write(./supabase/migrations/0002_indexes.sql)",
+      "Edit(./supabase/migrations/0001_schema.sql)",
+      "Edit(./supabase/migrations/0002_indexes.sql)"
+    ]
+  }
+}

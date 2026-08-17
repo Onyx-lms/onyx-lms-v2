@@ -1,0 +1,56 @@
+import type { NavItem } from '@/components/dashboard-shell';
+
+export const STUDENT_NAV: NavItem[] = [
+  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/my-courses', label: 'My courses' },
+  { href: '/my-bootcamps', label: 'My workshops' },
+  { href: '/my-team-packages', label: 'My classrooms' },
+  { href: '/my-bookings', label: 'My sessions' },
+  { href: '/wishlist', label: 'Wishlist' },
+  { href: '/cart', label: 'Cart' },
+  { href: '/purchase-history', label: 'Purchases' },
+  { href: '/my-certificates', label: 'Certificates' },
+  { href: '/messages', label: 'Messages' },
+  { href: '/my-profile', label: 'My profile' },
+  { href: '/become-instructor', label: 'Become an instructor' },
+  { href: '/courses', label: 'Browse courses' },
+];
+
+export const INSTRUCTOR_NAV: NavItem[] = [
+  { href: '/instructor/dashboard', label: 'Dashboard' },
+  { href: '/instructor/courses', label: 'My courses' },
+  { href: '/instructor/blogs', label: 'My blog posts' },
+  { href: '/instructor/bootcamps', label: 'My workshops' },
+  { href: '/instructor/team-packages', label: 'Classroom packages' },
+  { href: '/instructor/tutoring', label: 'Tutoring' },
+  { href: '/instructor/payouts', label: 'Earnings' },
+  { href: '/messages', label: 'Messages' },
+  { href: '/my-profile', label: 'My profile' },
+];
+
+export const ADMIN_NAV: NavItem[] = [
+  { href: '/admin/dashboard', label: 'Dashboard' },
+  { href: '/admin/courses', label: 'Courses' },
+  { href: '/admin/users', label: 'Users' },
+  { href: '/admin/enrollments', label: 'Enrolments' },
+  { href: '/admin/certificates', label: 'Certificates' },
+  { href: '/admin/coupons', label: 'Coupons' },
+  { href: '/admin/offline-payments', label: 'Offline payments' },
+  { href: '/admin/approvals', label: 'Course approvals' },
+  { href: '/admin/bootcamps', label: 'Workshops' },
+  { href: '/admin/team-packages', label: 'Classroom packages' },
+  { href: '/admin/tutoring', label: 'Tutor taxonomy' },
+  { href: '/admin/revenue', label: 'Revenue' },
+  { href: '/admin/payouts', label: 'Payouts' },
+  { href: '/admin/applications', label: 'Instructor applications' },
+  { href: '/admin/newsletters', label: 'Newsletters' },
+  { href: '/admin/languages', label: 'Languages' },
+  { href: '/admin/settings', label: 'Settings' },
+  { href: '/admin/blogs', label: 'Blog' },
+  { href: '/admin/knowledge-base', label: 'Knowledge base' },
+  { href: '/admin/testimonials', label: 'Testimonials' },
+  { href: '/admin/messages', label: 'Messages' },
+  { href: '/admin/contacts', label: 'Contact enquiries' },
+  { href: '/admin/live-class-settings', label: 'Live class settings' },
+  { href: '/my-profile', label: 'My profile' },
+];

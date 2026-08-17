@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Examinations</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search exams, halls…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">AO</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Examinations officer</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Examinations</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">6</span></a>
+      <a class="nav-item is-active" href="exams.html"><svg class="ic"><use href="#i-calendar"/></svg> Examinations</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certificates</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Practice</div>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Examinations</h1>
+        <p class="page-sub">Michaelmas term · 36 papers · nobody is ever scheduled for two at once, the calendar refuses that before it happens</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-building"/></svg> Add a hall</a>
+        <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-plus"/></svg> Schedule an exam</a>
+      </div>
+    </div>
+
+    <!-- An unstaffed paper is the one failure that cannot be fixed on the day,
+         so it is a banner and not a column somebody has to notice. -->
+    <div class="banner warn">
+      <svg class="ic"><use href="#i-alert"/></svg>
+      <div>
+        <div class="strong">Two sittings in the next ten days have no invigilator assigned.</div>
+        <div class="small" style="margin-top:2px">Linear Algebra — final and Cyber Security — resit. Both are flagged in the list below.</div>
+      </div>
+      <a class="btn btn-sm btn-ghost" href="#">Assign</a>
+    </div>
+
+    <div class="stats mt-2">
+      <div class="stat">
+        <div class="stat-label">Scheduled</div>
+        <div class="stat-value">36</div>
+        <div class="stat-note">this term, across 5 programmes</div>
+      </div>
+      <div class="stat is-alert">
+        <div class="stat-label">Unstaffed</div>
+        <div class="stat-value">2</div>
+        <div class="stat-note">no invigilator assigned</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Seats needed</div>
+        <div class="stat-value">1,846</div>
+        <div class="stat-note">peak day is 640 of 720 seats</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Awaiting marks</div>
+        <div class="stat-value">7</div>
+        <div class="stat-note">oldest sat 11 days ago</div>
+      </div>
+    </div>
+
+    <div class="toolbar mt-3">
+      <div class="search">
+        <svg class="ic ic-sm"><use href="#i-search"/></svg>
+        <input placeholder="Filter by paper or course code" aria-label="Filter exams" />
+      </div>
+      <select class="select" aria-label="Semester">
+        <option>Michaelmas 2026</option>
+        <option>Hilary 2026</option>
+      </select>
+      <select class="select" aria-label="Venue">
+        <option>Every venue</option>
+        <option>Main Hall A</option>
+        <option>Main Hall B</option>
+        <option>Lab Block C</option>
+        <option>Online</option>
+      </select>
+    </div>
+
+    <!-- "All" is the landing filter rather than "Upcoming": an exams officer
+         opens this to answer "what is happening today and what is next", and
+         the paper that is running is the one they need first. -->
+    <div class="segmented">
+      <a class="is-on" href="#">All <span class="count">36</span></a>
+      <a href="#">In progress <span class="count">3</span></a>
+      <a href="#">Upcoming <span class="count">9</span></a>
+      <a href="#">Completed <span class="count">24</span></a>
+    </div>
+
+    <!-- ---------------------------- in progress ---------------------- -->
+    <section class="section">
+      <div class="section-head">
+        <h2><span class="status live"><span class="dot"></span> In progress</span></h2>
+        <a class="link" href="invigilate.html">Invigilation console</a>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table class="table">
+            <caption class="sr-only">Examinations running now</caption>
+            <thead>
+              <tr>
+                <th scope="col">Exam</th>
+                <th scope="col">When</th>
+                <th scope="col">Duration</th>
+                <th scope="col">Venue</th>
+                <th scope="col" class="right">Candidates</th>
+                <th scope="col">Invigilators</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="who-name"><a href="exam-detail.html">Data Structures — mid-term</a></div>
+                  <div class="who-sub">CS2010 · out of 100</div>
+                </td>
+                <td>Ends in 42 min<div class="who-sub">started 1 h 38 min ago</div></td>
+                <td class="num">180 min</td>
+                <td>Main Hall A<div class="who-sub">rows 1–14</div></td>
+                <td class="num">186 of 190</td>
+                <td>
+                  <div class="inline" style="gap:5px">
+                    <span class="avatar avatar-sm">AO</span>
+                    <span class="avatar avatar-sm" style="background:var(--teal-500)">JM</span>
+                    <span class="small muted">+2</span>
+                  </div>
+                </td>
+                <td><span class="pill late"><span class="pill-dot"></span> Running</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="who-name"><a href="exam-detail.html">Linear Algebra — quiz 3</a></div>
+                  <div class="who-sub">MA1201 · out of 40</div>
+                </td>
+                <td>Ends in 18 min<div class="who-sub">started 1 h 02 min ago</div></td>
+                <td class="num">80 min</td>
+                <td>Online<div class="who-sub">proctored</div></td>
+                <td class="num">138 of 140</td>
+                <td><span class="pill late"><svg class="ic ic-sm"><use href="#i-alert"/></svg> None assigned</span></td>
+                <td><span class="pill late"><span class="pill-dot"></span> Running</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="who-name"><a href="exam-detail.html">Computer Networks — practical</a></div>
+                  <div class="who-sub">CS3040 · out of 60</div>
+                </td>
+                <td>Ends in 1 h 05 min<div class="who-sub">started 25 min ago</div></td>
+                <td class="num">90 min</td>
+                <td>Lab Block C<div class="who-sub">machines 1–96</div></td>
+                <td class="num">86 of 88</td>
+                <td>
+                  <div class="inline" style="gap:5px">
+                    <span class="avatar avatar-sm" style="background:var(--orange-700)">RK</span>
+                    <span class="small muted">+1</span>
+                  </div>
+                </td>
+                <td><span class="pill late"><span class="pill-dot"></span> Running</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------------------------- upcoming ------------------------- -->
+    <section class="section">
+      <div class="section-head">
+        <h2>Upcoming</h2>
+        <a class="link" href="timetable.html">See on the timetable</a>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table class="table">
+            <caption class="sr-only">Examinations scheduled but not yet started</caption>
+            <thead>
+              <tr>
+                <th scope="col">Exam</th>
+                <th scope="col">When</th>
+                <th scope="col">Duration</th>
+                <th scope="col">Venue</th>
+                <th scope="col" class="right">Candidates</th>
+                <th scope="col">Invigilators</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="who-name"><a href="exam-detail.html">Discrete Mathematics — final</a></div>
+                  <div class="who-sub">MA1310 · out of 100</div>
+                </td>
+                <!-- The relative distance is what an officer scans for; the day
+                     and clock time are the detail underneath, not the headline. -->
+                <td>In 2 days<div class="who-sub">Thu, 09:30</div></td>
+                <td class="num">180 min</td>
+                <td>Main Hall A<div class="who-sub">200 seats</div></td>
+                <td class="num">178 registered</td>
+                <td>
+                  <div class="inline" style="gap:5px">
+                    <span class="avatar avatar-sm" style="background:var(--teal-500)">JM</span>
+                    <span class="avatar avatar-sm">AO</span>
+                    <span class="small muted">+2</span>
+                  </div>
+                </td>
+                <td><span class="pill brand">Scheduled</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="who-name"><a href="exam-detail.html">Linear Algebra — final</a></div>
+                  <div class="who-sub">MA1201 · out of 100</div>
+                </td>
+                <td>In 4 days<div class="who-sub">Sat, 14:00</div></td>
+                <td class="num">180 min</td>
+                <td>Main Hall B<div class="who-sub">180 seats</div></td>
+                <td class="num">164 registered</td>
+                <!-- Same red, same meaning as everywhere else in the product:
+                     something is wrong and a person has to act. -->
+                <td><span class="pill late"><svg class="ic ic-sm"><use href="#i-alert"/></svg> None assigned</span></td>
+                <td><span class="pill brand">Scheduled</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="who-name"><a href="exam-detail.html">Operating Systems — final</a></div>
+                  <div class="who-sub">CS3020 · out of 100</div>
+                </td>
+                <td>In 6 days<div class="who-sub">Mon, 09:30</div></td>
+                <td class="num">180 min</td>
+                <td>Main Hall A<div class="who-sub">200 seats</div></td>
+                <td class="num">192 registered</td>
+                <td>
+                  <div class="inline" style="gap:5px">
+                    <span class="avatar avatar-sm" style="background:var(--orange-700)">RK</span>
+                    <span class="avatar avatar-sm" style="background:var(--teal-500)">SO</span>
+                    <span class="small muted">+3</span>
+                  </div>
+                </td>
+                <td><span class="pill brand">Scheduled</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="who-name"><a href="exam-detail.html">Cyber Security — resit</a></div>
+                  <div class="who-sub">CS4110 · out of 100</div>
+                </td>
+                <td>In 9 days<div class="who-sub">Thu, 11:00</div></td>
+                <td class="num">120 min</td>
+                <td>Seminar Room 4<div class="who-sub">40 seats</div></td>
+                <td class="num">22 registered</td>
+                <td><span class="pill late"><svg class="ic ic-sm"><use href="#i-alert"/></svg> None assigned</span></td>
+                <td><span class="pill soon">Seating pending</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="who-name"><a href="exam-detail.html">Machine Learning — final</a></div>
+                  <div class="who-sub">CS4210 · out of 100</div>
+                </td>
+                <td>In 12 days<div class="who-sub">Tue, 14:00</div></td>
+                <td class="num">150 min</td>
+                <td>Online<div class="who-sub">proctored</div></td>
+                <td class="num">204 registered</td>
+                <td>
+                  <div class="inline" style="gap:5px">
+                    <span class="avatar avatar-sm" style="background:var(--teal-500)">SO</span>
+                    <span class="small muted">+1</span>
+                  </div>
+                </td>
+                <td><span class="pill brand">Scheduled</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="who-name"><a href="exam-detail.html">Database Systems — final</a></div>
+                  <div class="who-sub">CS2140 · out of 100</div>
+                </td>
+                <td>In 2 weeks<div class="who-sub">Fri, 09:30</div></td>
+                <td class="num">180 min</td>
+                <td>Main Hall B<div class="who-sub">180 seats</div></td>
+                <td class="num">150 registered</td>
+                <td>
+                  <div class="inline" style="gap:5px">
+                    <span class="avatar avatar-sm">AO</span>
+                    <span class="small muted">+2</span>
+                  </div>
+                </td>
+                <td><span class="pill">Draft</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-foot">
+          Showing 6 of 9 upcoming papers
+          <div class="pager">
+            <a class="btn btn-sm btn-ghost" href="#">Show all 9</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------------------------- completed ------------------------ -->
+    <section class="section">
+      <div class="section-head">
+        <h2>Completed</h2>
+        <a class="link" href="#">Marks and moderation</a>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table class="table">
+            <caption class="sr-only">Examinations already sat</caption>
+            <thead>
+              <tr>
+                <th scope="col">Exam</th>
+                <th scope="col">When</th>
+                <th scope="col">Duration</th>
+                <th scope="col">Venue</th>
+                <th scope="col" class="right">Candidates</th>
+                <th scope="col">Invigilators</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="who-name"><a href="exam-detail.html">Data Structures — final</a></div>
+                  <div class="who-sub">CS2010 · out of 100</div>
+                </td>
+                <td>Yesterday<div class="who-sub">sat 09:30–12:30</div></td>
+                <td class="num">180 min</td>
+                <td>Main Hall A</td>
+                <td class="num">186 of 192 sat</td>
+                <td>
+                  <div class="inline" style="gap:5px">
+                    <span class="avatar avatar-sm">AO</span>
+                    <span class="avatar avatar-sm" style="background:var(--teal-500)">JM</span>
+                    <span class="small muted">+2</span>
+                  </div>
+                </td>
+                <td><span class="pill soon">Marking</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="who-name"><a href="exam-detail.html">Programming Fundamentals — final</a></div>
+                  <div class="who-sub">CS1010 · out of 100</div>
+                </td>
+                <td>4 days ago<div class="who-sub">sat 14:00–17:00</div></td>
+                <td class="num">180 min</td>
+                <td>Main Hall A</td>
+                <td class="num">240 of 244 sat</td>
+                <td>
+                  <div class="inline" style="gap:5px">
+                    <span class="avatar avatar-sm" style="background:var(--orange-700)">RK</span>
+                    <span class="small muted">+4</span>
+                  </div>
+                </td>
+                <td><span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> Published</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="who-name"><a href="exam-detail.html">Statistics for Data Science — mid-term</a></div>
+                  <div class="who-sub">DS2020 · out of 50</div>
+                </td>
+                <td>11 days ago<div class="who-sub">sat 11:00–12:30</div></td>
+                <td class="num">90 min</td>
+                <td>Seminar Room 4</td>
+                <td class="num">96 of 98 sat</td>
+                <td>
+                  <div class="inline" style="gap:5px">
+                    <span class="avatar avatar-sm" style="background:var(--teal-500)">SO</span>
+                    <span class="small muted">+1</span>
+                  </div>
+                </td>
+                <td><span class="pill soon">Marking · 11 days</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-foot">
+          Showing 3 of 24 completed papers
+          <div class="pager">
+            <a class="btn btn-sm btn-ghost" href="#">Older</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab is-active" href="exams.html"><svg class="ic"><use href="#i-calendar"/></svg> Exams</a>
+  <a class="tab" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Watch</a>
+  <a class="tab" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certs</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

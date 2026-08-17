@@ -1,0 +1,86 @@
+# F-09 -- CI.
+#
+# The schema parity gate is the important one: the generated SQL is derived from
+# the Laravel database, so a hand edit to a migration file would silently break
+# the contract this whole port rests on. The build fails instead.
+#
+# This workflow runs in TWO layouts and must work in both:
+#
+#   * the parent checkout, where this project sits at TT002-LEO-LMS/onyx-lms/
+#     alongside the Laravel app it was ported from; and
+#   * the standalone repository, where onyx-lms IS the root and the Laravel app
+#     is not present at all.
+#
+# So no path here assumes a parent directory, and the steps that genuinely need
+# the Laravel source are skipped rather than failed when it is absent. They used
+# to hardcode `onyx-lms/`, which in the standalone repo resolved to nothing --
+# setup-node reported "Some specified paths were not resolved, unable to cache
+# dependencies" and the run stopped before any real check had happened.
+name: CI
+
+on:
+  push:
+    branches: [main, certify]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # 22.18+ is the floor: the API and the tests are started as .ts and
+          # rely on Node's built-in type stripping (see engines in package.json).
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: npm ci
+
+      # The parity and generation gates read the Laravel schema through
+      # tools/laravel_source.py, which looks for LARAVEL_ROOT (default: a
+      # sibling TT002-LEO-LMS checkout). In the standalone repo that directory
+      # does not exist and cannot, so the gates are skipped with a note rather
+      # than failing a build for a file this repository does not contain.
+      - name: Is the Laravel source available?
+        id: laravel
+        run: |
+          root="${LARAVEL_ROOT:-$GITHUB_WORKSPACE/../TT002-LEO-LMS}"
+          if [ -d "$root" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "Laravel source found at $root"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No Laravel checkout; skipping schema parity and generated-artefact checks."
+          fi
+
+      - name: Schema parity (generated SQL vs Laravel source)
+        if: steps.laravel.outputs.present == 'true'
+        run: npm run verify:parity
+
+      - name: Generated artefacts are up to date
+        if: steps.laravel.outputs.present == 'true'
+        run: |
+          npm run gen:all
+          git diff --exit-code supabase packages/types/src/database.ts \
+            || (echo "::error::Generated files are stale. Run 'npm run gen:all' and commit." && exit 1)
+
+      # These three do not depend on the Laravel source and are the real value
+      # of CI in the standalone repo.
+      - name: Typecheck
+        run: npx tsc --build --force
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Web build
+        run: npm run build:web
+        env:
+          API_URL: http://127.0.0.1:4000

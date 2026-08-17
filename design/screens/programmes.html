@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Programmes</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search people, courses…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">RA</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Administrator</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">3</span></a>
+      <a class="nav-item" href="exams.html"><svg class="ic"><use href="#i-calendar"/></svg> Examinations</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+      <a class="nav-item" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certificates</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item is-active" href="programmes.html"><svg class="ic"><use href="#i-layers"/></svg> Programmes</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="allocations.html"><svg class="ic"><use href="#i-users"/></svg> Teaching load</a>
+      <a class="nav-item" href="people.html"><svg class="ic"><use href="#i-user"/></svg> People</a>
+      <a class="nav-item" href="finance.html"><svg class="ic"><use href="#i-wallet"/></svg> Finance</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="placement.html"><svg class="ic"><use href="#i-briefcase"/></svg> Placement</a>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+      <a class="nav-item" href="audit.html"><svg class="ic"><use href="#i-shield"/></svg> Audit log</a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Programmes</h1>
+        <p class="page-sub">What this institution teaches, and the cohorts taking it.</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-calendar"/></svg> Add semester</a>
+        <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-plus"/></svg> New programme</a>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Programmes</div>
+        <div class="stat-value">6</div>
+        <div class="stat-note">5 enrolling · 1 draft</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Semesters</div>
+        <div class="stat-value">32</div>
+        <div class="stat-note">Michaelmas is week 6 of 12</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Batches</div>
+        <div class="stat-value">21</div>
+        <div class="stat-note">Across all years</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Places filled</div>
+        <div class="stat-value">1,284</div>
+        <div class="stat-note">of 1,670 · <span class="strong">77%</span> of cap</div>
+      </div>
+    </div>
+
+    <div class="toolbar mt-3">
+      <div class="search">
+        <svg class="ic ic-sm"><use href="#i-search"/></svg>
+        <input placeholder="Programme name or code…" aria-label="Search programmes" />
+      </div>
+      <select class="select" aria-label="Filter by status">
+        <option>All statuses</option>
+        <option>Enrolling</option>
+        <option>Closed to entry</option>
+        <option>Draft</option>
+      </select>
+      <span class="spacer"></span>
+      <a class="btn btn-ghost btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Export</a>
+    </div>
+
+    <!-- A card per programme rather than a table row: a programme is not one
+         value to compare, it is a code, a shape in semesters, a fill level and
+         two lists of cohorts. Sixteen columns would have been unreadable, and
+         the .meter answers "how full" faster than 412 / 450 ever does. -->
+    <div class="stack">
+
+      <section class="card">
+        <div class="card-head">
+          <h3>BSc Computer Science</h3>
+          <span class="pill brand">CS</span>
+          <span class="link" style="margin-left:auto"><span class="status on"><span class="dot"></span> Enrolling</span></span>
+        </div>
+        <div class="card-pad">
+          <p class="small muted">Three years full time, with an optional placement year between the second and third.</p>
+          <div class="grid-2 mt-2">
+            <div>
+              <div class="kv-row">
+                <span class="small strong">Enrolled</span>
+                <span class="small muted num">412 of 450 places</span>
+              </div>
+              <div class="meter" style="margin-top:6px"><span style="width:92%"></span></div>
+              <div class="inline small muted" style="margin-top:8px;gap:14px">
+                <span><svg class="ic ic-sm"><use href="#i-calendar"/></svg> 6 semesters</span>
+                <span><svg class="ic ic-sm"><use href="#i-book"/></svg> 38 courses</span>
+                <span><svg class="ic ic-sm"><use href="#i-users"/></svg> 5 batches</span>
+              </div>
+            </div>
+            <div>
+              <div class="stat-label">Current semesters</div>
+              <div class="inline" style="margin-top:6px">
+                <span class="chip">1. Michaelmas 2026 <span class="count">week 6</span></span>
+                <span class="chip">3. Michaelmas 2025</span>
+                <span class="chip">5. Michaelmas 2024</span>
+              </div>
+              <div class="stat-label mt-2">Batches</div>
+              <div class="inline" style="margin-top:6px">
+                <span class="chip">Batch A 2026 <span class="count">96</span></span>
+                <span class="chip">Batch B 2026 <span class="count">94</span></span>
+                <span class="chip">Batch A 2025 <span class="count">78</span></span>
+                <span class="chip">+2 more</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-foot inline">
+          <span class="small muted">Fee £9,250 a year · admissions close in 4 months</span>
+          <a class="btn btn-ghost btn-sm" style="margin-left:auto" href="#">Manage</a>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h3>BSc Data Science</h3>
+          <span class="pill brand">DS</span>
+          <span class="link" style="margin-left:auto"><span class="status on"><span class="dot"></span> Enrolling</span></span>
+        </div>
+        <div class="card-pad">
+          <p class="small muted">Statistics, machine learning and the engineering to put either into production.</p>
+          <div class="grid-2 mt-2">
+            <div>
+              <div class="kv-row">
+                <span class="small strong">Enrolled</span>
+                <span class="small muted num">318 of 360 places</span>
+              </div>
+              <div class="meter" style="margin-top:6px"><span style="width:88%"></span></div>
+              <div class="inline small muted" style="margin-top:8px;gap:14px">
+                <span><svg class="ic ic-sm"><use href="#i-calendar"/></svg> 6 semesters</span>
+                <span><svg class="ic ic-sm"><use href="#i-book"/></svg> 31 courses</span>
+                <span><svg class="ic ic-sm"><use href="#i-users"/></svg> 4 batches</span>
+              </div>
+            </div>
+            <div>
+              <div class="stat-label">Current semesters</div>
+              <div class="inline" style="margin-top:6px">
+                <span class="chip">1. Michaelmas 2026 <span class="count">week 6</span></span>
+                <span class="chip">3. Michaelmas 2025</span>
+                <span class="chip">5. Michaelmas 2024</span>
+              </div>
+              <div class="stat-label mt-2">Batches</div>
+              <div class="inline" style="margin-top:6px">
+                <span class="chip">Batch A 2026 <span class="count">88</span></span>
+                <span class="chip">Batch B 2026 <span class="count">84</span></span>
+                <span class="chip">+2 more</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-foot inline">
+          <span class="small muted">Fee £9,250 a year · admissions close in 4 months</span>
+          <a class="btn btn-ghost btn-sm" style="margin-left:auto" href="#">Manage</a>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h3>BEng Software Engineering</h3>
+          <span class="pill brand">SE</span>
+          <span class="link" style="margin-left:auto"><span class="status on"><span class="dot"></span> Enrolling</span></span>
+        </div>
+        <div class="card-pad">
+          <p class="small muted">Four years, accredited by the BCS, with an industrial placement in year three.</p>
+          <div class="grid-2 mt-2">
+            <div>
+              <div class="kv-row">
+                <span class="small strong">Enrolled</span>
+                <span class="small muted num">246 of 300 places</span>
+              </div>
+              <div class="meter" style="margin-top:6px"><span style="width:82%"></span></div>
+              <div class="inline small muted" style="margin-top:8px;gap:14px">
+                <span><svg class="ic ic-sm"><use href="#i-calendar"/></svg> 8 semesters</span>
+                <span><svg class="ic ic-sm"><use href="#i-book"/></svg> 31 courses</span>
+                <span><svg class="ic ic-sm"><use href="#i-users"/></svg> 6 batches</span>
+              </div>
+            </div>
+            <div>
+              <div class="stat-label">Current semesters</div>
+              <div class="inline" style="margin-top:6px">
+                <span class="chip">1. Michaelmas 2026 <span class="count">week 6</span></span>
+                <span class="chip">3. Michaelmas 2025</span>
+                <span class="chip">7. Michaelmas 2023</span>
+              </div>
+              <div class="stat-label mt-2">Batches</div>
+              <div class="inline" style="margin-top:6px">
+                <span class="chip">Batch A 2026 <span class="count">64</span></span>
+                <span class="chip">Batch C 2025 <span class="count">58</span></span>
+                <span class="chip">+4 more</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-foot inline">
+          <span class="small muted">Fee £9,250 a year · placement year charged at 20%</span>
+          <a class="btn btn-ghost btn-sm" style="margin-left:auto" href="#">Manage</a>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h3>MSc Artificial Intelligence</h3>
+          <span class="pill brand">AI</span>
+          <span class="link" style="margin-left:auto"><span class="status on"><span class="dot"></span> Enrolling</span></span>
+        </div>
+        <div class="card-pad">
+          <p class="small muted">One calendar year taught, September entry, with a summer research project.</p>
+          <div class="grid-2 mt-2">
+            <div>
+              <div class="kv-row">
+                <span class="small strong">Enrolled</span>
+                <span class="small muted num">204 of 240 places</span>
+              </div>
+              <div class="meter" style="margin-top:6px"><span style="width:85%"></span></div>
+              <div class="inline small muted" style="margin-top:8px;gap:14px">
+                <span><svg class="ic ic-sm"><use href="#i-calendar"/></svg> 4 semesters</span>
+                <span><svg class="ic ic-sm"><use href="#i-book"/></svg> 22 courses</span>
+                <span><svg class="ic ic-sm"><use href="#i-users"/></svg> 3 batches</span>
+              </div>
+            </div>
+            <div>
+              <div class="stat-label">Current semesters</div>
+              <div class="inline" style="margin-top:6px">
+                <span class="chip">1. Michaelmas 2026 <span class="count">week 6</span></span>
+                <span class="chip">3. Michaelmas 2025</span>
+              </div>
+              <div class="stat-label mt-2">Batches</div>
+              <div class="inline" style="margin-top:6px">
+                <span class="chip">Batch A 2026 <span class="count">82</span></span>
+                <span class="chip">Batch B 2026 <span class="count">74</span></span>
+                <span class="chip">Batch A 2025 <span class="count">48</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-foot inline">
+          <span class="small muted">Fee £14,600 a year · overseas £26,400</span>
+          <a class="btn btn-ghost btn-sm" style="margin-left:auto" href="#">Manage</a>
+        </div>
+      </section>
+
+      <!-- The one that needs a decision. Under-filled with a deadline is a
+           different state from "enrolling", so it says so in words as well as
+           in the amber of the bar, and the note is on the card rather than in
+           a report nobody opens. -->
+      <section class="card" style="border-color:var(--orange-200)">
+        <div class="card-head" style="background:var(--orange-50)">
+          <h3>MSc Cyber Security</h3>
+          <span class="pill soon">CYB</span>
+          <span class="link" style="margin-left:auto"><span class="pill soon"><span class="pill-dot"></span> Under cap</span></span>
+        </div>
+        <div class="card-pad">
+          <p class="small muted">Taught with the National Cyber Centre; two intakes a year.</p>
+          <div class="grid-2 mt-2">
+            <div>
+              <div class="kv-row">
+                <span class="small strong">Enrolled</span>
+                <span class="small muted num">104 of 200 places</span>
+              </div>
+              <div class="meter" style="margin-top:6px"><span style="width:52%"></span></div>
+              <div class="inline small muted" style="margin-top:8px;gap:14px">
+                <span><svg class="ic ic-sm"><use href="#i-calendar"/></svg> 4 semesters</span>
+                <span><svg class="ic ic-sm"><use href="#i-book"/></svg> 14 courses</span>
+                <span><svg class="ic ic-sm"><use href="#i-users"/></svg> 2 batches</span>
+              </div>
+            </div>
+            <div>
+              <div class="stat-label">Current semesters</div>
+              <div class="inline" style="margin-top:6px">
+                <span class="chip">1. Michaelmas 2026 <span class="count">week 6</span></span>
+                <span class="chip">3. Michaelmas 2025</span>
+              </div>
+              <div class="stat-label mt-2">Batches</div>
+              <div class="inline" style="margin-top:6px">
+                <span class="chip">Batch A 2026 <span class="count">62</span></span>
+                <span class="chip">Batch A 2025 <span class="count">42</span></span>
+              </div>
+            </div>
+          </div>
+          <div class="banner warn mt-2">
+            <svg class="ic"><use href="#i-alert"/></svg>
+            <span>At 52% of cap with enrolment closing in 9 days. 96 places unfilled at £14,600 is £1.4m of fee income.</span>
+            <a class="btn btn-sm btn-ghost" href="#">Extend</a>
+          </div>
+        </div>
+        <div class="card-foot inline">
+          <span class="small muted">Fee £14,600 a year · overseas £24,900</span>
+          <a class="btn btn-ghost btn-sm" style="margin-left:auto" href="#">Manage</a>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h3>MSc Data Engineering</h3>
+          <span class="pill">DE</span>
+          <span class="link" style="margin-left:auto"><span class="status idle"><span class="dot"></span> Draft</span></span>
+        </div>
+        <div class="card-pad">
+          <p class="small muted">Awaiting validation by the faculty board. Not visible to applicants.</p>
+          <div class="grid-2 mt-2">
+            <div>
+              <div class="kv-row">
+                <span class="small strong">Enrolled</span>
+                <span class="small muted num">0 of 120 places</span>
+              </div>
+              <div class="meter" style="margin-top:6px"><span style="width:0%"></span></div>
+              <div class="inline small muted" style="margin-top:8px;gap:14px">
+                <span><svg class="ic ic-sm"><use href="#i-calendar"/></svg> 4 semesters</span>
+                <span><svg class="ic ic-sm"><use href="#i-book"/></svg> 6 courses</span>
+                <span><svg class="ic ic-sm"><use href="#i-users"/></svg> no batches</span>
+              </div>
+            </div>
+            <div>
+              <div class="stat-label">Blocking publication</div>
+              <ul class="stack-sm small muted" style="margin-top:6px">
+                <li class="inline"><svg class="ic ic-sm"><use href="#i-x"/></svg> No semesters defined</li>
+                <li class="inline"><svg class="ic ic-sm"><use href="#i-x"/></svg> Fee structure not published</li>
+                <li class="inline"><svg class="ic ic-sm"><use href="#i-check"/></svg> Course catalogue drafted</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="card-foot inline">
+          <span class="small muted">Created 3 weeks ago by Dr Sarah Okonjo</span>
+          <a class="btn btn-ghost btn-sm" style="margin-left:auto" href="#">Continue setup</a>
+        </div>
+      </section>
+
+      <!-- The add affordance is repeated at the end of the list as well as in
+           the page head: an administrator who has just read six programmes to
+           check none of them fits is at the bottom, not the top. -->
+      <div class="card">
+        <div class="empty">
+          <svg class="ic ic-xl"><use href="#i-building"/></svg>
+          <h3>Add a programme</h3>
+          <p>A programme needs a name, a code and how many semesters it runs for. Semesters and batches can follow once it exists.</p>
+          <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-plus"/></svg> New programme</a>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="people.html"><svg class="ic"><use href="#i-users"/></svg> People</a>
+  <a class="tab" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="finance.html"><svg class="ic"><use href="#i-wallet"/></svg> Finance</a>
+  <a class="tab" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

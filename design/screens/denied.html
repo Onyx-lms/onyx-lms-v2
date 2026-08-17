@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Not part of your role</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- No sidebar and no tab bar. This page is reached by following a link into
+     something the account cannot open, and rebuilding the whole shell around
+     the refusal invites another go at the same wall. One page, two exits. -->
+<main id="main" style="max-width:520px;margin:0 auto;padding:48px 16px 32px">
+
+  <div class="brand" style="justify-content:center;margin-bottom:22px">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </div>
+
+  <div class="card card-pad" style="padding:26px 24px">
+    <!-- A shield, not a barrier or a cross. The account did nothing wrong; a
+         boundary held. Teal rather than red for the same reason — red would
+         read as an error the person has to fix. -->
+    <div style="display:grid;place-items:center">
+      <span class="row-icon brand" style="width:56px;height:56px;border-radius:18px">
+        <svg class="ic ic-xl"><use href="#i-shield"/></svg>
+      </span>
+    </div>
+
+    <h1 class="page-title" style="font-size:22px;text-align:center;margin-top:14px">
+      That page is not part of your role here
+    </h1>
+    <p class="page-sub" style="text-align:center">
+      Nothing is wrong with your account. The page you followed belongs to a different
+      job at this institution.
+    </p>
+
+    <div class="divider"></div>
+
+    <!-- What was refused, whose account it is, and which rule did it — in that
+         order, because the first question is "what did I just click" and the
+         last is the one a support ticket would otherwise have to ask. -->
+    <div class="kv">
+      <div class="kv-row">
+        <span class="k">You tried to open</span>
+        <span class="v"><span class="code" style="background:#EEF2F6;color:var(--ink);padding:2px 7px;border-radius:6px;font-size:13px">/onyx/finance</span></span>
+      </div>
+      <div class="kv-row"><span class="k">Which is</span><span class="v">Finance — invoices and collections</span></div>
+      <div class="kv-row"><span class="k">Open to</span><span class="v">Administrators only</span></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="inline" style="gap:11px;flex-wrap:nowrap;align-items:flex-start">
+      <span class="avatar">AO</span>
+      <div class="small" style="flex:1">
+        <div class="strong">Amara Okafor</div>
+        <div class="muted">a.okafor@demo.ac.uk</div>
+        <div class="muted">Demo University · <span class="strong">Student</span></div>
+      </div>
+      <span class="pill brand">Signed in</span>
+    </div>
+  </div>
+
+  <!-- Two ways out and no third. Going back is what most people want; asking
+       for access is what the rest want, and without it the only remaining
+       move is an email to somebody they have to go and find. -->
+  <div class="grid-2 mt-2">
+    <a class="btn btn-lg btn-block" href="student-dashboard.html">
+      <svg class="ic ic-sm"><use href="#i-home"/></svg> Back to your dashboard
+    </a>
+    <a class="btn btn-lg btn-ghost btn-block" href="support.html">
+      <svg class="ic ic-sm"><use href="#i-mail"/></svg> Request access
+    </a>
+  </div>
+
+  <!-- Membership of a second institution is the one case where this refusal is
+       a misunderstanding rather than a rule: the same person may well be able
+       to open the equivalent page somewhere else. Worth offering; not worth
+       switching them automatically, which would move them without asking. -->
+  <div class="banner info mt-2">
+    <svg class="ic"><use href="#i-building"/></svg>
+    <div class="small">
+      You are also a member of <span class="strong">Riverside Institute of Technology</span>,
+      where your role is Faculty. Switching may change what you can reach.
+    </div>
+    <a class="btn btn-sm btn-ghost" href="#">Switch</a>
+  </div>
+
+  <p class="small muted" style="text-align:center;margin-top:18px">
+    Requesting access sends a note to the administrators at Demo University with the page
+    you were trying to reach. Nothing is sent automatically.
+  </p>
+</main>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Autumn Algorithms Cup</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search contests…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">NR</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student · BSc Computer Science</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments <span class="count">2</span></a>
+      <a class="nav-item" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item is-active" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests <span class="count">2</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees</a>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">2</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="contests.html">Contests</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <span>Autumn Algorithms Cup</span>
+    </nav>
+
+    <!-- The header is the hero band because a running contest is a clock: the
+         time left, how much of it has gone and where you stand are the whole
+         screen for the next hour, and they should not be three tiles apart. -->
+    <div class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="hero-eyebrow">
+            <span class="status live" style="color:#fff"><span class="dot"></span> Live</span>
+            · Individual · 6 problems
+          </div>
+          <h1 class="hero-title">Autumn Algorithms Cup</h1>
+          <p class="hero-sub">Six problems, three hours, judged by the same evaluator as Code Lab.</p>
+        </div>
+        <div class="hero-actions">
+          <a class="btn btn-ghost-light" href="#"><svg class="ic ic-sm"><use href="#i-list"/></svg> Rules</a>
+          <a class="btn btn-light" href="practice-problem.html"><svg class="ic ic-sm"><use href="#i-play"/></svg> Open problem D</a>
+        </div>
+      </div>
+
+      <!-- Wrapped rather than squeezed: four figures cannot share 320px, and
+           a clock that overflows its own band is worse than one on two lines. -->
+      <div class="hero-meta" style="flex-wrap:wrap">
+        <span class="strong">Ends in 1 h 12 min</span>
+        <span class="dim">1 h 48 min elapsed of 3 h</span>
+      </div>
+      <div class="meter on-dark" style="margin-top:8px"><span style="width:60%"></span></div>
+
+      <div class="hero-meta" style="margin-top:14px;flex-wrap:wrap;gap:6px 18px">
+        <span><span class="dim">Your rank</span> <span class="strong">14th of 212</span></span>
+        <span><span class="dim">Solved</span> <span class="strong">3 of 6</span></span>
+        <span><span class="dim">Points</span> <span class="strong">300</span></span>
+        <span><span class="dim">Penalty</span> <span class="strong">127</span></span>
+      </div>
+    </div>
+
+    <!-- min-width:0 on both columns is not cosmetic: a grid item defaults to
+         min-width:auto, so the leaderboard's own minimum would push the whole
+         column — hero, problems and all — wider than a 320px phone. -->
+    <div class="cols mt-2">
+      <div style="min-width:0">
+        <!-- Problems, in contest order rather than by difficulty: the letter
+             is how everyone refers to them for the next hour. Points sit on
+             the right because "what is the cheapest thing left" is the
+             question being asked of this list. -->
+        <section>
+          <div class="section-head">
+            <h2>Problems</h2>
+            <span class="small muted num">300 of 800 points taken</span>
+          </div>
+          <div class="rowlist">
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="practice-problem.html">A · Interval Merge</a></div>
+                <div class="row-meta">Solved at minute 14 · first attempt · no penalty added</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill good">Solved</span>
+                <span class="score hi num">100</span>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="practice-problem.html">B · Balanced Brackets</a></div>
+                <div class="row-meta">Solved at minute 31 · 2 attempts · +20 penalty</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill good">Solved</span>
+                <span class="score hi num">100</span>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon good"><svg class="ic"><use href="#i-check"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="practice-problem.html">C · Course Prerequisite Order</a></div>
+                <div class="row-meta">Solved at minute 62 · first attempt · no penalty added</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill good">Solved</span>
+                <span class="score hi num">100</span>
+              </div>
+            </div>
+            <div class="row is-active">
+              <span class="row-icon soon"><svg class="ic"><use href="#i-refresh"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="practice-problem.html">D · Shortest Path with Fuel Stops</a></div>
+                <div class="row-meta">2 attempts · best 9 of 14 cases, 6 minutes ago · 41 others have solved it</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill soon">Attempted</span>
+                <span class="score mid num">150</span>
+                <a class="btn btn-sm" href="practice-problem.html">Open</a>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-code"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="practice-problem.html">E · Rolling Sensor Median</a></div>
+                <div class="row-meta">Not attempted · 58 others have solved it</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill">Not started</span>
+                <span class="score mid num">150</span>
+                <a class="btn btn-sm btn-ghost" href="practice-problem.html">Open</a>
+              </div>
+            </div>
+            <div class="row">
+              <span class="row-icon brand"><svg class="ic"><use href="#i-code"/></svg></span>
+              <div class="row-main">
+                <div class="row-title"><a href="practice-problem.html">F · Word Ladder</a></div>
+                <div class="row-meta">Not attempted · 7 others have solved it</div>
+              </div>
+              <div class="row-trailing">
+                <span class="pill">Not started</span>
+                <span class="score lo num">200</span>
+                <a class="btn btn-sm btn-ghost" href="practice-problem.html">Open</a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- The one learner screen that earns a table instead of a row list:
+             a leaderboard is a comparison down a column by definition. It is
+             also the widest thing in the product, so it scrolls inside
+             .table-scroll and never takes the page sideways with it. -->
+        <section class="section">
+          <div class="section-head">
+            <h2>Leaderboard</h2>
+            <span class="small muted">Ranked by points, then by penalty</span>
+          </div>
+
+          <div class="banner warn" style="margin-bottom:10px">
+            <svg class="ic"><use href="#i-lock"/></svg>
+            <div class="small">The board freezes in 42 minutes and stays frozen until the contest ends.
+              Solves after that still count — you just will not see them move.</div>
+          </div>
+
+          <div class="table-wrap">
+            <div class="table-scroll">
+              <!-- A minimum width, so the board scrolls inside .table-scroll rather than
+                     squeezing six numeric columns into a rail-width column and wrapping
+                     "minute 101" onto two lines. -->
+              <table class="table" style="min-width:600px">
+                <caption class="sr-only">Leaderboard, 212 competitors, top of the board and your position</caption>
+                <thead>
+                  <tr>
+                    <th style="width:64px">Rank</th>
+                    <th>Competitor</th>
+                    <th class="right">Solved</th>
+                    <th class="right">Points</th>
+                    <th class="right">Penalty</th>
+                    <th class="right">Last solve</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- The top three are filled rather than merely bold: at a
+                       glance from across a lab, that is the only part of the
+                       board anyone reads. First takes the trophy so the
+                       distinction is not carried by fill alone. -->
+                  <tr>
+                    <td><span class="pill solid num"><svg class="ic ic-sm"><use href="#i-trophy"/></svg> 1</span></td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm">VS</span>
+                        <div>
+                          <div class="who-name">Vikram Shetty</div>
+                          <div class="who-sub">BSc Computer Science, year 3</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="right num">5</td>
+                    <td class="right num strong">700</td>
+                    <td class="right num">214</td>
+                    <td class="right num">minute 94</td>
+                  </tr>
+                  <tr>
+                    <td><span class="pill brand num">2</span></td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">LF</span>
+                        <div>
+                          <div class="who-name">Léa Fournier</div>
+                          <div class="who-sub">MSc Artificial Intelligence</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="right num">5</td>
+                    <td class="right num strong">650</td>
+                    <td class="right num">241</td>
+                    <td class="right num">minute 101</td>
+                  </tr>
+                  <tr>
+                    <td><span class="pill brand num">3</span></td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">DO</span>
+                        <div>
+                          <div class="who-name">Daniel Okafor</div>
+                          <div class="who-sub">BEng Software Engineering, year 4</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="right num">4</td>
+                    <td class="right num strong">600</td>
+                    <td class="right num">198</td>
+                    <td class="right num">minute 88</td>
+                  </tr>
+                  <tr>
+                    <td class="num">4</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--faint)">MT</span>
+                        <span class="who-name">Mei Tanaka</span>
+                      </div>
+                    </td>
+                    <td class="right num">4</td>
+                    <td class="right num">500</td>
+                    <td class="right num">176</td>
+                    <td class="right num">minute 79</td>
+                  </tr>
+                  <tr>
+                    <td class="num">5</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--faint)">AR</span>
+                        <span class="who-name">Ana Ribeiro</span>
+                      </div>
+                    </td>
+                    <td class="right num">4</td>
+                    <td class="right num">450</td>
+                    <td class="right num">233</td>
+                    <td class="right num">minute 103</td>
+                  </tr>
+                  <tr>
+                    <td class="num">6</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--faint)">TL</span>
+                        <span class="who-name">Tobias Lund</span>
+                      </div>
+                    </td>
+                    <td class="right num">4</td>
+                    <td class="right num">450</td>
+                    <td class="right num">260</td>
+                    <td class="right num">minute 106</td>
+                  </tr>
+                  <tr>
+                    <td class="num">7</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--faint)">PR</span>
+                        <span class="who-name">Priya Raman</span>
+                      </div>
+                    </td>
+                    <td class="right num">3</td>
+                    <td class="right num">400</td>
+                    <td class="right num">152</td>
+                    <td class="right num">minute 71</td>
+                  </tr>
+                  <tr>
+                    <td class="num">8</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--faint)">OH</span>
+                        <span class="who-name">Omar Haddad</span>
+                      </div>
+                    </td>
+                    <td class="right num">3</td>
+                    <td class="right num">400</td>
+                    <td class="right num">168</td>
+                    <td class="right num">minute 83</td>
+                  </tr>
+                  <!-- The gap is explicit. A board that silently jumps from 8
+                       to 13 reads as a bug. -->
+                  <tr>
+                    <td colspan="6" class="small muted" style="text-align:center">4 competitors between</td>
+                  </tr>
+                  <tr>
+                    <td class="num">13</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--faint)">KB</span>
+                        <span class="who-name">Kwame Boateng</span>
+                      </div>
+                    </td>
+                    <td class="right num">3</td>
+                    <td class="right num">300</td>
+                    <td class="right num">119</td>
+                    <td class="right num">minute 58</td>
+                  </tr>
+                  <!-- Your own row is pinned into view and marked with a word,
+                       not only a tint — the same rule the status dots follow. -->
+                  <tr style="background:var(--teal-50)">
+                    <td class="num strong">14</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm">NR</span>
+                        <div>
+                          <div class="who-name">Nadia Rahman</div>
+                          <div class="who-sub">You · BSc Computer Science, year 2</div>
+                        </div>
+                        <span class="pill info">You</span>
+                      </div>
+                    </td>
+                    <td class="right num strong">3</td>
+                    <td class="right num strong">300</td>
+                    <td class="right num">127</td>
+                    <td class="right num">minute 62</td>
+                  </tr>
+                  <tr>
+                    <td class="num">15</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--faint)">HW</span>
+                        <span class="who-name">Hannah Weiss</span>
+                      </div>
+                    </td>
+                    <td class="right num">3</td>
+                    <td class="right num">300</td>
+                    <td class="right num">141</td>
+                    <td class="right num">minute 66</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="table-foot">
+              <span>212 competitors · updated 40 seconds ago</span>
+              <div class="pager">
+                <a class="btn btn-sm btn-ghost" href="#">Jump to me</a>
+                <a class="btn btn-sm btn-ghost" href="#">Full board</a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ rail ============================ -->
+      <aside style="min-width:0">
+        <section>
+          <div class="section-head"><h2>Your entry</h2></div>
+          <div class="card card-pad">
+            <div class="inline" style="gap:11px">
+              <span class="avatar avatar-lg">NR</span>
+              <div>
+                <div class="strong">Nadia Rahman</div>
+                <div class="small muted">Entered 1 h 50 min ago · individual</div>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="kv">
+              <div class="kv-row"><span class="k">Rank</span><span class="v num">14 of 212</span></div>
+              <div class="kv-row"><span class="k">Solved</span><span class="v num">3 of 6</span></div>
+              <div class="kv-row"><span class="k">Points</span><span class="v num">300 of 800</span></div>
+              <div class="kv-row"><span class="k">Penalty</span><span class="v num">127 min</span></div>
+              <div class="kv-row"><span class="k">Wrong attempts</span><span class="v num">3</span></div>
+            </div>
+            <div class="divider"></div>
+            <!-- The gap to the next place is the actionable number: one 150
+                 solve is worth more than shaving penalty, and this says so. -->
+            <div class="small muted">
+              <svg class="ic ic-sm"><use href="#i-target"/></svg>
+              Solving D would put you 7th. Penalty only separates equal points.
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Scoring</h2></div>
+          <div class="card card-pad">
+            <div class="kv">
+              <div class="kv-row"><span class="k">Format</span><span class="v">Individual</span></div>
+              <div class="kv-row"><span class="k">Wrong attempt</span><span class="v num">+20 min</span></div>
+              <div class="kv-row"><span class="k">Board freeze</span><span class="v num">last 30 min</span></div>
+              <div class="kv-row"><span class="k">Languages</span><span class="v">Python, JS, Java, C++</span></div>
+            </div>
+            <div class="divider"></div>
+            <p class="small muted">A wrong attempt only costs you on a problem you go on to solve.
+              Nothing is deducted for a problem you never get.</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Recent solves</h2></div>
+          <div class="card">
+            <ul class="stack-sm card-pad" style="gap:12px">
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm" style="background:var(--teal-500)">LF</span>
+                <span class="small"><span class="strong">Léa Fournier</span> solved
+                  <span class="strong">F · Word Ladder</span>
+                  <span class="muted" style="display:block">2 minutes ago · minute 101</span></span>
+              </li>
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm">VS</span>
+                <span class="small"><span class="strong">Vikram Shetty</span> solved
+                  <span class="strong">E · Rolling Sensor Median</span>
+                  <span class="muted" style="display:block">9 minutes ago · minute 94</span></span>
+              </li>
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm" style="background:var(--faint)">AR</span>
+                <span class="small"><span class="strong">Ana Ribeiro</span> solved
+                  <span class="strong">D · Shortest Path with Fuel Stops</span>
+                  <span class="muted" style="display:block">14 minutes ago · minute 89</span></span>
+              </li>
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm">NR</span>
+                <span class="small"><span class="strong">You</span> solved
+                  <span class="strong">C · Course Prerequisite Order</span>
+                  <span class="muted" style="display:block">46 minutes ago · minute 62</span></span>
+              </li>
+            </ul>
+            <div class="card-foot small muted">The feed stops when the board freezes.</div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

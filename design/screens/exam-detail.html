@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Data Structures, final</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search candidates, seats…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">AO</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Examinations officer</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Examinations</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Invigilate <span class="count">6</span></a>
+      <a class="nav-item is-active" href="exams.html"><svg class="ic"><use href="#i-calendar"/></svg> Examinations</a>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certificates</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Practice</div>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-mail"/></svg> Inbox <span class="count">4</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="exams.html">Examinations</a>
+      <svg class="ic ic-sm"><use href="#i-chevron"/></svg>
+      <span>Data Structures — final</span>
+    </nav>
+
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Data Structures — final</h1>
+        <p class="page-sub">CS2010 · sat yesterday · marks due in 6 days</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Seating &amp; attendance sheet</a>
+        <a class="btn" href="#"><svg class="ic ic-sm"><use href="#i-edit"/></svg> Enter marks</a>
+      </div>
+    </div>
+
+    <!-- The lifecycle as a stepper rather than a status word: a single pill
+         says where the paper is, this says what is behind it and what is left.
+         Marks cannot be published from a paper still shown as Running. -->
+    <div class="stepper">
+      <span class="step is-done"><svg class="ic ic-sm"><use href="#i-check"/></svg> Scheduled</span>
+      <span class="sep">›</span>
+      <span class="step is-done"><svg class="ic ic-sm"><use href="#i-check"/></svg> Open</span>
+      <span class="sep">›</span>
+      <span class="step is-done"><svg class="ic ic-sm"><use href="#i-check"/></svg> Running</span>
+      <span class="sep">›</span>
+      <span class="step is-on"><svg class="ic ic-sm"><use href="#i-lock"/></svg> Closed</span>
+      <span class="sep">›</span>
+      <span class="step">Marked</span>
+    </div>
+
+    <div class="stats mt-2">
+      <div class="stat">
+        <div class="stat-label">Sat</div>
+        <div class="stat-value" style="font-size:20px">Yesterday</div>
+        <div class="stat-note">09:30 – 12:30</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Duration</div>
+        <div class="stat-value">180<span style="font-size:15px;font-weight:700"> min</span></div>
+        <div class="stat-note">plus 15 min reading time</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Venue</div>
+        <div class="stat-value" style="font-size:20px">Main Hall A</div>
+        <div class="stat-note">overflow in Seminar Room 4</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Seats used</div>
+        <div class="stat-value">192</div>
+        <div class="stat-note">of 200 · 8 left clear for gangways</div>
+      </div>
+    </div>
+
+    <!-- min-width:0 on the main column: without it the register's widest row
+         sets the grid track and the whole page scrolls sideways on a phone,
+         instead of the table scrolling inside .table-scroll where it belongs. -->
+    <div class="cols mt-3">
+      <div style="min-width:0">
+        <!-- The register is the document that leaves the room on a clipboard,
+             so it is ordered by seat and not by name: that is the order an
+             invigilator walks the hall in. -->
+        <section>
+          <div class="section-head">
+            <h2>Candidate register</h2>
+            <a class="link" href="#">Print</a>
+          </div>
+
+          <div class="toolbar">
+            <div class="search">
+              <svg class="ic ic-sm"><use href="#i-search"/></svg>
+              <input placeholder="Find a candidate or seat" aria-label="Find a candidate" />
+            </div>
+            <div class="segmented spacer">
+              <a class="is-on" href="#">All <span class="count">192</span></a>
+              <a href="#">Absent <span class="count">4</span></a>
+              <a href="#">Flagged <span class="count">2</span></a>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <div class="table-scroll">
+              <table class="table">
+                <caption class="sr-only">Candidates seated for Data Structures — final</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Seat</th>
+                    <th scope="col">Candidate</th>
+                    <th scope="col">Hall</th>
+                    <th scope="col">Attendance</th>
+                    <th scope="col">Script</th>
+                    <th scope="col" class="right">Mark</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="num">A&#8209;001</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm">AN</span>
+                        <div>
+                          <div class="who-name">Amara Nwosu</div>
+                          <div class="who-sub">CS-2023-0418</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>Hall A</td>
+                    <td><span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> Present</span></td>
+                    <td class="small muted">Collected</td>
+                    <td class="right"><span class="score none">—</span></td>
+                  </tr>
+                  <tr>
+                    <td class="num">A&#8209;002</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">KA</span>
+                        <div>
+                          <div class="who-name">Kwame Adjei</div>
+                          <div class="who-sub">CS-2023-0119</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>Hall A</td>
+                    <td><span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> Present</span></td>
+                    <td class="small muted">Collected · integrity flag</td>
+                    <td class="right"><span class="score none">—</span></td>
+                  </tr>
+                  <tr>
+                    <td class="num">A&#8209;003</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--orange-700)">PR</span>
+                        <div>
+                          <div class="who-name">Priya Raghunathan</div>
+                          <div class="who-sub">CS-2023-0287</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>Hall A</td>
+                    <td><span class="pill soon"><svg class="ic ic-sm"><use href="#i-clock"/></svg> Late · 12 min</span></td>
+                    <td class="small muted">Collected</td>
+                    <td class="right"><span class="score none">—</span></td>
+                  </tr>
+                  <tr>
+                    <td class="num">A&#8209;004</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--faint)">TH</span>
+                        <div>
+                          <div class="who-name">Tomás Herrera</div>
+                          <div class="who-sub">CS-2023-0502</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>Hall A</td>
+                    <!-- Absent is red, and it says the word. The seat number
+                         beside it is what somebody checks against the hall. -->
+                    <td><span class="pill late"><svg class="ic ic-sm"><use href="#i-x"/></svg> Absent</span></td>
+                    <td class="small muted">No script</td>
+                    <td class="right"><span class="score none">—</span></td>
+                  </tr>
+                  <tr>
+                    <td class="num">A&#8209;005</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">LF</span>
+                        <div>
+                          <div class="who-name">Lucia Ferreira</div>
+                          <div class="who-sub">CS-2023-0064</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>Hall A</td>
+                    <td><span class="pill info"><svg class="ic ic-sm"><use href="#i-file"/></svg> Excused</span></td>
+                    <td class="small muted">Medical note on file</td>
+                    <td class="right"><span class="score none">—</span></td>
+                  </tr>
+                  <tr>
+                    <td class="num">A&#8209;006</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm">DO</span>
+                        <div>
+                          <div class="who-name">Daniel Osei</div>
+                          <div class="who-sub">CS-2023-0331</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>Hall A</td>
+                    <td><span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> Present</span></td>
+                    <td class="small muted">Collected</td>
+                    <td class="right"><span class="score none">—</span></td>
+                  </tr>
+                  <tr>
+                    <td class="num">A&#8209;007</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--orange-700)">AY</span>
+                        <div>
+                          <div class="who-name">Amina Yusuf</div>
+                          <div class="who-sub">CS-2023-0155</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>Hall A</td>
+                    <td><span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> Present</span></td>
+                    <td class="small muted">Collected</td>
+                    <td class="right"><span class="score none">—</span></td>
+                  </tr>
+                  <tr>
+                    <td class="num">S4&#8209;01</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--teal-500)">SL</span>
+                        <div>
+                          <div class="who-name">Sara Lindqvist</div>
+                          <div class="who-sub">CS-2023-0473 · extra time</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>Room 4</td>
+                    <td><span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> Present</span></td>
+                    <td class="small muted">Collected · +30 min</td>
+                    <td class="right"><span class="score none">—</span></td>
+                  </tr>
+                  <tr>
+                    <td class="num">S4&#8209;02</td>
+                    <td>
+                      <div class="who">
+                        <span class="avatar avatar-sm" style="background:var(--faint)">MB</span>
+                        <div>
+                          <div class="who-name">Mateusz Bąk</div>
+                          <div class="who-sub">CS-2023-0298 · reader</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>Room 4</td>
+                    <td><span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> Present</span></td>
+                    <td class="small muted">Collected</td>
+                    <td class="right"><span class="score none">—</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="table-foot">
+              186 present · 1 late · 4 absent · 2 excused · 186 scripts collected
+              <div class="pager">
+                <a class="btn btn-sm btn-ghost" href="#">Previous</a>
+                <a class="btn btn-sm btn-ghost" href="#">Next</a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Paper</h2></div>
+          <div class="card card-pad">
+            <div class="kv">
+              <div class="kv-row"><span class="k">Out of</span><span class="v num">100</span></div>
+              <div class="kv-row"><span class="k">Pass mark</span><span class="v num">40</span></div>
+              <div class="kv-row"><span class="k">Semester</span><span class="v">Michaelmas 2026 · semester 3</span></div>
+              <div class="kv-row"><span class="k">Course</span><span class="v"><a href="courses.html">CS2010 Data Structures</a></span></div>
+              <div class="kv-row"><span class="k">Moderation</span><span class="v muted">None applied</span></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ rail ============================ -->
+      <aside>
+        <section>
+          <div class="section-head"><h2>Invigilators</h2><a class="link" href="#">Edit rota</a></div>
+          <div class="card">
+            <ul class="stack-sm card-pad" style="gap:12px">
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm">AO</span>
+                <span class="small"><span class="strong">Ama Owusu</span>
+                  <span class="muted" style="display:block">Chief invigilator · Main Hall A</span></span>
+              </li>
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm" style="background:var(--teal-500)">JM</span>
+                <span class="small"><span class="strong">Joseph Mensah</span>
+                  <span class="muted" style="display:block">Invigilator · Main Hall A, rows 1–7</span></span>
+              </li>
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm" style="background:var(--orange-700)">RK</span>
+                <span class="small"><span class="strong">Ravneet Kaur</span>
+                  <span class="muted" style="display:block">Invigilator · Main Hall A, rows 8–14</span></span>
+              </li>
+              <li class="inline" style="align-items:flex-start;gap:9px">
+                <span class="avatar avatar-sm" style="background:var(--teal-500)">SO</span>
+                <span class="small"><span class="strong">Sade Okonjo</span>
+                  <span class="muted" style="display:block">Invigilator · Seminar Room 4</span></span>
+              </li>
+            </ul>
+            <div class="card-foot">
+              <a class="btn btn-sm btn-ghost btn-block" href="#"><svg class="ic ic-sm"><use href="#i-plus"/></svg> Assign an invigilator</a>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Marking</h2></div>
+          <div class="card card-pad">
+            <div class="kv-row"><span class="strong small">Scripts marked</span><span class="small muted num">62 of 186</span></div>
+            <div class="meter" style="margin-top:7px"><span style="width:33%"></span></div>
+            <div class="divider"></div>
+            <div class="kv">
+              <div class="kv-row"><span class="k">Due</span><span class="v">In 6 days</span></div>
+              <div class="kv-row"><span class="k">Markers</span><span class="v num">3</span></div>
+              <div class="kv-row"><span class="k">Results</span><span class="v muted">Not published</span></div>
+            </div>
+            <div class="divider"></div>
+            <a class="btn btn-block is-disabled" href="#" aria-disabled="true">Publish results</a>
+            <p class="small muted" style="margin-top:8px">Publishing is closed until every script has a mark and moderation has been recorded.</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Integrity</h2><a class="link" href="invigilate.html">Console</a></div>
+          <div class="card card-pad">
+            <div class="inline" style="justify-content:space-between">
+              <span class="pill soon"><svg class="ic ic-sm"><use href="#i-flag"/></svg> 2 open flags</span>
+              <span class="small muted">4 cleared</span>
+            </div>
+            <p class="small muted mt-1">Both open flags are against Main Hall A candidates and were raised while the paper was running. Neither has been decided.</p>
+            <a class="btn btn-sm btn-ghost btn-block mt-1" href="invigilate.html">Review flags</a>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="admin-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab is-active" href="exams.html"><svg class="ic"><use href="#i-calendar"/></svg> Exams</a>
+  <a class="tab" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assess</a>
+  <a class="tab" href="invigilate.html"><svg class="ic"><use href="#i-eye"/></svg> Watch</a>
+  <a class="tab" href="certificates.html"><svg class="ic"><use href="#i-award"/></svg> Certs</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>

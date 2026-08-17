@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onyx — Your profile</title>
+<link rel="stylesheet" href="../onyx.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="header">
+  <button class="menu-btn" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">O</span>
+    <span class="brand-name">Onyx LMS</span>
+  </a>
+  <div class="header-spacer"></div>
+  <div class="search" style="max-width:260px">
+    <svg class="ic ic-sm"><use href="#i-search"/></svg>
+    <input placeholder="Search…" aria-label="Search" />
+  </div>
+  <button class="icon-btn has-dot" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+  <span class="avatar">SS</span>
+</header>
+
+<div class="layout">
+  <!-- ============================ sidebar ============================ -->
+  <aside class="sidenav">
+    <div class="tenant-card">
+      <div class="tenant-label">Institution</div>
+      <div class="tenant-name">Demo University</div>
+      <div class="tenant-role">Student</div>
+    </div>
+    <nav class="nav-group" aria-label="Main">
+      <a class="nav-item" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Dashboard</a>
+      <a class="nav-item" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+      <a class="nav-item" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+      <a class="nav-item" href="workspaces.html"><svg class="ic"><use href="#i-layers"/></svg> Workspaces</a>
+    </nav>
+    <div class="nav-group">
+      <div class="nav-label">Assessment</div>
+      <a class="nav-item" href="assessments.html"><svg class="ic"><use href="#i-edit"/></svg> Assessments</a>
+      <a class="nav-item" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+      <a class="nav-item" href="contests.html"><svg class="ic"><use href="#i-trophy"/></svg> Contests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Campus</div>
+      <a class="nav-item" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+      <a class="nav-item" href="fees.html"><svg class="ic"><use href="#i-wallet"/></svg> Fees <span class="count">1</span></a>
+      <a class="nav-item" href="support.html"><svg class="ic"><use href="#i-help"/></svg> Help</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Career</div>
+      <a class="nav-item" href="jobs.html"><svg class="ic"><use href="#i-briefcase"/></svg> Jobs</a>
+      <a class="nav-item" href="interviews.html"><svg class="ic"><use href="#i-mic"/></svg> Interviews</a>
+      <a class="nav-item is-active" href="profile.html"><svg class="ic"><use href="#i-user"/></svg> Your profile</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="inbox.html"><svg class="ic"><use href="#i-bell"/></svg> Inbox <span class="count">2</span></a>
+    </div>
+  </aside>
+
+  <!-- ============================= main ============================== -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Your profile</h1>
+        <p class="page-sub">What you have done here, and what it adds up to.</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Export as CV</a>
+      </div>
+    </div>
+
+    <!-- Identity first, and it is the institution's record of you rather than
+         a profile you fill in: the programme, the batch and the semester are
+         the three facts every other screen scopes itself by, so seeing them
+         wrong here is how a student discovers they were enrolled wrong. -->
+    <section class="card card-pad">
+      <div class="inline" style="gap:14px;align-items:flex-start">
+        <span class="avatar avatar-lg">SS</span>
+        <div style="min-width:0;flex:1">
+          <h2 class="section-title">Sam Sharma</h2>
+          <p class="small muted">Student · Demo University · joined September 2024</p>
+          <div class="inline" style="margin-top:9px">
+            <span class="pill brand"><svg class="ic ic-sm"><use href="#i-building"/></svg> BSc Computer Science</span>
+            <span class="pill">Batch CS-2024A</span>
+            <span class="pill">Semester 3 of 6</span>
+            <span class="status on"><span class="dot"></span> Enrolled</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="cols-even">
+        <div class="kv">
+          <div class="kv-row"><span class="k">Student ID</span><span class="v num">DU/CS/2024/0412</span></div>
+          <div class="kv-row"><span class="k">Programme</span><span class="v">BSc Computer Science</span></div>
+          <div class="kv-row"><span class="k">Batch</span><span class="v">CS-2024A</span></div>
+          <div class="kv-row"><span class="k">Semester</span><span class="v">3 — Michaelmas 2026</span></div>
+          <div class="kv-row"><span class="k">Personal tutor</span><span class="v">Dr Amara Nwosu</span></div>
+        </div>
+        <div class="kv">
+          <div class="kv-row"><span class="k">Institution email</span><span class="v">sam.sharma@demo.edu</span></div>
+          <div class="kv-row"><span class="k">Personal email</span><span class="v">s.sharma@example.com</span></div>
+          <div class="kv-row"><span class="k">Phone</span><span class="v num">+44 7700 900 412</span></div>
+          <div class="kv-row"><span class="k">Term address</span><span class="v">Rutherford Hall, room 214</span></div>
+          <div class="kv-row"><span class="k">Emergency contact</span><span class="v">Meera Sharma (parent)</span></div>
+        </div>
+      </div>
+      <div class="inline mt-2">
+        <a class="btn btn-sm btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-edit"/></svg> Edit contact details</a>
+        <span class="small muted">Programme, batch and semester are set by the registry and cannot be edited here.</span>
+      </div>
+    </section>
+
+    <!-- Attendance and credits are the two numbers that gate things — a
+         placement application, a resit, a scholarship — so they sit at the
+         top as figures rather than being buried in a report. -->
+    <div class="stats mt-2">
+      <div class="stat">
+        <div class="stat-label">Attendance</div>
+        <div class="stat-value">88%</div>
+        <div class="stat-note">52 of 59 sessions · threshold 75%</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Credits earned</div>
+        <div class="stat-value">46</div>
+        <div class="stat-note">of 120 for the degree</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">GPA</div>
+        <div class="stat-value">7.84</div>
+        <div class="stat-note">of 10 · published marks only</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Lessons finished</div>
+        <div class="stat-value">19</div>
+        <div class="stat-note">across 4 courses</div>
+      </div>
+    </div>
+
+    <div class="cols mt-3">
+      <div>
+        <!-- The skills passport. Every level is derived from evidence the
+             product already holds — a graded submission, a solved problem, a
+             released mark — and each row says how many pieces there are.
+             Nothing here is typed in by hand, which is the only reason an
+             employer should believe any of it. -->
+        <section>
+          <div class="section-head">
+            <h2>Skills passport</h2>
+            <span class="small muted">Derived from evidence, never self-declared</span>
+          </div>
+          <div class="card card-pad stack">
+            <div>
+              <div class="kv-row">
+                <span class="inline"><span class="strong small">Programming fundamentals</span>
+                  <span class="pill">Level 4 of 5</span></span>
+                <span class="small muted num">11 pieces of evidence</span>
+              </div>
+              <div class="meter sm" style="margin-top:6px"><span style="width:80%"></span></div>
+              <p class="small muted" style="margin-top:5px">CS101 lessons, 27 solved practice problems, mid-term at 86.</p>
+            </div>
+            <div>
+              <div class="kv-row">
+                <span class="inline"><span class="strong small">Relational databases</span>
+                  <span class="pill">Level 2 of 5</span></span>
+                <span class="small muted num">4 pieces of evidence</span>
+              </div>
+              <div class="meter sm" style="margin-top:6px"><span style="width:40%"></span></div>
+              <p class="small muted" style="margin-top:5px">CS102 practical at 58, one failed quiz with a resit pending.</p>
+            </div>
+            <div>
+              <div class="kv-row">
+                <span class="inline"><span class="strong small">Discrete mathematics</span>
+                  <span class="pill">Level 3 of 5</span></span>
+                <span class="small muted num">6 pieces of evidence</span>
+              </div>
+              <div class="meter sm" style="margin-top:6px"><span style="width:60%"></span></div>
+              <p class="small muted" style="margin-top:5px">Class test 2 at 74, nine lessons finished, two problem sets marked.</p>
+            </div>
+            <div>
+              <div class="kv-row">
+                <span class="inline"><span class="strong small">Version control</span>
+                  <span class="pill">Level 1 of 5</span></span>
+                <span class="small muted num">2 pieces of evidence</span>
+              </div>
+              <div class="meter sm" style="margin-top:6px"><span style="width:20%"></span></div>
+              <p class="small muted" style="margin-top:5px">Two workspace projects with commit history.</p>
+            </div>
+            <div class="divider" style="margin:4px 0"></div>
+            <p class="small muted">Each skill opens onto the evidence that produced it.
+              <a href="results.html">See the evidence</a>.</p>
+          </div>
+        </section>
+
+        <!-- Credentials as a strip of cards rather than a list of links: a
+             certificate is a thing you hand to someone, so the two actions
+             that matter — a link they can check and a file they can attach —
+             are both on the card instead of behind it. -->
+        <section class="section">
+          <div class="section-head">
+            <h2>Credentials</h2>
+            <a class="link" href="#">Public profile</a>
+          </div>
+          <div class="grid">
+            <div class="card card-pad stack-sm">
+              <div class="inline" style="justify-content:space-between">
+                <span class="row-icon brand"><svg class="ic"><use href="#i-award"/></svg></span>
+                <span class="pill good">Valid</span>
+              </div>
+              <div>
+                <div class="row-title">Programming Fundamentals</div>
+                <div class="small muted">Course certificate · issued 3 weeks ago</div>
+              </div>
+              <div class="small muted truncate">ONX-CRED-8F2A-4471-C93D</div>
+              <div class="inline">
+                <a class="btn btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Download</a>
+                <a class="btn btn-sm btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-external"/></svg> Verify</a>
+              </div>
+            </div>
+
+            <div class="card card-pad stack-sm">
+              <div class="inline" style="justify-content:space-between">
+                <span class="row-icon brand"><svg class="ic"><use href="#i-trophy"/></svg></span>
+                <span class="pill good">Valid</span>
+              </div>
+              <div>
+                <div class="row-title">Autumn Code Sprint — 4th place</div>
+                <div class="small muted">Contest certificate · issued 2 months ago</div>
+              </div>
+              <div class="small muted truncate">ONX-CRED-31B7-9C08-4E5F</div>
+              <div class="inline">
+                <a class="btn btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Download</a>
+                <a class="btn btn-sm btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-external"/></svg> Verify</a>
+              </div>
+            </div>
+
+            <div class="card card-pad stack-sm">
+              <div class="inline" style="justify-content:space-between">
+                <span class="row-icon brand"><svg class="ic"><use href="#i-shield"/></svg></span>
+                <span class="pill soon">Expires in 4 months</span>
+              </div>
+              <div>
+                <div class="row-title">Laboratory Safety Induction</div>
+                <div class="small muted">Compliance certificate · issued 11 months ago</div>
+              </div>
+              <div class="small muted truncate">ONX-CRED-77D1-2AF6-90BB</div>
+              <div class="inline">
+                <a class="btn btn-sm" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg> Download</a>
+                <a class="btn btn-sm btn-ghost" href="#"><svg class="ic ic-sm"><use href="#i-external"/></svg> Verify</a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ rail ============================ -->
+      <aside>
+        <!-- Readiness is one number that decides whether a job post will even
+             accept an application, so it is shown with its arithmetic open.
+             A score whose components are hidden is a score a student can only
+             argue with, never improve. -->
+        <section>
+          <div class="section-head"><h2>Placement readiness</h2></div>
+          <div class="card card-pad">
+            <div class="inline" style="gap:14px">
+              <span class="ring lg" style="--p:72%"><span>72</span></span>
+              <div>
+                <div class="strong">Ready for most posts</div>
+                <div class="small muted">Recomputed nightly · last night</div>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="stack-sm">
+              <div>
+                <div class="kv-row small"><span class="strong">Academic record</span><span class="muted num">28 / 35</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:80%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row small"><span class="strong">Skills evidence</span><span class="muted num">19 / 25</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:76%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row small"><span class="strong">Attendance</span><span class="muted num">18 / 20</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:90%"></span></div>
+              </div>
+              <div>
+                <div class="kv-row small"><span class="strong">Practice and contests</span><span class="muted num">7 / 20</span></div>
+                <div class="meter sm" style="margin-top:5px"><span style="width:35%"></span></div>
+              </div>
+            </div>
+            <div class="banner info mt-2">
+              <svg class="ic"><use href="#i-target"/></svg>
+              <div class="small">Practice is the cheapest 13 points on this page. Six more solved
+                problems moves you over 80.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Who can see what, controlled by the learner rather than by the
+             office: a guardian link is consent, and consent that cannot be
+             withdrawn from the same screen it was granted on is not consent. -->
+        <section class="section">
+          <div class="section-head"><h2>Who follows your progress</h2></div>
+          <div class="card">
+            <div class="card-pad">
+              <div class="inline" style="gap:10px;align-items:flex-start">
+                <span class="avatar avatar-sm" style="background:var(--teal-500)">MS</span>
+                <div style="min-width:0">
+                  <div class="strong small">Meera Sharma</div>
+                  <div class="small muted">Parent · verified 8 months ago</div>
+                </div>
+              </div>
+              <div class="inline mt-1">
+                <span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> Attendance</span>
+                <span class="pill good"><svg class="ic ic-sm"><use href="#i-check"/></svg> Results</span>
+                <span class="pill"><svg class="ic ic-sm"><use href="#i-x"/></svg> Fees</span>
+              </div>
+            </div>
+            <div class="card-foot">
+              <a class="small strong" href="#">Change what Meera can see</a>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><h2>Account</h2></div>
+          <div class="rowlist">
+            <a class="row" href="#" style="color:inherit">
+              <span style="color:var(--teal-600);display:flex"><svg class="ic"><use href="#i-lock"/></svg></span>
+              <div class="row-main"><div class="row-title" style="font-size:14px">Password and sign-in</div>
+                <div class="row-meta">Last changed 4 months ago</div></div>
+              <span class="row-trailing muted"><svg class="ic ic-sm"><use href="#i-chevron"/></svg></span>
+            </a>
+            <a class="row" href="#" style="color:inherit">
+              <span style="color:var(--teal-600);display:flex"><svg class="ic"><use href="#i-mail"/></svg></span>
+              <div class="row-main"><div class="row-title" style="font-size:14px">Notification preferences</div>
+                <div class="row-meta">Email on · digest weekly</div></div>
+              <span class="row-trailing muted"><svg class="ic ic-sm"><use href="#i-chevron"/></svg></span>
+            </a>
+            <a class="row" href="#" style="color:inherit">
+              <span style="color:var(--teal-600);display:flex"><svg class="ic"><use href="#i-download"/></svg></span>
+              <div class="row-main"><div class="row-title" style="font-size:14px">Download your data</div>
+                <div class="row-meta">Everything the institution holds on you</div></div>
+              <span class="row-trailing muted"><svg class="ic ic-sm"><use href="#i-chevron"/></svg></span>
+            </a>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a class="tab" href="student-dashboard.html"><svg class="ic"><use href="#i-home"/></svg> Home</a>
+  <a class="tab" href="courses.html"><svg class="ic"><use href="#i-book"/></svg> Courses</a>
+  <a class="tab" href="practice.html"><svg class="ic"><use href="#i-code"/></svg> Practice</a>
+  <a class="tab" href="results.html"><svg class="ic"><use href="#i-award"/></svg> Results</a>
+  <a class="tab" href="timetable.html"><svg class="ic"><use href="#i-calendar"/></svg> Timetable</a>
+</nav>
+
+<script src="../onyx.js"></script>
+</body>
+</html>
