@@ -31,7 +31,10 @@ export interface Course {
 
 export interface Lesson {
   id: number; module_id: number; title: string;
-  type: 'video' | 'document' | 'text' | 'link';
+  // Mirrors LessonType in @onyx/types. `image` is shown inline; `document`
+  // covers PDFs and decks; `link` is the only one whose path is not a
+  // storage key.
+  type: 'video' | 'document' | 'image' | 'text' | 'link';
   path: string | null; body: string | null; duration_seconds: number;
   is_preview: number; locked: boolean;
   position_seconds: number; completed_at: string | null;

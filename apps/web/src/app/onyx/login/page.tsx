@@ -25,8 +25,27 @@ export const metadata: Metadata = { title: 'Sign in' };
  * and the cookie that comes back -- is `OnyxLoginForm`, and is untouched by
  * this page. Everything here is the surface it sits on.
  */
-export default async function OnyxLoginPage() {
-  if (await getOnyxSession()) redirect('/onyx/dashboard');
+/**
+ * Where to land after signing in, when something sent us here from a page that
+ * needed a session.
+ *
+ * An open redirect is the classic way to get this wrong: `?next=https://evil`
+ * on a link that otherwise looks like the real login is a credible phishing
+ * hop, and `//evil.example` is the same trick spelled so it still reads as a
+ * path. Only a single-slash absolute path inside this app is accepted;
+ * anything else silently falls back to the dashboard.
+ */
+function safeNext(next: string | undefined): string | undefined {
+  if (!next) return undefined;
+  if (!next.startsWith('/') || next.startsWith('//')) return undefined;
+  return next;
+}
+
+export default async function OnyxLoginPage(
+  { searchParams }: { searchParams: Promise<{ next?: string }> },
+) {
+  const next = safeNext((await searchParams).next);
+  if (await getOnyxSession()) redirect(next ?? '/onyx/dashboard');
 
   return (
     <OnyxAuthSplit
@@ -68,7 +87,7 @@ export default async function OnyxLoginPage() {
         </>
       }
     >
-      <OnyxLoginForm />
+      <OnyxLoginForm next={next} />
     </OnyxAuthSplit>
   );
 }

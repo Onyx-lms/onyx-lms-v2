@@ -25,6 +25,7 @@ import {
 } from '@onyx/core';
 import type { AttendanceStatus, LatePolicy, LessonType } from '@onyx/types';
 import type { AppContext } from '../../app-context.ts';
+import { checkInUrl, checkInQrSvg } from '../../attendance-qr.ts';
 
 const asReq = (req: ReqLike) => ({
   headers: req.headers as Record<string, string | string[] | undefined>,
@@ -554,6 +555,25 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
   });
 
   /**
+   * LRN-02 -- an upload ticket for lesson media.
+   *
+   * Faculty of the course only. Returns a one-shot URL the browser PUTs the
+   * file to, plus the storage key to hand back when creating the lesson.
+   * Bytes never pass through this app, which is what makes a lecture
+   * recording possible at all -- see `signLessonUpload`.
+   */
+  app.post('/api/onyx/courses/:id/uploads/sign', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await ctx.onyxAcademics.assertCanTeach(
+      claims.tenant_id, idOf(req), claims.user_id, claims.tenant_role);
+    const body = validate(z.object({
+      filename: z.string().min(1).max(255),
+    }), req.body);
+    return ok(await ctx.onyxContent.signLessonUpload(
+      claims.tenant_id, idOf(req), body.filename));
+  });
+
+  /**
    * Uploading a course file. Faculty of the course only, and the stored key is
    * derived from the tenant rather than anything the caller sends -- a path
    * from a request body is a path into another institution's files.
@@ -661,17 +681,42 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
   });
 
   /**
-   * LRN-03b -- the code on screen.
+   * One session, for the person about to check into it.
+   *
+   * A scanned QR lands on a page that knows only a session id, so it needs a
+   * way to name the lecture the learner is confirming -- without being staff,
+   * and without pulling the whole course. Enrolment is the gate, the same one
+   * `check-in` applies a moment later, and the payload is the ordinary session
+   * row, which has never carried `qr_secret`.
+   */
+  app.get('/api/onyx/attendance/:id/session', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const session = await ctx.onyxAttendance.session(claims.tenant_id, idOf(req));
+    if (!isStaff(claims.tenant_role)) {
+      await ctx.onyxAcademics.assertEnrolled(
+        claims.tenant_id, Number(session.course_id), claims.user_id);
+    }
+    return ok(session);
+  });
+
+  /**
+   * LRN-03b -- what goes on the projector.
    *
    * Faculty only. A learner who could read this would be able to mark
    * themselves present from anywhere.
+   *
+   * The raw `code` is still returned, because the QR is built from it and
+   * because the marking screen shows nothing else that proves the session is
+   * live -- but no screen prints it any more (see attendance-qr.ts for why).
    */
   app.get('/api/onyx/attendance/:id/code', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
     const session = await ctx.onyxAttendance.session(claims.tenant_id, idOf(req));
     await ctx.onyxAcademics.assertCanTeach(
       claims.tenant_id, Number(session.course_id), claims.user_id, claims.tenant_role);
-    return ok(await ctx.onyxAttendance.currentCode(claims.tenant_id, idOf(req)));
+    const current = await ctx.onyxAttendance.currentCode(claims.tenant_id, idOf(req));
+    const url = checkInUrl(idOf(req), current.code);
+    return ok({ ...current, check_in_url: url, qr_svg: await checkInQrSvg(url) });
   });
 
   /** The learner scans and posts the code. There is no user_id to send. */

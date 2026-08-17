@@ -2,8 +2,8 @@
  * Every registered route resolves to itself.
  *
  * The matcher's precedence rules are tested in router.test.ts against
- * hand-picked pairs. This is the complement: it takes the REAL table -- all 574
- * routes across both products -- builds a concrete request path from each
+ * hand-picked pairs. This is the complement: it takes the REAL table -- every
+ * route across both products -- builds a concrete request path from each
  * pattern, and asserts the matcher hands that request back to the same route it
  * came from.
  *
@@ -38,7 +38,7 @@ function concrete(pattern: string): string {
   return pattern.split('/').map((s) => (s.startsWith(':') ? '1' : s)).join('/');
 }
 
-test('all 574 registered routes resolve to themselves', async () => {
+test('every registered route resolves to itself', async () => {
   loadRootEnv();
   const { routeTable } = await import('./routes.ts');
   const table = routeTable();

@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { FakeDb } from './fake-db.ts';
 import { AcademicsService } from '../src/onyx/academics.service.ts';
-import { ContentService, onyxStorageKey } from '../src/onyx/content.service.ts';
+import { ContentService, onyxStorageKey, ONYX_LESSON_TYPES } from '../src/onyx/content.service.ts';
 import { AttendanceService } from '../src/onyx/attendance.service.ts';
 import { AssignmentsService } from '../src/onyx/assignments.service.ts';
 import { HttpError } from '../src/http/errors.ts';
@@ -20,6 +20,9 @@ const OTHER = 2;  // a second institution, present to be excluded
 const storage = {
   signedUrl: async (path: string) => 'https://signed.example/' + path + '?token=x',
   upload: async (key: string) => key,
+  signedUpload: async (key: string) => ({
+    path: key, token: 'tok', signedUrl: 'https://signed.example/put/' + key,
+  }),
 };
 
 /**
@@ -262,6 +265,67 @@ test('a lesson with nothing to play is refused at authoring time', async () => {
   await assert.rejects(
     content.createLesson(T, 1, { title: 'Nonsense', type: 'hologram' as never, path: 'x' }),
     (e: HttpError) => e.status === 422);
+});
+
+test('every kind the authoring form offers is a kind the service accepts', async () => {
+  const { content } = world();
+
+  // This is the regression the lesson form actually had: it offered "PDF",
+  // which is not a lesson type, so choosing it produced a 422 every time and
+  // there was no way at all to add a document, image or link from the UI.
+  // Asserting the whole set here means the form and the service cannot drift
+  // apart again without a test noticing.
+  assert.deepEqual([...ONYX_LESSON_TYPES].sort(),
+    ['document', 'image', 'link', 'text', 'video']);
+
+  for (const type of ['video', 'document', 'image', 'link'] as const) {
+    const lesson = await content.createLesson(T, 1, {
+      title: type + ' lesson', type, path: 'onyx/1/courses/1/thing',
+    });
+    assert.equal(lesson.type, type);
+  }
+
+  // ...and each of them needs a source, image included.
+  for (const type of ['video', 'document', 'image', 'link'] as const) {
+    await assert.rejects(content.createLesson(T, 1, { title: 'Empty', type }),
+      (e: HttpError) => e.status === 422, type + ' was accepted with no source');
+  }
+});
+
+test('an image lesson is signed for viewing, and a link is left alone', async () => {
+  const { content } = world();
+  const image = await content.createLesson(T, 1, {
+    title: 'Circuit diagram', type: 'image', path: 'onyx/1/courses/1/diagram.png',
+  });
+  const link = await content.createLesson(T, 1, {
+    title: 'Reference', type: 'link', path: 'https://example.org/spec',
+  });
+
+  // An image is a stored object, so it gets a short-lived signed URL like any
+  // other. A link is an address somebody typed and is never rewritten -- a
+  // signed URL for `https://example.org` would be nonsense.
+  const shownImage = await content.lesson(T, Number(image.id), 'user-10', 'student');
+  assert.match(String(shownImage.url), /^https:\/\/signed\.example\//);
+
+  const shownLink = await content.lesson(T, Number(link.id), 'user-10', 'student');
+  assert.equal(shownLink.url, 'https://example.org/spec');
+});
+
+test('an upload ticket is minted for a key the caller did not choose', async () => {
+  const { content } = world();
+
+  // The filename is the only thing the browser supplies. If it could choose
+  // the key, it could write into another institution's prefix -- so the key is
+  // derived from tenant and course here, exactly as uploadResource derives it.
+  const ticket = await content.signLessonUpload(T, 1, '../../../etc/passwd');
+  assert.match(ticket.path, /^onyx\/1\/courses\/1\//);
+  assert.doesNotMatch(ticket.path, /\.\.\//, 'a traversal survived into the storage key');
+  assert.ok(ticket.signedUrl, 'no upload URL was issued');
+
+  // And a course in another institution is not a course this tenant can
+  // upload into.
+  await assert.rejects(content.signLessonUpload(T, 9, 'notes.pdf'),
+    (e: HttpError) => e.status === 404);
 });
 
 test('a lesson inherits its course from the module', async () => {

@@ -21,7 +21,10 @@ const LESSON_COLUMNS = 'id, tenant_id, course_id, module_id, title, type, path, 
 const PROGRESS_COLUMNS = 'id, tenant_id, course_id, lesson_id, user_id, position_seconds, completed_at, updated_at';
 const RESOURCE_COLUMNS = 'id, tenant_id, course_id, lesson_id, title, path, mime, size_bytes, created_at';
 
-export const ONYX_LESSON_TYPES: LessonType[] = ['video', 'document', 'text', 'link'];
+export const ONYX_LESSON_TYPES: LessonType[] = ['video', 'document', 'image', 'text', 'link'];
+
+/** The types whose `path` must point at something. `text` carries its own. */
+const NEEDS_SOURCE: LessonType[] = ['video', 'document', 'image', 'link'];
 
 /**
  * Who reaches course content without being enrolled in it.
@@ -37,6 +40,8 @@ const isStaff = (role: Role) => STAFF.includes(role);
 export interface SignedUrlSource {
   signedUrl(path: string, expiresInSeconds?: number): Promise<string | null>;
   upload(key: string, body: Uint8Array, contentType?: string): Promise<string>;
+  /** Optional so a test fake need only provide it when it exercises uploads. */
+  signedUpload?(key: string): Promise<{ path: string; token: string; signedUrl: string }>;
 }
 
 /**
@@ -97,7 +102,7 @@ export class ContentService {
     if (!ONYX_LESSON_TYPES.includes(type)) throw new HttpError(422, 'That is not a lesson type.');
     // A video lesson with nothing to play is the commonest authoring mistake,
     // and it only shows up when a learner opens it.
-    if ((type === 'video' || type === 'document' || type === 'link') && !input.path?.trim()) {
+    if (NEEDS_SOURCE.includes(type) && !input.path?.trim()) {
       throw new HttpError(422, 'A ' + type + ' lesson needs a source.');
     }
     if (type === 'text' && !input.body?.trim()) {
@@ -346,6 +351,27 @@ export class ContentService {
   }
 
   // ---- LRN-02b: offline-friendly resources ----
+
+  /**
+   * LRN-02 -- a ticket for putting lesson media into storage from the browser.
+   *
+   * The alternative, posting the file to this app and forwarding it, has a
+   * ceiling of 4.5 MB on Vercel (docs/ADR-012), which rules out video and most
+   * slide decks. So the bytes never touch the app: it mints the key, hands
+   * back a one-shot upload URL, and the browser sends the file straight to
+   * storage.
+   *
+   * The caller supplies a filename and nothing else. The key is derived from
+   * the tenant and course exactly as `uploadResource` derives it -- a path
+   * taken from a request body is a path into somebody else's institution.
+   */
+  async signLessonUpload(tenantId: number, courseId: number, filename: string) {
+    await this.#academics.course(tenantId, courseId);
+    if (!this.#storage.signedUpload) {
+      throw new HttpError(500, 'This deployment cannot issue upload tickets.');
+    }
+    return this.#storage.signedUpload(onyxStorageKey(tenantId, courseId, filename));
+  }
 
   /** Uploads a file and records it in one step, under this tenant's prefix. */
   async uploadResource(tenantId: number, courseId: number, createdBy: string, file: {
