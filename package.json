@@ -37,8 +37,10 @@
     "e2e": "node tools/e2e-run.mjs",
     "e2e:only": "node --test tests/e2e/*.e2e.ts",
     "browser": "playwright test",
-    "verify:all": "npm run verify:parity && npm test && npm run typecheck && npm run docs:check && npm run db:audit && npm run e2e",
-    "db:backup": "node tools/db/backup.mjs"
+    "verify:all": "npm run verify:parity && npm test && npm run test:server && npm run typecheck && npm run docs:check && npm run db:audit && npm run e2e && npm run test:rls",
+    "db:backup": "node tools/db/backup.mjs",
+    "test:rls": "node --test tests/rls/isolation.test.ts",
+    "test:server": "node --test apps/web/src/server/*.test.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

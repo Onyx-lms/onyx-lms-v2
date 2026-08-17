@@ -147,6 +147,39 @@ if (existingProblem) {
   console.log('  + problem   echo-the-input (published, 1 visible test)');
 }
 
+// ---- 5. a second institution -------------------------------------------------
+// Exists so tenant isolation can be *proven* rather than assumed.
+//
+// With one institution, "a tenant token returned no rows for tenant 2" is not
+// evidence -- there is no tenant 2, so an empty result is what a completely broken
+// policy would also return. tests/rls/isolation.test.ts skips its cross-tenant
+// assertion outright when it finds fewer than two, which is honest but means the
+// most important property in a multi-tenant product goes unchecked by default.
+//
+// Deliberately minimal: a tenant and its administrator. It needs to hold rows that
+// the first tenant's users must not see, and a membership row is enough for that.
+const OTHER = {
+  name: 'XYZ Polytechnic',
+  slug: 'xyz-polytechnic',
+  plan: 'standard',
+  admin: { name: 'Otto Other', email: 'admin@other.onyx', password: PW },
+};
+
+const others = await call('/api/onyx/platform/tenants?search=' + encodeURIComponent(OTHER.name),
+  { token: platformToken });
+const otherTenant = (others.body?.data ?? []).find((t) => t.slug === OTHER.slug);
+
+if (otherTenant) {
+  console.log('second institution already present: ' + OTHER.name + ' (id ' + otherTenant.id + ')');
+} else {
+  const made = await call('/api/onyx/platform/tenants', { body: OTHER, token: platformToken });
+  if (!made.ok) die('create the second institution', made);
+  const id = (made.body.data.tenant ?? made.body.data).id;
+  console.log('created second institution: ' + OTHER.name + ' (id ' + id + ') with admin '
+    + OTHER.admin.email + '  [isolation fixture]');
+}
+
 console.log('\nseeded ' + TENANT.name + ': ' + (MEMBERS.length + 1) + ' accounts ('
   + added + ' new this run)');
+console.log('plus ' + OTHER.name + ' as the tenant-isolation fixture');
 console.log('every *@demo.onyx password is ' + PW + '; platform is ' + PLATFORM.password);
