@@ -8,7 +8,7 @@ export function LogoutButton() {
     <button
       className="btn-ghost w-full"
       onClick={async () => {
-        await fetch('/api/auth/logout', { method: 'DELETE' });
+        await fetch('/api/web/auth/logout', { method: 'DELETE' });
         router.push('/login/store');
         router.refresh();
       }}

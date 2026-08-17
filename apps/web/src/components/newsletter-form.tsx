@@ -15,7 +15,7 @@ export function NewsletterForm() {
     e.preventDefault();
     setState('sending');
     try {
-      const res = await fetch('/api/newsletter', {
+      const res = await fetch('/api/web/newsletter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),

@@ -49,9 +49,15 @@ export default async function OnyxResultsPage({ params }: { params: Promise<{ id
   // many failed, is the middle where we expected -- are length comparisons,
   // and every bar carries its own count so nothing rests on the colour.
   const rows = report.candidates;
-  const histogram = BANDS.map(() => 0);
-  rows.forEach((c) => { histogram[bandOf(c.percent)] += 1; });
-  const tallest = Math.max(1, ...histogram);
+  // Each band carries its own count, rather than a parallel array read back by
+  // position further down the page. `bandOf` cannot return an out-of-range
+  // index, but an indexed read cannot say so -- and had one ever missed,
+  // `histogram[i] += 1` would have made the whole chart NaN rather than failing.
+  const bands = BANDS.map((label, band) => ({
+    label,
+    count: rows.filter((c) => bandOf(c.percent) === band).length,
+  }));
+  const tallest = Math.max(1, ...bands.map((b) => b.count));
 
   const failed = rows.filter((c) => c.passed === false).length;
   const notFailed = rows.filter((c) => c.passed !== false);
@@ -155,7 +161,7 @@ export default async function OnyxResultsPage({ params }: { params: Promise<{ id
               ) : (
                 <>
                   <ul className="space-y-3">
-                    {BANDS.map((label, i) => (
+                    {bands.map(({ label, count }, i) => (
                       <li key={label}>
                         <div className="flex items-baseline justify-between gap-3">
                           <span className="text-[13px] font-bold">
@@ -167,12 +173,12 @@ export default async function OnyxResultsPage({ params }: { params: Promise<{ id
                             ) : null}
                           </span>
                           <span className="text-[13px] tabular-nums text-muted">
-                            {histogram[i]}
+                            {count}
                           </span>
                         </div>
                         <div className="mt-1.5">
-                          <Meter percent={(histogram[i] / tallest) * 100}
-                            label={histogram[i] + ' candidates scored ' + label} />
+                          <Meter percent={(count / tallest) * 100}
+                            label={count + ' candidates scored ' + label} />
                         </div>
                       </li>
                     ))}

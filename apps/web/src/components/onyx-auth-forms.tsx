@@ -38,7 +38,7 @@ function Error_({ message }: { message: string | null }) {
 }
 
 async function post(action: string, body: unknown) {
-  const res = await fetch('/api/onyx/' + action, {
+  const res = await fetch('/api/web/onyx/' + action, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

@@ -11,7 +11,7 @@ export function VerifyEmailClient({ token }: { token: string }) {
     if (!token) return;
     let cancelled = false;
     (async () => {
-      const res = await fetch('/api/auth/verify', {
+      const res = await fetch('/api/web/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),

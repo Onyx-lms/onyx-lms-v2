@@ -12,7 +12,7 @@ export function ContactForm() {
     setState('sending');
     setErrors({});
     const form = new FormData(e.currentTarget);
-    const res = await fetch('/api/contact', {
+    const res = await fetch('/api/web/contact', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(Object.fromEntries(form)),

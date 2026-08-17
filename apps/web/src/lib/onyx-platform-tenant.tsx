@@ -25,7 +25,7 @@ export interface TenantDetail {
 }
 
 export interface Person {
-  membership_id: number; user_id: number; name: string; email: string; phone: string | null;
+  membership_id: number; user_id: string; name: string; email: string; phone: string | null;
   role: string; membership_status: number; account_status: number; joined_at: string;
   batch: { id: number; name: string; code: string } | null;
   programme: { id: number; name: string; code: string } | null;
@@ -63,7 +63,7 @@ export interface AcademicsPayload {
   courses: CourseRow[]; assignments: AssignmentRow[]; assessments: AssessmentRow[]; exams: ExamRow[];
 }
 
-export interface Student { id: number; name: string; email: string }
+export interface Student { id: string; name: string; email: string }
 export interface ExamMark {
   id: number; student: Student; exam: { id: number; title: string } | null;
   course: { code: string; title: string } | null;
@@ -89,8 +89,8 @@ export interface GradesPayload {
 }
 
 export interface AdminRow {
-  id: number; user_id: number; created_at: string;
-  user: { id: number; name: string; email: string } | null;
+  id: number; user_id: string; created_at: string;
+  user: { id: string; name: string; email: string } | null;
 }
 
 export interface FeeHead {
@@ -101,9 +101,9 @@ export interface FeeStructure {
   created_at: string; total_minor: number;
 }
 export interface OutstandingInvoice {
-  id: number; user_id: number; number: string; total_minor: number; paid_minor: number;
+  id: number; user_id: string; number: string; total_minor: number; paid_minor: number;
   balance_minor: number; status: string; due_at: string | null; overdue: boolean;
-  student: { id: number; name: string; email: string } | null;
+  student: { id: string; name: string; email: string } | null;
 }
 export interface FeesPayload {
   tenant: { id: number; name: string; slug: string };

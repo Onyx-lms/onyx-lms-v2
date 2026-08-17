@@ -38,7 +38,7 @@ export function AuthForm({ action, fields, submitLabel, redirectTo, onDone }: {
     setMessage('');
     const payload = Object.fromEntries(new FormData(e.currentTarget));
 
-    const res = await fetch(`/api/auth/${action}`, {
+    const res = await fetch(`/api/web/auth/${action}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

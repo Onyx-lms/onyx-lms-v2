@@ -13,9 +13,31 @@
     "incremental": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    // packages/core is written for Node's NodeNext resolution, so every internal
+    // import carries an explicit `.ts` extension. The web app now compiles those
+    // files (transpilePackages in next.config.mjs), and `bundler` resolution
+    // rejects the extension without this. Safe here because noEmit is on -- the
+    // option is only forbidden when TypeScript would have to emit the specifier.
+    "allowImportingTsExtensions": true,
+    // Kept from tsconfig.base.json, which the API and core are checked with.
+    // Without it, 3,872 lines of route code and every service moved under this
+    // config would silently lose the check that an indexed access can be
+    // undefined -- exactly the kind of thing the shim's params/query handling
+    // depends on.
+    "noUncheckedIndexedAccess": true,
     "plugins": [{ "name": "next" }],
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  // Tests run under `node --test`, not Next's build, and are typechecked by the
+  // root tsconfig instead -- they use Node globals this DOM-flavoured config
+  // does not describe.
+  "exclude": ["node_modules", "src/**/*.test.ts"],
+  // apps/api is composite and emits declarations. Referencing it means the route
+  // files it owns are typechecked by ITS config -- where @fastify/cookie is
+  // registered and its FastifyReply augmentation actually applies -- instead of
+  // being re-checked under this DOM-flavoured, bundler-resolution config, where
+  // reply.setCookie/clearCookie could not be seen. It also stops 3,872 lines of
+  // route code being checked twice with different rules.
+  "references": [{ "path": "../api" }]
 }

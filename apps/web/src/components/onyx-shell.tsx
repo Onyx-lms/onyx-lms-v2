@@ -245,7 +245,7 @@ function TenantCard({ tenant, role, memberships }: {
   const switchTo = (id: number) => {
     setError(null);
     start(async () => {
-      const res = await fetch('/api/onyx/switch', {
+      const res = await fetch('/api/web/onyx/switch', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: id }),
       });
@@ -307,7 +307,7 @@ function SignOutButton() {
     <button
       type="button" disabled={pending}
       onClick={() => start(async () => {
-        await fetch('/api/onyx/login', { method: 'DELETE' });
+        await fetch('/api/web/onyx/login', { method: 'DELETE' });
         router.push('/onyx/login');
         router.refresh();
       })}

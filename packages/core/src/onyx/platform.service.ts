@@ -48,7 +48,7 @@ function mean(values: number[]): number | null {
 }
 
 interface PersonRow {
-  membership_id: number; user_id: number; name: string; email: string; phone: string | null;
+  membership_id: number; user_id: string; name: string; email: string; phone: string | null;
   role: string; membership_status: number; account_status: number; joined_at: string;
   batch: { id: number; name: string; code: string } | null;
   programme: { id: number; name: string; code: string } | null;
@@ -312,16 +312,24 @@ export class PlatformService {
    * onyx_users is the one table here without a tenant_id, so it is never
    * queried by tenant -- only by a list of ids that a tenant-scoped query
    * produced. Passing ids from anywhere else would leak across institutions.
+   *
+   * `id` has been a Supabase Auth uuid since the 0013/0014 migration
+   * (ADR-011), not the bigint identity it started as. Every caller here used
+   * to run these ids through `num()` -- fine while onyx_users.id was bigint,
+   * silently wrong since: `Number("2bae7a10-...")` is NaN, so `.in('id', ids)`
+   * was sent an array of NaNs, matched nobody, and every person on every one
+   * of these screens fell back to "Unknown" / disabled. Kept as plain
+   * strings throughout instead of coercing.
    */
-  async #usersById(ids: number[]) {
-    const out = new Map<number,
-      { id: number; name: string; email: string; phone: string | null; status: number }>();
+  async #usersById(ids: string[]) {
+    const out = new Map<string,
+      { id: string; name: string; email: string; phone: string | null; status: number }>();
     if (!ids.length) return out;
     const { data } = await this.#db.from('onyx_users')
       .select('id, name, email, phone, status').in('id', ids);
     for (const u of data ?? []) {
-      out.set(num(u.id), {
-        id: num(u.id), name: String(u.name), email: String(u.email),
+      out.set(String(u.id), {
+        id: String(u.id), name: String(u.name), email: String(u.email),
         phone: u.phone == null ? null : String(u.phone), status: num(u.status),
       });
     }
@@ -355,7 +363,7 @@ export class PlatformService {
     const { count: total } = await (opts.role
       ? counting.eq('role', opts.role as Role) : counting);
 
-    const userIds = page.map((m) => num(m.user_id));
+    const userIds = page.map((m) => String(m.user_id));
     const users = await this.#usersById(userIds);
 
     // Everything below is keyed on userIds, which came from a tenant-filtered
@@ -369,18 +377,18 @@ export class PlatformService {
         .eq('tenant_id', id).in('user_id', userIds).limit(SCAN_CAP),
     ]) : [{ data: [] }, { data: [] }, { data: [] }];
 
-    const enrolCount = new Map<number, number>();
-    const batchOf = new Map<number, number>();
+    const enrolCount = new Map<string, number>();
+    const batchOf = new Map<string, number>();
     for (const e of enrolQ.data ?? []) {
-      const uid = num(e.user_id);
+      const uid = String(e.user_id);
       enrolCount.set(uid, (enrolCount.get(uid) ?? 0) + 1);
       if (e.batch_id != null && !batchOf.has(uid)) batchOf.set(uid, num(e.batch_id));
     }
     // An explicit batch membership beats one inferred from an enrolment.
-    for (const b of batchMemQ.data ?? []) batchOf.set(num(b.user_id), num(b.batch_id));
-    const teachCount = new Map<number, number>();
+    for (const b of batchMemQ.data ?? []) batchOf.set(String(b.user_id), num(b.batch_id));
+    const teachCount = new Map<string, number>();
     for (const f of facultyQ.data ?? []) {
-      const uid = num(f.user_id);
+      const uid = String(f.user_id);
       teachCount.set(uid, (teachCount.get(uid) ?? 0) + 1);
     }
 
@@ -403,7 +411,7 @@ export class PlatformService {
     }]));
 
     const people: PersonRow[] = page.map((m) => {
-      const uid = num(m.user_id);
+      const uid = String(m.user_id);
       const user = users.get(uid);
       const linked = batches.get(batchOf.get(uid) ?? -1) ?? null;
       return {
@@ -632,7 +640,7 @@ export class PlatformService {
 
     const courseIds = [...new Set(slots.map((s) => num(s.course_id)))];
     const roomIds = [...new Set(slots.map((s) => num(s.room_id)))];
-    const facultyIds = [...new Set(slots.map((s) => num(s.faculty_id)))];
+    const facultyIds = [...new Set(slots.map((s) => String(s.faculty_id)))];
     const batchIds = [...new Set(slots.map((s) => num(s.batch_id)))];
 
     const [courseQ, roomQ, facultyQ, batchQ, semQ] = await Promise.all([
@@ -654,7 +662,7 @@ export class PlatformService {
     ]);
     const courseById = new Map((courseQ.data ?? []).map((c) => [num(c.id), c]));
     const roomById = new Map((roomQ.data ?? []).map((r) => [num(r.id), r]));
-    const facultyById = new Map((facultyQ.data ?? []).map((u) => [num(u.id), u]));
+    const facultyById = new Map((facultyQ.data ?? []).map((u) => [String(u.id), u]));
     const batchById = new Map((batchQ.data ?? []).map((b) => [num(b.id), b]));
     const semesterById = new Map((semQ.data ?? []).map((s) => [num(s.id), s]));
 
@@ -665,7 +673,7 @@ export class PlatformService {
         semester: semesterById.get(num(s.semester_id))?.name ?? null,
         course: courseById.get(num(s.course_id)) ?? null,
         room: roomById.get(num(s.room_id)) ?? null,
-        faculty: facultyById.get(num(s.faculty_id)) ?? null,
+        faculty: facultyById.get(String(s.faculty_id)) ?? null,
         batch: batchById.get(num(s.batch_id))?.name ?? null,
         day_of_week: num(s.day_of_week),
         starts_at: String(s.starts_at),
@@ -761,9 +769,9 @@ export class PlatformService {
     }
 
     const users = await this.#usersById([...new Set([
-      ...markRows.map((m) => num(m.user_id)), ...attemptRows.map((a) => num(a.user_id)),
+      ...markRows.map((m) => String(m.user_id)), ...attemptRows.map((a) => String(a.user_id)),
     ])]);
-    const person = (uid: number) => {
+    const person = (uid: string) => {
       const u = users.get(uid);
       return { id: uid, name: u?.name ?? 'Unknown', email: u?.email ?? '' };
     };
@@ -773,7 +781,7 @@ export class PlatformService {
       return {
         id: num(m.id),
         kind: 'exam' as const,
-        student: person(num(m.user_id)),
+        student: person(String(m.user_id)),
         exam: exam
           ? { id: num(exam.id), title: String(exam.title), starts_at: String(exam.starts_at) }
           : null,
@@ -797,7 +805,7 @@ export class PlatformService {
       return {
         id: num(a.id),
         kind: 'assessment' as const,
-        student: person(num(a.user_id)),
+        student: person(String(a.user_id)),
         assessment: assessment
           ? { id: num(assessment.id), title: String(assessment.title) }
           : null,
@@ -1236,9 +1244,9 @@ export class PlatformService {
     const [{ data: assignment }, users] = await Promise.all([
       this.#db.from('onyx_assignments').select('id, title, total_points, course_id')
         .eq('id', row.assignment_id).maybeSingle(),
-      this.#usersById([Number(row.user_id)]),
+      this.#usersById([String(row.user_id)]),
     ]);
-    return { ...row, student: users.get(Number(row.user_id)) ?? null, assignment: assignment ?? null };
+    return { ...row, student: users.get(String(row.user_id)) ?? null, assignment: assignment ?? null };
   }
 
   /** Every submission for one assignment, for the "view submissions" list. */
@@ -1253,12 +1261,12 @@ export class PlatformService {
       .eq('tenant_id', tenantId).eq('assignment_id', assignmentId).neq('status', 'draft')
       .order('submitted_at', { ascending: false }).limit(SCAN_CAP);
     const submissions = rows ?? [];
-    const users = await this.#usersById([...new Set(submissions.map((s) => num(s.user_id)))]);
+    const users = await this.#usersById([...new Set(submissions.map((s) => String(s.user_id)))]);
     return {
       assignment: { id: num(assignment.id), title: String(assignment.title),
         total_points: num(assignment.total_points) },
       submissions: submissions.map((s) => ({
-        ...s, student: users.get(num(s.user_id)) ?? null,
+        ...s, student: users.get(String(s.user_id)) ?? null,
       })),
     };
   }
@@ -1308,10 +1316,10 @@ export class PlatformService {
       this.#db.from('onyx_assessment_answers')
         .select('id, question_id, response, auto_points, manual_points, marker_comment')
         .eq('tenant_id', tenantId).eq('attempt_id', attemptId),
-      this.#usersById([Number(row.user_id)]),
+      this.#usersById([String(row.user_id)]),
     ]);
     return {
-      ...row, student: users.get(Number(row.user_id)) ?? null,
+      ...row, student: users.get(String(row.user_id)) ?? null,
       assessment: assessment ?? null, answers: answers ?? [],
     };
   }
@@ -1582,7 +1590,7 @@ export class PlatformService {
       totalByStructure.set(s, (totalByStructure.get(s) ?? 0) + num(l.amount_minor));
     }
     const rows = invoices ?? [];
-    const users = await this.#usersById([...new Set(rows.map((r) => num(r.user_id)))]);
+    const users = await this.#usersById([...new Set(rows.map((r) => String(r.user_id)))]);
     const now = Date.now();
 
     return {
@@ -1595,7 +1603,7 @@ export class PlatformService {
         total_minor: rows.reduce((sum, r) => sum + (num(r.total_minor) - num(r.paid_minor)), 0),
         invoices: rows.map((r) => ({
           ...r,
-          student: users.get(num(r.user_id)) ?? null,
+          student: users.get(String(r.user_id)) ?? null,
           balance_minor: num(r.total_minor) - num(r.paid_minor),
           overdue: Boolean(r.due_at && Date.parse(String(r.due_at)) < now),
         })),
@@ -1697,9 +1705,9 @@ export class PlatformService {
     if (!rows.length) return [];
 
     const actors = await this.#usersById([...new Set(
-      rows.map((r) => r.actor_id).filter((id): id is number => id != null).map(num))]);
+      rows.map((r) => r.actor_id).filter((id): id is string => id != null).map(String))]);
     return rows.map((r) => ({
-      ...r, actor: r.actor_id == null ? null : actors.get(num(r.actor_id)) ?? null,
+      ...r, actor: r.actor_id == null ? null : actors.get(String(r.actor_id)) ?? null,
     }));
   }
 

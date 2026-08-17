@@ -55,7 +55,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
         <FilterGroup title="Price">
           {['free', 'paid', 'discount'].map((p) => (
             <FilterLink key={p} href={filterLink('price', p)} active={active('price', p)}>
-              {p[0].toUpperCase() + p.slice(1)}
+              {p.charAt(0).toUpperCase() + p.slice(1)}
             </FilterLink>
           ))}
         </FilterGroup>
