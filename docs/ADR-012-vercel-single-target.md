@@ -90,11 +90,38 @@ grants or ownership.
 
 ### Accepted costs
 
-- **The 2-second grading worker cannot be reproduced.** Vercel Cron's floor is
-  one minute (Pro) or once per day (Hobby, where a `* * * * *` expression fails
-  at deploy time). Grading becomes "immediately, via `after()`, with cron as the
-  retry net". Median latency is as good or better than v1's; the **tail is
-  worse** — a failed in-request pass waits for the next cron tick.
+- **The two background jobs are scheduled by Postgres, not by Vercel.** This
+  deployment is on **Hobby**, where Vercel Cron rejects any schedule more
+  frequent than daily at deploy time — so Vercel's scheduler cannot carry a
+  grading queue or an expiry sweep at all. `pg_cron` can: it runs inside the
+  database, is not subject to Vercel's plan, supports per-minute schedules on
+  Supabase's free tier, and reaches the app over HTTP via `pg_net`. Hence
+  `supabase/onyx/migrations/0017_job_schedule.sql` and
+  `tools/onyx/schedule-jobs.mjs`. `vercel.json` deliberately declares **no**
+  crons; adding a daily one alongside pg_cron's per-minute one would be noise.
+
+  Grading does not rely on that schedule to feel fast. The submit route drains
+  the queue itself with `after()` (`apps/web/src/server/after-dispatch.ts`), so
+  the common case is graded in the same invocation — verified end-to-end through
+  Judge0 at *under three seconds*, which is faster than v1, whose 2-second poll
+  cost half an interval of dead time on average. What the schedule provides is
+  the retry net for what `after()` cannot cover: an invocation killed mid-drain,
+  a Judge0 failure whose backoff must be honoured, a row left at `running` by a
+  worker that died. So the **tail** is worse than v1 — a lost pass waits up to a
+  minute — while the median is better.
+
+  Both jobs are safe to miss and safe to double-fire, which is what makes
+  pg_cron's at-most-once delivery acceptable: `claim()` takes rows
+  `FOR UPDATE SKIP LOCKED`, and the sweep only touches attempts already past
+  their expiry.
+
+  Neither job was rewritten in plpgsql, though that would have removed the HTTP
+  hop entirely. Expiring an attempt auto-marks it — walking the paper and scoring
+  objective questions against their answer keys, including the deliberate refusal
+  to score an MCQ whose author set no correct option. Those rules live in
+  `packages/core` and are covered by the core suite; a SQL copy would be a second
+  implementation of marking, and the copy that drifts is the one running
+  unattended.
 - **25 MB uploads must change shape.** Vercel caps request *and* response bodies
   at 4.5 MB. The two upload endpoints become browser → Supabase Storage direct
   via a signed upload URL, then a small "register" POST. Five export endpoints

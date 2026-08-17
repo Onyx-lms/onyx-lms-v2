@@ -17,14 +17,14 @@
  * token yet); that stays in grant-platform-admin.mjs.
  *
  * Usage
- *   node tools/onyx/seed-demo.mjs [--api http://localhost:4000]
+ *   node tools/onyx/seed-demo.mjs [--api http://localhost:5175]
  *
  * Idempotent: an institution whose slug already exists is reused, and a member
  * who already exists is left alone. Safe to re-run after a partial failure.
  */
 const API = (() => {
   const i = process.argv.indexOf('--api');
-  return i === -1 ? 'http://localhost:4000' : process.argv[i + 1];
+  return i === -1 ? 'http://localhost:5175' : process.argv[i + 1];
 })();
 
 const PLATFORM = { email: 'superadmin@onyx.platform', password: 'Platform#2026!' };
@@ -104,6 +104,47 @@ for (const m of MEMBERS) {
   if (!r.ok) die('add ' + m.role + ' ' + m.email, r);
   console.log('  + ' + m.role.padEnd(10) + m.email);
   added += 1;
+}
+
+// ---- 4. one Code Lab problem ------------------------------------------------
+// Seeded because the grading path is the one part of this product that cannot be
+// exercised without content: a submission needs a published problem with at least
+// one visible test case. Without this, verifying that queue draining works means
+// hand-building a problem first -- which is how the original project ended up with
+// test debris nobody could tell apart from seed data.
+const problems = await call('/api/onyx/problems?all=1', { token: adminToken });
+const existingProblem = (problems.body?.data ?? []).find((p) => p.slug === 'echo-the-input');
+
+if (existingProblem) {
+  console.log('  = problem   echo-the-input (already present)');
+} else {
+  const created = await call('/api/onyx/problems', {
+    token: adminToken,
+    body: {
+      title: 'Echo the input',
+      difficulty: 'easy',
+      languages: ['python'],
+      statement: 'Read one line from standard input and print it back unchanged.',
+    },
+  });
+  if (!created.ok) die('create the demo problem', created);
+  const problemId = created.body.data.id;
+
+  // `is_hidden: false` on purpose -- publishing refuses a problem whose every
+  // case is hidden ("At least one case has to be visible"), because a learner
+  // needs something to check their work against before submitting.
+  const tests = await call('/api/onyx/problems/' + problemId + '/tests', {
+    method: 'PUT',
+    token: adminToken,
+    body: {
+      tests: [{ name: 'echo', stdin: 'hello\n', expected_stdout: 'hello', is_hidden: false, weight: 1 }],
+    },
+  });
+  if (!tests.ok) die('add the demo test case', tests);
+
+  const published = await call('/api/onyx/problems/' + problemId + '/publish', { token: adminToken });
+  if (!published.ok) die('publish the demo problem', published);
+  console.log('  + problem   echo-the-input (published, 1 visible test)');
 }
 
 console.log('\nseeded ' + TENANT.name + ': ' + (MEMBERS.length + 1) + ' accounts ('

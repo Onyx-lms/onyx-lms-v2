@@ -12,10 +12,12 @@
  * /api/onyx/me, /api/onyx/courses, /api/onyx/members and every other
  * single-segment Onyx route.
  */
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { cookies } from 'next/headers';
 import { routeTable } from '@/server/routes';
+import { ctx } from '@/server/context';
 import { bearerFor } from '@/server/auth-adapter';
+import { afterFor } from '@/server/after-dispatch';
 import {
   createReply, errorBody, NOT_FOUND_BODY, REPLY_SENT,
   type ReqLike, type CapturedReply,
@@ -174,6 +176,30 @@ async function handle(request: Request, params: Promise<{ path: string[] }>): Pr
   const { reply, captured } = createReply();
   try {
     const result = await hit.route.handler(req, reply);
+
+    /**
+     * Follow-up work, after the response and only when the handler succeeded.
+     *
+     * Registered per route in server/after-dispatch.ts -- today that is the code
+     * submission route draining the grading queue it just enqueued into. Placed
+     * after the handler resolved so a failed submit does not trigger a drain for
+     * a job that was never created, and inside `after()` so the platform keeps
+     * the invocation alive rather than killing the work when the body flushes.
+     *
+     * Failures here are logged, never surfaced: the response has already gone,
+     * and the cron endpoint will retry whatever this pass missed.
+     */
+    const follow = afterFor(req.method, hit.route.pattern);
+    if (follow) {
+      after(async () => {
+        try {
+          await follow(ctx());
+        } catch (err) {
+          console.error('[after] ' + req.method + ' ' + hit.route.pattern + ' follow-up failed', err);
+        }
+      });
+    }
+
     // `send()` returns a sentinel, so "the handler used reply" is distinguishable
     // from "the handler returned undefined".
     const payload = result === REPLY_SENT || (result === undefined && captured.didSend)
