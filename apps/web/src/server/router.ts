@@ -34,6 +34,30 @@ export interface ReqLike {
    *  server kept a custom content-type parser. */
   rawBody: string;
   log: { info: (...a: unknown[]) => void; warn: (...a: unknown[]) => void; error: (...a: unknown[]) => void };
+  /**
+   * The uploaded file, for the two multipart routes.
+   *
+   * `@fastify/multipart`'s shape, reproduced: `POST /api/media` and
+   * `POST /api/onyx/courses/:id/resources/upload` both call `req.file()` and
+   * then `file.toBuffer()`.
+   *
+   * This was the one Fastify API the shim missed, and it hid from every check
+   * that should have caught it: both routes reach it through
+   * `(req as unknown as { file: ... }).file()`, so the compiler saw nothing, and
+   * a grep for `req.file` found nothing either -- the cast breaks the token up.
+   * The result was a 500 on every upload, which the parity probes never exercised
+   * because they are all JSON.
+   *
+   * Optional so nothing else has to know it exists; the two routes cast to a type
+   * that requires it and would fail loudly rather than silently if it vanished.
+   */
+  file?: () => Promise<MultipartFile | undefined>;
+}
+
+export interface MultipartFile {
+  filename: string;
+  mimetype: string;
+  toBuffer: () => Promise<Buffer>;
 }
 
 export interface CookieOptions {

@@ -20,7 +20,7 @@ import { bearerFor } from '@/server/auth-adapter';
 import { afterFor } from '@/server/after-dispatch';
 import {
   createReply, errorBody, NOT_FOUND_BODY, REPLY_SENT,
-  type ReqLike, type CapturedReply,
+  type ReqLike, type CapturedReply, type MultipartFile,
 } from '@/server/router';
 
 /**
@@ -159,8 +159,9 @@ async function handle(request: Request, params: Promise<{ path: string[] }>): Pr
    * must arrive as `undefined` rather than `''`, because several bodyless POSTs
    * distinguish the two and `JSON.parse('')` throws.
    *
-   * Multipart is left alone: `request.formData()` is the only way to read it
-   * here, and the one route that needs it reads it itself.
+   * Multipart is skipped here and read lazily by `file()` below instead --
+   * `request.formData()` consumes the body and can only be called once, so it
+   * must not be spent on routes that never asked for it.
    */
   const contentType = request.headers.get('content-type') ?? '';
   let rawBody = '';
@@ -205,6 +206,37 @@ async function handle(request: Request, params: Promise<{ path: string[] }>): Pr
       info: (...a) => console.log('[api]', ...a),
       warn: (...a) => console.warn('[api]', ...a),
       error: (...a) => console.error('[api]', ...a),
+    },
+
+    /**
+     * The uploaded file, in `@fastify/multipart`'s shape.
+     *
+     * Read lazily: `formData()` consumes the body and is single-use, so it is
+     * spent only when a route actually asks. Both callers take the first file
+     * in the form and ignore the rest, which is what `req.file()` did.
+     *
+     * NOTE THE PLATFORM CEILING. The two routes cap at 25MB, and that check
+     * still runs -- but Vercel rejects a request body over ~4.5MB before any of
+     * this executes, so the real limit is Vercel's, not the route's. Files under
+     * it (slides, PDFs, worked examples -- what course resources actually are)
+     * work; anything larger needs the browser to upload straight to Supabase
+     * Storage with a signed URL and POST only the resulting path. That is a
+     * client-and-server change and is deliberately not smuggled in here.
+     */
+    file: async (): Promise<MultipartFile | undefined> => {
+      if (!contentType.startsWith('multipart/')) return undefined;
+      const form = await request.formData();
+      for (const value of form.values()) {
+        if (typeof value === 'object' && value !== null && 'arrayBuffer' in value) {
+          const blob = value as File;
+          return {
+            filename: blob.name || 'upload',
+            mimetype: blob.type || 'application/octet-stream',
+            toBuffer: async () => Buffer.from(await blob.arrayBuffer()),
+          };
+        }
+      }
+      return undefined;
     },
   };
 

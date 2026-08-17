@@ -38,3 +38,10 @@ playwright-report/
 # accounts -- never commit one of these, wherever it ends up.
 *Credentials*.xlsx
 *credentials*.csv
+
+# Throwaway files from verification runs. Named so they cannot be mistaken for
+# source -- and ignored because one of them briefly held an auth token and was
+# staged by a `git add -A`, which is the kind of thing that only has to happen
+# once.
+_scratch*
+_s_*
