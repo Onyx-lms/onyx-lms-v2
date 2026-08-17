@@ -5,7 +5,9 @@
  * crawlers -- which is the whole reason C-05 (SEO fields) exists. Nothing here
  * runs in the browser, so the API base can stay private.
  */
-const BASE = process.env.API_URL ?? 'http://127.0.0.1:4000';
+import { appOrigin } from '@/lib/app-origin';
+
+const BASE = appOrigin();
 
 export interface ApiOk<T> { ok: true; data: T; message?: string }
 export interface ApiErr { ok: false; message: string; errors?: Record<string, string[]> }

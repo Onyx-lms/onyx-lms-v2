@@ -32,12 +32,5 @@
   // Tests run under `node --test`, not Next's build, and are typechecked by the
   // root tsconfig instead -- they use Node globals this DOM-flavoured config
   // does not describe.
-  "exclude": ["node_modules", "src/**/*.test.ts"],
-  // apps/api is composite and emits declarations. Referencing it means the route
-  // files it owns are typechecked by ITS config -- where @fastify/cookie is
-  // registered and its FastifyReply augmentation actually applies -- instead of
-  // being re-checked under this DOM-flavoured, bundler-resolution config, where
-  // reply.setCookie/clearCookie could not be seen. It also stops 3,872 lines of
-  // route code being checked twice with different rules.
-  "references": [{ "path": "../api" }]
+  "exclude": ["node_modules", "src/**/*.test.ts"]
 }

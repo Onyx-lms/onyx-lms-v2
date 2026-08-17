@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { Verification } from '@/lib/onyx-career';
 import { Icon, Pill, State, type IconName } from '@/components/onyx-ui';
+import { appOrigin } from '@/lib/app-origin';
 
 export const metadata: Metadata = {
   title: 'Verify a credential',
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const API = process.env.API_URL ?? 'http://127.0.0.1:4000';
+const API = appOrigin();
 
 /** "2 days ago" beats "8/9/2026" for the one question this page answers. */
 function ago(iso: string | null | undefined): string {

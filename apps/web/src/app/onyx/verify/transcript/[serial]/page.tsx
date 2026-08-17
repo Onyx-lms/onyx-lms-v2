@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Icon, Pill, State, type IconName } from '@/components/onyx-ui';
+import { appOrigin } from '@/lib/app-origin';
 
 export const metadata: Metadata = {
   title: 'Verify a transcript',
@@ -7,7 +8,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const API = process.env.API_URL ?? 'http://127.0.0.1:4000';
+const API = appOrigin();
 
 interface PublicVerification {
   found: boolean;

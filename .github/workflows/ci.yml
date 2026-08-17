@@ -80,7 +80,18 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      # The router shim and the after-dispatch table. Needs no database or server,
+      # so it belongs alongside the unit tests rather than the integration ones --
+      # and the after-dispatch test is the thing that catches a renamed route
+      # silently disabling code grading.
+      - name: Server tests
+        run: npm run test:server
+
       - name: Web build
         run: npm run build:web
         env:
-          API_URL: http://127.0.0.1:4000
+          # The app's own origin, because it serves its own API now
+          # (docs/ADR-012). It used to point at a separate Fastify process on
+          # :4000. Nothing is fetched at build time -- every page is dynamic --
+          # so this only has to be a well-formed URL for the modules that read it.
+          API_URL: http://127.0.0.1:5173

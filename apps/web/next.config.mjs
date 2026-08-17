@@ -6,7 +6,8 @@ import fs from 'node:fs';
  * Next reads `.env*` from the app directory, not the workspace root. The API now
  * runs inside this app, so it needs SUPABASE_URL, the service-role key, the
  * Judge0 settings and the rest -- all of which live in the root `.env` that
- * `node --env-file=.env apps/api/src/server.ts` and every tool under tools/ read.
+ * every tool under tools/ reads, and that the Fastify server used to read before
+ * the API moved into this app.
  * Duplicating them into apps/web/.env.local would mean two files holding the same
  * service-role key and one of them going stale.
  *
@@ -49,26 +50,10 @@ export default {
    * and `bcryptjs` reach for Node internals the bundler cannot follow. All three
    * arrive transitively through `@onyx/core`.
    *
-   * `pg` is only here for now -- it is on its way out of the request path
-   * entirely (QueueService.claim() becomes an RPC), after which it stays only
-   * for tools/db/*.
+   * `pg` is listed defensively rather than because a request needs it:
+   * QueueService moved to PostgREST plus three RPCs (migration 0019), so nothing
+   * on a request path opens a Postgres socket. It still reaches the bundler
+   * through @onyx/core's barrel export of pool.ts, which tools/db/* rely on.
    */
   serverExternalPackages: ['pg', 'nodemailer', 'bcryptjs'],
-
-  async rewrites() {
-    return [
-      /**
-       * `/api/proxy/*` was how client components reached an API on another
-       * origin: the session cookie is httpOnly, so a handler had to attach the
-       * bearer token server-side. That origin boundary is gone -- the API is
-       * served in-process now -- but 104 call sites across 68 files still use
-       * the path.
-       *
-       * One rewrite instead of 104 edits. The catch-all sees `/api/...` and the
-       * client keeps working untouched; the sites can be rewritten later as
-       * tidying rather than as part of the risky phase.
-       */
-      { source: '/api/proxy/:path*', destination: '/api/:path*' },
-    ];
-  },
 };

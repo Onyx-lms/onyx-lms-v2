@@ -8,8 +8,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const API = process.env.E2E_API ?? 'http://127.0.0.1:4000';
-const WEB = process.env.E2E_WEB ?? 'http://127.0.0.1:5173';
+// One origin, because there is one server. The API used to run separately on
+// :4000; it is now served by the Next app itself (docs/ADR-012), so E2E_API and
+// E2E_WEB point at the same place and the suites did not have to change -- they
+// already read both from the environment.
+//
+// 5173 rather than the 5175 the dev server uses, deliberately: `next start` here
+// serves a production build, and keeping it off the dev port means the suite can
+// run while a dev server is up.
+const ORIGIN = process.env.E2E_ORIGIN ?? 'http://127.0.0.1:5173';
+const API = process.env.E2E_API ?? ORIGIN;
+const WEB = process.env.E2E_WEB ?? ORIGIN;
 
 const children = [];
 function start(name, cmd, args, cwd) {
@@ -57,7 +66,7 @@ process.on('SIGINT', () => { stopAll(); process.exit(130); });
 
 // Anything left over from a previous run holds the port and its state.
 if (process.platform === 'win32') {
-  for (const port of [4000, 5173, Number(process.env.JUDGE0_STUB_PORT ?? 2358)]) {
+  for (const port of [5173, Number(process.env.JUDGE0_STUB_PORT ?? 2358)]) {
     try {
       const out = execSync('netstat -ano | findstr :' + port, { encoding: 'utf8' });
       const pids = new Set(
@@ -101,16 +110,18 @@ process.env.ONYX_JUDGE0_URL = process.env.ONYX_JUDGE0_URL ?? SANDBOX_URL;
 const { clearTokenCache } = await import('../tests/e2e/harness.ts');
 clearTokenCache();
 
-console.log('starting the sandbox stub, api and web...');
+console.log('starting the sandbox stub and the app...');
 start('sandbox', 'node', ['tools/judge0-stub.mjs'], ROOT);
 await waitFor(SANDBOX_URL + '/__received', 'sandbox stub');
 
-start('api', 'node', ['--env-file=../../.env', 'src/server.ts'], path.join(ROOT, 'apps/api'));
-start('web', 'npx', ['next', 'start', '-p', '5173'], path.join(ROOT, 'apps/web'));
+// One process. It serves the pages and the API, so /health and /login are the
+// same server answering -- both are still waited on, because they exercise
+// different halves of it: the route table, and the page router.
+start('app', 'npx', ['next', 'start', '-p', '5173'], path.join(ROOT, 'apps/web'));
 
-await waitFor(API + '/health', 'api');
-await waitFor(WEB + '/login', 'web');
-console.log('api and web are up\n');
+await waitFor(API + '/health', 'the API');
+await waitFor(WEB + '/login', 'the pages');
+console.log('the app is up\n');
 
 // One file at a time: they share a database and a test student, so parallel
 // runs interfere with each other's cart and enrolment state.

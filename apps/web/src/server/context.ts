@@ -13,7 +13,7 @@
  * limit is reached and the symptom looks like a dead database. Same reason
  * Prisma's own Next.js guidance reaches for `globalThis`.
  */
-import { createContext, type AppContext } from '../../../api/src/context.ts';
+import { createContext, type AppContext } from './app-context.ts';
 
 const KEY = Symbol.for('@onyx/web/app-context');
 type WithCtx = typeof globalThis & { [KEY]?: AppContext };

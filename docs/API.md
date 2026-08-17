@@ -23,7 +23,7 @@ docs:check` fails the build if it has.
 
 ## Assessment · _ASS-01 to ASS-04_
 
-`apps/api/src/routes/onyx/assess.routes.ts`
+`apps/web/src/server/routes/onyx/assess.routes.ts`
 
 | Method | Path | Who may call it |
 | --- | --- | --- |
@@ -62,7 +62,7 @@ docs:check` fails the build if it has.
 
 ## Campus operations · _CMP-01 to CMP-04_
 
-`apps/api/src/routes/onyx/campus.routes.ts`
+`apps/web/src/server/routes/onyx/campus.routes.ts`
 
 | Method | Path | Who may call it |
 | --- | --- | --- |
@@ -129,7 +129,7 @@ docs:check` fails the build if it has.
 
 ## Career · _CAR-01 to CAR-05_
 
-`apps/api/src/routes/onyx/career.routes.ts`
+`apps/web/src/server/routes/onyx/career.routes.ts`
 
 | Method | Path | Who may call it |
 | --- | --- | --- |
@@ -180,7 +180,7 @@ docs:check` fails the build if it has.
 
 ## Code Lab · _LAB-01 to LAB-05_
 
-`apps/api/src/routes/onyx/codelab.routes.ts`
+`apps/web/src/server/routes/onyx/codelab.routes.ts`
 
 | Method | Path | Who may call it |
 | --- | --- | --- |
@@ -214,7 +214,7 @@ docs:check` fails the build if it has.
 
 ## Engagement and support · _LRN-05, LRN-06_
 
-`apps/api/src/routes/onyx/engage.routes.ts`
+`apps/web/src/server/routes/onyx/engage.routes.ts`
 
 | Method | Path | Who may call it |
 | --- | --- | --- |
@@ -240,7 +240,7 @@ docs:check` fails the build if it has.
 
 ## Learning · _LRN-01 to LRN-04_
 
-`apps/api/src/routes/onyx/learn.routes.ts`
+`apps/web/src/server/routes/onyx/learn.routes.ts`
 
 | Method | Path | Who may call it |
 | --- | --- | --- |
@@ -302,7 +302,7 @@ docs:check` fails the build if it has.
 
 ## Notifications · _the inbox_
 
-`apps/api/src/routes/onyx/notify.routes.ts`
+`apps/web/src/server/routes/onyx/notify.routes.ts`
 
 | Method | Path | Who may call it |
 | --- | --- | --- |
@@ -312,7 +312,7 @@ docs:check` fails the build if it has.
 
 ## Platform console · _above every institution_
 
-`apps/api/src/routes/onyx/platform.routes.ts`
+`apps/web/src/server/routes/onyx/platform.routes.ts`
 
 | Method | Path | Who may call it |
 | --- | --- | --- |
@@ -362,7 +362,7 @@ docs:check` fails the build if it has.
 
 ## Tenancy, people and audit · _CMP-05 / F-01 to F-06_
 
-`apps/api/src/routes/onyx/tenancy.routes.ts`
+`apps/web/src/server/routes/onyx/tenancy.routes.ts`
 
 | Method | Path | Who may call it |
 | --- | --- | --- |

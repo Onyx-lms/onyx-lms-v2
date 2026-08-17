@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { appOrigin } from '@/lib/app-origin';
 
 /**
  * A platform admin's session -- deliberately its own cookie and its own
@@ -31,7 +32,7 @@ export interface PlatformSessionCookie {
   expires_at: number;
 }
 
-const API = process.env.API_URL ?? 'http://127.0.0.1:4000';
+const API = appOrigin();
 
 function decodeClaims(token: string): PlatformClaims | null {
   try {

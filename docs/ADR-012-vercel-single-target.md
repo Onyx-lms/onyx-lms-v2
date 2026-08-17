@@ -141,6 +141,29 @@ grants or ownership.
   device to Mumbai rather than Singapore to Mumbai, and RLS policies are
   evaluated per row. Reads stay in Server Components by default.
 
+### The Fastify server is gone
+
+It was kept deliberately long after it stopped serving traffic, as a **parity
+oracle**: the same e2e suites could be pointed at either server via `E2E_API` and
+the answers diffed, which is the only cheap way to prove a 574-handler port did
+not change behaviour somewhere nobody thought to look. That paid for itself
+twice — it is how the `HttpError`-across-two-module-copies bug was found (a 500
+carrying the body of a 401), and how a 33-test gap was diagnosed as parallel
+suites overwhelming a compiling dev server rather than a shim defect.
+
+It was removed once the final serial run showed **zero tests failing on the Next
+server that passed on Fastify**. With it went `apps/api` entirely: the 33 route
+files moved to `apps/web/src/server/routes/`, the DI container to
+`apps/web/src/server/app-context.ts`, and the two Fastify type names those files
+referenced (`FastifyInstance`, `FastifyRequest`) became the shim's own `Router`
+and `ReqLike`. That deleted the one cast the migration had carried, and the
+stricter types immediately found four latent issues Fastify's looser ones had
+hidden — `req.ip` really can be null, and an indexed `params` access really can
+be undefined.
+
+`npm run dev:api` is gone; `npm run dev` runs the product. `tools/e2e-run.mjs` and
+`playwright.config.ts` start one server instead of two.
+
 ### Rejected alternative
 
 **Pure browser → Supabase, no server code at all.** This was the original

@@ -18,7 +18,7 @@ import path from 'node:path';
 
 const REPO = path.dirname(path.dirname(new URL('.', import.meta.url).pathname
   .replace(/^[/]([A-Za-z]:)/, '$1')));
-const ROUTES = path.join(REPO, 'apps', 'api', 'src', 'routes', 'onyx');
+const ROUTES = path.join(REPO, 'apps', 'web', 'src', 'server', 'routes', 'onyx');
 const OUT = path.join(REPO, 'docs', 'API.md');
 
 /** Which requirement each route file serves, for the section headings. */
@@ -131,7 +131,7 @@ for (const file of files) {
 
   lines.push('## ' + title + (req ? ' · _' + req + '_' : ''));
   lines.push('');
-  lines.push('`apps/api/src/routes/onyx/' + file + '`');
+  lines.push('`apps/web/src/server/routes/onyx/' + file + '`');
   lines.push('');
   lines.push('| Method | Path | Who may call it |');
   lines.push('| --- | --- | --- |');

@@ -4,8 +4,12 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 
-const API = process.env.E2E_API ?? 'http://127.0.0.1:4000';
 const WEB = process.env.E2E_WEB ?? 'http://127.0.0.1:5173';
+// The same origin. The API is served by the Next app itself now, so the split
+// that used to be here -- a Fastify process on :4000 -- is gone. It keeps its own
+// name because the specs read it, and because it can still be pointed at a
+// preview deployment independently.
+const API = process.env.E2E_API ?? WEB;
 
 /**
  * Browser-level suite -- drives the real Onyx UI in real Chromium.
@@ -46,17 +50,15 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
+  // One server, because the API is served by the Next app now (docs/ADR-012).
+  // This used to start two: a Fastify process on :4000 and the site on :5173.
   webServer: [
-    {
-      command: 'node --env-file=../../.env src/server.ts',
-      cwd: path.join(ROOT, 'apps/api'),
-      url: API + '/health',
-      reuseExistingServer: true,
-      timeout: 60_000,
-    },
     {
       command: 'npm run build --workspace @onyx/web && npm run start --workspace @onyx/web',
       cwd: ROOT,
+      // Waits on a page rather than /health: a built Next server answers
+      // /health as soon as the route table is registered, but the specs drive
+      // pages, and the page router is the half that takes the time.
       url: WEB + '/onyx/login',
       reuseExistingServer: true,
       timeout: 180_000,

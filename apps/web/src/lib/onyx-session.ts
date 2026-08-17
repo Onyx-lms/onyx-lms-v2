@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { appOrigin } from '@/lib/app-origin';
 
 /**
  * Onyx's server-side session (F-03 / F-06).
@@ -59,7 +60,7 @@ export interface OnyxSessionCookie {
   expires_at: number;
 }
 
-const API = process.env.API_URL ?? 'http://127.0.0.1:4000';
+const API = appOrigin();
 
 function decodeClaims(token: string): OnyxClaims | null {
   try {

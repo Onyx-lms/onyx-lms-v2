@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { ONYX_COOKIE, getOnyxToken, getOnyxRefreshToken } from '@/lib/onyx-session';
+import { appOrigin } from '@/lib/app-origin';
 
-const API = process.env.API_URL ?? 'http://127.0.0.1:4000';
+const API = appOrigin();
 
 /**
  * Onyx auth, proxied so the token can be stored in a cookie this origin owns.

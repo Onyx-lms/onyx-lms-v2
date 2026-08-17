@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { TOKEN_COOKIE } from '@/lib/session';
+import { appOrigin } from '@/lib/app-origin';
 
-const API = process.env.API_URL ?? 'http://127.0.0.1:4000';
+const API = appOrigin();
 
 /** Allow-list, not a passthrough proxy. */
 const ROUTES: Record<string, string> = {

@@ -253,9 +253,9 @@ function isHttpError(err: unknown): err is HttpError {
       && typeof (err as HttpError).toBody === 'function');
 }
 
-/** P-08: every failure leaves through one envelope -- the same one
- *  apps/api/src/plugins/error-handler.ts produces, so responses do not change
- *  shape between the Fastify server and this one. */
+/** P-08: every failure leaves through one envelope -- byte-for-byte the one the
+ *  Fastify server's error handler produced, which is why response shapes did not
+ *  change when it was removed. */
 export function errorBody(err: unknown): { status: number; body: unknown } {
   if (isHttpError(err)) return { status: err.status, body: err.toBody() };
   const production = process.env.NODE_ENV === 'production';

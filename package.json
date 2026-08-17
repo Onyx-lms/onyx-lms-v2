@@ -23,7 +23,6 @@
     "docs:check": "node tools/onyx/gen-api-docs.mjs --check",
     "load:test": "node --env-file=.env tools/onyx/load-test.mjs",
     "test": "node --test packages/core/test/*.test.ts",
-    "dev:api": "node --watch apps/api/src/server.ts",
     "db:migrate": "node tools/db/migrate.mjs",
     "db:reset": "node tools/db/migrate.mjs --reset",
     "db:reload-cache": "node tools/db/reload-cache.mjs",
@@ -40,7 +39,8 @@
     "verify:all": "npm run verify:parity && npm test && npm run test:server && npm run typecheck && npm run docs:check && npm run db:audit && npm run e2e && npm run test:rls",
     "db:backup": "node tools/db/backup.mjs",
     "test:rls": "node --test tests/rls/isolation.test.ts",
-    "test:server": "node --test apps/web/src/server/*.test.ts"
+    "test:server": "node --test apps/web/src/server/*.test.ts",
+    "dev": "npm run dev --workspace @onyx/web"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

@@ -300,11 +300,12 @@ cp .env.example .env          # fill in Supabase keys
 npm run db:migrate            # schema + indexes + seed + RLS
 npm run db:verify             # live schema vs Laravel, column by column
 
-npm run dev:api               # Fastify on :4000
-npm run dev:web               # Next.js on :5173
+npm run dev                   # the whole product on :5175 -- pages AND API
 ```
 
-The web app talks to the API through `API_URL` (see `apps/web/.env.local`).
+One process. The API is served by the Next app itself (docs/ADR-012), so there is
+no second server to start; `API_URL` in `apps/web/.env.local` points at this app's
+own origin.
 Catalog pages are server-rendered so metadata and structured data ship in the
 HTML -- the entire reason the SEO-fields module (C-05) exists.
 
@@ -357,8 +358,8 @@ npm install
 npm run verify:parity     # proves the schema matches Laravel, table for table
 npm test                  # 41 tests, no database required
 cp .env.example .env      # then fill in your Supabase keys
-npm run dev:api
-curl localhost:4000/health
+npm run dev
+curl localhost:5175/health
 ```
 
 ## Layout
@@ -375,7 +376,8 @@ supabase/seed.sql      settings, 4 languages, 404 phrases, categories
 tools/                 generators + the parity verifier
 packages/types/        generated Database types + Zod schemas for JSON columns
 packages/core/         settings, i18n, storage, auth, http conventions
-apps/api/              Fastify API
+apps/web/              Next.js -- pages and the API, one deployable
+  src/server/          the router shim, the route layer, the DI container
 docs/                  ADRs -- read ADR-001 before touching auth
 ```
 

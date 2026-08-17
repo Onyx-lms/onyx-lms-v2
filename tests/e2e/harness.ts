@@ -1,9 +1,9 @@
 /**
  * End-to-end harness.
  *
- * These tests talk to a RUNNING api (:4000), web (:5173) and the real Supabase
- * database. Nothing is mocked -- that is the point. Unit tests use an in-memory
- * fake that enforces no column widths, no constraints and no RLS, so anything
+ * These tests talk to a RUNNING app (:5173) and the real Supabase database.
+ * Nothing is mocked -- that is the point. Unit tests use an in-memory fake that
+ * enforces no column widths, no constraints and no RLS, so anything
  * schema-sensitive only shows up here.
  */
 import fs from 'node:fs';
@@ -11,7 +11,22 @@ import os from 'node:os';
 import path from 'node:path';
 import pg from 'pg';
 
-export const API = process.env.E2E_API ?? 'http://127.0.0.1:4000';
+/**
+ * One origin, because there is one server.
+ *
+ * `API` used to default to :4000, the separately hosted Fastify process. That
+ * process no longer exists (docs/ADR-012) -- the Next app serves the API itself --
+ * so both point at the same place, which is where tools/e2e-run.mjs starts it.
+ *
+ * They remain two names rather than one because every suite already reads both,
+ * and because pointing them apart is still useful: a preview deployment can be
+ * exercised by setting only E2E_API.
+ *
+ * 5173 rather than the 5175 the dev server uses, deliberately: `npm run e2e`
+ * builds and runs a production server, so keeping it off the dev port lets the
+ * suite run while a dev server is up. Set E2E_API to aim at a dev server instead.
+ */
+export const API = process.env.E2E_API ?? 'http://127.0.0.1:5173';
 export const WEB = process.env.E2E_WEB ?? 'http://127.0.0.1:5173';
 
 const ROOT = new URL('../../', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');

@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { PLATFORM_COOKIE } from '@/lib/onyx-platform-session';
+import { appOrigin } from '@/lib/app-origin';
 
-const API = process.env.API_URL ?? 'http://127.0.0.1:4000';
+const API = appOrigin();
 
 /**
  * Platform sign-in, proxied the same way onyx/[action]/route.ts handles

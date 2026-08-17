@@ -108,21 +108,56 @@ function respond(payload: unknown, captured: CapturedReply): Response {
   return res;
 }
 
+/**
+ * `/api/proxy/...` means the same route as `/api/...`.
+ *
+ * That prefix is a leftover with a reason: while the API lived on another origin,
+ * client components could not attach the httpOnly session cookie themselves, so
+ * they called `/api/proxy/*` and a handler forwarded the request with a bearer
+ * header. The origin boundary is gone -- but 122 call sites across the app still
+ * use the path, and rewriting them all is churn with no behavioural payoff.
+ *
+ * Stripped here rather than by a `next.config.mjs` rewrite, because a rewrite did
+ * not work: it routed the request to this handler but left `request.url` reading
+ * `/api/proxy/...`, so the matcher looked up a path no route declares and answered
+ * 404 -- for every one of those 122 call sites. Doing it in code is predictable
+ * and testable, which a rewrite's interaction with filesystem-route precedence
+ * was not.
+ */
+const PROXY_PREFIX = '/api/proxy/';
+
+/**
+ * Drops the `proxy` segment only, keeping `/api` -- `/api/proxy/settings` becomes
+ * `/api/settings`, which is what the route table declares. Slicing the whole
+ * prefix off instead leaves `/settings` and matches nothing.
+ */
+function routePathFor(pathname: string): string {
+  return pathname.startsWith(PROXY_PREFIX)
+    ? '/api/' + pathname.slice(PROXY_PREFIX.length)
+    : pathname;
+}
+
 async function handle(request: Request, params: Promise<{ path: string[] }>): Promise<Response> {
-  const { path: segments } = await params;
+  const { path: rawSegments } = await params;
   const url = new URL(request.url);
+  const routePath = routePathFor(url.pathname);
+  // The token is chosen by the path's first segment ('onyx' vs the port), so the
+  // proxy prefix has to come off here too or every proxied Onyx call would be
+  // handed the port's cookie.
+  const segments = rawSegments[0] === 'proxy' ? rawSegments.slice(1) : rawSegments;
+
   const table = routeTable();
-  const hit = table.match(request.method, url.pathname);
+  const hit = table.match(request.method, routePath);
   if (!hit) return NextResponse.json(NOT_FOUND_BODY, { status: 404 });
 
   /**
    * The body is read as text once and parsed from that, never re-read.
    *
-   * Two reasons, both inherited from the Fastify server's custom content-type
-   * parser (apps/api/src/server.ts:52-62). Webhook signatures are computed over
-   * the exact bytes the gateway sent, so `rawBody` has to survive; and an empty
-   * body must arrive as `undefined` rather than `''`, because several bodyless
-   * POSTs distinguish the two and `JSON.parse('')` throws.
+   * Two reasons, both inherited from the custom content-type parser the Fastify
+   * server carried before it was removed. Webhook signatures are computed over the
+   * exact bytes the gateway sent, so `rawBody` has to survive; and an empty body
+   * must arrive as `undefined` rather than `''`, because several bodyless POSTs
+   * distinguish the two and `JSON.parse('')` throws.
    *
    * Multipart is left alone: `request.formData()` is the only way to read it
    * here, and the one route that needs it reads it itself.

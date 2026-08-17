@@ -46,7 +46,7 @@ test('a static segment beats a parameter at the same depth', () => {
 });
 
 test('every real ambiguous pair in the codebase resolves to the static route', () => {
-  // Extracted from apps/api/src/routes/**; all eight that exist.
+  // Extracted from the route files; all eight that exist.
   const pairs: [string, string][] = [
     ['/api/blogs/categories', '/api/blogs/:slug'],
     ['/api/blogs/popular', '/api/blogs/:slug'],
@@ -128,6 +128,38 @@ test('an unmatched path returns null so the caller can produce the 404 envelope'
   const match = routerWith([['GET', '/api/onyx/courses/:id']]);
   assert.equal(match('GET', '/api/nope'), null);
   assert.deepEqual(NOT_FOUND_BODY, { ok: false, level: 'error', message: 'Not found.' });
+});
+
+test('the /api/proxy prefix resolves to the same route as the bare path', () => {
+  // 122 client call sites still use /api/proxy/*, a leftover from when the API was
+  // on another origin and a handler had to attach the httpOnly token for them.
+  // The catch-all strips the `proxy` segment; this pins the two mistakes that are
+  // easy to make and impossible to notice, since both just 404 for every one of
+  // those 122 sites:
+  //
+  //   * slicing the whole '/api/proxy' prefix, leaving '/settings' -- no route
+  //     declares that
+  //   * relying on a next.config rewrite, which routes the request here but
+  //     leaves request.url reading '/api/proxy/...'
+  //
+  // Kept in step with routePathFor() in app/api/[...path]/route.ts.
+  const strip = (pathname: string) => (pathname.startsWith('/api/proxy/')
+    ? '/api/' + pathname.slice('/api/proxy/'.length)
+    : pathname);
+
+  const match = routerWith([
+    ['GET', '/api/settings'],
+    ['GET', '/api/onyx/courses/:id'],
+  ]);
+
+  assert.equal(match('GET', strip('/api/proxy/settings'))?.pattern, '/api/settings');
+  assert.equal(match('GET', strip('/api/proxy/onyx/courses/7'))?.pattern, '/api/onyx/courses/:id');
+  assert.equal(match('GET', strip('/api/proxy/onyx/courses/7'))?.params.id, '7');
+
+  // The bare paths must be untouched by the stripping.
+  assert.equal(match('GET', strip('/api/settings'))?.pattern, '/api/settings');
+  // And a word merely beginning with "proxy" is not the prefix.
+  assert.equal(strip('/api/proxying'), '/api/proxying');
 });
 
 /* ------------------------------------------------------------------ reply --- */

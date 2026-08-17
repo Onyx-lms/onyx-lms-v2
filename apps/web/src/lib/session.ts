@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { appOrigin } from '@/lib/app-origin';
 
 /**
  * Server-side session.
@@ -39,7 +40,7 @@ export async function getSession(): Promise<Claims | null> {
 
 export async function apiAuth<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getToken();
-  const res = await fetch((process.env.API_URL ?? 'http://127.0.0.1:4000') + path, {
+  const res = await fetch(appOrigin() + path, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
