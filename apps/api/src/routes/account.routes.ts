@@ -23,8 +23,10 @@ const RegisterBody = z.object({
 const isDev = () => process.env.NODE_ENV !== 'production';
 
 export function registerAccountRoutes(app: FastifyInstance, ctx: AppContext): void {
-  const throttle = (key: string) => {
-    if (!ctx.limiter.check(key, 6).allowed) throw tooManyRequests();
+  // Async since the limiter's buckets moved into Postgres -- they have to be
+  // shared across instances to mean anything on serverless.
+  const throttle = async (key: string) => {
+    if (!(await ctx.limiter.check(key, 6)).allowed) throw tooManyRequests();
   };
 
   const siteTitle = async () => (await ctx.settings.get('system_title')) ?? 'Onyx LMS';
@@ -58,7 +60,7 @@ export function registerAccountRoutes(app: FastifyInstance, ctx: AppContext): vo
 
   app.post('/api/auth/email/resend', async (req) => {
     const body = validate(z.object({ email: z.string().email() }), req.body);
-    throttle('verify-resend:' + req.ip + ':' + body.email);
+    await throttle('verify-resend:' + req.ip + ':' + body.email);
     const { data } = await ctx.db.from('users')
       .select('id, email, email_verified_at').eq('email', body.email.toLowerCase()).maybeSingle();
     // Same response whether or not the address exists or is already verified.
@@ -69,7 +71,7 @@ export function registerAccountRoutes(app: FastifyInstance, ctx: AppContext): vo
 
   app.post('/api/auth/password/forgot', async (req) => {
     const body = validate(z.object({ email: z.string().email() }), req.body);
-    throttle('pwd-forgot:' + req.ip);
+    await throttle('pwd-forgot:' + req.ip);
     const token = await ctx.passwordReset.request(body.email);
 
     let debug: Record<string, unknown> = {};
@@ -89,7 +91,7 @@ export function registerAccountRoutes(app: FastifyInstance, ctx: AppContext): vo
       token: z.string().min(1),
       password: z.string().min(8),
     }), req.body);
-    throttle('pwd-reset:' + req.ip);
+    await throttle('pwd-reset:' + req.ip);
     await ctx.passwordReset.reset(body.email, body.token, body.password);
     return ok({}, 'Password has been reset.');
   });

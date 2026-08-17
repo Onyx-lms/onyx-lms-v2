@@ -27,17 +27,21 @@
  * `queued` with a backoff until `max_attempts`, then stops at `failed` with the
  * last error kept. Nothing is silently dropped, and nothing retries forever.
  *
- * This class talks to Postgres directly rather than through PostgREST: the
- * claim is one statement whose atomicity is the point, and expressing it as
- * separate reads and writes would reintroduce exactly the race it prevents.
+ * **No direct Postgres connection.** This class used to hold one, because the
+ * claim is a single statement whose atomicity is the point and PostgREST cannot
+ * express `FOR UPDATE SKIP LOCKED`. That was free while the API was one
+ * long-lived process with one pool; under serverless it is not -- every warm
+ * instance opens its own pool, instances are created in response to load, and
+ * Supabase's pooler runs out of connections long before Vercel runs out of
+ * appetite for instances.
+ *
+ * So the three statements that genuinely need SQL became Postgres functions
+ * (migration 0019) and everything else is a plain PostgREST insert or update.
+ * The claim's atomicity did not move to the client -- it moved *into the
+ * database*, which is a stronger place for it. `pool.ts` survives for
+ * tools/db/* and the local Fastify server; nothing on a request path opens a
+ * socket to Postgres any more.
  */
-
-/** The narrow slice of `pg` this needs, so tests can supply their own. */
-export interface SqlRunner {
-  query<R = Record<string, unknown>>(
-    text: string, values?: unknown[],
-  ): Promise<{ rows: R[]; rowCount: number | null }>;
-}
 
 /**
  * The kinds this codebase handles today, and room for the ones ADR-006 says are
@@ -74,25 +78,57 @@ export function backoffSeconds(attempt: number): number {
   return Math.min(10 * 2 ** Math.max(0, attempt - 1), 300);
 }
 
+/**
+ * The slice of the Supabase client this needs -- narrow so tests can fake it
+ * without standing up PostgREST's whole chaining surface.
+ *
+ * `PromiseLike` rather than `Promise`: supabase-js returns builders that are
+ * awaitable but are not Promises.
+ */
+export interface QueueDb {
+  from(table: string): {
+    insert(values: Record<string, unknown>): {
+      select(columns: string): {
+        maybeSingle(): PromiseLike<{ data: { id: number | string } | null; error: { message: string } | null }>;
+      };
+    };
+    update(values: Record<string, unknown>): {
+      eq(column: string, value: unknown): PromiseLike<{ error: { message: string } | null }>;
+    };
+  };
+  rpc(fn: string, args?: Record<string, unknown>): PromiseLike<{
+    data: unknown; error: { message: string } | null;
+  }>;
+}
+
 export class QueueService {
-  #sql: SqlRunner;
+  #db: QueueDb;
   #name: string;
 
-  constructor(sql: SqlRunner, workerName = 'worker') {
-    this.#sql = sql;
+  constructor(db: QueueDb, workerName = 'worker') {
+    this.#db = db;
     this.#name = workerName;
   }
 
+  /**
+   * `run_after` is computed here rather than as `now() + interval` in SQL.
+   *
+   * The alternative was a fourth Postgres function for what is otherwise a plain
+   * insert. Both clocks are UTC and NTP-synced, and the shortest delay this is
+   * ever called with is measured in seconds, so a few milliseconds of skew cannot
+   * change which side of `run_after <= now()` a job falls on.
+   */
   async enqueue(input: EnqueueInput): Promise<number> {
-    const { rows } = await this.#sql.query<{ id: string }>(
-      `INSERT INTO public."onyx_jobs"
-         ("tenant_id", "kind", "payload", "max_attempts", "run_after")
-       VALUES ($1, $2, $3::jsonb, $4, now() + make_interval(secs => $5))
-       RETURNING "id"`,
-      [input.tenantId, input.kind, JSON.stringify(input.payload ?? {}),
-        input.maxAttempts ?? 3, input.delaySeconds ?? 0],
-    );
-    return Number(rows[0]!.id);
+    const runAfter = new Date(Date.now() + (input.delaySeconds ?? 0) * 1000).toISOString();
+    const { data, error } = await this.#db.from('onyx_jobs').insert({
+      tenant_id: input.tenantId,
+      kind: input.kind,
+      payload: input.payload ?? {},
+      max_attempts: input.maxAttempts ?? 3,
+      run_after: runAfter,
+    }).select('id').maybeSingle();
+    if (error) throw new Error('Could not enqueue the job: ' + error.message);
+    return Number(data!.id);
   }
 
   /**
@@ -101,38 +137,24 @@ export class QueueService {
    * Everything about correctness under load lives in this one statement.
    */
   async claim(limit = 1, kinds?: JobKind[]): Promise<Job[]> {
-    const kindFilter = kinds?.length ? 'AND j."kind" = ANY($3)' : '';
-    const params: unknown[] = [limit, this.#name];
-    if (kinds?.length) params.push(kinds);
+    // The atomicity lives in onyx_claim_jobs (migration 0019), not here. That is
+    // the point: FOR UPDATE SKIP LOCKED cannot be expressed through PostgREST,
+    // and splitting it into a read and a write from this side would reintroduce
+    // the exact race it exists to prevent.
+    const { data, error } = await this.#db.rpc('onyx_claim_jobs', {
+      p_limit: limit,
+      p_worker: this.#name,
+      p_kinds: kinds?.length ? kinds : null,
+    });
+    if (error) throw new Error('Could not claim jobs: ' + error.message);
 
-    const { rows } = await this.#sql.query<Record<string, unknown>>(
-      `UPDATE public."onyx_jobs" AS t
-          SET "status" = 'running',
-              "attempts" = t."attempts" + 1,
-              "locked_at" = now(),
-              "locked_by" = $2,
-              "updated_at" = now()
-        WHERE t."id" IN (
-          SELECT j."id" FROM public."onyx_jobs" j
-           WHERE j."status" = 'queued'
-             AND j."run_after" <= now()
-             ${kindFilter}
-           ORDER BY j."id"
-           FOR UPDATE SKIP LOCKED
-           LIMIT $1
-        )
-        RETURNING t."id", t."tenant_id", t."kind", t."payload",
-                  t."attempts", t."max_attempts"`,
-      params,
-    );
-
-    return rows.map((r) => ({
-      id: Number(r.id),
-      tenant_id: Number(r.tenant_id),
-      kind: r.kind as JobKind,
-      payload: (r.payload ?? {}) as Record<string, unknown>,
-      attempts: Number(r.attempts),
-      max_attempts: Number(r.max_attempts),
+    return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: Number(r['id']),
+      tenant_id: Number(r['tenant_id']),
+      kind: r['kind'] as JobKind,
+      payload: (r['payload'] ?? {}) as Record<string, unknown>,
+      attempts: Number(r['attempts']),
+      max_attempts: Number(r['max_attempts']),
     }));
   }
 
@@ -140,11 +162,13 @@ export class QueueService {
     // `locked_by` is kept rather than cleared: on a finished job it records
     // which worker did it, which is the first thing anyone asks when a result
     // looks wrong.
-    await this.#sql.query(
-      `UPDATE public."onyx_jobs"
-          SET "status" = 'done', "locked_at" = NULL,
-              "last_error" = NULL, "updated_at" = now()
-        WHERE "id" = $1`, [id]);
+    const { error } = await this.#db.from('onyx_jobs').update({
+      status: 'done',
+      locked_at: null,
+      last_error: null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', id);
+    if (error) throw new Error('Could not complete the job: ' + error.message);
   }
 
   /**
@@ -157,16 +181,19 @@ export class QueueService {
   async fail(job: Job, error: unknown): Promise<'retry' | 'failed'> {
     const message = error instanceof Error ? error.message : String(error);
     const exhausted = job.attempts >= job.max_attempts;
-    await this.#sql.query(
-      `UPDATE public."onyx_jobs"
-          SET "status" = $2,
-              "run_after" = now() + make_interval(secs => $3),
-              "locked_at" = NULL, "locked_by" = NULL,
-              "last_error" = $4, "updated_at" = now()
-        WHERE "id" = $1`,
-      [job.id, exhausted ? 'failed' : 'queued',
-        exhausted ? 0 : backoffSeconds(job.attempts), message.slice(0, 2000)],
-    );
+    const backoff = exhausted ? 0 : backoffSeconds(job.attempts);
+    const { error: dbError } = await this.#db.from('onyx_jobs').update({
+      status: exhausted ? 'failed' : 'queued',
+      // Computed here for the same reason enqueue() computes run_after: the
+      // alternative is a Postgres function for an otherwise-plain update, and the
+      // backoff is measured in tens of seconds, so clock skew is immaterial.
+      run_after: new Date(Date.now() + backoff * 1000).toISOString(),
+      locked_at: null,
+      locked_by: null,
+      last_error: message.slice(0, 2000),
+      updated_at: new Date().toISOString(),
+    }).eq('id', job.id);
+    if (dbError) throw new Error('Could not record the failure: ' + dbError.message);
     return exhausted ? 'failed' : 'retry';
   }
 
@@ -177,25 +204,28 @@ export class QueueService {
    * `running` forever. Nothing else notices, so this is swept on an interval.
    */
   async requeueStale(olderThanSeconds = 300): Promise<number> {
-    const { rowCount } = await this.#sql.query(
-      `UPDATE public."onyx_jobs"
-          SET "status" = CASE WHEN "attempts" >= "max_attempts" THEN 'failed' ELSE 'queued' END,
-              "locked_at" = NULL, "locked_by" = NULL,
-              "last_error" = COALESCE("last_error", 'worker stopped without finishing'),
-              "updated_at" = now()
-        WHERE "status" = 'running'
-          AND "locked_at" < now() - make_interval(secs => $1)`,
-      [olderThanSeconds]);
-    return rowCount ?? 0;
+    // A per-row CASE decides whether a job that died holding the lock has any
+    // attempts left, which PostgREST cannot express -- hence the function.
+    const { data, error } = await this.#db.rpc('onyx_requeue_stale_jobs', {
+      p_older_than_seconds: olderThanSeconds,
+    });
+    if (error) throw new Error('Could not requeue stale jobs: ' + error.message);
+    return Number(data ?? 0);
   }
 
   /** For the operator view, and for tests that need to see the shape. */
   async stats(tenantId?: number) {
-    const { rows } = await this.#sql.query<{ status: string; kind: string; n: string }>(
-      `SELECT "status", "kind", count(*)::text AS n FROM public."onyx_jobs"
-        WHERE ($1::bigint IS NULL OR "tenant_id" = $1)
-        GROUP BY "status", "kind"`, [tenantId ?? null]);
-    return rows.map((r) => ({ status: r.status, kind: r.kind, count: Number(r.n) }));
+    // GROUP BY, in the database. Reading every row back to count them here would
+    // be the wrong shape at any real volume.
+    const { data, error } = await this.#db.rpc('onyx_job_stats', {
+      p_tenant_id: tenantId ?? null,
+    });
+    if (error) throw new Error('Could not read the queue stats: ' + error.message);
+    return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+      status: String(r['status']),
+      kind: String(r['kind']),
+      count: Number(r['count']),
+    }));
   }
 }
 

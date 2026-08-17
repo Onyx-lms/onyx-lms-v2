@@ -4,7 +4,9 @@ import { z } from 'zod';
 import { validate } from '../src/http/validate.ts';
 import { HttpError, ok } from '../src/http/errors.ts';
 import { paginate, parsePageQuery } from '../src/http/pagination.ts';
-import { RateLimiter, MemoryRateLimitStore } from '../src/http/rate-limit.ts';
+import {
+  RateLimiter, MemoryRateLimitStore, SupabaseRateLimitStore,
+} from '../src/http/rate-limit.ts';
 
 test('validation failures come back field-keyed like Laravel', () => {
   const schema = z.object({ email: z.string().email(), password: z.string().min(8) });
@@ -56,11 +58,62 @@ test('empty result set reports null from/to like Laravel', () => {
   assert.equal(page.last_page, 1);
 });
 
-test('rate limiter reproduces throttle:6,1', () => {
+test('rate limiter reproduces throttle:6,1', async () => {
   const limiter = new RateLimiter(new MemoryRateLimitStore());
   for (let i = 1; i <= 6; i++) {
-    assert.equal(limiter.check('user:1', 6).allowed, true, 'attempt ' + i);
+    assert.equal((await limiter.check('user:1', 6)).allowed, true, 'attempt ' + i);
   }
-  assert.equal(limiter.check('user:1', 6).allowed, false, '7th attempt blocked');
-  assert.equal(limiter.check('user:2', 6).allowed, true, 'other key unaffected');
+  assert.equal((await limiter.check('user:1', 6)).allowed, false, '7th attempt blocked');
+  assert.equal((await limiter.check('user:2', 6)).allowed, true, 'other key unaffected');
+});
+
+test('the Supabase store counts from the row the database returns', async () => {
+  // Stands in for the shared bucket: the count comes back from Postgres, not from
+  // anything this process remembers -- which is the whole point of the change.
+  let calls = 0;
+  const store = new SupabaseRateLimitStore({
+    rpc: async (fn, args) => {
+      assert.equal(fn, 'onyx_rate_limit_hit');
+      assert.equal(args['p_window_seconds'], 60);
+      calls += 1;
+      return {
+        data: [{ count: calls, reset_at: new Date(Date.now() + 60_000).toISOString() }],
+        error: null,
+      };
+    },
+  });
+  const limiter = new RateLimiter(store);
+  for (let i = 1; i <= 6; i++) {
+    assert.equal((await limiter.check('login:1.2.3.4:a@b.c', 6)).allowed, true, 'attempt ' + i);
+  }
+  assert.equal((await limiter.check('login:1.2.3.4:a@b.c', 6)).allowed, false, '7th blocked');
+});
+
+test('the Supabase store fails OPEN when the database is unreachable', async () => {
+  // Deliberate: the limiter guards against repetition, not catastrophe. Refusing
+  // on error would turn a blip in one table into "nobody can sign in", which is a
+  // far worse outage than the one it would be preventing.
+  const errors: string[] = [];
+  const store = new SupabaseRateLimitStore(
+    { rpc: async () => ({ data: null, error: { message: 'connection refused' } }) },
+    (m) => errors.push(m),
+  );
+  const limiter = new RateLimiter(store);
+  for (let i = 0; i < 20; i++) {
+    assert.equal((await limiter.check('k', 6)).allowed, true, 'allowed despite the failure');
+  }
+  assert.equal(errors.length, 20, 'and every failure is reported, never swallowed');
+  assert.match(errors[0]!, /connection refused/);
+});
+
+test('the Supabase store rejects a malformed row rather than trusting it', async () => {
+  const errors: string[] = [];
+  const store = new SupabaseRateLimitStore(
+    { rpc: async () => ({ data: [], error: null }) },
+    (m) => errors.push(m),
+  );
+  // An empty result set is not "count 0, therefore allowed" -- it is a broken
+  // contract, and it is reported as one before failing open.
+  assert.equal((await new RateLimiter(store).check('k', 6)).allowed, true);
+  assert.match(errors[0]!, /returned no row/);
 });

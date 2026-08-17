@@ -9,7 +9,7 @@
 import {
   SettingsService, I18nService, StorageService, AuthService,
   AcademicsService, ContentService, AttendanceService, AssignmentsService,
-  QueueService, CodeLabService, WorkspaceService, onyxSql,
+  QueueService, CodeLabService, WorkspaceService,
   AssessService, ProctorService, AssessAnalyticsService,
   CareerService, PlacementService, ContestService,
   EngageService, SupportService, CampusService, ExaminationsService,
@@ -37,7 +37,7 @@ import {
   SettingsAdminService, PlatformAdminService, CampaignService,
   TenancyService, AuditService, onyxServiceClient, OAuthClientsService,
   BlogService, BlogEngagementService, KnowledgeBaseService, TestimonialService,
-  RateLimiter, serviceClient, anonClient, type Db,
+  RateLimiter, SupabaseRateLimitStore, serviceClient, anonClient, type Db,
 } from '@onyx/core';
 
 export interface AppContext {
@@ -151,7 +151,7 @@ export function createContext(): AppContext {
   // LAB-02b. The queue is the one part of Onyx that talks to Postgres directly:
   // claiming work is a single FOR UPDATE SKIP LOCKED statement, and PostgREST
   // cannot express it.
-  const onyxQueue = new QueueService(onyxSql(), 'api-' + process.pid);
+  const onyxQueue = new QueueService(onyxDb, 'api-' + process.pid);
   // LAB-02a. Unconfigured is a first-class outcome -- the bank, the queue and
   // a workspace's files, snapshots and review all work without a sandbox;
   // only running code, in either place, does not.
@@ -288,7 +288,18 @@ export function createContext(): AppContext {
     mail,
     media: new MediaService(db, storage),
     webOrigin: process.env.WEB_ORIGIN ?? 'http://localhost:5173',
-    limiter: new RateLimiter(),
+    /**
+     * Shared buckets, not per-process ones.
+     *
+     * The default store is an in-memory Map, which counted correctly for exactly
+     * as long as there was one always-on API process. Serving the API from
+     * serverless functions makes "six attempts per minute" mean six per minute
+     * per instance -- and instances appear in response to load, i.e. in response
+     * to someone attempting a lot of logins. Nothing errors when that happens,
+     * which is why it has to be wired deliberately here rather than left to a
+     * default. See packages/core/src/http/rate-limit.ts.
+     */
+    limiter: new RateLimiter(new SupabaseRateLimitStore(onyxDb)),
     jwtSecret: process.env.SUPABASE_JWT_SECRET ?? '',
   };
 }

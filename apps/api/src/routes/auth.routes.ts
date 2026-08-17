@@ -20,7 +20,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
 
     // Laravel throttles auth attempts; same shape here, keyed on ip+email.
     const key = `login:${req.ip}:${body.email}`;
-    const gate = ctx.limiter.check(key, 6);
+    const gate = await ctx.limiter.check(key, 6);
     if (!gate.allowed) {
       reply.header('Retry-After', String(gate.retryAfter));
       throw tooManyRequests();

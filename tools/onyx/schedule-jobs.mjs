@@ -1,5 +1,5 @@
 /**
- * Points pg_cron at an environment's app, and schedules the two background jobs.
+ * Points pg_cron at an environment's app, and schedules the background jobs.
  *
  * Migration 0017 builds the mechanism -- pg_cron, pg_net, `onyx.job_runner` and
  * `onyx.trigger_job()` -- but deliberately schedules nothing, because a schedule
@@ -48,6 +48,22 @@ const JOBS = {
   'onyx-expire-attempts': ['* * * * *', '/api/cron/expire-attempts'],
 };
 
+/**
+ * Jobs that need no HTTP hop at all.
+ *
+ * Pure SQL, so pg_cron calls the function directly -- no pg_net, no endpoint, no
+ * shared secret, and nothing to be reachable from the internet. The two jobs above
+ * only go over HTTP because their logic lives in TypeScript and must not be
+ * duplicated in plpgsql; that reasoning does not apply here.
+ *
+ * Daily rather than per-minute: an expired rate-limit bucket is harmless, it is
+ * only the unbounded accumulation of them that matters, and 03:17 is a quiet
+ * minute chosen so it does not collide with every other cron on the hour.
+ */
+const SQL_JOBS = {
+  'onyx-rate-limit-sweep': ['17 3 * * *', 'SELECT public.onyx_rate_limit_sweep()'],
+};
+
 const env = loadEnv();
 const client = await connect();
 
@@ -61,7 +77,8 @@ try {
 
     const { rows: jobs } = await client.query(
       `SELECT jobname, schedule, active FROM cron.job
-        WHERE jobname = ANY($1) ORDER BY jobname`, [Object.keys(JOBS)]);
+        WHERE jobname = ANY($1) ORDER BY jobname`,
+      [[...Object.keys(JOBS), ...Object.keys(SQL_JOBS)]]);
     if (!jobs.length) console.log('cron: no Onyx jobs scheduled');
     for (const j of jobs) {
       console.log('cron: ' + j.jobname.padEnd(22) + j.schedule.padEnd(12)
@@ -86,7 +103,7 @@ try {
   }
 
   if (has('unschedule')) {
-    for (const name of Object.keys(JOBS)) {
+    for (const name of [...Object.keys(JOBS), ...Object.keys(SQL_JOBS)]) {
       // `cron.unschedule` throws if the job is absent, which makes a re-run of a
       // teardown fail for the wrong reason.
       const { rows } = await client.query(
@@ -137,6 +154,11 @@ try {
     await client.query('SELECT cron.schedule($1, $2, $3)',
       [name, schedule, `SELECT onyx.trigger_job(${quote(path)})`]);
     console.log('scheduled ' + name.padEnd(22) + schedule.padEnd(12) + path);
+  }
+
+  for (const [name, [schedule, statement]] of Object.entries(SQL_JOBS)) {
+    await client.query('SELECT cron.schedule($1, $2, $3)', [name, schedule, statement]);
+    console.log('scheduled ' + name.padEnd(22) + schedule.padEnd(12) + '(SQL, no HTTP)');
   }
 
   console.log('\nVerify with: node tools/onyx/schedule-jobs.mjs --status');

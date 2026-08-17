@@ -210,47 +210,84 @@ test('retries back off and then stop', () => {
   assert.equal(backoffSeconds(20), 300);
 });
 
-test('the claim statement is the one that makes double-grading impossible', async () => {
-  const statements: string[] = [];
+test('the claim goes through the function that holds the SKIP LOCKED guarantee', async () => {
+  // This used to assert on SQL text, because QueueService built the statement
+  // itself. It no longer does: the statement moved into Postgres (migration 0019)
+  // so that no request path has to open a `pg` connection -- every warm serverless
+  // instance would otherwise hold its own pool and exhaust Supabase's pooler.
+  //
+  // So the assertion splits in two. Here: that the service calls the right
+  // function with the right arguments. Below: that the function still contains
+  // SKIP LOCKED, read from the migration itself -- because losing that would not
+  // fail anything, it would double-grade under load, occasionally.
+  const calls: { fn: string; args: Record<string, unknown> }[] = [];
   const queue = new QueueService({
-    query: async (text: string) => {
-      statements.push(text);
-      return { rows: [], rowCount: 0 };
+    from: (() => { throw new Error('claim must not touch a table directly'); }) as never,
+    rpc: async (fn: string, args?: Record<string, unknown>) => {
+      calls.push({ fn, args: args ?? {} });
+      return { data: [], error: null };
     },
   }, 'worker-1');
-  await queue.claim(5, ['code.grade']);
 
-  const sql = statements[0]!.replace(/\s+/g, ' ');
-  // Without SKIP LOCKED two workers racing for the same row would queue behind
-  // each other and both eventually grade it.
-  assert.match(sql, /FOR UPDATE SKIP LOCKED/);
-  assert.match(sql, /SET "status" = 'running'/);
-  assert.match(sql, /"attempts" = t\."attempts" \+ 1/);
-  assert.match(sql, /WHERE j\."status" = 'queued'/);
-  assert.match(sql, /j\."run_after" <= now\(\)/);
+  await queue.claim(5, ['code.grade']);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]!.fn, 'onyx_claim_jobs');
+  assert.equal(calls[0]!.args['p_limit'], 5);
+  assert.equal(calls[0]!.args['p_worker'], 'worker-1', 'the worker name is recorded on the row');
+  assert.deepEqual(calls[0]!.args['p_kinds'], ['code.grade']);
+
+  // No kinds must mean "any kind", not "no kinds" -- an empty array would match
+  // nothing and the worker would silently starve.
+  calls.length = 0;
+  await queue.claim(1);
+  assert.equal(calls[0]!.args['p_kinds'], null);
+});
+
+test('migration 0019 still pins FOR UPDATE SKIP LOCKED into onyx_claim_jobs', async () => {
+  // Reading the migration rather than the database, so this holds in CI with no
+  // Supabase project attached. The guarantee is one line and it is the line the
+  // queue's correctness rests on.
+  const fs = await import('node:fs');
+  const sql = fs.readFileSync(
+    new URL('../../../supabase/onyx/migrations/0019_job_queue_rpc.sql', import.meta.url),
+    'utf8');
+  const fn = sql.slice(sql.indexOf('FUNCTION public.onyx_claim_jobs'));
+  const body = fn.slice(0, fn.indexOf('$$;')).replace(/\s+/g, ' ');
+
+  assert.match(body, /FOR UPDATE SKIP LOCKED/);
+  assert.match(body, /SET "status" = 'running'/);
+  assert.match(body, /"attempts" = t\."attempts" \+ 1/);
+  assert.match(body, /WHERE j\."status" = 'queued'/);
+  assert.match(body, /j\."run_after" <= now\(\)/);
 });
 
 test('a failed job retries until its attempts run out, then stops as failed', async () => {
-  const updates: unknown[][] = [];
+  const updates: Record<string, unknown>[] = [];
   const queue = new QueueService({
-    query: async (_text: string, values?: unknown[]) => {
-      updates.push(values ?? []);
-      return { rows: [], rowCount: 0 };
-    },
-  });
+    from: () => ({
+      insert: () => ({ select: () => ({ maybeSingle: async () => ({ data: { id: 1 }, error: null }) }) }),
+      update: (values: Record<string, unknown>) => {
+        updates.push(values);
+        return { eq: async () => ({ error: null }) };
+      },
+    }),
+    rpc: async () => ({ data: null, error: null }),
+  } as never);
 
   const job: Job = {
     id: 7, tenant_id: T, kind: 'code.grade', payload: {}, attempts: 1, max_attempts: 3,
   };
   assert.equal(await queue.fail(job, new Error('sandbox down')), 'retry');
-  assert.equal(updates[0]![1], 'queued');
-  assert.equal(updates[0]![2], 10);
+  assert.equal(updates[0]!['status'], 'queued');
+  // backoffSeconds(1) is 10, so the retry is scheduled about ten seconds out.
+  const delay = Date.parse(String(updates[0]!['run_after'])) - Date.now();
+  assert.ok(delay > 8_000 && delay < 12_000, 'about ten seconds, got ' + delay + 'ms');
 
   assert.equal(await queue.fail({ ...job, attempts: 3 }, new Error('still down')), 'failed');
   // Failed is a state, not a deletion: a queue that empties itself on failure
   // looks healthy while losing work.
-  assert.equal(updates[1]![1], 'failed');
-  assert.equal(updates[1]![3], 'still down');
+  assert.equal(updates[1]!['status'], 'failed');
+  assert.equal(updates[1]!['last_error'], 'still down');
 });
 
 test('drain runs handlers, records failures and never lets one job stop another', async () => {
