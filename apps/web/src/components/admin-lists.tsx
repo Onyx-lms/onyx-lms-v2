@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { formatDate } from '@/lib/when';
 
 export interface Language {
   id: number; name: string; direction: string; phrase_count: number;
@@ -229,7 +230,7 @@ export function ApplicationQueue({ rows }: { rows: Application[] }) {
                 <p className="mt-1 whitespace-pre-line text-slate-700">{a.description}</p>
                 <p className="mt-1 text-xs text-slate-500">
                   {a.phone}
-                  {a.created_at ? ' - ' + new Date(a.created_at).toLocaleDateString() : ''}
+                  {a.created_at ? ' - ' + formatDate(a.created_at) : ''}
                 </p>
               </div>
               <span className="flex shrink-0 gap-2 text-xs">

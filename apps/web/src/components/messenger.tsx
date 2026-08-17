@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
+import { formatDateTime } from '@/lib/when';
 
 export interface Contact { id: number; name: string | null; email: string | null; role?: string | null }
 export interface Message {
@@ -20,12 +21,12 @@ interface RealtimeGrant {
   supabase_url: string; supabase_anon_key: string;
 }
 
-function time(value: string | null): string {
-  if (!value) return '';
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('en-GB',
-    { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-}
+/**
+ * Pinning the locale was half the fix and looked like all of it: `en-GB`
+ * fixes the field order but the time zone still came from the environment,
+ * so the server rendered the UTC hour and the browser rendered the local one.
+ */
+const time = (value: string | null): string => (value ? formatDateTime(value) : '');
 
 /**
  * M-02 / M-03 -- the inbox and conversation view.

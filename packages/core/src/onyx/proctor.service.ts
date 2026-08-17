@@ -146,9 +146,14 @@ export class ProctorService {
 
     return {
       attempt_id: attemptId,
-      user_id: attempt.user_id,
+      user_id: String(attempt.user_id),
       consented_at: attempt.consented_at,
       started_at: attempt.started_at,
+      // When the paper was due. Without it a reviewer cannot tell a long
+      // attempt from a long *finalisation*: `submitted_at` is stamped when
+      // the attempt is closed out, so an attempt nobody swept promptly shows
+      // an elapsed time bearing no relation to what the paper allowed.
+      expires_at: attempt.expires_at,
       submitted_at: attempt.submitted_at,
       integrity_flags: attempt.integrity_flags,
       integrity_status: attempt.integrity_status,

@@ -71,6 +71,14 @@ export default async function OnyxAssessmentsPage() {
   const mine = staff ? null : await onyxApiSafe<MyAttempt[]>('/api/onyx/my/assessments');
   const now = Date.now();
 
+  // How many attempts this person has on each paper, so a repeated one can be
+  // labelled with its ordinal and a single one left alone.
+  const attemptsPerPaper = new Map<number, number>();
+  for (const a of mine ?? []) {
+    const key = Number(a.assessment_id);
+    attemptsPerPaper.set(key, (attemptsPerPaper.get(key) ?? 0) + 1);
+  }
+
   // ASS-01: a paper is drawn from banks, so setting one needs the banks and
   // the courses it can belong to. Learners are shown neither.
   const [banks, courses] = await Promise.all([
@@ -296,7 +304,15 @@ export default async function OnyxAssessmentsPage() {
                 key={a.attempt_id}
                 icon={a.results_published ? 'award' : 'clock'}
                 tone={a.results_published ? (a.passed === false ? 'late' : 'good') : 'neutral'}
-                title={a.title}
+                // A paper you are allowed to sit twice produced two rows that
+                // were identical in every visible respect: same title, same
+                // "Handed in", nothing saying which was the later one. The
+                // ordinal has always been in the payload -- this list just
+                // never rendered it. Shown only where there is more than one,
+                // because "Attempt 1" on a single-attempt paper is noise.
+                title={(attemptsPerPaper.get(Number(a.assessment_id)) ?? 0) > 1
+                  ? a.title + ' · Attempt ' + a.attempt
+                  : a.title}
                 meta={a.results_published
                   ? (a.passed === null ? 'Marked' : a.passed ? 'Passed' : 'Not passed')
                   : a.status === 'in_progress'

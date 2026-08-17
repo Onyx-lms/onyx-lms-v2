@@ -529,8 +529,14 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
                         {(marks ?? []).filter((m) => m.moderation_delta !== 0).length}
                       </dd>
                     </div>
+                    {/* "Exam marks", not "Results". The online-paper panel
+                        below has its own release flag and its own row, and
+                        when both were called "Results" the page appeared to
+                        contradict itself -- published here, not published
+                        there -- while both statements were correct about
+                        different things. */}
                     <div className="flex items-center justify-between gap-3 py-2.5">
-                      <dt className="text-muted">Results</dt>
+                      <dt className="text-muted">Exam marks</dt>
                       <dd>
                         {published
                           ? <State tone="on">Published</State>
@@ -563,12 +569,15 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
                       <dt className="text-muted">Flagged by the proctor</dt>
                       <dd className="font-bold tabular-nums">{examFlagged}</dd>
                     </div>
+                    {/* Per-question feedback on the online paper, which is a
+                        separate release from the exam mark register above and
+                        is not performed by publishing marks. */}
                     <div className="flex items-center justify-between gap-3 py-2.5">
-                      <dt className="text-muted">Results</dt>
+                      <dt className="text-muted">Paper feedback</dt>
                       <dd>
                         {onlinePaper.results_published_at
-                          ? <State tone="on">Published</State>
-                          : <State tone="idle">Not published</State>}
+                          ? <State tone="on">Released</State>
+                          : <State tone="idle">Not released</State>}
                       </dd>
                     </div>
                   </dl>

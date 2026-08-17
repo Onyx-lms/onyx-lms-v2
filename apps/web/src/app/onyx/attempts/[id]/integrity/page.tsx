@@ -60,10 +60,28 @@ export default async function OnyxIntegrityPage({ params }: { params: Promise<{ 
     ? new Date(iso).toLocaleString(undefined,
       { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
     : null;
-  const sat = timeline.submitted_at
+  // Elapsed wall-clock, capped at the time the paper actually allowed.
+  //
+  // `submitted_at` is stamped when the attempt is finalised, which for an
+  // attempt nobody swept is whenever that finally happened -- so a ten-minute
+  // paper reported "4:00:39" and looked like an exam that had run for four
+  // hours. It never did: answers are refused past `expires_at`, and a
+  // late hand-in is now recorded as an expiry. This is the display half of
+  // the same finding. Overrun is kept visible rather than hidden, because an
+  // invigilator reviewing an attempt should be able to see that it was
+  // finalised late.
+  const allowed = timeline.expires_at
+    ? Math.max(0, Math.round(
+      (Date.parse(timeline.expires_at) - Date.parse(timeline.started_at)) / 1000))
+    : null;
+  const elapsed = timeline.submitted_at
     ? Math.max(0, Math.round(
       (Date.parse(timeline.submitted_at) - Date.parse(timeline.started_at)) / 1000))
     : null;
+  const sat = elapsed === null ? null
+    : allowed === null ? elapsed
+      : Math.min(elapsed, allowed);
+  const overran = elapsed !== null && allowed !== null && elapsed > allowed + 60;
 
   return (
     <OnyxShell
@@ -168,7 +186,16 @@ export default async function OnyxIntegrityPage({ params }: { params: Promise<{ 
                 <Fact k="Time taken"
                   v={sat === null
                     ? '—'
-                    : <span className="tabular-nums">{formatClock(sat)}</span>} />
+                    : (
+                      <span className="tabular-nums">
+                        {formatClock(sat)}
+                        {overran ? (
+                          <span className="ml-1.5 text-[12px] tabular-nums text-muted">
+                            (finalised {formatClock(elapsed! - allowed!)} late)
+                          </span>
+                        ) : null}
+                      </span>
+                    )} />
                 <Fact k="Consent" v={stamp(timeline.consented_at) ?? 'None recorded'} />
               </dl>
               <div className="mt-3.5 border-t border-line pt-3.5">

@@ -6,6 +6,7 @@ import {
   APPLICATION_LABELS,
   type Eligibility, type JobPost, type Readiness, type SkillEntry,
 } from '@/lib/onyx-career';
+import { formatDate } from '@/lib/when';
 
 /**
  * CAR-05b -- the readiness score, with its working shown.
@@ -85,7 +86,7 @@ export function OnyxSkills({ skills }: { skills: SkillEntry[] }) {
                   {e.source_id ? ' #' + e.source_id : ''}
                   <span className="ml-2 tabular-nums text-xs">{e.strength}</span>
                   <span className="ml-2 text-xs text-muted">
-                    {new Date(e.earned_at).toLocaleDateString()}
+                    {formatDate(e.earned_at)}
                   </span>
                 </li>
               ))}
@@ -205,7 +206,7 @@ export function OnyxApplicants({ jobId, applicants, names, emails }: {
                 <td className="px-4 py-3">{names[a.user_id] ?? ('User ' + a.user_id)}</td>
                 <td className="px-4 py-3 text-muted">{emails[a.user_id] ?? '—'}</td>
                 <td className="px-4 py-3 text-muted">
-                  {new Date(a.created_at).toLocaleDateString()}
+                  {formatDate(a.created_at)}
                 </td>
                 <td className="px-4 py-3 tabular-nums text-muted">
                   {a.readiness_at_apply ?? '—'}
