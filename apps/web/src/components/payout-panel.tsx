@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { formatDate } from '@/lib/when';
 
 export interface Balance {
   earned: number; paid: number; available: number; pending: number; requestable: number;
@@ -105,7 +106,7 @@ export function PayoutRequest({ balance, requests }: {
                   {r.amount}
                   <span className="block text-xs text-slate-500">
                     {r.payment_method ?? 'no method'}
-                    {r.created_at ? ' - ' + new Date(r.created_at).toLocaleDateString() : ''}
+                    {r.created_at ? ' - ' + formatDate(r.created_at) : ''}
                   </span>
                 </span>
                 <span className={r.status
@@ -143,7 +144,7 @@ export function PayoutQueue({ rows }: { rows: PayoutRow[] }) {
             <p className="mt-0.5 text-xs text-slate-500">
               {r.user?.email}
               {r.payment_method ? ' - ' + r.payment_method : ''}
-              {r.created_at ? ' - ' + new Date(r.created_at).toLocaleDateString() : ''}
+              {r.created_at ? ' - ' + formatDate(r.created_at) : ''}
             </p>
           </div>
           {r.status ? (

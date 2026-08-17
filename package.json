@@ -39,7 +39,7 @@
     "verify:all": "npm run verify:parity && npm test && npm run test:server && npm run typecheck && npm run docs:check && npm run db:audit && npm run e2e && npm run test:rls",
     "db:backup": "node tools/db/backup.mjs",
     "test:rls": "node --test tests/rls/isolation.test.ts",
-    "test:server": "node --test apps/web/src/server/*.test.ts",
+    "test:server": "node --test apps/web/src/server/*.test.ts apps/web/src/lib/*.test.ts",
     "dev": "npm run dev --workspace @onyx/web"
   },
   "devDependencies": {

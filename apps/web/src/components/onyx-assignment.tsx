@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Empty, Icon, Pill, Ring } from './onyx-ui';
+import { Card, Empty, Icon, percentText, Pill, Ring } from './onyx-ui';
 import type { Assignment, RubricCriterion, Submission } from '@/lib/onyx-learn';
+import { formatDateTimeFull, formatTime, zoneLabel } from '@/lib/when';
 
 const field = 'w-full rounded-xl border border-slate-300 bg-slate-50/60 px-3.5 py-2.5 text-sm '
   + 'transition-colors focus:border-brand-500 focus:bg-white focus:outline-none '
@@ -64,7 +65,16 @@ export function OnyxSubmissionForm({ assignment, submission }: {
   }, [assignment.id, submission]);
 
   const saveDraft = useCallback(async (text: string) => {
-    if (text === lastSaved.current) return;
+    // Nothing has changed since the last save -- but say so rather than
+    // returning in silence. Pressing Save draft on an unedited page, or just
+    // after the five-second autosave has already flushed the same text, used
+    // to produce no toast, no status change and no timestamp: identical to the
+    // button being broken, and the likeliest reason a tester reported that it
+    // gave no confirmation at all.
+    if (text === lastSaved.current) {
+      setStatus('Draft saved · ' + formatTime(Date.now()));
+      return;
+    }
     lastSaved.current = text;
     setStatus('Saving…');
     const res = await fetch('/api/proxy/onyx/assignments/' + assignment.id + '/draft', {
@@ -73,7 +83,13 @@ export function OnyxSubmissionForm({ assignment, submission }: {
       body: JSON.stringify({ body: text }),
     });
     const payload = await res.json().catch(() => ({}));
-    setStatus(payload.ok ? 'Draft saved' : (payload.message ?? 'Could not save the draft'));
+    // With the time on it. "Draft saved" alone does not say whether it means
+    // now or twenty minutes ago, which is the one thing somebody about to
+    // close the tab wants to know. Safe to read the clock here: this is set
+    // from an event handler, so it never renders during SSR.
+    setStatus(payload.ok
+      ? 'Draft saved · ' + formatTime(Date.now())
+      : (payload.message ?? 'Could not save the draft'));
   }, [assignment.id]);
 
   useEffect(() => {
@@ -99,9 +115,12 @@ export function OnyxSubmissionForm({ assignment, submission }: {
   }
 
   const words = body.trim() ? body.trim().split(/\s+/).length : 0;
+  // startsWith, not equality: "Draft saved" now carries the time it happened,
+  // and an exact match would have silently dropped the dot the moment that
+  // was added.
   const dotTone = status === 'Saving…' ? 'bg-accent-500 animate-pulse'
     : status === 'Submitted' ? 'bg-green-600'
-      : status === 'Draft saved' ? 'bg-slate-400' : 'bg-transparent';
+      : status.startsWith('Draft saved') ? 'bg-slate-400' : 'bg-transparent';
 
   return (
     <Card className="p-4 sm:p-5">
@@ -170,7 +189,7 @@ export function OnyxSubmissionForm({ assignment, submission }: {
         {assignment.due_at ? (
           <p className="flex items-center gap-1.5 text-[12.5px] text-muted">
             <Icon name="clock" className="h-3.5 w-3.5" />
-            Due {new Date(assignment.due_at).toLocaleString()}
+            Due {formatDateTimeFull(assignment.due_at)} {zoneLabel()}
             {assignment.late_policy === 'reject' ? '. Nothing is accepted after this.' : null}
             {assignment.late_policy === 'penalty'
               ? '. Late work loses ' + assignment.late_penalty_percent + '%.'
@@ -208,7 +227,7 @@ export function OnyxReturnedWork({ assignment, submission }: {
   return (
     <Card className="p-5">
       <div className="flex flex-wrap items-center gap-5">
-        <Ring percent={pct} size={64} label={'Scored ' + Math.round(pct) + ' percent'} />
+        <Ring percent={pct} size={64} label={'Scored ' + percentText(pct) + ' percent'} />
         <div>
           {/* Literal text "Result" is asserted by o02-web.e2e.ts as the marker
               that a grade has actually been returned -- nothing before that
@@ -319,7 +338,7 @@ export function OnyxGrader({ submission, rubric, totalPoints }: {
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center gap-4 border-b border-line bg-slate-50 px-4 py-3.5">
-        <Ring percent={pct} size={44} label={'Running total ' + Math.round(pct) + ' percent'} />
+        <Ring percent={pct} size={44} label={'Running total ' + percentText(pct) + ' percent'} />
         <div>
           <div className="text-[11px] font-bold uppercase tracking-[.08em] text-muted">Running total</div>
           <div className="text-xl font-extrabold leading-none tabular-nums">

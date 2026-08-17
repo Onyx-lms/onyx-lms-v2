@@ -113,7 +113,9 @@ export function OnyxPlatformShell({ email, title, subtitle, children, action, si
           </div>
         </aside>
 
-        <main id="main" tabIndex={-1} className="min-w-0">
+        {/* A div, for the same reason as onyx-shell.tsx: the root layout owns
+            the one `<main id="main">` and the skip link targets it. */}
+        <div className="min-w-0">
           <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="text-2xl font-extrabold tracking-tight sm:text-[28px]">{title}</h1>
@@ -122,7 +124,7 @@ export function OnyxPlatformShell({ email, title, subtitle, children, action, si
             {action}
           </div>
           {children}
-        </main>
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { Icon, Pill } from '@/components/onyx-ui';
+import { formatDate } from '@/lib/when';
 
 /** Exactly what `/api/onyx/transcripts/:serial/verify` returns. */
 interface Result {
@@ -120,8 +121,7 @@ export function VerifyTranscript() {
                 Issued
               </dt>
               <dd className="mt-0.5">
-                {new Date(result.issued_at).toLocaleDateString(undefined,
-                  { day: 'numeric', month: 'long', year: 'numeric' })}
+                {formatDate(result.issued_at)}
               </dd>
             </div>
             <div>

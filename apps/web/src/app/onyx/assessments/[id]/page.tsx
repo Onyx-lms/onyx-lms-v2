@@ -94,9 +94,21 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
             <StatTile label="Pass mark"
               value={assessment.pass_mark === null ? '—' : assessment.pass_mark}
               note={assessment.pass_mark === null ? 'no pass mark set' : 'marks to pass'} />
-            <StatTile label="Questions drawn" value={drawn || '—'}
-              note={(assessment.sections?.length ?? 0) + ' section'
-                + ((assessment.sections?.length ?? 0) === 1 ? '' : 's')} />
+            {/* Staff only, and not because the count is secret -- because for
+                a candidate there is no count yet. Questions are drawn at the
+                moment an attempt starts, and `sections` is deliberately
+                withheld from candidates because it names the banks a paper
+                draws from. Rendering the absent field anyway turned "not
+                decided yet, and not yours to see" into a confident "0
+                sections", which read as a broken paper on the screen
+                immediately before Start. The paper being genuinely empty is a
+                real condition, and one the server already refuses at
+                publish, at deal and at start. */}
+            {staff ? (
+              <StatTile label="Questions drawn" value={drawn || '—'}
+                note={(assessment.sections?.length ?? 0) + ' section'
+                  + ((assessment.sections?.length ?? 0) === 1 ? '' : 's')} />
+            ) : null}
           </CardGrid>
 
           {assessment.instructions ? (

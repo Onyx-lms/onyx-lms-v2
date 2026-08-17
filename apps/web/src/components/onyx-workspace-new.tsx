@@ -44,7 +44,12 @@ export function OnyxNewWorkspace({ courses }: { courses: Course[] }) {
         });
       }}
     >
-      <input name="title" required maxLength={255} placeholder="Project name" className={field} />
+      {/* aria-label, like the two controls below. A placeholder is not a
+          label: it disappears on the first keystroke, and a required field
+          with no accessible name leaves a screen-reader user nothing to tie
+          the validation error to. */}
+      <input name="title" required maxLength={255} placeholder="Project name"
+        aria-label="Project name" className={field} />
       <select name="language" defaultValue="python" aria-label="Language" className={field}>
         {Object.keys(ENTRY).map((l) => <option key={l} value={l}>{l}</option>)}
       </select>

@@ -373,6 +373,17 @@ export default async function OnyxExamsPage() {
                     <td>
                       {when.phase === 'running' ? (
                         <span className={CALM}><State tone="live">Running</State></span>
+                      ) : when.phase === 'completed' && exam.status === 'scheduled' ? (
+                        // The row is filed under Completed because the clock
+                        // says so, but `status` only reaches 'completed' when
+                        // marks are published. So a paper sat last week with
+                        // marks still to come sat under a "Completed" heading
+                        // wearing a "Scheduled" pill, and read as stale data.
+                        // Both were true; neither was the right word on its
+                        // own. This is the state they describe together, and
+                        // it matches the stepper the exam detail page already
+                        // draws.
+                        <Pill tone="soon">Awaiting results</Pill>
                       ) : (
                         <Pill tone={STATE[exam.status].tone}>
                           <span className="inline-flex items-center gap-1.5">

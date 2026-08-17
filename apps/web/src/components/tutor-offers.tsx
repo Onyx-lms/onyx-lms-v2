@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Offer, Slot, Term } from '@/components/tutoring-admin';
+import { formatDateTimeFull } from '@/lib/when';
 
 const when = (seconds: number | null) =>
-  seconds ? new Date(Number(seconds) * 1000).toLocaleString() : '';
+  seconds ? formatDateTimeFull(Number(seconds) * 1000) : '';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 

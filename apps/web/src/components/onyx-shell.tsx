@@ -72,7 +72,15 @@ export function OnyxShell({ me, title, subtitle, children, action }: {
           </div>
         </aside>
 
-        <main id="main" tabIndex={-1} className="min-w-0">
+        {/* A div, not a second `<main id="main">`. The root layout already
+            owns the landmark and the skip link targets it, so this one nested
+            inside it and duplicated the id on every authenticated page --
+            which leaves `#main` ambiguous and the skip link landing on the
+            outer element. The three pages that render no shell (denied,
+            verify, transcript) already carry comments saying the root layout
+            owns the landmark; these two shells were the only places not
+            following that. */}
+        <div className="min-w-0">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="text-2xl font-extrabold tracking-tight sm:text-[28px]">{title}</h1>
@@ -81,7 +89,7 @@ export function OnyxShell({ me, title, subtitle, children, action }: {
             {action}
           </div>
           {children}
-        </main>
+        </div>
       </div>
 
       <TabBar tabs={tabs} />

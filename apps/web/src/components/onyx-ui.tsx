@@ -12,6 +12,10 @@
  * orange has to carry words, it is `accent-700` at 5.71:1.
  */
 import Link from 'next/link';
+// Re-exported so every existing `from './onyx-ui'` import keeps working;
+// it lives in lib/ because node --test cannot strip JSX out of this file.
+export { percentText } from '@/lib/percent';
+import { percentText } from '@/lib/percent';
 
 /* ------------------------------------------------------------------ icons */
 
@@ -134,10 +138,12 @@ export function SectionHead({ title, id, action }: {
 export function Ring({ percent, label, size = 46 }: {
   percent: number; label?: string; size?: number;
 }) {
+  // `p` drives the geometry; `shown` is what a person reads. See percentText.
   const p = Math.max(0, Math.min(100, Math.round(percent)));
+  const shown = percentText(percent);
   return (
     <span
-      role="img" aria-label={label ?? `${p} percent complete`}
+      role="img" aria-label={label ?? `${shown} percent complete`}
       className="relative shrink-0" style={{ width: size, height: size }}
     >
       <span className="absolute inset-0 rounded-full"
@@ -145,7 +151,7 @@ export function Ring({ percent, label, size = 46 }: {
       <span className="absolute rounded-full bg-white" style={{ inset: size * 0.11 }} />
       <span className="absolute inset-0 z-10 grid place-items-center text-[11.5px]
                        font-extrabold tabular-nums text-brand-700">
-        {p}%
+        {shown}%
       </span>
     </span>
   );

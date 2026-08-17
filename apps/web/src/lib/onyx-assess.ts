@@ -122,8 +122,13 @@ export interface ProctorEvent {
 }
 
 export interface ProctorTimeline {
-  attempt_id: number; user_id: number;
-  consented_at: string | null; started_at: string; submitted_at: string | null;
+  attempt_id: number;
+  // A Supabase Auth uuid since 0014, not a number. This declaration saying
+  // otherwise is how `Number(user_id)` looked reasonable in the service and
+  // shipped "Candidate #null" to every row of the invigilation queue.
+  user_id: string;
+  consented_at: string | null; started_at: string;
+  expires_at: string | null; submitted_at: string | null;
   integrity_flags: number; integrity_status: string;
   events: ProctorEvent[];
 }
