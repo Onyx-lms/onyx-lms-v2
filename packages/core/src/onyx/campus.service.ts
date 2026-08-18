@@ -330,6 +330,8 @@ export class CampusService {
      * still needs to see their own classes).
      */
     course_ids?: number[];
+    /** One course's own timings, for the course page. */
+    course_id?: number;
     /** A learner may only ever see the published grid. */
     publishedOnly?: boolean;
   } = {}) {
@@ -339,6 +341,7 @@ export class CampusService {
     if (filters.faculty_id) q = q.eq('faculty_id', filters.faculty_id);
     if (filters.room_id) q = q.eq('room_id', filters.room_id);
     if (filters.course_ids) q = q.in('course_id', filters.course_ids);
+    if (filters.course_id) q = q.eq('course_id', filters.course_id);
     if (filters.publishedOnly) q = q.eq('status', 'published');
 
     const { data } = await q

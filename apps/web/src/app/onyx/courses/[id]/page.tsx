@@ -9,7 +9,7 @@ import {
   formatDuration, isStaff,
   type Assignment, type AttendanceSession, type Outline, type Resource,
 } from '@/lib/onyx-learn';
-import type { Discussion } from '@/lib/onyx-campus';
+import { WEEKDAYS, hhmm, type Discussion, type TimetableSlot } from '@/lib/onyx-campus';
 import { CreatePanel, ActionButton } from '@/components/onyx-create';
 import { LessonComposer } from '@/components/onyx-lesson-composer';
 import {
@@ -59,14 +59,23 @@ export default async function OnyxCoursePage({ params }: { params: Promise<{ id:
   // A learner who is not enrolled sees the catalog view: the shape of the
   // course, and nothing that belongs to the people taking it.
   const visible = outline.enrolled || isStaff(me.role);
-  const [assignments, sessions, resources, discussions] = visible
+  const [assignments, sessions, resources, discussions, timings] = visible
     ? await Promise.all([
       onyxApiSafe<Assignment[]>('/api/onyx/courses/' + id + '/assignments'),
       onyxApiSafe<AttendanceSession[]>('/api/onyx/courses/' + id + '/attendance'),
       onyxApiSafe<Resource[]>('/api/onyx/courses/' + id + '/resources'),
       onyxApiSafe<Discussion[]>('/api/onyx/courses/' + id + '/discussions'),
+      // When this course actually meets. It lived only on the institution-wide
+      // timetable, so the answer to "when is this class" was on a different
+      // page from the class -- and a learner on five courses had to read the
+      // whole week to find the three lines that were theirs.
+      onyxApiSafe<TimetableSlot[]>('/api/onyx/timetable?course_id=' + id),
     ])
-    : [null, null, null, null];
+    : [null, null, null, null, null];
+
+  const meets = [...(timings ?? [])]
+    .sort((a, b) => a.day_of_week - b.day_of_week
+      || a.starts_at.localeCompare(b.starts_at));
 
   // Every published assignment, not only the ones with a deadline -- this
   // used to filter on `a.due_at` too, so an assignment created with no due
@@ -323,6 +332,36 @@ export default async function OnyxCoursePage({ params }: { params: Promise<{ id:
               section below already relies on: the fetch behind it 403s for
               a faculty member who does not teach this course, so the
               section simply is not there for them either. */}
+          {/* When this course meets, on the page about this course.
+              The timings existed only on the institution-wide grid, so a
+              learner on five courses had to read the whole week to find the
+              three lines that were theirs -- and anyone opening a course to
+              ask "when is this" was on the wrong page to find out. Fixed
+              weekly slots, so they read as a rule rather than as events. */}
+          {meets.length ? (
+            <section className="mb-4">
+              <SectionHead title="When it meets" />
+              <Card className="divide-y divide-line">
+                {meets.map((slot) => (
+                  <div key={slot.id} className="flex items-baseline justify-between gap-3 px-3.5 py-2.5">
+                    <span className="text-[13px] font-bold">
+                      {WEEKDAYS[slot.day_of_week - 1] ?? 'Day ' + slot.day_of_week}
+                    </span>
+                    <span className="text-[12.5px] tabular-nums text-muted">
+                      {hhmm(slot.starts_at)}&ndash;{hhmm(slot.ends_at)}
+                    </span>
+                  </div>
+                ))}
+                <div className="px-3.5 py-2">
+                  <Link href="/onyx/timetable"
+                    className="text-[12.5px] font-semibold text-brand-700 underline">
+                    See the whole week
+                  </Link>
+                </div>
+              </Card>
+            </section>
+          ) : null}
+
           {me.role === 'admin' || (me.role === 'faculty' && roster !== null) ? (
             <section className="mb-4">
               <SectionHead title="Course details" />
