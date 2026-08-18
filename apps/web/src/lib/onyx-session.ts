@@ -50,6 +50,8 @@ export interface Me {
   name: string | null;
   email: string;
   role: Role;
+  /** This institution's own number for them. Null where it does not use them. */
+  roll_number: string | null;
   tenant: Tenant;
   memberships: { tenant: Tenant; role: Role }[];
 }

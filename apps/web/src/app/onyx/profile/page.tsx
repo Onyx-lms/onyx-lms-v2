@@ -107,6 +107,16 @@ export default async function OnyxProfilePage() {
             <p className="mt-0.5 text-[13px] text-muted">
               {ROLE_LABELS[me.role]} · {me.tenant.name}
             </p>
+            {/* The number the institution actually calls this person by. It is
+                what goes at the top of a script and on a hall ticket, so it
+                belongs where they can read it off their own profile rather
+                than off a printed list somebody else is holding. */}
+            {me.roll_number ? (
+              <p className="mt-1 text-[13px]">
+                <span className="text-muted">Roll / staff no.</span>{' '}
+                <span className="font-mono font-bold">{me.roll_number}</span>
+              </p>
+            ) : null}
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
               <Pill tone="brand">{ROLE_LABELS[me.role]}</Pill>
               <Pill tone="neutral">{me.tenant.name}</Pill>

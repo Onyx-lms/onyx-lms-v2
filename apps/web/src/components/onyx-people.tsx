@@ -17,6 +17,8 @@ export interface Member {
   role: Role;
   status: number;
   tenant_id: number;
+  /** This institution's own number for them. Null where it does not use them. */
+  roll_number: string | null;
   user: { id: number; name: string; email: string; phone: string | null; status: number } | null;
 }
 
@@ -76,7 +78,7 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
 
       {canEdit ? (
         <form
-          className="grid gap-3 rounded-2xl border border-line p-4 sm:grid-cols-5"
+          className="grid gap-3 rounded-2xl border border-line p-4 sm:grid-cols-6"
           onSubmit={(e) => {
             e.preventDefault();
             const form = e.currentTarget;
@@ -89,18 +91,30 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
                 email: String(data.get('email') ?? ''),
                 role: String(data.get('role') ?? 'student'),
                 password: String(data.get('password') ?? '') || undefined,
+                roll_number: String(data.get('roll_number') ?? '') || null,
               }),
             }, 'Added.');
             form.reset();
           }}
         >
-          <input name="name" required placeholder="Name" className={field} />
-          <input name="email" type="email" required placeholder="Email address" className={field} />
+          {/* Every one of these had a placeholder and no label, on the form
+              that creates a real login. A placeholder disappears at the first
+              keystroke, and a screen reader announces an unnamed box. */}
+          <input name="name" required placeholder="Name" aria-label="Full name"
+            className={field} />
+          <input name="email" type="email" required placeholder="Email address"
+            aria-label="Email address" className={field} />
           <select name="role" defaultValue="student" aria-label="Role" className={field}>
             {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
           </select>
+          {/* The institution's own number for this person. Everybody gets one,
+              not only students -- a staff ID is the same idea, and the
+              examinations office and the registry both work from it. */}
+          <input name="roll_number" maxLength={40} placeholder="Roll / staff no."
+            aria-label="Roll number or staff ID" className={field} />
           <input name="password" type="password" minLength={8}
-            placeholder="Temporary password" className={field} />
+            placeholder="Temporary password" aria-label="Temporary password"
+            className={field} />
           <button type="submit" disabled={pending}
             className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
                        hover:bg-brand-700 disabled:opacity-50">
@@ -108,7 +122,9 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
           </button>
           <p className="text-xs text-muted sm:col-span-5">
             Someone who already has an Onyx account keeps it &mdash; they are attached to this
-            institution rather than given a second one.
+            institution rather than given a second one. The roll number is optional and
+            belongs to this institution only; leave the password blank and they set their
+            own on first sign-in. A password must be at least 8 characters.
           </p>
         </form>
       ) : null}
@@ -155,6 +171,7 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
                            tracking-[.06em] text-muted [&>th]:whitespace-nowrap [&>th]:px-4
                            [&>th]:py-2.5 [&>th]:font-bold">
               <th scope="col">Name</th>
+              <th scope="col">Roll / staff no.</th>
               <th scope="col" className="hidden sm:table-cell">Email</th>
               <th scope="col">Role</th>
               <th scope="col">Account</th>
@@ -187,6 +204,34 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
                       </span>
                     </span>
                   </td>
+                  {/* Editable in place, because this is the field an
+                      administrator corrects one row at a time off a paper
+                      register -- opening an edit panel for each would make a
+                      roster of forty a morning's work. Saved on blur, not on
+                      every keystroke. */}
+                  <td className="px-4 py-3">
+                    {canEdit ? (
+                      <input
+                        aria-label={'Roll number for ' + (m.user?.name ?? 'this member')}
+                        defaultValue={m.roll_number ?? ''}
+                        maxLength={40}
+                        placeholder="—"
+                        disabled={pending}
+                        className={field + ' w-32 font-mono text-[13px]'}
+                        onBlur={(e) => {
+                          const next = e.target.value.trim();
+                          if (next === (m.roll_number ?? '')) return;
+                          call('members/' + m.id, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ roll_number: next || null }),
+                          }, next ? 'Roll number set.' : 'Roll number cleared.');
+                        }}
+                      />
+                    ) : (
+                      <span className="font-mono text-[13px]">{m.roll_number ?? '—'}</span>
+                    )}
+                  </td>
                   <td className="hidden px-4 py-3 text-muted sm:table-cell">
                     {m.user?.email ?? '—'}
                   </td>
@@ -197,11 +242,21 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
                         defaultValue={m.role}
                         disabled={pending}
                         className={field}
-                        onChange={(e) => call('members/' + m.id, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ role: e.target.value }),
-                        }, 'Role updated.')}
+                        onChange={(e) => {
+                          // Changing a role changes what somebody can reach the
+                          // instant the select fires. Worth a sentence first.
+                          const to = e.target.value as Role;
+                          if (!window.confirm('Make ' + (m.user?.name ?? 'this member') + ' a '
+                            + (ROLE_LABELS[to] ?? to) + '? It changes what they can see now.')) {
+                            e.target.value = m.role;
+                            return;
+                          }
+                          call('members/' + m.id, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ role: to }),
+                          }, 'Role updated.');
+                        }}
                       >
                         {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                       </select>
@@ -228,7 +283,16 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
                         <button
                           type="button"
                           disabled={pending}
-                          onClick={() => call('members/' + m.id, { method: 'DELETE' }, 'Removed.')}
+                          // Asked first. This ends somebody's access to the
+                          // institution, and it was one click with nothing
+                          // between the pointer and the consequence -- while
+                          // the identical action in the platform console has
+                          // had a confirmation for months.
+                          onClick={() => {
+                            if (!window.confirm('Remove ' + (m.user?.name ?? 'this member')
+                              + ' from this institution? They lose access immediately.')) return;
+                            call('members/' + m.id, { method: 'DELETE' }, 'Removed.');
+                          }}
                           // rose-600 is 4.7:1 on white and would pass on its own,
                           // but `disabled:opacity-50` halves it to ~2.4:1 while
                           // the control is still rendered. A dimmed colour token

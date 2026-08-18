@@ -359,3 +359,81 @@ test('a caller cannot ask the audit log for more than it will give', async () =>
   }
   assert.equal((await audit.list(1, { limit: 10_000 })).length, 500);
 });
+
+// ---------------------------------------------------------------------------
+// CMP-01 -- roll numbers
+// ---------------------------------------------------------------------------
+
+test('an institution sets its own number for somebody, and it must be unique there', async () => {
+  const { svc } = await make();
+  const a = await svc.invite(1, {
+    name: 'Aditya Pillai', email: 'aditya@x.test', role: 'student', roll_number: 'CS-2024-014' });
+  assert.equal(a.membership.roll_number, 'CS-2024-014');
+
+  // Everybody gets one -- a staff ID is the same idea, and the registry works
+  // from it just as the examinations office does.
+  const staff = await svc.invite(1, {
+    name: 'Dr. Arun Menon', email: 'arun@x.test', role: 'faculty', roll_number: 'STAFF-07' });
+  assert.equal(staff.membership.roll_number, 'STAFF-07');
+
+  // Case-insensitively unique: CS-2024-014 and cs-2024-014 are the same person
+  // to everybody except a database.
+  await assert.rejects(
+    svc.invite(1, { name: 'Someone Else', email: 'else@x.test',
+      role: 'student', roll_number: 'cs-2024-014' }),
+    (e: HttpError) => e.status === 409 && /Aditya Pillai/.test(e.message));
+});
+
+test('a roll number belongs to the institution, not to the account', async () => {
+  const { svc } = await make();
+  const first = await svc.invite(1, {
+    name: 'Visiting Lecturer', email: 'visitor@x.test', role: 'faculty', roll_number: 'VL-1' });
+
+  // The same person at a second institution, under that institution's own
+  // number. Putting the roll on the user row would force one identity across
+  // institutions that do not share one.
+  const second = await svc.addMember(2, first.user.id, 'faculty', 'VL-1');
+  assert.equal(second.roll_number, 'VL-1');
+  assert.notEqual(second.tenant_id, first.membership.tenant_id);
+
+  // The same account, listed at both, each under that institution's number.
+  const here = (await svc.members(1)).find((m) => String(m.user_id) === first.user.id);
+  const there = (await svc.members(2)).find((m) => String(m.user_id) === first.user.id);
+  assert.equal(here!.roll_number, 'VL-1');
+  assert.equal(there!.roll_number, 'VL-1');
+  assert.notEqual(here!.id, there!.id);
+});
+
+test('an administrator can correct or clear a roll number', async () => {
+  const { svc } = await make();
+  const m = await svc.invite(1, {
+    name: 'Meera Nair', email: 'meera@x.test', role: 'student', roll_number: 'CS-2024-020' });
+  const id = Number(m.membership.id);
+
+  const fixed = await svc.updateMember(1, id, { roll_number: 'CS-2024-021' });
+  assert.equal(fixed.membershipChange!.after.roll_number, 'CS-2024-021');
+
+  // Blank clears it. An administrator who typed one onto the wrong person, or
+  // an institution that stops using them, needs a way back.
+  const cleared = await svc.updateMember(1, id, { roll_number: '  ' });
+  assert.equal(cleared.membershipChange!.after.roll_number, null);
+
+  // ...and a member can exist without one at all.
+  const none = await svc.invite(1, {
+    name: 'No Number', email: 'none@x.test', role: 'student' });
+  assert.equal(none.membership.roll_number, null);
+});
+
+test('a roster can be searched by roll number', async () => {
+  const { svc } = await make();
+  await svc.invite(1, {
+    name: 'Karthik Subramanian', email: 'k@x.test', role: 'student', roll_number: 'CS-2024-031' });
+  await svc.invite(1, { name: 'Other Person', email: 'o@x.test', role: 'student' });
+
+  // Staff have the number in front of them, off a register or a script -- and
+  // a search that does not match it is a convincing way to conclude somebody
+  // is not enrolled.
+  const found = await svc.members(1, { search: 'cs-2024-031' });
+  assert.equal(found.length, 1);
+  assert.equal(found[0]!.user?.name, 'Karthik Subramanian');
+});

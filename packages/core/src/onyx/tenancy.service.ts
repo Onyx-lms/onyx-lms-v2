@@ -22,7 +22,7 @@ import { slugify } from '../authoring/slug.ts';
 
 const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, created_at, updated_at';
 const USER_COLUMNS = 'id, email, name, phone, photo, status, email_verified_at, created_at';
-const MEMBERSHIP_COLUMNS = 'id, tenant_id, user_id, role, status, created_at';
+const MEMBERSHIP_COLUMNS = 'id, tenant_id, user_id, role, status, roll_number, created_at';
 
 /**
  * Every role a membership may hold.
@@ -187,13 +187,50 @@ export class TenancyService {
       .map((r) => ({ ...r, tenant: byId.get(Number(r.tenant_id))! }));
   }
 
-  async addMember(tenantId: number, userId: string, role: Role) {
+  /**
+   * The institution's own number for somebody -- roll number, enrolment
+   * number, staff ID -- checked before it is written.
+   *
+   * Unique per institution and compared case-insensitively, because
+   * CS-2024-014 and cs-2024-014 are the same person to everybody except a
+   * database. The database enforces this too (a partial unique index); the
+   * check here exists so the answer is a sentence about which person already
+   * holds it rather than a constraint-violation code.
+   *
+   * Blank clears it. An institution that stops using roll numbers, or an
+   * administrator who typed one onto the wrong person, needs a way back.
+   */
+  async #cleanRoll(tenantId: number, roll: string | null | undefined, membershipId?: number) {
+    if (roll === undefined) return undefined;
+    const value = (roll ?? '').trim();
+    if (!value) return null;
+    if (value.length > 40) throw new HttpError(422, 'A roll number can be 40 characters at most.');
+
+    let q = this.#db.from('onyx_memberships')
+      .select('id, user_id, roll_number').eq('tenant_id', tenantId);
+    if (membershipId) q = q.neq('id', membershipId);
+    const { data: rows } = await q;
+    const clash = (rows ?? []).find((r) =>
+      String(r.roll_number ?? '').toLowerCase() === value.toLowerCase());
+    if (clash) {
+      const { data: who } = await this.#db.from('onyx_users')
+        .select('name').eq('id', String(clash.user_id)).maybeSingle();
+      throw new HttpError(409, value + ' is already ' + (who?.name ?? 'somebody else') + '.');
+    }
+    return value;
+  }
+
+  async addMember(tenantId: number, userId: string, role: Role, roll?: string | null) {
     if (!ROLES.includes(role)) throw new HttpError(422, 'That is not a role.');
     const existing = await this.membership(tenantId, userId);
     if (existing) throw new HttpError(422, 'They are already a member of this institution.');
 
+    const rollNumber = await this.#cleanRoll(tenantId, roll);
     const { data, error } = await this.#db.from('onyx_memberships')
-      .insert({ tenant_id: tenantId, user_id: userId, role, status: 1 })
+      .insert({
+        tenant_id: tenantId, user_id: userId, role, status: 1,
+        roll_number: rollNumber ?? null,
+      })
       .select(MEMBERSHIP_COLUMNS).maybeSingle();
     if (error) throw new HttpError(500, 'Could not add them: ' + error.message);
     return data!;
@@ -201,10 +238,10 @@ export class TenancyService {
 
   /** F-06 -- invite by email, creating the identity if it is new. */
   async invite(tenantId: number, input: {
-    name: string; email: string; role: Role; password?: string;
+    name: string; email: string; role: Role; password?: string; roll_number?: string | null;
   }) {
     const user = await this.upsertUser(input);
-    const membership = await this.addMember(tenantId, user.id, input.role);
+    const membership = await this.addMember(tenantId, user.id, input.role, input.roll_number);
     return { user: { id: user.id, email: user.email, name: user.name }, membership };
   }
 
@@ -254,9 +291,14 @@ export class TenancyService {
     let out = rows.map((r) => ({ ...r, user: byId.get(String(r.user_id)) ?? null }));
     if (filters.search?.trim()) {
       const needle = filters.search.trim().toLowerCase();
+      // By roll number too. It is the thing staff are most likely to have in
+      // front of them -- off a register, a script, a hall ticket -- and
+      // searching a roster by a number that does not match anything is a
+      // convincing way to conclude somebody is not enrolled.
       out = out.filter((r) =>
         (r.user?.name ?? '').toLowerCase().includes(needle)
-        || (r.user?.email ?? '').toLowerCase().includes(needle));
+        || (r.user?.email ?? '').toLowerCase().includes(needle)
+        || String(r.roll_number ?? '').toLowerCase().includes(needle));
     }
     return out;
   }
@@ -284,7 +326,7 @@ export class TenancyService {
    */
   async updateMember(tenantId: number, membershipId: number, patch: {
     name?: string; email?: string; phone?: string | null; account_status?: number;
-    role?: Role; membership_status?: number;
+    role?: Role; membership_status?: number; roll_number?: string | null;
   }) {
     const current = await this.#findMembership(tenantId, membershipId);
     const userId = String(current.user_id);
@@ -330,6 +372,13 @@ export class TenancyService {
     }
     if (patch.membership_status !== undefined && patch.membership_status !== current.status) {
       memberBefore.status = current.status; memberPatch.status = patch.membership_status;
+    }
+    if (patch.roll_number !== undefined) {
+      const rollNumber = await this.#cleanRoll(tenantId, patch.roll_number, membershipId);
+      if (rollNumber !== current.roll_number) {
+        memberBefore.roll_number = current.roll_number;
+        memberPatch.roll_number = rollNumber;
+      }
     }
     if (Object.keys(memberPatch).length) {
       await this.#db.from('onyx_memberships')
