@@ -233,8 +233,8 @@ export default async function OnyxTimetablePage(
           />
           <CreatePanel
             title="Schedule a class" cta="Schedule a class" icon="calendar"
-            rules={(v) => (v.starts_at && v.ends_at && v.ends_at <= v.starts_at
-              ? 'That class ends before it starts.' : null)} compact
+            rules={[{ kind: 'before', field: 'starts_at', than: 'ends_at', orEqual: true,
+              message: 'That class ends before it starts.' }]} compact
             endpoint="timetable"
             // CMP-01b: the POST refuses a clash and names it. This says so
             // while the registrar can still change the answer, which is the
