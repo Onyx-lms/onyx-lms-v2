@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
+import { RubricBuilder } from '@/components/onyx-rubric-builder';
 import {
   Card, Empty, ListRow, Pill, RowList, SectionHead, relativeDue,
 } from '@/components/onyx-ui';
@@ -151,6 +152,26 @@ export default async function OnyxAssignmentPage({ params }: { params: Promise<{
         </div>
 
         <aside>
+          {/* The authoring surface that never existed. Staff only, and it says
+              plainly why a published assignment's rubric is fixed rather than
+              simply not appearing. */}
+          {staff ? (
+            <section className="mb-5">
+              <SectionHead title="Marking criteria" />
+              <Card className="p-3.5">
+                <RubricBuilder
+                  assignmentId={Number(id)}
+                  totalPoints={assignment.total_points}
+                  published={assignment.status === 'published'}
+                  criteria={(assignment.rubric ?? []).map((c) => ({
+                    id: c.id, title: c.title,
+                    description: c.description ?? null, points: c.points,
+                  }))}
+                />
+              </Card>
+            </section>
+          ) : null}
+
           {assignment.rubric?.length ? (
             <section>
               <SectionHead title="How this is marked" />

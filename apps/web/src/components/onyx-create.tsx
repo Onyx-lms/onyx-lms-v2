@@ -92,12 +92,28 @@ function toBody(fields: Field[], data: FormData): Record<string, unknown> {
 
 export function CreatePanel({
   title, cta, endpoint, fields, extra, icon = 'edit', thenPost, compact, watch,
+  confirm, rules,
 }: {
   title: string;
   /** Button label, both to open the form and to submit it. */
   cta: string;
   /** Path under /api/proxy/onyx/ — e.g. `courses/12/assignments`. */
   endpoint: string;
+  /**
+   * Asked before anything is sent, for the panels whose effect is wide or
+   * hard to walk back -- publishing a term's timetable to every learner, say.
+   */
+  confirm?: string;
+  /**
+   * Cross-field rules the server also enforces, checked here so the answer
+   * arrives before the work is retyped rather than as a 422 after it.
+   *
+   * Deliberately not a general validation framework: these are the specific
+   * arithmetic rules a person is already doing in their head -- a pass mark
+   * above the maximum, an end before a start -- where being told late means
+   * filling the form in twice.
+   */
+  rules?: (values: Record<string, string>) => string | null;
   fields: Field[];
   /** Fixed values merged into every submission. */
   extra?: Record<string, unknown>;
@@ -183,6 +199,13 @@ export function CreatePanel({
               const form = e.currentTarget;
               const data = new FormData(form);
               setError(null);
+
+              if (rules) {
+                const complaint = rules(Object.fromEntries(
+                  [...data.entries()].map(([k, v]) => [k, String(v)])));
+                if (complaint) { setError(complaint); return; }
+              }
+              if (confirm && !window.confirm(confirm)) return;
               start(async () => {
                 const body = { ...toBody(fields, data), ...(extra ?? {}) };
                 const res = await post(endpoint, body);

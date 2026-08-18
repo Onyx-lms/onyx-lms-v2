@@ -23,6 +23,7 @@
  */
 import type { OnyxDb } from './db.ts';
 import { HttpError } from '../http/errors.ts';
+import { peopleFor } from './directory.ts';
 import { increment } from './metrics.ts';
 import type { AuditService } from './audit.service.ts';
 
@@ -241,6 +242,8 @@ export class ProctorService {
       if (e.kind === 'tab_blur') away.set(id, (away.get(id) ?? 0) + 1);
     }
 
+    const people = await peopleFor(this.#db, tenantId, attempts.map((a) => a.user_id));
+
     return attempts.map((a) => {
       const need = needs.get(Number(a.assessment_id)) ?? { camera: false, screen: false };
       return {
@@ -253,6 +256,11 @@ export class ProctorService {
         // screen resolved all of them to "Candidate #null". Not only the
         // flagged ones: every row.
         user_id: String(a.user_id),
+        // Resolved here rather than left to the page to look up: an
+        // invigilator walking a hall is matching what is on screen against a
+        // hall ticket, and the number is what is on the ticket.
+        name: people.get(String(a.user_id))?.name ?? null,
+        roll_number: people.get(String(a.user_id))?.roll_number ?? null,
         status: a.status,
         integrity_flags: a.integrity_flags,
         integrity_status: a.integrity_status,

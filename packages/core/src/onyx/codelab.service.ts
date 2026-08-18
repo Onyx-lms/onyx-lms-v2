@@ -18,6 +18,7 @@ import type { OnyxDb } from './db.ts';
 import type { Role } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
 import { slugify } from '../authoring/slug.ts';
+import { peopleFor } from './directory.ts';
 import type { AcademicsService } from './academics.service.ts';
 import type { QueueService } from './queue.service.ts';
 import {
@@ -701,9 +702,21 @@ export class CodeLabService {
     return this.#practice(tenantId, userId);
   }
 
-  /** One named learner's practice record, with who set each problem. */
+  /**
+   * One named learner's practice record, with who set each problem -- and who
+   * the learner is, by the institution's own number.
+   *
+   * A tutor arrives at this screen from a roll number, off a list or a query,
+   * so the page has to be able to say which person it is showing rather than
+   * relying on whatever was in the picker.
+   */
   async practiceResultsFor(tenantId: number, userId: string) {
-    return this.#practice(tenantId, userId, { withAuthors: true });
+    const [rows, people] = await Promise.all([
+      this.#practice(tenantId, userId, { withAuthors: true }),
+      peopleFor(this.#db, tenantId, [userId]),
+    ]);
+    const learner = people.get(String(userId)) ?? null;
+    return { learner, results: rows };
   }
 
   // ---- internals ----

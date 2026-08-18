@@ -500,12 +500,25 @@ export function AssessmentEditForm({ assessmentId, assessment }: {
         <label className="block text-xs font-semibold text-slate-700" htmlFor="as-status">
           Status
         </label>
+        {/* "Published" is gone from this list on purpose.
+            Selecting it here exposed a paper to every candidate on save, with
+            no confirmation and no preview -- while the composer on the same
+            page gates the identical act behind a review step and a distinct
+            button. Two ways to do one irreversible thing, one of them
+            accidental. Draft and Closed are the corrections this form is for;
+            publishing goes through the door built for it. */}
         <select id="as-status" name="status" defaultValue={assessment.status}
           className={input + ' mt-1 w-full'}>
           <option value="draft">Draft</option>
-          <option value="published">Published</option>
           <option value="closed">Closed</option>
+          {assessment.status === 'published'
+            ? <option value="published">Published</option> : null}
         </select>
+        <p className="mt-1 text-xs text-muted">
+          {assessment.status === 'draft'
+            ? 'Use “Edit the whole paper” to review and publish it.'
+            : 'Closing stops new attempts. It does not release results.'}
+        </p>
       </div>
       <div className="flex gap-2 pt-1">
         <button type="submit" disabled={pending} className={btn}>

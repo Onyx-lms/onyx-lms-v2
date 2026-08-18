@@ -91,6 +91,7 @@ export * from './onyx/execution.provider.ts';
 export * from './onyx/codelab.service.ts';
 export * from './onyx/codelab.worker.ts';
 export * from './onyx/workspace.service.ts';
+export * from './onyx/directory.ts';
 export * from './onyx/assess.service.ts';
 export * from './onyx/proctor.service.ts';
 export * from './onyx/assess-analytics.service.ts';
