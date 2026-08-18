@@ -127,6 +127,7 @@ export function CreatePanel({
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [done, setDone] = useState<string | null>(null);
   // Only tracked when something is watching. Every other panel stays
   // uncontrolled, which is why they re-render on nothing.
   const [values, setValues] = useState<Record<string, string>>({});
@@ -151,7 +152,7 @@ export function CreatePanel({
           nothing of its own to resist that -- without this it inflates to
           the height AND width of whichever sibling cell is tallest, which
           reads as a giant empty coloured box rather than a button. */}
-      <button type="button" onClick={() => setOpen(true)}
+      <button type="button" onClick={() => { setDone(null); setOpen(true); }}
         className={'inline-flex w-fit shrink-0 items-center gap-2 self-start justify-self-start '
           + 'rounded-xl bg-brand-600 font-semibold text-white hover:bg-brand-700 '
           + (compact ? 'px-3 py-2 text-[13px]' : 'px-4 py-2.5 text-sm')}>
@@ -159,8 +160,17 @@ export function CreatePanel({
         {cta}
       </button>
 
+      {done ? (
+        <p role="status"
+          className="inline-flex items-center gap-1.5 self-start rounded-xl bg-green-50 px-3
+                     py-2 text-[12.5px] font-semibold text-green-800">
+          <Icon name="check" className="h-4 w-4" />
+          {done}
+        </p>
+      ) : null}
+
       {open ? (
-        <Modal title={title} onClose={close}>
+        <Modal title={title} onClose={close} wide={fields.length > 5}>
           <form
             onChange={watch ? (e) => {
               const form = e.currentTarget as HTMLFormElement;
@@ -195,6 +205,11 @@ export function CreatePanel({
                 }
                 form.reset();
                 setOpen(false);
+                // Say it worked. Success used to be the panel vanishing and
+                // nothing else -- which is exactly what a silent failure looks
+                // like, so the rational response was to do it again. Announced
+                // through role="status" so it is not only a visual change.
+                setDone(title + ' — saved.');
                 router.refresh();
               });
             }}
@@ -291,8 +306,12 @@ export function ActionButton({ endpoint, label: text, tone = 'brand', confirm, b
   return (
     <span className="inline-flex flex-col">
       <button type="button" disabled={pending}
-        onClick={() => start(async () => {
+        onClick={() => {
+          // Asked BEFORE the transition starts. Inside it, the button flipped
+          // to "Working…" and disabled itself while the confirm was still on
+          // screen, so the answer looked already given whichever way it went.
           if (confirm && !window.confirm(confirm)) return;
+          start(async () => {
           setError(null);
           const res = await fetch('/api/proxy/onyx/' + endpoint, {
             method: 'POST',
@@ -302,7 +321,8 @@ export function ActionButton({ endpoint, label: text, tone = 'brand', confirm, b
           const payload = await res.json().catch(() => ({ ok: false }));
           if (!payload.ok) { setError(payload.message ?? 'That did not work.'); return; }
           router.refresh();
-        })}
+          });
+        }}
         className={'rounded-xl px-3 py-2 text-[13px] font-semibold disabled:opacity-60 '
           + tones[tone]}>
         {pending ? 'Working…' : text}
