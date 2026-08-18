@@ -26,12 +26,15 @@ export async function SiteHeader({ settings, categories }: {
         </Link>
 
         <nav className="hidden items-center gap-5 text-sm md:flex">
+          {/* Workshops, Tutors, Teams and Blog are deliberately absent from the
+              nav. The routes still exist and still answer -- /bootcamps,
+              /tutors, /team-packages and /blogs are reachable by link and by
+              search engine, and nothing that deep-links into them breaks. They
+              are simply no longer advertised on the way in, so the front door
+              offers courses and the people who teach them rather than six
+              destinations of uneven weight. */}
           <Link href="/courses" className="hover:text-brand-600">Courses</Link>
           <Link href="/instructors" className="hover:text-brand-600">Instructors</Link>
-          <Link href="/bootcamps" className="hover:text-brand-600">Workshops</Link>
-          <Link href="/tutors" className="hover:text-brand-600">Tutors</Link>
-          <Link href="/team-packages" className="hover:text-brand-600">Teams</Link>
-          <Link href="/blogs" className="hover:text-brand-600">Blog</Link>
           <Link href="/knowledge-base" className="hover:text-brand-600">Help</Link>
           <Link href="/about-us" className="hover:text-brand-600">About</Link>
           <Link href="/contact-us" className="hover:text-brand-600">Contact</Link>
