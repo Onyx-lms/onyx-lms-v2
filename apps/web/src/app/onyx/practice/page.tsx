@@ -71,8 +71,15 @@ export default async function OnyxPracticePage({ searchParams }: {
       subtitle={isStaff(me.role)
         ? 'The problem bank, drafts included.'
         : 'Work through problems and get graded instantly.'}
-      action={isStaff(me.role) ? null : (
-        <ActionLink href="/onyx/results" label="Your results" tone="quiet" />
+      // "Your results" pointed at /onyx/results, which is the grades ledger:
+      // exam marks, assessment attempts and transcripts, and not one word
+      // about practice. The button promised one thing and delivered another.
+      // Staff get the same link because the page behind it answers a question
+      // they also have -- which problems has a given learner solved.
+      action={isStaff(me.role) ? (
+        <ActionLink href="/onyx/practice/results" label="Learner progress" tone="quiet" />
+      ) : (
+        <ActionLink href="/onyx/practice/results" label="Your practice results" tone="quiet" />
       )}
     >
       {/* LAB-04: "curated problems organised by topic and difficulty".
