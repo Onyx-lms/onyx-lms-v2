@@ -82,18 +82,64 @@ export default async function OnyxTimetablePage(
   const idOptions = <T extends { id: number }>(rows: T[] | null, label: (r: T) => string) =>
     (rows ?? []).map((r) => ({ value: String(r.id), label: label(r) }));
 
-  // The columns are the days that actually have something on them. A week of
-  // seven where three are empty is three columns of nothing bought with the
-  // width that made the other four unreadable.
-  const days = [...new Set(slots.map((s) => s.day_of_week))].sort((a, b) => a - b);
-  // The rows are the hours anything starts in, so a timetable that runs
-  // 09:00–13:00 does not draw eleven empty bands to reach 20:00.
-  const hours = [...new Set(slots.map((s) => Number(s.starts_at.slice(0, 2))))]
-    .sort((a, b) => a - b);
+  // The teaching week, always drawn in full.
+  //
+  // This used to be "the days that actually have something on them", which
+  // sounds economical and is why the grid read as a list: with three sessions
+  // on three days you got three columns and no sense of a week at all, and a
+  // free Wednesday -- the thing a person scans a timetable to find -- simply
+  // was not there to see. Monday to Friday always; Saturday and Sunday only if
+  // something is genuinely scheduled on them.
+  const scheduled = new Set(slots.map((s) => s.day_of_week));
+  const days = [1, 2, 3, 4, 5, 6, 7].filter((d) => d <= 5 || scheduled.has(d));
 
-  const at = (day: number, hour: number) => slots
-    .filter((s) => s.day_of_week === day && Number(s.starts_at.slice(0, 2)) === hour)
-    .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  // The rows were "the hours anything starts in", so 09:00 and 14:00 sat
+  // adjacent and a five-hour gap looked like an hour. A timetable is read for
+  // its gaps as much as its sessions, so the axis is continuous: every hour
+  // from the earliest start to the latest finish, and nothing between them
+  // omitted. Padded to a plausible teaching day when the week is thin, so one
+  // 09:00 lecture does not produce a single-band strip.
+  const starts = slots.map((s) => Math.floor(minutes(s.starts_at) / 60));
+  const ends = slots.map((s) => Math.ceil(minutes(s.ends_at) / 60));
+  const firstHour = Math.min(9, ...(starts.length ? starts : [9]));
+  const lastHour = Math.max(17, ...(ends.length ? ends : [17]));
+  const hours = Array.from({ length: lastHour - firstHour }, (_, i) => firstHour + i);
+
+  /**
+   * Where a session sits on the day column, and how tall it is.
+   *
+   * The old grid dropped every session into the band of its start hour, so a
+   * two-hour lab and a fifty-minute seminar drew the same box: the one thing a
+   * timetable is for -- how long am I in this room -- was the one thing it did
+   * not show. Position and height come from the actual minutes.
+   */
+  const HOUR_PX = 68;
+  const place = (slot: TimetableSlot) => {
+    const from = minutes(slot.starts_at) - firstHour * 60;
+    const span = Math.max(20, minutes(slot.ends_at) - minutes(slot.starts_at));
+    return { top: (from / 60) * HOUR_PX, height: (span / 60) * HOUR_PX };
+  };
+
+  /**
+   * Sessions on one day, laid out side by side where they overlap.
+   *
+   * Two classes at once is a clash, and a clash that renders as one box hiding
+   * another is a clash nobody sees. Columns are assigned greedily: a session
+   * takes the first lane whose last occupant has already finished.
+   */
+  const layout = (day: number) => {
+    const onDay = slots.filter((s) => s.day_of_week === day)
+      .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+    const laneEnds: number[] = [];
+    const placed = onDay.map((slot) => {
+      const from = minutes(slot.starts_at);
+      let lane = laneEnds.findIndex((end) => end <= from);
+      if (lane === -1) { lane = laneEnds.length; laneEnds.push(0); }
+      laneEnds[lane] = minutes(slot.ends_at);
+      return { slot, lane };
+    });
+    return { placed, lanes: Math.max(1, laneEnds.length) };
+  };
 
   const drafts = slots.filter((s) => s.status === 'draft');
   const contactMinutes = slots.reduce((n, s) => n + (minutes(s.ends_at) - minutes(s.starts_at)), 0);
@@ -270,53 +316,97 @@ export default async function OnyxTimetablePage(
                   </div>
                 ))}
 
-                {hours.map((h) => (
-                  <div key={'row' + h} className="contents">
-                    <div className="border-b border-line px-2 py-2 text-right text-[11.5px]
-                                    font-bold tabular-nums text-muted">
+                {/* The time axis and the day columns are drawn separately.
+                    A CSS grid of hour cells can only put a session in the band
+                    it starts in; laying each day out as one continuous column
+                    is what lets a session be as tall as it is long, and lets
+                    two overlapping ones sit side by side instead of one hiding
+                    the other. */}
+                <div className="relative border-b border-line"
+                  style={{ height: hours.length * HOUR_PX }}>
+                  {hours.map((h, i) => (
+                    <div key={'t' + h}
+                      className="absolute right-0 w-full border-t border-line pr-2 pt-1
+                                 text-right text-[11.5px] font-bold tabular-nums text-muted"
+                      style={{ top: i * HOUR_PX, height: HOUR_PX }}>
                       {String(h).padStart(2, '0')}:00
                     </div>
-                    {days.map((d) => (
-                      <div key={'c' + d + '-' + h}
-                        className="min-h-[64px] space-y-1.5 border-b border-l border-line p-1.5">
-                        {at(d, h).map((s) => {
-                          const draft = s.status === 'draft';
-                          return (
-                            <div key={s.id}
-                              className={'relative rounded-lg border-l-[3px] px-2 py-1.5 '
-                                + slotTone(roomKind.get(s.room_id), draft)}>
-                              {/* The column header is a sibling div, not a
-                                  table header, so a screen reader gets the day
-                                  and the time from the event itself. */}
-                              <span className="sr-only">
-                                {WEEKDAYS[d - 1] ?? 'Day ' + d}, {hhmm(s.starts_at)} to{' '}
-                                {hhmm(s.ends_at)}:{' '}
+                  ))}
+                </div>
+
+                {days.map((d) => {
+                  const { placed, lanes } = layout(d);
+                  return (
+                    <div key={'col' + d}
+                      className="relative border-b border-l border-line"
+                      style={{ height: hours.length * HOUR_PX }}>
+                      {/* The hour lines, so a session can be read against the
+                          axis rather than guessed from its position. */}
+                      {hours.map((h, i) => (
+                        <div key={'l' + d + h}
+                          className="absolute inset-x-0 border-t border-line"
+                          style={{ top: i * HOUR_PX }} />
+                      ))}
+
+                      {placed.map(({ slot, lane }) => {
+                        const draft = slot.status === 'draft';
+                        const box = place(slot);
+                        const width = 100 / lanes;
+                        const mins = minutes(slot.ends_at) - minutes(slot.starts_at);
+                        return (
+                          <div
+                            key={slot.id}
+                            className={'absolute overflow-hidden rounded-lg border-l-[3px] '
+                              + 'px-2 py-1 ' + slotTone(roomKind.get(slot.room_id), draft)}
+                            style={{
+                              top: box.top + 2,
+                              height: Math.max(26, box.height - 4),
+                              left: 'calc(' + (lane * width) + '% + 4px)',
+                              width: 'calc(' + width + '% - 8px)',
+                            }}
+                          >
+                            {/* The day and time come from the session itself:
+                                the column header is a sibling div, not a table
+                                header, so a screen reader gets nothing from it. */}
+                            <span className="sr-only">
+                              {WEEKDAYS[d - 1] ?? 'Day ' + d}, {hhmm(slot.starts_at)} to{' '}
+                              {hhmm(slot.ends_at)}:{' '}
+                            </span>
+                            <span className="block truncate text-[12.5px] font-bold leading-tight">
+                              {courseName.get(slot.course_id) ?? 'Course #' + slot.course_id}
+                            </span>
+                            <span className="mt-0.5 block truncate text-[11.5px] leading-tight
+                                             text-muted">
+                              <span className="tabular-nums">
+                                {hhmm(slot.starts_at)}&ndash;{hhmm(slot.ends_at)}
                               </span>
-                              <span className="block text-[12.5px] font-bold leading-tight">
-                                {courseName.get(s.course_id) ?? 'Course #' + s.course_id}
+                              {' · '}
+                              {roomShort.get(slot.room_id) ?? 'Room #' + slot.room_id}
+                            </span>
+                            {/* Only where the box is tall enough to hold it --
+                                a fifty-minute session has room for two lines,
+                                not four. */}
+                            {box.height >= 60 ? (
+                              <span className="mt-0.5 block text-[11px] tabular-nums text-muted">
+                                {mins >= 60
+                                  ? Math.round((mins / 60) * 10) / 10 + ' hours'
+                                  : mins + ' minutes'}
                               </span>
-                              <span className="mt-0.5 block text-[11.5px] leading-tight text-muted">
-                                {roomShort.get(s.room_id) ?? 'Room #' + s.room_id}
-                                {' · '}
-                                <span className="tabular-nums">
-                                  {hhmm(s.starts_at)}&ndash;{hhmm(s.ends_at)}
-                                </span>
+                            ) : null}
+                            {registry && box.height >= 76 ? (
+                              <span className={'mt-0.5 block text-[10.5px] font-bold uppercase '
+                                + 'tracking-[.07em] '
+                                + (draft ? 'text-accent-700' : 'text-muted')}>
+                                {draft ? 'draft' : 'published'}
                               </span>
-                              {registry ? (
-                                <span className={'mt-1 block text-[10.5px] font-bold uppercase '
-                                  + 'tracking-[.07em] '
-                                  + (draft ? 'text-accent-700' : 'text-muted')}>
-                                  {draft ? 'draft' : 'published'}
-                                </span>
-                              ) : null}
-                              {registry ? <TimetableSlotDelete slotId={s.id} /> : null}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                ))}
+                            ) : null}
+                            {registry ? <TimetableSlotDelete slotId={slot.id} /> : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

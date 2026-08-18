@@ -258,12 +258,16 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
     const { claims, viewer } = await viewerOf(req);
     const query = req.query as {
       semester_id?: string; batch_id?: string; faculty_id?: string; room_id?: string;
-      scope?: string;
+      course_id?: string; scope?: string;
     };
     const staff = viewer.role === 'admin' || viewer.role === 'faculty'
       || viewer.role === 'exams';
     const registry = viewer.role === 'admin' || viewer.role === 'exams';
-    const explicitFilter = Boolean(query.batch_id || query.faculty_id || query.room_id);
+    // Asking for one course's timings is a filter like any other -- it is how
+    // the course page answers "when does this meet", and a learner asking it
+    // about a course they are on is not asking to see the whole institution.
+    const explicitFilter = Boolean(query.batch_id || query.faculty_id
+      || query.room_id || query.course_id);
     const wantsAll = registry || query.scope === 'all' || explicitFilter;
 
     let facultyFilter = query.faculty_id ? query.faculty_id : undefined;
@@ -282,6 +286,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
       batch_id: query.batch_id ? Number(query.batch_id) : undefined,
       faculty_id: facultyFilter,
       room_id: query.room_id ? Number(query.room_id) : undefined,
+      course_id: query.course_id ? Number(query.course_id) : undefined,
       course_ids: courseIds,
       publishedOnly: !staff,
     }));
