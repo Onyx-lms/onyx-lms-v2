@@ -90,6 +90,8 @@ export default async function OnyxProgramsPage() {
         />
         <CreatePanel
           title="New semester" cta="Add a semester" icon="calendar" compact
+          rules={(v) => (v.starts_on && v.ends_on && v.ends_on < v.starts_on
+            ? 'That semester ends before it starts.' : null)}
           endpoint="semesters"
           fields={[
             { name: 'program_id', label: 'Programme', type: 'select', required: true, numeric: true,

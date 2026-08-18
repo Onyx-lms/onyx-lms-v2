@@ -236,7 +236,8 @@ function provenance(record: AttendanceRecord | null, now: number): string {
  */
 export function OnyxRosterMarking({ session, roster }: {
   session: AttendanceSession;
-  roster: { user_id: string; name: string; email: string; record: AttendanceRecord | null }[];
+  roster: { user_id: string; name: string; email: string;
+    roll_number?: string | null; record: AttendanceRecord | null }[];
 }) {
   const router = useRouter();
   const [marks, setMarks] = useState<Record<string, string>>(
@@ -275,6 +276,14 @@ export function OnyxRosterMarking({ session, roster }: {
               className="flex flex-wrap items-center gap-x-4 gap-y-2.5 px-4 py-3.5">
               <div className="min-w-0 flex-1 basis-[180px]">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  {/* The number first, because the register in somebody's hand
+                      is in roll order and this list now matches it. */}
+                  {r.roll_number ? (
+                    <span className="shrink-0 font-mono text-[13px] font-bold tabular-nums
+                                     text-muted">
+                      {r.roll_number}
+                    </span>
+                  ) : null}
                   <span className="truncate text-[15px] font-semibold">{r.name}</span>
                   {!r.record && session.status === 'open'
                     ? <Pill tone="neutral">Not yet</Pill> : null}

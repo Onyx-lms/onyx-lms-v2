@@ -24,6 +24,7 @@ import type { OnyxDb } from './db.ts';
 import type { Role } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
 import { increment } from './metrics.ts';
+import { peopleFor, labelFor, type Person } from './directory.ts';
 import type { AcademicsService } from './academics.service.ts';
 
 const BANK_COLUMNS = 'id, tenant_id, course_id, name, description, created_by, created_at';
@@ -942,12 +943,13 @@ export class AssessService {
     // it is allowed: under anonymous marking no name is fetched at all rather
     // than fetched and then dropped, so there is nothing in the response for a
     // careless later edit to leak.
-    const names = new Map<string, string>();
-    if (!anonymous && rows.length) {
-      const { data: people } = await this.#db.from('onyx_users').select('id, name')
-        .in('id', [...new Set(rows.map((a) => String(a.user_id)))]);
-      for (const p of people ?? []) names.set(String(p.id), String(p.name));
-    }
+    // With the roll number, because a script has one at the top and a marker
+    // works through a pile in that order. Still nothing at all under anonymous
+    // marking: not fetched rather than fetched and dropped, so there is
+    // nothing in the response for a careless later edit to leak.
+    const people = anonymous
+      ? new Map<string, Person>()
+      : await peopleFor(this.#db, tenantId, rows.map((a) => a.user_id));
 
     return rows.map((a, i) => ({
       id: a.id,
@@ -964,9 +966,10 @@ export class AssessService {
       user_id: anonymous ? null : a.user_id,
       candidate: anonymous
         ? 'Candidate ' + (i + 1)
-        // Falls back to the id only if the person has no row -- a deleted
-        // account, mid-migration data. Never silently blank.
-        : names.get(String(a.user_id)) ?? String(a.user_id),
+        // "CS-2024-014 · Ada Lovelace" where a number exists, the name alone
+        // where it does not. Never the raw id, which is what this used to be.
+        : labelFor(people.get(String(a.user_id)), String(a.user_id)),
+      roll_number: anonymous ? null : people.get(String(a.user_id))?.roll_number ?? null,
     }));
   }
 

@@ -909,7 +909,9 @@ test('staff see who set each problem; a learner is not told', async () => {
   graded(w, id, 'user-10', { score: 1, max_score: 1 });
 
   const staffView = await w.codelab.practiceResultsFor(T, 'user-10');
-  assert.equal(staffView[0]!.author, 'Dr. Arun Menon');
+  assert.equal(staffView.results[0]!.author, 'Dr. Arun Menon');
+  // And who the learner is, by the institution's own number where it has one.
+  assert.ok(staffView.learner, 'the staff view did not say whose record it is');
 
   // The learner's own read must not carry it at all -- omitted by the server,
   // not hidden by the page.
@@ -927,7 +929,7 @@ test('a problem whose author has left still names something readable', async () 
   rows.find((p) => Number(p.id) === id)!.created_by = null;
   graded(w, id, 'user-10', { score: 1, max_score: 1 });
 
-  const [row] = await w.codelab.practiceResultsFor(T, 'user-10');
+  const [row] = (await w.codelab.practiceResultsFor(T, 'user-10')).results;
   assert.equal(row!.author, 'No longer at the institution');
 });
 

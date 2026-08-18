@@ -16,7 +16,8 @@ const CALM = '[&_i]:motion-reduce:animate-none';
 
 interface RosterResponse {
   session: AttendanceSession;
-  roster: { user_id: string; record: AttendanceRecord | null }[];
+  roster: { user_id: string; name: string | null; roll_number: string | null;
+    record: AttendanceRecord | null }[];
 }
 
 /** "40 seconds ago" — the only form in which "when was the last scan" is useful. */
@@ -90,10 +91,14 @@ export default async function OnyxSessionPage(
   }
 
   const names = new Map((members ?? []).map((m) => [m.user_id, m.user]));
+  // The API resolves the name and the roll number and returns the roster in
+  // roll order, so this no longer re-sorts or re-looks-up -- the members map is
+  // only a fallback for an account that has since gone.
   const roster = (rosterData?.roster ?? []).map((r) => ({
     user_id: r.user_id,
-    name: names.get(r.user_id)?.name ?? ('User ' + r.user_id),
+    name: r.name ?? names.get(r.user_id)?.name ?? ('User ' + r.user_id),
     email: names.get(r.user_id)?.email ?? '',
+    roll_number: r.roll_number,
     record: r.record,
   }));
 

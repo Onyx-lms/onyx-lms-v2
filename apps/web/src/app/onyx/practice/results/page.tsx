@@ -29,7 +29,9 @@ export const metadata: Metadata = { title: 'Practice results' };
  * answer to a question nobody asked.
  */
 
-interface Member { user_id: string; user: { name: string; email: string } | null }
+interface Member { user_id: string; roll_number: string | null;
+  user: { name: string; email: string } | null }
+interface Learner { user_id: string; name: string; roll_number: string | null }
 
 const TONE: Record<string, 'good' | 'soon' | 'late'> = {
   easy: 'good', medium: 'soon', hard: 'late',
@@ -48,13 +50,17 @@ export default async function OnyxPracticeResultsPage(
   const [results, members] = await Promise.all([
     staff
       ? (student
-        ? onyxApiSafe<PracticeResult[]>('/api/onyx/practice/results/' + student)
-        : Promise.resolve<PracticeResult[]>([]))
+        ? onyxApiSafe<{ learner: Learner | null; results: PracticeResult[] }>(
+          '/api/onyx/practice/results/' + student)
+        : Promise.resolve(null))
       : onyxApiSafe<PracticeResult[]>('/api/onyx/practice/results'),
     staff ? onyxApiSafe<Member[]>('/api/onyx/members?role=student') : Promise.resolve(null),
   ]);
 
-  const rows = results ?? [];
+  // Staff get { learner, results }; a learner gets their own rows directly.
+  const staffView = staff ? results as { learner: Learner | null; results: PracticeResult[] } | null : null;
+  const rows = (staff ? staffView?.results : results as PracticeResult[] | null) ?? [];
+  const learner = staffView?.learner ?? null;
   const solved = rows.filter((r) => r.solved).length;
   const chosen = (members ?? []).find((m) => m.user_id === student);
 
@@ -91,6 +97,7 @@ export default async function OnyxPracticeResultsPage(
                 <option value="">Choose a learner…</option>
                 {(members ?? []).map((m) => (
                   <option key={m.user_id} value={m.user_id}>
+                    {m.roll_number ? m.roll_number + ' · ' : ''}
                     {m.user?.name ?? m.user_id}{m.user?.email ? ' — ' + m.user.email : ''}
                   </option>
                 ))}
@@ -115,7 +122,8 @@ export default async function OnyxPracticeResultsPage(
         <Card className="p-0">
           <Empty icon="code">
             {staff
-              ? (chosen?.user?.name ?? 'This learner') + ' has not handed in any practice yet.'
+              ? (learner?.name ?? chosen?.user?.name ?? 'This learner')
+                + ' has not handed in any practice yet.'
               : 'You have not handed in any practice yet. Solve a problem and it appears here.'}
           </Empty>
         </Card>
@@ -131,8 +139,10 @@ export default async function OnyxPracticeResultsPage(
           </CardGrid>
 
           <section className="mt-6">
-            <SectionHead title={staff && chosen?.user?.name
-              ? chosen.user.name + '’s problems' : 'Your problems'} />
+            <SectionHead title={staff && (learner || chosen)
+              ? (learner?.roll_number ? learner.roll_number + ' · ' : '')
+                + (learner?.name ?? chosen?.user?.name ?? 'This learner') + '’s problems'
+              : 'Your problems'} />
             <RowList label="Practice results">
               {rows.map((r) => (
                 <ListRow

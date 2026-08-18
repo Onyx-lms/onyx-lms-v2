@@ -232,7 +232,9 @@ export default async function OnyxTimetablePage(
             ]}
           />
           <CreatePanel
-            title="Schedule a class" cta="Schedule a class" icon="calendar" compact
+            title="Schedule a class" cta="Schedule a class" icon="calendar"
+            rules={(v) => (v.starts_at && v.ends_at && v.ends_at <= v.starts_at
+              ? 'That class ends before it starts.' : null)} compact
             endpoint="timetable"
             // CMP-01b: the POST refuses a clash and names it. This says so
             // while the registrar can still change the answer, which is the
@@ -259,8 +261,21 @@ export default async function OnyxTimetablePage(
                 help: 'A clash — the room, the teacher or the batch — is refused and named.' },
             ]}
           />
+          {/* The count is on the button, and it asks first.
+              This looks like every other create panel -- one dropdown, one
+              button -- and makes every draft row for the term visible to every
+              learner at once. The page already knew how many that was and put
+              the number nowhere near the control. */}
           <CreatePanel
-            title="Publish the timetable" cta="Publish a semester" icon="check" compact
+            title="Publish the timetable"
+            cta={drafts.length
+              ? 'Publish ' + drafts.length + ' session' + (drafts.length === 1 ? '' : 's')
+              : 'Publish a semester'}
+            icon="check" compact
+            confirm={drafts.length
+              ? 'Publish ' + drafts.length + ' session'
+                + (drafts.length === 1 ? '' : 's') + ' to every learner on this timetable?'
+              : undefined}
             endpoint="timetable/publish"
             fields={[
               { name: 'semester_id', label: 'Semester', type: 'select', required: true,

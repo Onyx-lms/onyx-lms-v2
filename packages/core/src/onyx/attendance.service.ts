@@ -32,6 +32,7 @@ import type { OnyxDb } from './db.ts';
 import type { AttendanceStatus } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
 import { csvDocument } from '../format/csv.ts';
+import { peopleFor, byRoll } from './directory.ts';
 import type { AcademicsService } from './academics.service.ts';
 
 const SESSION_COLUMNS = 'id, tenant_id, course_id, title, scheduled_at, duration_minutes, status, qr_window_seconds, created_by, created_at';
@@ -157,12 +158,21 @@ export class AttendanceService {
       this.records(tenantId, sessionId),
     ]);
     const byUser = new Map(records.map((r) => [String(r.user_id), r]));
+    // A paper register is in roll order and this one was in enrolment order,
+    // so marking a class of forty meant reading down two differently sorted
+    // lists at once. The number travels with the row as well, because that is
+    // what somebody is scanning for.
+    const people = await peopleFor(this.#db, tenantId, enrolled.map((e) => e.user_id));
     return {
       session,
-      roster: enrolled.map((e) => ({
-        user_id: String(e.user_id),
-        record: byUser.get(String(e.user_id)) ?? null,
-      })),
+      roster: enrolled
+        .map((e) => ({
+          user_id: String(e.user_id),
+          name: people.get(String(e.user_id))?.name ?? null,
+          roll_number: people.get(String(e.user_id))?.roll_number ?? null,
+          record: byUser.get(String(e.user_id)) ?? null,
+        }))
+        .sort((a, b) => byRoll(people.get(a.user_id), people.get(b.user_id))),
     };
   }
 
@@ -534,12 +544,24 @@ export class AttendanceService {
     names?: Map<string, { name: string; email: string }>;
   } = {}): Promise<string> {
     const rows = await this.exportRows(tenantId, courseId);
-    const header = ['session_id', 'session', 'scheduled_at', 'user_id', 'name', 'email', 'status', 'method'];
-    return csvDocument(header, rows.map((r) => {
+    // The roll number, second column, and the rows in roll order. This file
+    // goes to the examinations office, which reconciles against a numbered
+    // register -- handed a name-ordered sheet with no numbers on it, that
+    // reconciliation is done by hand.
+    const people = await peopleFor(this.#db, tenantId, rows.map((r) => r.user_id));
+    const header = ['session_id', 'session', 'scheduled_at',
+      'roll_number', 'user_id', 'name', 'email', 'status', 'method'];
+    const ordered = [...rows].sort((a, b) =>
+      byRoll(people.get(a.user_id), people.get(b.user_id))
+      || String(a.scheduled_at).localeCompare(String(b.scheduled_at)));
+    return csvDocument(header, ordered.map((r) => {
       const who = opts.names?.get(r.user_id);
       return [
-        r.session_id, r.session, r.scheduled_at, r.user_id,
-        who?.name ?? '', who?.email ?? '', r.status, r.method ?? '',
+        r.session_id, r.session, r.scheduled_at,
+        people.get(r.user_id)?.roll_number ?? '',
+        r.user_id,
+        who?.name ?? people.get(r.user_id)?.name ?? '', who?.email ?? '',
+        r.status, r.method ?? '',
       ];
     }));
   }

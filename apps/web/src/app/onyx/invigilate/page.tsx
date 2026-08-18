@@ -14,6 +14,7 @@ export const metadata: Metadata = { title: 'Invigilate' };
 
 interface QueueRow {
   attempt_id: number; assessment_id: number; user_id: string; status: string;
+  name: string | null; roll_number: string | null;
   integrity_flags: number; integrity_status: string; open_events: number;
   /** null means the attempt has never reported either way -- not the same as off. */
   camera_on: boolean | null; screen_on: boolean | null;
@@ -98,9 +99,19 @@ function paperLabel(assessmentId: number, examByAssessment: Map<number, Exam>): 
     href: '/onyx/assessments/' + assessmentId, examId: null };
 }
 
-/** A candidate's name if it is known, or the id it used to be stuck showing. */
-function candidateOf(userId: string, nameOf: Map<string, string | null>): string {
-  return nameOf.get(userId) || 'Candidate #' + userId;
+/**
+ * How a candidate reads on the invigilation queue.
+ *
+ * The roll number first: an invigilator walking a hall is matching what is on
+ * screen against a hall ticket, and the ticket carries a number. The service
+ * resolves both now, so the members lookup here is only a fallback for a row
+ * whose account has since gone.
+ */
+function candidateOf(row: { user_id: string; name: string | null; roll_number: string | null },
+  nameOf: Map<string, string | null>): string {
+  const name = row.name || nameOf.get(row.user_id) || null;
+  if (row.roll_number && name) return row.roll_number + ' · ' + name;
+  return row.roll_number || name || 'Candidate #' + row.user_id;
 }
 
 /** ASS-02b -- everything an invigilator has to look at, worst first. */
@@ -204,7 +215,7 @@ export default async function OnyxInvigilatePage(
             return (
               <tr key={r.attempt_id} className="align-middle">
                 <td>
-                  <div className="font-semibold">{candidateOf(r.user_id, nameOf)}</div>
+                  <div className="font-semibold">{candidateOf(r, nameOf)}</div>
                   <div className="text-[12.5px] text-muted">
                     Attempt {r.attempt_id} ·{' '}
                     {paper.isExam
@@ -265,7 +276,7 @@ export default async function OnyxInvigilatePage(
             return (
               <tr key={r.attempt_id} className="align-middle">
                 <td>
-                  <div className="font-semibold">{candidateOf(r.user_id, nameOf)}</div>
+                  <div className="font-semibold">{candidateOf(r, nameOf)}</div>
                   <div className="text-[12.5px] text-muted">
                     Attempt {r.attempt_id} ·{' '}
                     {paper.isExam

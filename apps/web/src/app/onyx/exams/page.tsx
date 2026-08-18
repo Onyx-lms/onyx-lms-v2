@@ -179,6 +179,10 @@ export default async function OnyxExamsPage() {
           {canSchedule ? (
             <CreatePanel
               title="Schedule an exam" cta="Schedule an exam" icon="award" compact
+              rules={(v) => (Number(v.pass_marks) > Number(v.max_marks)
+                ? 'The pass mark (' + v.pass_marks + ') is above the maximum ('
+                  + v.max_marks + ').'
+                : null)}
               endpoint="exams"
               fields={[
                 { name: 'title', label: 'Exam', required: true, wide: true,
@@ -223,7 +227,11 @@ export default async function OnyxExamsPage() {
               does not. */}
           {canManageHalls ? (
             <CreatePanel
-              title="New hall" cta="Add a hall" icon="building" compact
+              title="New hall" cta="Add a hall" icon="building"
+            rules={(v) => (Number(v.capacity) > Number(v.row_count) * Number(v.col_count)
+              ? 'That is ' + v.capacity + ' seats in a hall laid out for '
+                + (Number(v.row_count) * Number(v.col_count)) + '.'
+              : null)} compact
               endpoint="halls"
               fields={[
                 { name: 'code', label: 'Code', required: true, placeholder: 'H1' },

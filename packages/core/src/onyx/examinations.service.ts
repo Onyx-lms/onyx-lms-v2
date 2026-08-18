@@ -27,6 +27,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { OnyxDb } from './db.ts';
 import type { Role, MarkStatus } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
+import { peopleFor } from './directory.ts';
 import { pdfTable } from '../format/pdf.ts';
 import type { AuditService } from './audit.service.ts';
 
@@ -389,12 +390,10 @@ export class ExaminationsService {
       .order('hall_id', { ascending: true }).order('seat_label', { ascending: true });
     const seats = data ?? [];
 
-    const names = new Map<string, string>();
-    if (seats.length) {
-      const { data: people } = await this.#db.from('onyx_users').select('id, name')
-        .in('id', seats.map((s) => String(s.user_id)));
-      for (const p of people ?? []) names.set(String(p.id), String(p.name));
-    }
+    // A seating plan is pinned to a door and read against a hall ticket, and a
+    // hall ticket carries a number. Names alone meant an invigilator matching
+    // spellings under time pressure.
+    const people = await peopleFor(this.#db, tenantId, seats.map((s) => s.user_id));
 
     const byHall = new Map<number, { hall_id: number; hall: string; seats: unknown[] }>();
     for (const seat of seats) {
@@ -403,7 +402,8 @@ export class ExaminationsService {
       byHall.get(hallId)!.seats.push({
         seat_label: seat.seat_label,
         user_id: String(seat.user_id),
-        name: names.get(String(seat.user_id)) ?? null,
+        name: people.get(String(seat.user_id))?.name ?? null,
+        roll_number: people.get(String(seat.user_id))?.roll_number ?? null,
       });
     }
 
