@@ -52,10 +52,14 @@ export default async function OnyxBankPage({ params }: { params: Promise<{ id: s
   const me = await onyxApi<Me>('/api/onyx/me');
   if (!isExamsStaff(me.role)) redirect('/onyx/denied');
 
-  const [banks, questions] = await Promise.all([
+  // Published problems only: a code question needs something that can actually
+  // mark it, and the service refuses a draft problem anyway.
+  const [banks, questions, problems] = await Promise.all([
     onyxApi<{ id: number; name: string; description: string | null; course_id: number | null }[]>(
       '/api/onyx/banks'),
     onyxApi<Question[]>('/api/onyx/banks/' + id + '/questions'),
+      onyxApiSafe<{ id: number; title: string; difficulty: string }[]>(
+      '/api/onyx/problems'),
   ]);
   const bank = banks.find((b) => String(b.id) === id);
   const marks = questions.reduce((sum, q) => sum + Number(q.points), 0);
@@ -109,7 +113,7 @@ export default async function OnyxBankPage({ params }: { params: Promise<{ id: s
 
       {canEdit ? (
         <div className="mt-5">
-          <AddQuestion bankId={Number(id)} />
+          <AddQuestion problems={problems ?? []} bankId={Number(id)} />
         </div>
       ) : null}
 

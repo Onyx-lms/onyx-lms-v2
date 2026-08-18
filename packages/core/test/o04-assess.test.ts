@@ -56,6 +56,8 @@ function world(c = clock()) {
     onyx_proctor_events: [],
     onyx_assessment_grades: [],
     onyx_audit_logs: [],
+    onyx_problems: [],
+    onyx_problem_tests: [],
     onyx_users: [
       { id: 'user-20', email: 'exams@onyx.test', name: 'Exams' },
       // The two candidates, so a named marking queue has real names to resolve
@@ -982,4 +984,136 @@ test('a paper can be previewed without sitting it', async () => {
   // And nothing was recorded: previewing must not consume an attempt, which is
   // the whole reason authors never checked a one-attempt paper.
   assert.equal((w.db.tables.onyx_assessment_attempts as unknown[]).length, 0);
+});
+
+// ---------------------------------------------------------------------------
+// ASS-01 -- code questions
+// ---------------------------------------------------------------------------
+
+/** A stand-in for Code Lab, so the engine can be tested without a sandbox. */
+function fakeGrader(over: Record<string, unknown> = {}) {
+  const calls: { submitted: number; graded: number[] } = { submitted: 0, graded: [] };
+  return {
+    calls,
+    submit: async () => { calls.submitted += 1; return { id: 900 + calls.submitted }; },
+    gradeNow: async (_t: number, id: number) => { calls.graded.push(id); },
+    scoreOf: async () => ({ status: 'done', score: 3, max_score: 4, ...over }),
+  };
+}
+
+/** A published problem with a test case, so a code question has something markable. */
+function aProblem(w: ReturnType<typeof world>, over: Record<string, unknown> = {}) {
+  const problems = w.db.tables.onyx_problems as Record<string, unknown>[];
+  const id = problems.length + 1;
+  problems.push({ id, tenant_id: T, title: 'Sum two numbers', slug: 's' + id,
+    statement: 'Add them.', languages: ['python'], starter_code: {}, time_limit_ms: 2000,
+    status: 'published', created_by: 'user-20', ...over });
+  (w.db.tables.onyx_problem_tests as Record<string, unknown>[]).push(
+    { id, tenant_id: T, problem_id: id, name: 'v', expected_stdout: '5', is_hidden: false, weight: 1 });
+  return id;
+}
+
+test('a code question needs a published problem that has tests', async () => {
+  const w = world();
+  const bank = Number((await w.assess.createBank(T, ACTOR, { name: 'Code bank' })).id);
+
+  await assert.rejects(
+    w.assess.addQuestion(T, bank, ACTOR, { type: 'code', prompt: 'Write it', points: 10 }),
+    (e: HttpError) => e.status === 422 && /needs a problem/.test(e.message));
+
+  await assert.rejects(
+    w.assess.addQuestion(T, bank, ACTOR,
+      { type: 'code', prompt: 'Write it', points: 10, problem_id: 9999 }),
+    (e: HttpError) => e.status === 422 && /does not exist/.test(e.message));
+
+  // A draft problem cannot mark anything, and neither can one with no cases --
+  // both are caught here rather than at deal time, in front of a candidate.
+  const draft = aProblem(w, { status: 'draft' });
+  await assert.rejects(
+    w.assess.addQuestion(T, bank, ACTOR,
+      { type: 'code', prompt: 'Write it', points: 10, problem_id: draft }),
+    (e: HttpError) => e.status === 422 && /still a draft/.test(e.message));
+
+  const good = aProblem(w);
+  const q = await w.assess.addQuestion(T, bank, ACTOR,
+    { type: 'code', prompt: 'Write it', points: 10, problem_id: good });
+  assert.equal(q.type, 'code');
+  assert.equal(Number(q.problem_id), good);
+});
+
+test('a sat code question carries the problem, and never its tests', async () => {
+  const w = world();
+  const bank = Number((await w.assess.createBank(T, ACTOR, { name: 'Code bank' })).id);
+  const problem = aProblem(w);
+  await w.assess.addQuestion(T, bank, ACTOR,
+    { type: 'code', prompt: 'Write it', points: 10, problem_id: problem });
+  const paper = await w.assess.createAssessment(T, ACTOR, {
+    title: 'Coding test', course_id: 1, duration_minutes: 60,
+    sections: [{ id: 's1', title: 'Code', bank_id: bank, take: 1 }],
+  });
+  await w.assess.publishAssessment(T, Number(paper.id));
+
+  const attempt = await w.assess.start(T, Number(paper.id), 'user-10');
+  const q = attempt.questions[0]!;
+  assert.equal(q.type, 'code');
+  assert.equal(q.problem!.statement, 'Add them.');
+  assert.deepEqual(q.problem!.languages, ['python']);
+  // Hidden cases are the entire value of an auto-graded coding question, and
+  // the attempt row is readable by the candidate.
+  assert.doesNotMatch(JSON.stringify(attempt), /expected_stdout/);
+  assert.doesNotMatch(JSON.stringify(attempt), /"tests"/);
+});
+
+test('code is marked by running the problem, scaled to the question’s marks', async () => {
+  const grader = fakeGrader();
+  const w = world();
+  const withCode = new (Object.getPrototypeOf(w.assess).constructor)(
+    w.db, new AcademicsService(w.db as never), w.clock.now, grader);
+
+  const bank = Number((await withCode.createBank(T, ACTOR, { name: 'Code bank' })).id);
+  const problem = aProblem(w);
+  await withCode.addQuestion(T, bank, ACTOR,
+    { type: 'code', prompt: 'Write it', points: 10, problem_id: problem });
+  const paper = await withCode.createAssessment(T, ACTOR, {
+    title: 'Coding test', course_id: 1, duration_minutes: 60,
+    sections: [{ id: 's1', title: 'Code', bank_id: bank, take: 1 }],
+  });
+  await withCode.publishAssessment(T, Number(paper.id));
+
+  const attempt = await withCode.start(T, Number(paper.id), 'user-10');
+  await withCode.saveAnswer(T, attempt.id, 'user-10', {
+    question_id: attempt.questions[0]!.question_id,
+    response: { language: 'python', source: 'print(5)' },
+  });
+  assert.equal(grader.calls.submitted, 1, 'the answer was not sent to the sandbox');
+
+  const done = await withCode.submit(T, attempt.id, 'user-10');
+  assert.equal(grader.calls.graded.length, 1, 'the submission was not graded at hand-in');
+  // 3 of 4 tests, on a question worth 10 marks.
+  assert.equal(done.max_score, 10);
+  const marked = await withCode.attemptForMarker(T, attempt.id);
+  assert.equal(marked.auto_score, 7.5);
+});
+
+test('with no sandbox wired, a code answer waits for a person rather than scoring zero', async () => {
+  const w = world();   // no grader injected
+  const bank = Number((await w.assess.createBank(T, ACTOR, { name: 'Code bank' })).id);
+  const problem = aProblem(w);
+  await w.assess.addQuestion(T, bank, ACTOR,
+    { type: 'code', prompt: 'Write it', points: 10, problem_id: problem });
+  const paper = await w.assess.createAssessment(T, ACTOR, {
+    title: 'Coding test', course_id: 1, duration_minutes: 60,
+    sections: [{ id: 's1', title: 'Code', bank_id: bank, take: 1 }],
+  });
+  await w.assess.publishAssessment(T, Number(paper.id));
+
+  const attempt = await w.assess.start(T, Number(paper.id), 'user-10');
+  await w.assess.saveAnswer(T, attempt.id, 'user-10', {
+    question_id: attempt.questions[0]!.question_id,
+    response: { language: 'python', source: 'print(5)' },
+  });
+  const done = await w.assess.submit(T, attempt.id, 'user-10');
+  // Marking it zero because the institution has no sandbox would be a wrong
+  // mark, not a missing one.
+  assert.equal(done.score, null, 'an ungradable code answer was scored instead of queued');
 });

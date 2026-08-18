@@ -669,6 +669,33 @@ export class CodeLabService {
       || String(a.title).localeCompare(String(b.title)));
   }
 
+  /**
+   * Grade one submission now, rather than waiting for the queue to reach it.
+   *
+   * Exists for the assessment engine: a candidate handing in a paper with a
+   * coding question on it should get a complete mark, not a paper that says
+   * "still running your code, come back later". Idempotent -- a submission
+   * already graded is left alone rather than re-run.
+   */
+  async gradeNow(tenantId: number, submissionId: number): Promise<void> {
+    const submission = await this.#submission(tenantId, submissionId);
+    if (submission.status === 'done' || submission.status === 'failed') return;
+    await this.evaluate(tenantId, submissionId);
+  }
+
+  /** What a submission scored, or null if it is not this institution's. */
+  async scoreOf(tenantId: number, submissionId: number) {
+    const { data } = await this.#db.from('onyx_code_submissions')
+      .select('id, status, score, max_score')
+      .eq('tenant_id', tenantId).eq('id', submissionId).maybeSingle();
+    if (!data) return null;
+    return {
+      status: String(data.status),
+      score: Number(data.score ?? 0),
+      max_score: Number(data.max_score ?? 0),
+    };
+  }
+
   /** A learner's own practice record. */
   async practiceResults(tenantId: number, userId: string) {
     return this.#practice(tenantId, userId);
