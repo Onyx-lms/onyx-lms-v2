@@ -97,6 +97,12 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
       name,
       email: claims.email,
       role: claims.tenant_role,
+      // This institution's own number for them, so a learner can read their
+      // roll number off their own profile rather than off a printed list --
+      // and so staff writing it on a script have it to hand. Per membership,
+      // so switching institutions switches the number with it.
+      roll_number: memberships.find((m) => Number(m.tenant?.id) === claims.tenant_id)
+        ?.roll_number ?? null,
       tenant,
       memberships: memberships.map((m) => ({ tenant: m.tenant, role: m.role })),
     });
@@ -195,6 +201,9 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
       email: z.string().email(),
       role: RoleSchema,
       password: z.string().min(8).max(255).optional(),
+      // The institution's own number for this person. Optional: an institution
+      // that does not use roll numbers must not be blocked from adding people.
+      roll_number: z.string().max(40).nullish(),
     }), req.body);
 
     const result = await ctx.onyxTenancy.invite(claims.tenant_id, body);
@@ -233,6 +242,9 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
       account_status: z.number().int().min(0).max(1).optional(),
       role: RoleSchema.optional(),
       membership_status: z.number().int().min(0).max(1).optional(),
+      // Blank clears it -- an administrator who typed one onto the wrong
+      // person needs a way back.
+      roll_number: z.string().max(40).nullish(),
     }), req.body);
 
     const result = await ctx.onyxTenancy.updateMember(claims.tenant_id, idOf(req), body);
