@@ -1,19 +1,27 @@
 /**
- * Sanity check for the persistent demo institution ("Demo University", slug
- * `demo-university`) handed to the user as fixed, reusable credentials -- as
+ * Sanity check for the persistent demo institution ("ABC Institution", slug
+ * `abc-institution`) handed to the user as fixed, reusable credentials -- as
  * opposed to every other file in this suite, which seeds a fresh run-unique
  * tenant per file. This one exists purely to prove those exact emails and
  * that exact password still work, end to end, through the real form.
  *
- * It previously pointed at an older demo tenant ("EZiL Demo Institute",
- * `ezil-demo`, `@onyx-demo.test`) which was deleted during an unrelated
- * cleanup of stray test institutions -- the exact failure mode this file is
- * meant to catch, so it did its job. The lesson is worth keeping: a tenant a
- * test depends on is not "stray" just because it was not created by that run.
+ * It has twice been left naming a tenant that no longer existed -- first "EZiL
+ * Demo Institute" (`ezil-demo`), then "Demo University" (`demo-university`),
+ * which never existed in this project at all: every one of these seven tests
+ * signed in successfully and then failed on the institution's name. The lesson
+ * is the same both times, so the name now comes from one constant below and
+ * the seeder that creates the tenant is what it has to agree with.
  */
 import { test, expect } from '@playwright/test';
 
 const PASSWORD = 'Demo#2026!';
+
+/**
+ * The institution those accounts belong to, named exactly as
+ * tools/onyx/seed-demo.mjs creates it -- that script is what makes this tenant
+ * exist, so it is the source of truth for its name, not this file.
+ */
+const TENANT = 'ABC Institution';
 
 /** Where each role legitimately lands. Two of them never see a dashboard. */
 const ACCOUNTS: [string, string][] = [
@@ -41,7 +49,7 @@ test.describe('the fixed demo credentials handed to the user', () => {
       // The institution is named on every signed-in page, which is the thing
       // that proves the tenant claim survived the round trip.
       await expect(page.getByTestId('tenant-card').first()
-        .getByText('Demo University')).toBeVisible();
+        .getByText(TENANT)).toBeVisible();
     });
   }
 });
