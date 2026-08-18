@@ -54,13 +54,19 @@ export default async function OnyxTimetablePage(
   await requireOnyxSession();
   const me = await onyxApi<Me>('/api/onyx/me');
   const registry = REGISTRY.includes(me.role);
+  // Who may look past their own week. Matches the API exactly -- a learner is
+  // scoped to their enrolments there whatever this page asks for.
+  const staff = registry || me.role === 'faculty';
   // Registry already gets the whole institution's grid regardless -- the
   // toggle exists for everyone else, whose default is now their own classes.
   const { scope } = await searchParams;
-  const showingAll = registry || scope === 'all';
+  // A learner never sees everything, whatever the query string says -- the
+  // API is the enforcement, this only decides what to draw.
+  const showingAll = registry || (staff && scope === 'all');
 
   const [slots, rooms, courses, semesters, batches, members] = await Promise.all([
-    onyxApi<TimetableSlot[]>('/api/onyx/timetable' + (scope === 'all' ? '?scope=all' : '')),
+    onyxApi<TimetableSlot[]>('/api/onyx/timetable'
+      + (staff && scope === 'all' ? '?scope=all' : '')),
     onyxApiSafe<Room[]>('/api/onyx/rooms'),
     onyxApiSafe<Course[]>('/api/onyx/courses'),
     registry ? onyxApiSafe<{ id: number; name: string }[]>('/api/onyx/semesters') : null,
@@ -173,11 +179,13 @@ export default async function OnyxTimetablePage(
         : showingAll ? 'Every published session at this institution.'
           : (me.role === 'faculty' ? 'The classes you teach.' : 'The courses you are enrolled in.')}
     >
-      {/* Scoped to your own classes by default -- everyone used to get the
-          whole institution's grid and had to pick their own sessions out of
-          it. Registry already sees everything, so the toggle is only worth
-          showing to everyone else. */}
-      {!registry ? (
+      {/* Staff only. The switch used to be offered to everybody, so a learner
+          could open the whole institution's grid -- who teaches what, when,
+          and in which room. That is a view of the estate, not a schedule, and
+          the API refuses it now regardless of what the page renders; the link
+          is removed so it is not offered and then denied. Registry already
+          sees everything, so the toggle is for the roles in between. */}
+      {staff && !registry ? (
         <div className="mb-4 flex items-center gap-1.5 text-[13px] font-semibold">
           <Link href="/onyx/timetable"
             className={showingAll ? 'text-muted hover:text-brand-700 hover:underline'

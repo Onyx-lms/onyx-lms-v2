@@ -263,15 +263,24 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
     const staff = viewer.role === 'admin' || viewer.role === 'faculty'
       || viewer.role === 'exams';
     const registry = viewer.role === 'admin' || viewer.role === 'exams';
-    // Asking for one course's timings is a filter like any other -- it is how
-    // the course page answers "when does this meet", and a learner asking it
-    // about a course they are on is not asking to see the whole institution.
-    const explicitFilter = Boolean(query.batch_id || query.faculty_id
-      || query.room_id || query.course_id);
-    const wantsAll = registry || query.scope === 'all' || explicitFilter;
+    // Who may look past their own week at all.
+    //
+    // `scope=all` and the batch/faculty/room filters used to be open to
+    // anybody, so a learner could ask for -- and get -- every published
+    // session in the institution: who teaches what, when, and in which room.
+    // That is a staff view of the estate, not a learner's schedule. It is now
+    // staff only, and a learner is scoped to their own enrolments whatever
+    // they ask for.
+    const explicitFilter = staff
+      && Boolean(query.batch_id || query.faculty_id || query.room_id);
+    const wantsAll = registry || (staff && query.scope === 'all') || explicitFilter;
 
-    let facultyFilter = query.faculty_id ? query.faculty_id : undefined;
+    let facultyFilter = staff && query.faculty_id ? query.faculty_id : undefined;
+    let roomFilter = staff && query.room_id ? Number(query.room_id) : undefined;
+    let batchFilter = staff && query.batch_id ? Number(query.batch_id) : undefined;
     let courseIds: number[] | undefined;
+    let courseFilter: number | undefined;
+
     if (!wantsAll) {
       if (viewer.role === 'faculty') {
         facultyFilter = claims.user_id;
@@ -281,12 +290,25 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
       }
     }
 
+    // One course's timings, for the course page. A learner may ask this only
+    // about a course they are actually on -- otherwise it is the same
+    // institution-wide read through a narrower door.
+    if (query.course_id) {
+      const asked = Number(query.course_id);
+      if (staff || (courseIds ?? []).includes(asked)) {
+        courseFilter = asked;
+      } else {
+        // Not theirs: answer with nothing rather than with somebody else's.
+        courseIds = [];
+      }
+    }
+
     return ok(await ctx.onyxCampus.timetable(claims.tenant_id, {
       semester_id: query.semester_id ? Number(query.semester_id) : undefined,
-      batch_id: query.batch_id ? Number(query.batch_id) : undefined,
+      batch_id: batchFilter,
       faculty_id: facultyFilter,
-      room_id: query.room_id ? Number(query.room_id) : undefined,
-      course_id: query.course_id ? Number(query.course_id) : undefined,
+      room_id: roomFilter,
+      course_id: courseFilter,
       course_ids: courseIds,
       publishedOnly: !staff,
     }));

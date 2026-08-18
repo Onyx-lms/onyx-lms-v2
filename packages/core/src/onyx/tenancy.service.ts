@@ -276,7 +276,26 @@ export class TenancyService {
     return data;
   }
 
-  async members(tenantId: number, filters: { role?: Role; search?: string } = {}) {
+  /**
+   * The people at this institution, as this caller may see them.
+   *
+   * `onlyStudentsOn` is the faculty rule, and it is a policy decision rather
+   * than a technical one: a lecturer sees the contact details of the students
+   * they teach, and nobody else's. Before this, any faculty account could read
+   * the email address of every learner in the institution, plus the
+   * administrators, the examinations and placement offices, the guardians and
+   * the employer accounts -- a whole-institution address book, handed to a
+   * role that needs a class list.
+   *
+   * Colleagues are not removed, they are *redacted*: name and id stay, email
+   * and phone go. That distinction matters. A timetable naming who teaches
+   * the next session, or a picker for assigning a second lecturer to a course,
+   * are not directory lookups -- dropping staff entirely would turn those
+   * screens back into raw ids to solve a problem they are not part of.
+   */
+  async members(tenantId: number, filters: {
+    role?: Role; search?: string; onlyStudentsOn?: number[];
+  } = {}) {
     let query = this.#db.from('onyx_memberships')
       .select(MEMBERSHIP_COLUMNS).eq('tenant_id', tenantId);
     if (filters.role) query = query.eq('role', filters.role);
@@ -289,6 +308,22 @@ export class TenancyService {
     const byId = new Map((users ?? []).map((u) => [u.id, u]));
 
     let out = rows.map((r) => ({ ...r, user: byId.get(String(r.user_id)) ?? null }));
+
+    if (filters.onlyStudentsOn) {
+      const courseIds = filters.onlyStudentsOn;
+      // No courses taught means no students to see -- not "see everybody".
+      const { data: enrolled } = courseIds.length
+        ? await this.#db.from('onyx_enrollments')
+          .select('user_id').eq('tenant_id', tenantId).eq('status', 1).in('course_id', courseIds)
+        : { data: [] as { user_id: string }[] };
+      const mine = new Set((enrolled ?? []).map((e) => String(e.user_id)));
+
+      out = out
+        .filter((r) => r.role !== 'student' || mine.has(String(r.user_id)))
+        .map((r) => (r.role === 'student' && mine.has(String(r.user_id))
+          ? r
+          : { ...r, user: r.user ? { ...r.user, email: '', phone: null } : null }));
+    }
     if (filters.search?.trim()) {
       const needle = filters.search.trim().toLowerCase();
       // By roll number too. It is the thing staff are most likely to have in
