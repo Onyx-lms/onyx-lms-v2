@@ -249,7 +249,11 @@ export function createContext(): AppContext {
     onyxExecution,
     onyxCodeLab,
     onyxWorkspaces: new WorkspaceService(onyxDb, onyxAcademics, onyxExecution),
-    onyxAssess: new AssessService(onyxDb, onyxAcademics),
+    // The Code Lab service doubles as the grader for `code` questions, so a
+    // coding question on a paper is marked by exactly the same tests, in the
+    // same sandbox, as the practice problem it points at -- rather than by a
+    // second implementation that could disagree with the first.
+    onyxAssess: new AssessService(onyxDb, onyxAcademics, Date.now, onyxCodeLab),
     // The notifier is what turns a crossed threshold into something an
     // invigilator is told rather than something they must go and find. It is
     // the fourth argument; the third is the clock, stated explicitly here so

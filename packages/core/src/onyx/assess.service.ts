@@ -27,20 +27,29 @@ import { increment } from './metrics.ts';
 import type { AcademicsService } from './academics.service.ts';
 
 const BANK_COLUMNS = 'id, tenant_id, course_id, name, description, created_by, created_at';
-const QUESTION_COLUMNS = 'id, tenant_id, bank_id, type, prompt, options, answer, explanation, points, difficulty, tags, version, status, created_at';
-const VERSION_COLUMNS = 'id, tenant_id, question_id, version, type, prompt, options, answer, explanation, points';
+const QUESTION_COLUMNS = 'id, tenant_id, bank_id, type, prompt, options, answer, explanation, points, difficulty, tags, version, status, problem_id, created_at';
+const VERSION_COLUMNS = 'id, tenant_id, question_id, version, type, prompt, options, answer, explanation, points, problem_id';
 const ASSESSMENT_COLUMNS = 'id, tenant_id, course_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, sections, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, anonymous_marking, moderation_required, pass_mark, status, results_published_at, created_by, created_at';
 const ATTEMPT_COLUMNS = 'id, tenant_id, assessment_id, user_id, attempt, paper, status, started_at, expires_at, submitted_at, auto_score, manual_score, score, max_score, consented_at, integrity_flags, integrity_status, updated_at';
-const ANSWER_COLUMNS = 'id, tenant_id, attempt_id, question_id, version, response, auto_points, manual_points, marker_comment, flagged_for_review, updated_at';
+const ANSWER_COLUMNS = 'id, tenant_id, attempt_id, question_id, version, response, auto_points, manual_points, marker_comment, flagged_for_review, submission_id, updated_at';
 const GRADE_COLUMNS = 'id, tenant_id, attempt_id, role, marker_id, manual_score, comment, created_at';
 
 /** The only values `status` may hold. Named so a patch can be checked. */
 export const ASSESSMENT_STATUSES = ['draft', 'published', 'closed'] as const;
 
-export const QUESTION_TYPES = ['single', 'multiple', 'truefalse', 'short', 'essay'] as const;
+export const QUESTION_TYPES = [
+  'single', 'multiple', 'truefalse', 'short', 'essay', 'code',
+] as const;
 export type OnyxQuestionType = (typeof QUESTION_TYPES)[number];
 
-/** Types a machine CAN mark, given a key. Whether one was actually set is separate. */
+/**
+ * Types a machine CAN mark **from a key**, given one was set.
+ *
+ * `code` is machine-marked too, but not from a key -- it is marked by running
+ * the linked problem's test suite in the sandbox. Keeping it out of this list
+ * is the point: `isObjective` means "scoreObjective can decide this", and
+ * scoreObjective cannot execute anything. Code scoring has its own path.
+ */
 const OBJECTIVE: OnyxQuestionType[] = ['single', 'multiple', 'truefalse', 'short'];
 export const isObjective = (type: string) => OBJECTIVE.includes(type as OnyxQuestionType);
 
@@ -70,6 +79,22 @@ export interface PaperEntry {
   /** Already in the order this candidate sees them. */
   options: { id: string; text: string }[];
   points: number;
+  /**
+   * `code` only: what the candidate needs in front of them to write an answer.
+   *
+   * Snapshotted onto the paper like everything else, so editing the problem
+   * afterwards does not change what was asked -- the same rule that already
+   * governs prompts and marks. Never the hidden tests, and never the worked
+   * solution: this is the candidate's view.
+   */
+  problem?: {
+    id: number;
+    title: string;
+    statement: string | null;
+    languages: string[];
+    starter_code: Record<string, string>;
+    time_limit_ms: number;
+  };
 }
 
 /**
@@ -131,15 +156,38 @@ export function scoreObjective(
 
 export interface AssessActor { userId: string; role: Role }
 
+/**
+ * What marking a code question needs from Code Lab.
+ *
+ * Narrow on purpose, and injected rather than imported: the assessment engine
+ * must not grow a hard dependency on the sandbox, because most institutions
+ * never set a code question and every test in this file would then need a
+ * runner. Absent, code questions still author, still deal and still sit -- they
+ * simply wait for a person, exactly as an essay does.
+ */
+export interface CodeGrader {
+  /** Records a candidate's code against a problem and queues it for grading. */
+  submit(tenantId: number, problemId: number, userId: string,
+    input: { language: string; source: string; mode?: string }): Promise<{ id: number }>;
+  /** Grades one submission now, rather than waiting for the queue to reach it. */
+  gradeNow(tenantId: number, submissionId: number): Promise<void>;
+  /** What a submission scored, or null if it is not graded yet. */
+  scoreOf(tenantId: number, submissionId: number):
+  Promise<{ status: string; score: number; max_score: number } | null>;
+}
+
 export class AssessService {
   #db: OnyxDb;
   #academics: AcademicsService;
   #now: () => number;
+  #code: CodeGrader | null;
 
-  constructor(db: OnyxDb, academics: AcademicsService, now: () => number = Date.now) {
+  constructor(db: OnyxDb, academics: AcademicsService, now: () => number = Date.now,
+    code: CodeGrader | null = null) {
     this.#db = db;
     this.#academics = academics;
     this.#now = now;
+    this.#code = code;
   }
 
   /**
@@ -195,14 +243,20 @@ export class AssessService {
     options?: { id: string; text: string }[];
     answer?: unknown; explanation?: string | null;
     points?: number; difficulty?: string; tags?: string[];
+    problem_id?: number | null;
   }) {
     const bank = await this.#bank(tenantId, bankId);
     await this.#assertCanAuthor(tenantId, bank.course_id as number | null, actor);
     const type = input.type ?? 'single';
     this.#validateQuestion(type, input.options ?? [], input.answer);
+    if (type === 'code') {
+      if (!input.problem_id) throw new HttpError(422, 'A code question needs a problem.');
+      await this.#assertProblemMarkable(tenantId, input.problem_id);
+    }
 
     const { data, error } = await this.#db.from('onyx_questions').insert({
       tenant_id: tenantId, bank_id: bankId, type,
+      problem_id: type === 'code' ? input.problem_id : null,
       prompt: input.prompt.trim(),
       options: (input.options ?? []) as never,
       answer: (input.answer ?? null) as never,
@@ -228,6 +282,7 @@ export class AssessService {
    * acceptance criterion.
    */
   async editQuestion(tenantId: number, questionId: number, actor: AssessActor, input: {
+    problem_id?: number | null;
     prompt?: string; options?: { id: string; text: string }[];
     answer?: unknown; explanation?: string | null;
     points?: number; difficulty?: string; tags?: string[]; type?: OnyxQuestionType;
@@ -239,9 +294,16 @@ export class AssessService {
     const answer = input.answer !== undefined ? input.answer : current.answer;
     this.#validateQuestion(type, options, answer);
 
+    const problemId = input.problem_id !== undefined ? input.problem_id : current.problem_id;
+    if (type === 'code') {
+      if (!problemId) throw new HttpError(422, 'A code question needs a problem.');
+      await this.#assertProblemMarkable(tenantId, Number(problemId));
+    }
+
     const next = Number(current.version) + 1;
     const { error } = await this.#db.from('onyx_questions').update({
       type,
+      problem_id: type === 'code' ? problemId : null,
       prompt: input.prompt?.trim() ?? current.prompt,
       options: options as never,
       answer: answer as never,
@@ -682,6 +744,9 @@ export class AssessService {
         options: q.options,
         points: q.points,
         section_id: q.section_id,
+        // Snapshotted on the paper, so it travels with the attempt. Carries no
+        // tests and no solution -- see #dealPaper.
+        problem: q.problem,
         response: byQuestion.get(q.question_id)?.response ?? null,
         // Per-question marks are part of the result, so they wait too.
         awarded: released
@@ -721,15 +786,38 @@ export class AssessService {
     const existing = (await this.#answers(tenantId, attemptId))
       .find((a) => Number(a.question_id) === input.question_id);
 
+    // A code answer is a Code Lab submission, not a value. Recorded through the
+    // same path a practice submission takes, so it is graded by the same tests
+    // in the same sandbox -- there is no second grader to disagree with the
+    // first. `mode: 'submit'` runs the hidden cases too; a Run would only check
+    // what the candidate can already see.
+    let submissionId: number | null = existing ? Number(existing.submission_id ?? 0) || null : null;
+    if (entry.type === 'code' && entry.problem?.id && this.#code && input.response) {
+      const given = input.response as { language?: string; source?: string };
+      if (given.source && String(given.source).trim()) {
+        const made = await this.#code.submit(tenantId, entry.problem.id, userId, {
+          language: String(given.language ?? entry.problem.languages[0] ?? 'python'),
+          source: String(given.source),
+          mode: 'submit',
+        });
+        submissionId = Number(made.id);
+      }
+    }
+
     if (existing) {
       await this.#db.from('onyx_assessment_answers')
-        .update({ response: (input.response ?? null) as never, updated_at: at })
+        .update({
+          response: (input.response ?? null) as never,
+          submission_id: submissionId as never,
+          updated_at: at,
+        })
         .eq('id', existing.id);
     } else {
       const { error } = await this.#db.from('onyx_assessment_answers').insert({
         tenant_id: tenantId, attempt_id: attemptId,
         question_id: input.question_id, version: entry.version,
         response: (input.response ?? null) as never,
+        submission_id: submissionId as never,
         answered_at: at, updated_at: at,
       });
       if (error) throw new HttpError(500, 'Could not save your answer: ' + error.message);
@@ -1111,6 +1199,31 @@ export class AssessService {
   // internals
   // -------------------------------------------------------------------------
 
+  /**
+   * A code question is legal only if the problem behind it can actually mark
+   * it: it must exist in this institution, be published, and have test cases.
+   *
+   * Checked at authoring because the alternative is finding out at deal time,
+   * in front of a candidate -- the same reason section sizes are checked when
+   * a paper is composed rather than when it is sat.
+   */
+  async #assertProblemMarkable(tenantId: number, problemId: number) {
+    const { data: problem } = await this.#db.from('onyx_problems')
+      .select('id, title, status').eq('tenant_id', tenantId).eq('id', problemId).maybeSingle();
+    if (!problem) throw new HttpError(422, 'That problem does not exist.');
+    if (problem.status !== 'published') {
+      throw new HttpError(422, 'A code question needs a published problem: "'
+        + problem.title + '" is still a draft.');
+    }
+    const { data: tests } = await this.#db.from('onyx_problem_tests')
+      .select('id').eq('tenant_id', tenantId).eq('problem_id', problemId);
+    if (!(tests ?? []).length) {
+      throw new HttpError(422, '"' + problem.title + '" has no test cases, so nothing '
+        + 'could mark an answer to it.');
+    }
+    return problem;
+  }
+
   #validateQuestion(type: OnyxQuestionType, options: { id: string; text: string }[], answer: unknown) {
     if (!QUESTION_TYPES.includes(type)) throw new HttpError(422, 'That is not a question type.');
     if (type === 'single' || type === 'multiple') {
@@ -1156,6 +1269,7 @@ export class AssessService {
       answer: (question.answer ?? null) as never,
       explanation: (question.explanation ?? null) as never,
       points: Number(question.points),
+      problem_id: (question.problem_id ?? null) as never,
     });
     if (error) throw new HttpError(500, 'Could not record the question version: ' + error.message);
   }
@@ -1208,7 +1322,7 @@ export class AssessService {
 
       for (const q of chosen) {
         const options = (q.options ?? []) as unknown as { id: string; text: string }[];
-        paper.push({
+        const entry: PaperEntry = {
           question_id: Number(q.id),
           version: Number(q.version),
           section_id: section.id,
@@ -1219,7 +1333,30 @@ export class AssessService {
             ? seededShuffle(options, seed + ':' + q.id)
             : options,
           points: Number(q.points),
-        });
+        };
+
+        // A code question needs the problem in front of the candidate --
+        // statement, languages, starter code. Snapshotted with everything else
+        // so editing the problem afterwards does not change what was asked.
+        // The tests are NOT here: hidden cases are the whole value of an
+        // auto-graded coding question, and the attempt row is readable by the
+        // candidate.
+        if (q.type === 'code' && q.problem_id) {
+          const { data: problem } = await this.#db.from('onyx_problems')
+            .select('id, title, statement, languages, starter_code, time_limit_ms')
+            .eq('tenant_id', tenantId).eq('id', Number(q.problem_id)).maybeSingle();
+          if (problem) {
+            entry.problem = {
+              id: Number(problem.id),
+              title: String(problem.title),
+              statement: (problem.statement ?? null) as string | null,
+              languages: (problem.languages ?? []) as unknown as string[],
+              starter_code: (problem.starter_code ?? {}) as unknown as Record<string, string>,
+              time_limit_ms: Number(problem.time_limit_ms ?? 5000),
+            };
+          }
+        }
+        paper.push(entry);
       }
     }
     // Note: `answer` is deliberately absent. The attempt row is readable by the
@@ -1246,6 +1383,43 @@ export class AssessService {
     for (const q of paper) {
       const answer = byQuestion.get(q.question_id);
       const key = keys.get(q.question_id + ':' + q.version);
+
+      // A code question is marked by running the problem's tests, not against
+      // a key. The submission is graded here and now rather than left to the
+      // queue, so the candidate's mark is complete when they hand in -- an
+      // exam that says "come back later, we are still running your code" is
+      // not an exam anybody wants to sit.
+      if (q.type === 'code') {
+        const submissionId = answer?.submission_id ? Number(answer.submission_id) : null;
+        if (!submissionId || !this.#code) {
+          // Answered but ungradable -- no sandbox configured, or no code
+          // written. Either way a person decides, exactly as for an essay.
+          if (answer?.response) needsMarking = true;
+          continue;
+        }
+        try {
+          await this.#code.gradeNow(tenantId, submissionId);
+        } catch {
+          // The sandbox being down must not cost the candidate their paper.
+          // The submission stays on record and a marker can award by hand.
+        }
+        const result = await this.#code.scoreOf(tenantId, submissionId);
+        if (!result || result.status !== 'done' || result.max_score <= 0) {
+          needsMarking = true;
+          continue;
+        }
+        // Proportional to the tests that passed, scaled to what the question
+        // is worth on THIS paper -- the problem's own weighting decides which
+        // cases matter, the question decides how much the whole thing counts.
+        const points = Math.round((result.score / result.max_score) * q.points * 100) / 100;
+        auto += points;
+        if (answer) {
+          await this.#db.from('onyx_assessment_answers')
+            .update({ auto_points: points, updated_at: at }).eq('id', answer.id);
+        }
+        continue;
+      }
+
       // Essays always need a person. So does an MCQ-shaped question nobody
       // set a correct option on when it was authored -- scoring that against
       // a blank key would mark every response wrong by default, which is not

@@ -90,6 +90,8 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
       points: z.number().int().min(1).max(1000).optional(),
       difficulty: z.string().max(20).optional(),
       tags: z.array(z.string().max(50)).max(20).optional(),
+      // `code` only: the Code Lab problem whose tests mark this question.
+      problem_id: z.number().int().positive().nullish(),
     }), req.body);
     return ok(await ctx.onyxAssess.addQuestion(
       claims.tenant_id, idOf(req), { userId: claims.user_id, role: claims.tenant_role }, body),
@@ -108,6 +110,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
       points: z.number().int().min(1).max(1000).optional(),
       difficulty: z.string().max(20).optional(),
       tags: z.array(z.string().max(50)).max(20).optional(),
+      problem_id: z.number().int().positive().nullish(),
     }), req.body);
     return ok(await ctx.onyxAssess.editQuestion(
       claims.tenant_id, idOf(req), { userId: claims.user_id, role: claims.tenant_role }, body),

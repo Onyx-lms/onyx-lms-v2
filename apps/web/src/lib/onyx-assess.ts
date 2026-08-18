@@ -26,13 +26,18 @@ export interface Assessment {
 
 export interface PaperQuestion {
   question_id: number;
-  type: 'single' | 'multiple' | 'truefalse' | 'short' | 'essay';
+  type: 'single' | 'multiple' | 'truefalse' | 'short' | 'essay' | 'code';
   prompt: string;
   options: { id: string; text: string }[];
   points: number;
   section_id: string | null;
   response: unknown;
   awarded: number | null;
+  /** `code` only: what the candidate needs in order to answer. Never the tests. */
+  problem?: {
+    id: number; title: string; statement: string | null;
+    languages: string[]; starter_code: Record<string, string>; time_limit_ms: number;
+  };
 }
 
 export interface CandidateAttempt {

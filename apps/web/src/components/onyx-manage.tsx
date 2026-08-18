@@ -1164,6 +1164,10 @@ const QUESTION_TYPES = [
   { value: 'truefalse', label: 'True or false' },
   { value: 'short', label: 'Short answer' },
   { value: 'essay', label: 'Essay (marked by hand)' },
+  // Marked by running the linked problem's tests, hidden cases included --
+  // the same grader Code Lab practice uses, so a paper and the practice for
+  // it cannot disagree about the same submission.
+  { value: 'code', label: 'Write code (marked by tests)' },
 ] as const;
 
 /**
@@ -1174,7 +1178,11 @@ const QUESTION_TYPES = [
  * rule worth meeting at the point of typing rather than discovering on save.
  * An essay carries no key at all: it is marked by a person.
  */
-export function AddQuestion({ bankId }: { bankId: number }) {
+export function AddQuestion({ bankId, problems = [] }: {
+  bankId: number;
+  /** Published Code Lab problems a `code` question can point at. */
+  problems?: { id: number; title: string; difficulty: string }[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<string>('single');
@@ -1185,6 +1193,7 @@ export function AddQuestion({ bankId }: { bankId: number }) {
   ]);
   const [correct, setCorrect] = useState<string[]>([]);
   const [answer, setAnswer] = useState('false');
+  const [problemId, setProblemId] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -1297,6 +1306,27 @@ export function AddQuestion({ bankId }: { bankId: number }) {
             <textarea id="q-short" rows={3} value={answer}
               onChange={(e) => setAnswer(e.target.value)} className={input + ' mt-1 w-full'} />
             <p className="mt-1 text-xs text-muted">One per line. Any of them scores the mark.</p>
+          </div>
+        ) : type === 'code' ? (
+          <div>
+            <label className="block text-[13px] font-semibold text-slate-700" htmlFor="q-problem">
+              Problem to solve
+            </label>
+            <select id="q-problem" value={problemId}
+              onChange={(e) => setProblemId(e.target.value)}
+              className={input + ' mt-1 w-full'}>
+              <option value="">Choose a published problem…</option>
+              {problems.map((p) => (
+                <option key={p.id} value={p.id}>{p.title} ({p.difficulty})</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-muted">
+              {problems.length
+                ? 'Its test cases mark the answer, hidden ones included — there is no key '
+                  + 'to type here, because the tests are the key.'
+                : 'No published problems yet. Author one in Practice, give it test cases '
+                  + 'and publish it, and it can be asked here.'}
+            </p>
           </div>
         ) : (
           <p className="text-xs text-muted">

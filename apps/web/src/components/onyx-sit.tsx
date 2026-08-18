@@ -381,6 +381,66 @@ function QuestionInput({ question, value, onChange }: {
     );
   }
 
+  // ASS-01 -- a coding question. The statement, a language picker and an
+  // editor; the answer is source, and it is marked by running the linked
+  // problem's tests when the paper is handed in.
+  //
+  // Deliberately no Run button. Practice has one; an exam does not, because
+  // "run against the visible cases" during a timed paper is a different
+  // assessment from the one being set, and the hidden cases are the point.
+  if (question.type === 'code') {
+    const answer = (value ?? {}) as { language?: string; source?: string };
+    const languages = question.problem?.languages?.length
+      ? question.problem.languages : ['python'];
+    const language = answer.language ?? languages[0]!;
+    const starter = question.problem?.starter_code?.[language] ?? '';
+    return (
+      <div className="space-y-2.5">
+        {question.problem?.statement ? (
+          <div className="whitespace-pre-wrap rounded-xl border border-line bg-canvas p-3
+                          text-[13px] leading-relaxed">
+            {question.problem.statement}
+          </div>
+        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="text-[12.5px] font-semibold" htmlFor={'lang' + question.question_id}>
+            Language
+          </label>
+          <select
+            id={'lang' + question.question_id}
+            className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-[13px]"
+            value={language}
+            onChange={(e) => onChange({
+              language: e.target.value,
+              // Keep whatever they have written; switching language must not
+              // silently delete an answer.
+              source: answer.source ?? '',
+            })}
+          >
+            {languages.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+          {question.problem?.time_limit_ms ? (
+            <span className="text-[12px] text-muted">
+              {Math.round(question.problem.time_limit_ms / 100) / 10}s per test
+            </span>
+          ) : null}
+        </div>
+        <textarea
+          aria-label={'Your code for: ' + question.prompt}
+          rows={14}
+          spellCheck={false}
+          value={answer.source ?? starter}
+          onChange={(e) => onChange({ language, source: e.target.value })}
+          className={field + ' font-mono text-[13px] leading-relaxed'}
+        />
+        <p className="text-xs text-muted">
+          Marked by running it against the problem&apos;s tests, including ones you
+          cannot see. Read input from standard input and print to standard output.
+        </p>
+      </div>
+    );
+  }
+
   if (question.type === 'short') {
     return (
       <input
