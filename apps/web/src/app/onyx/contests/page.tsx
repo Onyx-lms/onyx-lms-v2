@@ -94,8 +94,8 @@ export default async function OnyxContestsPage() {
         <div className="mb-6">
           <CreatePanel
             title="New contest" cta="Host a contest" icon="trophy"
-            rules={(v) => (v.starts_at && v.ends_at && v.ends_at <= v.starts_at
-              ? 'That contest ends before it starts.' : null)}
+            rules={[{ kind: 'before', field: 'starts_at', than: 'ends_at', orEqual: true,
+              message: 'That contest ends before it starts.' }]}
             endpoint="contests"
             fields={[
               { name: 'title', label: 'Contest', required: true, wide: true,

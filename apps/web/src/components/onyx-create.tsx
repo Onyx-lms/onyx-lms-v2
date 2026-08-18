@@ -49,6 +49,42 @@ export interface Field {
   wide?: boolean;
 }
 
+/**
+ * One cross-field rule, expressed as data so it can be handed from a Server
+ * Component to this one.
+ *
+ *   `atMost`   -- a number that must not exceed another number
+ *   `before`   -- a value that must sort before another (dates, times)
+ *
+ * Both skip silently when either side is blank: an optional field left empty
+ * is not a rule violation, and complaining about it would block a form the
+ * server would have accepted.
+ */
+export type FieldRule =
+  | { kind: 'atMost'; field: string; than: string; message: string }
+  // A hall's capacity against rows x columns -- the one rule here that is
+  // arithmetic over two fields rather than a comparison with one.
+  | { kind: 'atMostProduct'; field: string; of: [string, string]; message: string }
+  | { kind: 'before'; field: string; than: string; message: string; orEqual?: boolean };
+
+function checkRules(rules: FieldRule[] | undefined, v: Record<string, string>): string | null {
+  for (const rule of rules ?? []) {
+    const a = v[rule.field];
+    if (!a) continue;
+    if (rule.kind === 'atMostProduct') {
+      const [x, y] = rule.of;
+      if (!v[x] || !v[y]) continue;
+      if (Number(a) > Number(v[x]) * Number(v[y])) return rule.message;
+      continue;
+    }
+    const b = v[rule.than];
+    if (!b) continue;
+    if (rule.kind === 'atMost' && Number(a) > Number(b)) return rule.message;
+    if (rule.kind === 'before' && (rule.orEqual ? a >= b : a > b)) return rule.message;
+  }
+  return null;
+}
+
 const input = 'mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm '
   + 'focus:border-brand-600 focus:outline-none';
 const label = 'block text-[13px] font-semibold text-slate-700';
@@ -108,12 +144,17 @@ export function CreatePanel({
    * Cross-field rules the server also enforces, checked here so the answer
    * arrives before the work is retyped rather than as a 422 after it.
    *
-   * Deliberately not a general validation framework: these are the specific
-   * arithmetic rules a person is already doing in their head -- a pass mark
-   * above the maximum, an end before a start -- where being told late means
-   * filling the form in twice.
+   * DATA, not a predicate function. Every caller is a Server Component and
+   * this is a Client Component, and a function cannot cross that boundary --
+   * passing one renders the whole page 500 rather than failing at the field
+   * it belongs to. Learned the hard way: four pages went down at once.
+   *
+   * Deliberately not a general validation framework either. These are the
+   * specific arithmetic rules a person is already doing in their head -- a
+   * pass mark above the maximum, an end before a start -- where being told
+   * late means filling the form in twice.
    */
-  rules?: (values: Record<string, string>) => string | null;
+  rules?: FieldRule[];
   fields: Field[];
   /** Fixed values merged into every submission. */
   extra?: Record<string, unknown>;
@@ -200,11 +241,9 @@ export function CreatePanel({
               const data = new FormData(form);
               setError(null);
 
-              if (rules) {
-                const complaint = rules(Object.fromEntries(
-                  [...data.entries()].map(([k, v]) => [k, String(v)])));
-                if (complaint) { setError(complaint); return; }
-              }
+              const complaint = checkRules(rules, Object.fromEntries(
+                [...data.entries()].map(([k, v]) => [k, String(v)])));
+              if (complaint) { setError(complaint); return; }
               if (confirm && !window.confirm(confirm)) return;
               start(async () => {
                 const body = { ...toBody(fields, data), ...(extra ?? {}) };
