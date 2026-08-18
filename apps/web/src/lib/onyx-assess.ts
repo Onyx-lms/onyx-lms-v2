@@ -14,6 +14,10 @@ export interface Assessment {
   require_screen: number;
   anonymous_marking: number;
   moderation_required: number;
+  // Stored as 0/1, and both were missing here -- which is part of why no
+  // screen ever offered them: the type said they did not exist.
+  shuffle_questions: number;
+  shuffle_options: number;
   pass_mark: number | null;
   status: 'draft' | 'published' | 'closed';
   results_published_at: string | null;
