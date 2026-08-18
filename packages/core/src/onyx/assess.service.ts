@@ -325,16 +325,7 @@ export class AssessService {
       && Date.parse(input.closes_at) <= Date.parse(input.opens_at)) {
       throw new HttpError(422, 'The window closes before it opens.');
     }
-    for (const section of input.sections ?? []) {
-      const bank = await this.#bank(tenantId, section.bank_id);
-      const available = await this.questions(tenantId, Number(bank.id));
-      if (section.take < 1) throw new HttpError(422, 'A section has to take at least one question.');
-      // Discovered at start otherwise, which is the worst possible moment.
-      if (section.take > available.length) {
-        throw new HttpError(422, '"' + section.title + '" wants ' + section.take
-          + ' questions but its bank has ' + available.length + '.');
-      }
-    }
+    await this.#assertSectionsDrawable(tenantId, input.sections ?? []);
 
     const { data, error } = await this.#db.from('onyx_assessments').insert({
       tenant_id: tenantId,
@@ -373,9 +364,60 @@ export class AssessService {
    * duration. Auditing happens at the route, the same as this file's other
    * writes (createAssessment, publish) -- this service has no AuditService
    * of its own to call. */
+  /**
+   * Every section can actually be dealt from its bank.
+   *
+   * Shared by create and update because the failure it prevents is the same
+   * either way, and it is the worst one this module has: without it a paper
+   * asking for more questions than its bank holds is accepted quietly and
+   * fails at `#dealPaper` -- which is to say, in front of the candidate, at
+   * the moment they press Start.
+   */
+  async #assertSectionsDrawable(
+    tenantId: number, sections: { id: string; title: string; bank_id: number; take: number }[],
+  ) {
+    const ids = new Set<string>();
+    for (const section of sections) {
+      if (ids.has(section.id)) {
+        throw new HttpError(422, 'Two sections share the id "' + section.id + '".');
+      }
+      ids.add(section.id);
+      const bank = await this.#bank(tenantId, section.bank_id);
+      const available = await this.questions(tenantId, Number(bank.id));
+      if (section.take < 1) throw new HttpError(422, 'A section has to take at least one question.');
+      if (section.take > available.length) {
+        throw new HttpError(422, '"' + section.title + '" wants ' + section.take
+          + ' questions but its bank has ' + available.length + '.');
+      }
+    }
+  }
+
+  /**
+   * Correcting a paper.
+   *
+   * The patchable set used to be six fields, which meant a paper composed
+   * wrongly could not be corrected at all: sections, proctoring, attempts,
+   * instructions, anonymous marking, moderation and both shuffles were
+   * write-once at creation, so the only remedy for a typo in a section was to
+   * abandon the paper and build another.
+   *
+   * The reason for that restraint is real, though, and it is kept -- just
+   * moved to where it belongs. **Composition is editable while the paper is a
+   * draft and frozen once it is published.** A published paper may have been
+   * sat; changing what it draws from underneath an attempt would mean two
+   * candidates sitting different papers under one title, and a mark that
+   * cannot be defended. Timing, pass mark and title stay editable throughout,
+   * because those are the corrections an invigilator legitimately makes to a
+   * live paper.
+   */
   async updateAssessment(tenantId: number, id: number, actor: AssessActor, patch: {
     title?: string; opens_at?: string | null; closes_at?: string | null;
     pass_mark?: number | null; duration_minutes?: number; status?: string;
+    instructions?: string | null; attempts_allowed?: number;
+    sections?: { id: string; title: string; bank_id: number; take: number }[];
+    shuffle_questions?: boolean; shuffle_options?: boolean;
+    proctoring?: boolean; require_camera?: boolean; require_screen?: boolean;
+    anonymous_marking?: boolean; moderation_required?: boolean;
   }) {
     const current = await this.assessment(tenantId, id);
     await this.#assertCanAuthor(tenantId, current.course_id as number | null, actor);
@@ -398,19 +440,48 @@ export class AssessService {
       }
     }
 
-    if (patch.opens_at !== undefined && patch.closes_at !== undefined
-      && patch.opens_at && patch.closes_at
-      && Date.parse(patch.closes_at) <= Date.parse(patch.opens_at)) {
+    // The window, read across the patch and what is already stored -- checking
+    // only the patch let one half be moved past the other in two requests.
+    const opensAt = patch.opens_at !== undefined ? patch.opens_at : current.opens_at;
+    const closesAt = patch.closes_at !== undefined ? patch.closes_at : current.closes_at;
+    if (opensAt && closesAt && Date.parse(String(closesAt)) <= Date.parse(String(opensAt))) {
       throw new HttpError(422, 'The window closes before it opens.');
     }
+    if (patch.duration_minutes !== undefined
+      && (patch.duration_minutes < 1 || patch.duration_minutes > 1440)) {
+      throw new HttpError(422, 'That is not a usable duration.');
+    }
+
+    // What may change once candidates can reach it, and what may not.
+    const COMPOSITION = ['sections', 'attempts_allowed', 'instructions',
+      'shuffle_questions', 'shuffle_options', 'proctoring', 'require_camera',
+      'require_screen', 'anonymous_marking', 'moderation_required'] as const;
+    const editingComposition = COMPOSITION.some((k) => patch[k] !== undefined);
+    if (editingComposition && current.status !== 'draft') {
+      throw new HttpError(422,
+        'This paper is published. Its questions and settings are fixed; '
+        + 'you can still change the title, window and pass mark.');
+    }
+    if (patch.sections) await this.#assertSectionsDrawable(tenantId, patch.sections);
 
     const before: Record<string, unknown> = {};
     const after: Record<string, unknown> = {};
+    const BOOLS = ['shuffle_questions', 'shuffle_options', 'proctoring',
+      'require_camera', 'require_screen', 'anonymous_marking', 'moderation_required'] as const;
     for (const key of
-      ['title', 'opens_at', 'closes_at', 'pass_mark', 'duration_minutes', 'status'] as const) {
-      const value = patch[key];
-      if (value !== undefined && value !== current[key]) {
-        before[key] = current[key]; after[key] = value;
+      ['title', 'opens_at', 'closes_at', 'pass_mark', 'duration_minutes', 'status',
+        'instructions', 'attempts_allowed', 'sections', ...BOOLS] as const) {
+      const value = patch[key as keyof typeof patch];
+      if (value === undefined) continue;
+      // Booleans are stored as 0/1, so comparing the incoming `true` against a
+      // stored `1` would report a change on every save.
+      const stored = (BOOLS as readonly string[]).includes(key)
+        ? value ? 1 : 0
+        : value;
+      if (key === 'sections'
+        ? JSON.stringify(value) !== JSON.stringify(current[key])
+        : stored !== current[key]) {
+        before[key] = current[key]; after[key] = stored;
       }
     }
     if (!Object.keys(after).length) return { assessment: current, before, after };
@@ -1090,6 +1161,33 @@ export class AssessService {
   }
 
   /** Draws the paper. Once, at start, seeded so a resume deals the same hand. */
+  /**
+   * One representative draw of this paper, dealt but not recorded.
+   *
+   * Everything `start()` does to build a paper, and nothing it does to record
+   * one: no attempt row, no timer, no allowance consumed. That distinction is
+   * the point -- checking a paper by sitting it costs an attempt, and on a
+   * one-attempt paper the author cannot check at all.
+   *
+   * `PaperEntry` already carries no answer key (it is prompts, options and
+   * marks), so this is exactly a candidate's view. With shuffling on it is one
+   * of many possible draws, which the screen says rather than implying this is
+   * what everyone will get.
+   */
+  async previewPaper(tenantId: number, id: number, actor: AssessActor) {
+    const assessment = await this.assessment(tenantId, id);
+    await this.#assertCanAuthor(tenantId, assessment.course_id as number | null, actor);
+    const paper = await this.#dealPaper(tenantId, assessment, 'preview:' + actor.userId, 1);
+    return {
+      assessment_id: Number(assessment.id),
+      title: assessment.title,
+      duration_minutes: assessment.duration_minutes,
+      shuffled: Boolean(assessment.shuffle_questions) || Boolean(assessment.shuffle_options),
+      total_points: paper.reduce((n, q) => n + Number(q.points ?? 0), 0),
+      questions: paper,
+    };
+  }
+
   async #dealPaper(
     tenantId: number, assessment: Record<string, unknown>, userId: string, attemptNumber: number,
   ): Promise<PaperEntry[]> {

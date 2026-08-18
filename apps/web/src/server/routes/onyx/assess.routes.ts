@@ -187,6 +187,24 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
       pass_mark: z.number().int().min(0).nullish(),
       duration_minutes: z.number().int().min(1).max(1440).optional(),
       status: z.enum(ASSESSMENT_STATUSES).optional(),
+      // Composition. The service refuses these once the paper is published --
+      // a sat paper whose sections changed underneath it is two different
+      // papers under one title.
+      instructions: z.string().max(20_000).nullish(),
+      attempts_allowed: z.number().int().min(1).max(20).optional(),
+      sections: z.array(z.object({
+        id: z.string().min(1).max(50),
+        title: z.string().min(1).max(255),
+        bank_id: z.number().int().positive(),
+        take: z.number().int().min(1).max(500),
+      })).max(20).optional(),
+      shuffle_questions: z.boolean().optional(),
+      shuffle_options: z.boolean().optional(),
+      proctoring: z.boolean().optional(),
+      require_camera: z.boolean().optional(),
+      require_screen: z.boolean().optional(),
+      anonymous_marking: z.boolean().optional(),
+      moderation_required: z.boolean().optional(),
     }), req.body);
     const { assessment, before, after } = await ctx.onyxAssess.updateAssessment(
       claims.tenant_id, idOf(req), { userId: claims.user_id, role: claims.tenant_role }, body);
@@ -209,6 +227,26 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
       before: result.before, after: { score: result.score }, ip: ipOf(req),
     });
     return ok(result, 'Score updated.');
+  });
+
+  /**
+   * A representative dealt paper, without sitting one.
+   *
+   * Until now the only way to see what a paper actually produces was to start
+   * a real attempt -- which consumes an allowance, starts a server-side timer
+   * and, on a one-attempt paper, cannot be undone. So nobody checked, and the
+   * first person to see the paper was a candidate.
+   *
+   * Seeded by the assessment id rather than an attempt, so it is stable
+   * between refreshes and is honestly labelled as *a* draw rather than *the*
+   * draw -- with shuffling on, every candidate gets a different one.
+   * Staff-only, and the answer keys are stripped: this is what a candidate
+   * sees, which is the whole question being asked.
+   */
+  app.get('/api/onyx/assessments/:id/preview', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    return ok(await ctx.onyxAssess.previewPaper(
+      claims.tenant_id, idOf(req), { userId: claims.user_id, role: claims.tenant_role }));
   });
 
   app.post('/api/onyx/assessments/:id/publish', async (req) => {

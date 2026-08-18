@@ -6,7 +6,7 @@ import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-se
 import { isExamsStaff, type Assessment, type MyAttempt } from '@/lib/onyx-assess';
 import type { Course } from '@/lib/onyx-learn';
 import { CreatePanel } from '@/components/onyx-create';
-import { BuildAssessment } from '@/components/onyx-manage';
+import { PaperBuilder } from '@/components/onyx-paper-builder';
 import {
   ActionLink, Banner, CardGrid, DataTable, Empty, EmptyRow, Icon, ListRow, Pill, RowList,
   Score, SectionHead, StatTile,
@@ -108,8 +108,13 @@ export default async function OnyxAssessmentsPage() {
       {staff ? (
         <section className="mb-6">
           <div className="flex flex-wrap items-start gap-3">
-            <BuildAssessment banks={banks ?? []}
-              courses={(courses ?? []).map((c) => ({ id: c.id, title: c.title }))} />
+            {/* The four-step composer, not the old one-shot form: it reaches
+                every setting the engine runs on, lets a paper stay a draft,
+                and shows a real dealt paper before anything is published. */}
+            <PaperBuilder
+              banks={(banks ?? []).map((b) => ({
+                id: Number(b.id), name: b.name, course_id: null }))}
+              courses={(courses ?? []).map((c) => ({ id: Number(c.id), title: c.title }))} />
             <CreatePanel
               title="New question bank" cta="New question bank" icon="edit" compact
               endpoint="banks"

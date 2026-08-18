@@ -39,6 +39,10 @@ function world(c = clock()) {
     onyx_courses: [
       { id: 1, tenant_id: T, code: 'CS101', title: 'Programming', slug: 'p', status: 1 },
     ],
+    // user-20 genuinely teaches course 1, so the faculty branch of
+    // #assertCanAuthor can be exercised rather than only the admin/exams
+    // bypass around it.
+    onyx_course_faculty: [{ id: 1, tenant_id: T, course_id: 1, user_id: 'user-20' }],
     onyx_enrollments: [
       { id: 1, tenant_id: T, course_id: 1, user_id: 'user-10', status: 1 },
       { id: 2, tenant_id: T, course_id: 1, user_id: 'user-11', status: 1 },
@@ -101,6 +105,24 @@ async function withPaper(w: ReturnType<typeof world>, over: Record<string, unkno
   });
   await w.assess.publishAssessment(T, Number(assessment.id));
   return { bank: bid, q, assessment: Number(assessment.id) };
+}
+
+/** The same paper, left as a draft -- composition is only editable before publication. */
+async function withDraft(w: ReturnType<typeof world>, over: Record<string, unknown> = {}) {
+  const bank = await w.assess.createBank(T, ACTOR, { name: 'Draft bank' });
+  const bid = Number(bank.id);
+  for (const [i, type] of (['single', 'single', 'single', 'essay'] as const).entries()) {
+    await w.assess.addQuestion(T, bid, ACTOR, type === 'essay'
+      ? { type, prompt: 'Explain ' + i, points: 4 }
+      : { type, prompt: 'Q' + i, points: 2,
+        options: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }], answer: 'b' });
+  }
+  const assessment = await w.assess.createAssessment(T, ACTOR, {
+    title: 'Draft paper', course_id: 1, duration_minutes: 60,
+    sections: [{ id: 's1', title: 'All', bank_id: bid, take: 3 }],
+    ...over,
+  });
+  return { bank: bid, assessment: Number(assessment.id) };
 }
 
 // ---------------------------------------------------------------------------
@@ -827,4 +849,137 @@ test('an assessment nobody has sat produces empty statistics, not a crash', asyn
   assert.equal(report.cohort.mean, 0);
   assert.deepEqual(await w.analytics.itemAnalysis(T, assessment), { sat: 0, items: [] });
   assert.equal((await w.analytics.exportCsv(T, assessment)).split('\r\n').filter(Boolean).length, 1);
+});
+
+// ---------------------------------------------------------------------------
+// ASS-01 -- composing and correcting a paper
+// ---------------------------------------------------------------------------
+
+test('a draft paper can be recomposed; a published one cannot', async () => {
+  const w = world();
+  const { assessment, bank } = await withDraft(w);
+  const actor = { userId: ACTOR, role: 'admin' as const };
+
+  // While it is a draft, everything is fair game -- the whole point, since a
+  // paper composed wrongly used to be unfixable and had to be abandoned.
+  const edited = await w.assess.updateAssessment(T, assessment, actor, {
+    instructions: 'Answer every question.',
+    attempts_allowed: 3,
+    anonymous_marking: false,
+    moderation_required: true,
+    shuffle_options: false,
+    sections: [{ id: 's1', title: 'Everything', bank_id: bank, take: 3 }],
+  });
+  assert.equal(edited.assessment!.attempts_allowed, 3);
+  assert.equal(edited.assessment!.anonymous_marking, 0);
+  assert.equal(edited.assessment!.moderation_required, 1);
+  assert.equal((edited.assessment!.sections as unknown as unknown[]).length, 1);
+
+  await w.assess.publishAssessment(T, assessment, actor);
+
+  // Published, the composition is frozen: an attempt may already be sitting
+  // it, and two candidates sitting different papers under one title is a mark
+  // that cannot be defended.
+  await assert.rejects(
+    w.assess.updateAssessment(T, assessment, actor, { attempts_allowed: 9 }),
+    (e: HttpError) => e.status === 422 && /published/i.test(e.message));
+  await assert.rejects(
+    w.assess.updateAssessment(T, assessment, actor,
+      { sections: [{ id: 's9', title: 'New', bank_id: bank, take: 1 }] }),
+    (e: HttpError) => e.status === 422);
+
+  // ...but the corrections an invigilator legitimately makes to a live paper
+  // still work.
+  const late = await w.assess.updateAssessment(T, assessment, actor,
+    { title: 'Renamed', pass_mark: 4, duration_minutes: 90 });
+  assert.equal(late.assessment!.title, 'Renamed');
+  assert.equal(late.assessment!.duration_minutes, 90);
+});
+
+test('an edit cannot leave a paper drawing more than its bank holds', async () => {
+  const w = world();
+  const { assessment, bank } = await withDraft(w);
+  // Checked at create; it was not checked on update, so a paper could be
+  // edited into a state that fails at #dealPaper -- in front of the candidate,
+  // at the moment they press Start.
+  await assert.rejects(
+    w.assess.updateAssessment(T, assessment, { userId: ACTOR, role: 'admin' },
+      { sections: [{ id: 's1', title: 'Too many', bank_id: bank, take: 500 }] }),
+    (e: HttpError) => e.status === 422 && /questions but its bank has/.test(e.message));
+});
+
+test('two sections cannot share an id', async () => {
+  const w = world();
+  const { assessment, bank } = await withDraft(w);
+  // The id keys a dealt paper back to its section; duplicates would silently
+  // merge them.
+  await assert.rejects(
+    w.assess.updateAssessment(T, assessment, { userId: ACTOR, role: 'admin' }, {
+      sections: [{ id: 'a', title: 'One', bank_id: bank, take: 1 },
+        { id: 'a', title: 'Two', bank_id: bank, take: 1 }],
+    }),
+    (e: HttpError) => e.status === 422 && /share the id/.test(e.message));
+});
+
+test('the window is checked against what is already stored, not just the patch', async () => {
+  const w = world();
+  const { assessment } = await withPaper(w);
+  const actor = { userId: ACTOR, role: 'admin' as const };
+  await w.assess.updateAssessment(T, assessment, actor,
+    { opens_at: '2026-09-01T09:00:00.000Z', closes_at: '2026-09-02T09:00:00.000Z' });
+
+  // Moving one half past the other in a second request used to pass, because
+  // only the patch was compared and this patch has just one of the two.
+  await assert.rejects(
+    w.assess.updateAssessment(T, assessment, actor, { closes_at: '2026-08-01T09:00:00.000Z' }),
+    (e: HttpError) => e.status === 422 && /closes before it opens/.test(e.message));
+});
+
+test('a status outside the vocabulary is refused, and so is publishing an empty paper', async () => {
+  const w = world();
+  const actor = { userId: ACTOR, role: 'admin' as const };
+  const empty = await w.assess.createAssessment(T, actor,
+    { title: 'Nothing in it', duration_minutes: 30 });
+
+  await assert.rejects(
+    w.assess.updateAssessment(T, Number(empty.id), actor, { status: 'live' as never }),
+    (e: HttpError) => e.status === 422);
+
+  // The edit form's status dropdown is the only way to publish an existing
+  // draft from the UI, and it went straight to the column -- so a paper with
+  // no sections could be published this way, bypassing publishAssessment's
+  // only guard. The candidate would have found out at Start.
+  await assert.rejects(
+    w.assess.updateAssessment(T, Number(empty.id), actor, { status: 'published' }),
+    (e: HttpError) => e.status === 422 && /at least one section/.test(e.message));
+});
+
+test('publishing is held to the same course check as every other authoring act', async () => {
+  const w = world();
+  const { assessment } = await withDraft(w);
+  // Course 1's faculty is user-20; this one teaches nothing. Publishing was
+  // the single authoring act that took no actor, so any faculty account could
+  // publish any paper in the institution.
+  await assert.rejects(
+    w.assess.publishAssessment(T, assessment, { userId: 'user-77', role: 'faculty' }),
+    (e: HttpError) => e.status === 403);
+  const ok = await w.assess.publishAssessment(T, assessment, { userId: 'user-20', role: 'faculty' });
+  assert.equal(ok.status, 'published');
+});
+
+test('a paper can be previewed without sitting it', async () => {
+  const w = world();
+  const { assessment } = await withPaper(w);
+  const actor = { userId: ACTOR, role: 'admin' as const };
+  await w.assess.publishAssessment(T, assessment, actor);
+
+  const preview = await w.assess.previewPaper(T, assessment, actor);
+  assert.equal(preview.questions.length, 5);
+  assert.ok(preview.total_points > 0);
+  // No answer key -- this is exactly a candidate's view, which is the question
+  // being asked.
+  assert.doesNotMatch(JSON.stringify(preview), /"answer"/);
+  // And nothing was recorded: previewing must not consume an attempt, which is
+  // the whole reason authors never checked a one-attempt paper.
+  assert.equal((w.db.tables.onyx_assessment_attempts as unknown[]).length, 0);
 });

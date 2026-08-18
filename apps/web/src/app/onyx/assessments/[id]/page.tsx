@@ -4,6 +4,7 @@ import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxStartAssessment } from '@/components/onyx-sit';
 import { OnyxPublishResults } from '@/components/onyx-marking';
 import { AssessmentEditForm } from '@/components/onyx-manage';
+import { PaperBuilder } from '@/components/onyx-paper-builder';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
 import { isExamsStaff, type Assessment, type MyAttempt } from '@/lib/onyx-assess';
@@ -33,6 +34,13 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
     onyxApi<Assessment>('/api/onyx/assessments/' + id),
   ]);
   const staff = isExamsStaff(claims.tenant_role);
+  // Only staff, and only for a draft -- the composer needs somewhere to draw
+  // from, and a candidate must never be handed the bank list.
+  const editable = staff && assessment.status === 'draft';
+  const [banks, courses] = await Promise.all([
+    editable ? onyxApiSafe<{ id: number; name: string }[]>('/api/onyx/banks') : null,
+    editable ? onyxApiSafe<{ id: number; title: string }[]>('/api/onyx/courses') : null,
+  ]);
   const mine = staff ? null : await onyxApiSafe<MyAttempt[]>('/api/onyx/my/assessments');
   const attempts = (mine ?? []).filter((a) => a.assessment_id === Number(id));
   const live = attempts.find((a) => a.status === 'in_progress');
@@ -165,6 +173,41 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
                   <ActionLink href={'/onyx/assessments/' + id + '/results'}
                     label="Results and item analysis" tone="quiet" />
                 </div>
+                {/* While it is a draft, the whole composition is editable --
+                    sections, settings, the lot. Once published it is fixed
+                    under any attempt already sitting it, so only the title,
+                    window and pass mark remain, which is what the smaller
+                    form covers. */}
+                {assessment.status === 'draft' ? (
+                  <div className="border-t border-line pt-4">
+                    <PaperBuilder
+                      label="Edit the whole paper"
+                      banks={(banks ?? []).map((b) => ({
+                        id: Number(b.id), name: b.name, course_id: null }))}
+                      courses={(courses ?? []).map((c) => ({
+                        id: Number(c.id), title: c.title }))}
+                      existing={{
+                        id: Number(id),
+                        title: assessment.title,
+                        course_id: assessment.course_id ?? null,
+                        instructions: assessment.instructions ?? null,
+                        opens_at: assessment.opens_at ?? null,
+                        closes_at: assessment.closes_at ?? null,
+                        duration_minutes: assessment.duration_minutes,
+                        attempts_allowed: assessment.attempts_allowed,
+                        pass_mark: assessment.pass_mark ?? null,
+                        sections: assessment.sections ?? null,
+                        shuffle_questions: assessment.shuffle_questions,
+                        shuffle_options: assessment.shuffle_options,
+                        proctoring: assessment.proctoring,
+                        require_camera: assessment.require_camera,
+                        require_screen: assessment.require_screen,
+                        anonymous_marking: assessment.anonymous_marking,
+                        moderation_required: assessment.moderation_required,
+                      }}
+                    />
+                  </div>
+                ) : null}
                 <div className="border-t border-line pt-4">
                   <AssessmentEditForm assessmentId={Number(id)} assessment={assessment} />
                 </div>
