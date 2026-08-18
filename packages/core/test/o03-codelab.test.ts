@@ -62,6 +62,7 @@ function world(provider: ExecutionProvider = fakeProvider(), now = () => 1_800_0
     onyx_workspace_files: [],
     onyx_workspace_snapshots: [],
     onyx_workspace_comments: [],
+    onyx_users: [],
   });
   const academics = new AcademicsService(db as never);
   const enqueued: { kind: string; payload: Record<string, unknown> }[] = [];
@@ -827,4 +828,112 @@ test('run refuses loudly when no sandbox is configured, same as submitting a pro
   await w.workspaces.writeFiles(T, id, 'user-10', 'student', [{ path: 'main.py', content: 'print(1)' }]);
   await assert.rejects(w.workspaces.run(T, id, 'user-10', 'student', {}),
     (e: HttpError) => e.status === 503);
+});
+
+// ---------------------------------------------------------------------------
+// LAB-04 -- the practice record
+// ---------------------------------------------------------------------------
+
+/** A published problem with one visible case, authored by `by`. */
+async function aProblem(w: ReturnType<typeof world>, title: string, by = 'user-20') {
+  const p = await w.codelab.createProblem(T, by, { title, difficulty: 'easy' });
+  await w.codelab.setTests(T, Number(p.id), [
+    { name: 'v', stdin: '1\n', expected_stdout: '1', is_hidden: false, weight: 1 },
+  ]);
+  await w.codelab.publishProblem(T, Number(p.id));
+  return Number(p.id);
+}
+
+/** Writes a graded submission directly -- the worker's output, not its path. */
+function graded(w: ReturnType<typeof world>, problemId: number, userId: string,
+  fields: Record<string, unknown>) {
+  (w.db.tables.onyx_code_submissions as Record<string, unknown>[]).push({
+    id: (w.db.tables.onyx_code_submissions as unknown[]).length + 1,
+    tenant_id: T, problem_id: problemId, user_id: userId, language: 'python',
+    source: 'x', mode: 'submit', status: 'done', score: 0, max_score: 1,
+    passed: 0, total: 1, queued_at: new Date().toISOString(),
+    graded_at: new Date().toISOString(), ...fields,
+  });
+}
+
+test('a practice record counts hand-ins, and a full score is solved', async () => {
+  const w = world();
+  const solvedId = await aProblem(w, 'Solved one');
+  const triedId = await aProblem(w, 'Tried one');
+
+  graded(w, solvedId, 'user-10', { score: 0, max_score: 1 });      // failed first
+  graded(w, solvedId, 'user-10', { score: 1, max_score: 1 });      // then got it
+  graded(w, triedId, 'user-10', { score: 0, max_score: 1 });
+
+  const rows = await w.codelab.practiceResults(T, 'user-10');
+  const byTitle = new Map(rows.map((r) => [r.title, r]));
+
+  assert.equal(byTitle.get('Solved one')!.solved, true);
+  assert.equal(byTitle.get('Solved one')!.attempts, 2, 'both hand-ins should count');
+  assert.equal(byTitle.get('Tried one')!.solved, false);
+
+  // Unsolved first: this page is read to find what is left to do.
+  assert.equal(rows[0]!.title, 'Tried one');
+});
+
+test('a test Run is not an attempt, and a queued hand-in is not yet a verdict', async () => {
+  const w = world();
+  const id = await aProblem(w, 'Only run');
+
+  // A Run checks the visible cases while you work. Counting it makes a careful
+  // learner who tests before submitting look like a struggling one.
+  graded(w, id, 'user-10', { mode: 'run', score: 1, max_score: 1 });
+  assert.deepEqual(await w.codelab.practiceResults(T, 'user-10'), []);
+
+  // Queued is neither a pass nor a failure yet.
+  graded(w, id, 'user-10', { status: 'queued', score: 0, max_score: 0, graded_at: null });
+  const [row] = await w.codelab.practiceResults(T, 'user-10');
+  assert.equal(row!.solved, false, 'an ungraded hand-in was counted as solved');
+  assert.equal(row!.pending, true);
+});
+
+test('a full score of zero out of zero is not a pass', async () => {
+  const w = world();
+  const id = await aProblem(w, 'No cases');
+  // score >= max_score is true for 0 >= 0, which would mark an unmarkable
+  // submission solved. The rule requires marks to have been available.
+  graded(w, id, 'user-10', { score: 0, max_score: 0 });
+  assert.equal((await w.codelab.practiceResults(T, 'user-10'))[0]!.solved, false);
+});
+
+test('staff see who set each problem; a learner is not told', async () => {
+  const w = world();
+  (w.db.tables.onyx_users as Record<string, unknown>[]).push(
+    { id: 'user-20', tenant_id: T, name: 'Dr. Arun Menon', email: 'a@x.test' });
+  const id = await aProblem(w, 'Authored', 'user-20');
+  graded(w, id, 'user-10', { score: 1, max_score: 1 });
+
+  const staffView = await w.codelab.practiceResultsFor(T, 'user-10');
+  assert.equal(staffView[0]!.author, 'Dr. Arun Menon');
+
+  // The learner's own read must not carry it at all -- omitted by the server,
+  // not hidden by the page.
+  const ownView = await w.codelab.practiceResults(T, 'user-10');
+  assert.equal(ownView[0]!.author, undefined);
+  assert.doesNotMatch(JSON.stringify(ownView), /Arun Menon/);
+});
+
+test('a problem whose author has left still names something readable', async () => {
+  const w = world();
+  const id = await aProblem(w, 'Orphaned', 'user-20');
+  // created_by is ON DELETE SET NULL, so this is a real state, not a contrived
+  // one -- and a blank column would read as a rendering bug.
+  const rows = w.db.tables.onyx_problems as Record<string, unknown>[];
+  rows.find((p) => Number(p.id) === id)!.created_by = null;
+  graded(w, id, 'user-10', { score: 1, max_score: 1 });
+
+  const [row] = await w.codelab.practiceResultsFor(T, 'user-10');
+  assert.equal(row!.author, 'No longer at the institution');
+});
+
+test('a practice record stops at the institution boundary', async () => {
+  const w = world();
+  const id = await aProblem(w, 'Ours');
+  graded(w, id, 'user-10', { score: 1, max_score: 1 });
+  assert.equal((await w.codelab.practiceResults(OTHER, 'user-10')).length, 0);
 });

@@ -216,6 +216,33 @@ export function registerOnyxCodeLabRoutes(app: Router, ctx: AppContext): void {
   });
 
   /**
+   * LAB-04 -- a learner's own practice record.
+   *
+   * `claims.user_id`, with no override: this is your own record and there is
+   * no parameter by which it could become somebody else's. Reading another
+   * person's is a different route with a different guard, below.
+   */
+  app.get('/api/onyx/practice/results', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxCodeLab.practiceResults(claims.tenant_id, claims.user_id));
+  });
+
+  /**
+   * One named learner's practice record, for the people teaching them.
+   *
+   * Tenant-scoped rather than narrowed to the caller's own courses, matching
+   * `/problems/:id/attempts` above. That is a deliberate choice, not an
+   * oversight: a problem may sit in the bank with no `course_id` at all, so
+   * scoping by course would hide every standalone problem from every faculty
+   * member and leave the view quietly incomplete.
+   */
+  app.get('/api/onyx/practice/results/:userId', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    return ok(await ctx.onyxCodeLab.practiceResultsFor(
+      claims.tenant_id, String((req.params as Record<string, string>).userId ?? '')));
+  });
+
+  /**
    * Drains the queue on demand.
    *
    * The API also runs the worker on an interval; this exists so an operator can

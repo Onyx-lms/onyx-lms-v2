@@ -21,7 +21,7 @@ import type { Router, ReqLike } from '../../router.ts';
 import { z } from 'zod';
 import {
   validate, ok, HttpError, requireOnyx, requireOnyxRole,
-  QUESTION_TYPES, EVENT_KINDS,
+  QUESTION_TYPES, EVENT_KINDS, ASSESSMENT_STATUSES,
 } from '@onyx/core';
 import type { OnyxQuestionType, MarkRole } from '@onyx/core';
 import type { AppContext } from '../../app-context.ts';
@@ -186,7 +186,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
       closes_at: z.string().nullish(),
       pass_mark: z.number().int().min(0).nullish(),
       duration_minutes: z.number().int().min(1).max(1440).optional(),
-      status: z.string().max(20).optional(),
+      status: z.enum(ASSESSMENT_STATUSES).optional(),
     }), req.body);
     const { assessment, before, after } = await ctx.onyxAssess.updateAssessment(
       claims.tenant_id, idOf(req), { userId: claims.user_id, role: claims.tenant_role }, body);
@@ -213,7 +213,10 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/assessments/:id/publish', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
-    const published = await ctx.onyxAssess.publishAssessment(claims.tenant_id, idOf(req));
+    // The actor, so publishing is held to the same course check as every
+    // other authoring act rather than being the one hole in it.
+    const published = await ctx.onyxAssess.publishAssessment(claims.tenant_id, idOf(req),
+      { userId: claims.user_id, role: claims.tenant_role });
     await ctx.onyxAudit.record(claims, {
       action: 'assessment.published', entityType: 'assessment', entityId: idOf(req),
       after: { title: published.title }, ip: ipOf(req),

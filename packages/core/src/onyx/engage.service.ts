@@ -175,8 +175,10 @@ export class EngageService {
         : Promise.resolve({ data: [] as { id: number }[] }),
       this.#db.from('onyx_attendance_records').select('session_id, status')
         .eq('tenant_id', tenantId).eq('user_id', userId),
-      this.#db.from('onyx_code_submissions').select('problem_id, status')
-        .eq('tenant_id', tenantId).eq('user_id', userId),
+      // `mode: 'submit'` and the score, not just the status. A Run checks the
+      // visible cases while you work and is not an attempt at the problem.
+      this.#db.from('onyx_code_submissions').select('problem_id, status, score, max_score')
+        .eq('tenant_id', tenantId).eq('user_id', userId).eq('mode', 'submit'),
       this.#activeDays(tenantId, userId),
     ]);
 
@@ -192,8 +194,15 @@ export class EngageService {
     const attended = (attendanceRows.data ?? [])
       .filter((r) => r.status === 'present' || r.status === 'late').length;
 
+    // Not `status === 'accepted'`. No row has ever held that value -- the
+    // column is queued | running | done | failed -- so this filter matched
+    // nothing and the dashboard's "Solved" tile read 0 for every learner who
+    // had ever solved anything. Solved is derived, and this is the same rule
+    // codelab.service and career.service use: graded, and every mark earned.
     const solvedProblems = new Set((codeRows.data ?? [])
-      .filter((c) => c.status === 'accepted').map((c) => Number(c.problem_id)));
+      .filter((c) => c.status === 'done'
+        && Number(c.max_score) > 0 && Number(c.score) >= Number(c.max_score))
+      .map((c) => Number(c.problem_id)));
     const attemptedProblems = new Set((codeRows.data ?? []).map((c) => Number(c.problem_id)));
 
     const streak = this.#streak(days);

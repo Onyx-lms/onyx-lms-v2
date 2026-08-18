@@ -19,6 +19,31 @@ export interface Problem {
   solution_after: string | null;
 }
 
+/**
+ * One problem's standing for one learner.
+ *
+ * `author` is present only on the staff-facing read -- which member of staff
+ * set a problem is not a learner's business, so the server omits it rather
+ * than the page hiding it.
+ */
+export interface PracticeResult {
+  problem_id: number;
+  title: string;
+  slug: string;
+  difficulty: string;
+  topic: string | null;
+  course_id: number | null;
+  solved: boolean;
+  attempts: number;
+  best_score: number;
+  max_score: number;
+  last_attempt_at: string | null;
+  last_submission_id: number | null;
+  pending: boolean;
+  author_id?: string | null;
+  author?: string;
+}
+
 /** A test case as a learner may see it: a hidden one carries no input at all. */
 export interface PublicTest {
   id: number;

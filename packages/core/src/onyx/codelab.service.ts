@@ -579,6 +579,106 @@ export class CodeLabService {
     return data ?? [];
   }
 
+  /**
+   * LAB-04 -- one learner's whole practice record, problem by problem.
+   *
+   * The two reads that already existed are transposed from what this needs:
+   * `submissions()` is one problem for one person, `attempts()` is one problem
+   * for everyone. Neither answers "how is this learner doing at practice",
+   * which is what both the learner's own results page and a tutor looking at a
+   * named student are asking. Answering it by looping either over the bank is
+   * a request per problem.
+   *
+   * `mode: 'submit'` only. A Run checks the visible cases as a convenience
+   * while you work; it is not an attempt at the problem, and counting it makes
+   * a careful learner who tests before submitting look like a struggling one.
+   *
+   * `withAuthors` resolves `created_by` into a name -- off for a learner,
+   * because which member of staff set a problem is not their business, and on
+   * for staff, because "who set this" is most of the point of that view.
+   */
+  async #practice(tenantId: number, userId: string, opts: { withAuthors?: boolean } = {}) {
+    const { data: subs } = await this.#db.from('onyx_code_submissions')
+      .select('id, problem_id, status, score, max_score, graded_at, queued_at, language')
+      .eq('tenant_id', tenantId).eq('user_id', userId).eq('mode', 'submit')
+      .order('id', { ascending: false });
+    const rows = subs ?? [];
+    if (!rows.length) return [];
+
+    const problemIds = [...new Set(rows.map((s) => Number(s.problem_id)))];
+    const { data: problems } = await this.#db.from('onyx_problems')
+      .select('id, title, slug, difficulty, topic, course_id, status, created_by')
+      .eq('tenant_id', tenantId).in('id', problemIds);
+    const byProblem = new Map((problems ?? []).map((p) => [Number(p.id), p]));
+
+    // One lookup for every author at once -- the shape academics.service uses
+    // for course faculty. Not a join: `created_by` is ON DELETE SET NULL, and
+    // an inner join would drop exactly the rows that need the fallback.
+    const names = new Map<string, string>();
+    if (opts.withAuthors) {
+      const authorIds = [...new Set((problems ?? [])
+        .map((p) => p.created_by).filter(Boolean).map(String))];
+      if (authorIds.length) {
+        const { data: people } = await this.#db.from('onyx_users')
+          .select('id, name').in('id', authorIds);
+        for (const p of people ?? []) names.set(String(p.id), String(p.name));
+      }
+    }
+
+    const out = [];
+    for (const id of problemIds) {
+      const mine = rows.filter((s) => Number(s.problem_id) === id);
+      const problem = byProblem.get(id);
+      if (!problem) continue;
+
+      // The solved rule, stated once: graded, and every mark earned. A
+      // submission still queued is neither a pass nor a failure yet.
+      const solved = mine.some((s) => s.status === 'done'
+        && Number(s.max_score) > 0 && Number(s.score) >= Number(s.max_score));
+      const latest = mine[0];
+
+      out.push({
+        problem_id: id,
+        title: problem.title,
+        slug: problem.slug,
+        difficulty: problem.difficulty,
+        topic: problem.topic,
+        course_id: problem.course_id,
+        solved,
+        attempts: mine.length,
+        best_score: mine.reduce((n, s) => Math.max(n, Number(s.score) || 0), 0),
+        max_score: Math.max(0, ...mine.map((s) => Number(s.max_score) || 0)),
+        last_attempt_at: latest?.graded_at ?? latest?.queued_at ?? null,
+        last_submission_id: latest ? Number(latest.id) : null,
+        pending: mine.some((s) => s.status === 'queued' || s.status === 'running'),
+        ...(opts.withAuthors
+          ? {
+            author_id: problem.created_by ? String(problem.created_by) : null,
+            // Neither blank nor a raw id: a problem whose author has left still
+            // has to say something a person can read.
+            author: problem.created_by
+              ? names.get(String(problem.created_by)) ?? 'Unknown'
+              : 'No longer at the institution',
+          }
+          : {}),
+      });
+    }
+
+    // Unsolved first: a results page is read to find what is left to do.
+    return out.sort((a, b) => Number(a.solved) - Number(b.solved)
+      || String(a.title).localeCompare(String(b.title)));
+  }
+
+  /** A learner's own practice record. */
+  async practiceResults(tenantId: number, userId: string) {
+    return this.#practice(tenantId, userId);
+  }
+
+  /** One named learner's practice record, with who set each problem. */
+  async practiceResultsFor(tenantId: number, userId: string) {
+    return this.#practice(tenantId, userId, { withAuthors: true });
+  }
+
   // ---- internals ----
 
   /**

@@ -34,6 +34,9 @@ const ATTEMPT_COLUMNS = 'id, tenant_id, assessment_id, user_id, attempt, paper, 
 const ANSWER_COLUMNS = 'id, tenant_id, attempt_id, question_id, version, response, auto_points, manual_points, marker_comment, flagged_for_review, updated_at';
 const GRADE_COLUMNS = 'id, tenant_id, attempt_id, role, marker_id, manual_score, comment, created_at';
 
+/** The only values `status` may hold. Named so a patch can be checked. */
+export const ASSESSMENT_STATUSES = ['draft', 'published', 'closed'] as const;
+
 export const QUESTION_TYPES = ['single', 'multiple', 'truefalse', 'short', 'essay'] as const;
 export type OnyxQuestionType = (typeof QUESTION_TYPES)[number];
 
@@ -376,6 +379,25 @@ export class AssessService {
   }) {
     const current = await this.assessment(tenantId, id);
     await this.#assertCanAuthor(tenantId, current.course_id as number | null, actor);
+
+    // `status` used to be written through as whatever string arrived. Two
+    // consequences, both reachable from the edit form that is the only way to
+    // publish an existing draft in the UI: any value at all could land in the
+    // column, and flipping to 'published' here skipped the "add at least one
+    // section" guard that publishAssessment applies -- so a paper with nothing
+    // in it could be published, and the candidate found out at Start.
+    if (patch.status !== undefined) {
+      if (!ASSESSMENT_STATUSES.includes(patch.status as typeof ASSESSMENT_STATUSES[number])) {
+        throw new HttpError(422, 'That is not an assessment status.');
+      }
+      if (patch.status === 'published') {
+        const sections = (current.sections ?? []) as unknown as unknown[];
+        if (!sections.length) {
+          throw new HttpError(422, 'Add at least one section before publishing.');
+        }
+      }
+    }
+
     if (patch.opens_at !== undefined && patch.closes_at !== undefined
       && patch.opens_at && patch.closes_at
       && Date.parse(patch.closes_at) <= Date.parse(patch.opens_at)) {
@@ -437,8 +459,14 @@ export class AssessService {
     return (data ?? []).map((a) => Number(a.id));
   }
 
-  async publishAssessment(tenantId: number, id: number) {
+  async publishAssessment(tenantId: number, id: number, actor?: AssessActor) {
     const assessment = await this.assessment(tenantId, id);
+    // Optional only so the exam-linked callers that already proved authority
+    // need not re-prove it; every route passes one. Without this, publishing
+    // was the one authoring act with no course check at all -- any faculty
+    // member could publish any paper in the institution, including one for a
+    // course they have nothing to do with.
+    if (actor) await this.#assertCanAuthor(tenantId, assessment.course_id as number | null, actor);
     const sections = (assessment.sections ?? []) as unknown as { take: number }[];
     if (!sections.length) throw new HttpError(422, 'Add at least one section before publishing.');
     await this.#db.from('onyx_assessments')
