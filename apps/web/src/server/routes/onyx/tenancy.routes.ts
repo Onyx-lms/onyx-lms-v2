@@ -189,7 +189,13 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
     // could only ever show a candidate's raw id to that role.
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty', 'exams');
     const q = req.query as { role?: Role; search?: string };
+    // A lecturer's directory is their own class lists. Admin and the
+    // examinations office run the institution and keep the whole roster.
+    const onlyStudentsOn = claims.tenant_role === 'faculty'
+      ? await ctx.onyxAcademics.teachingFor(claims.tenant_id, claims.user_id)
+      : undefined;
     return ok(await ctx.onyxTenancy.members(claims.tenant_id, {
+      onlyStudentsOn,
       role: q.role, search: q.search,
     }));
   });

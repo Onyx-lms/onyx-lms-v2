@@ -122,6 +122,7 @@ async function make() {
       { id: 106, tenant_id: 3, user_id: ghost, role: 'admin', status: 1 },
     ],
     onyx_audit_logs: [],
+    onyx_enrollments: [],
   });
   const svc = new TenancyService(db as never, auth as never, auth as never);
   return { db, auth, svc, ids: { alphaAdmin, shared, suspended, nobody, ghost } };
@@ -436,4 +437,61 @@ test('a roster can be searched by roll number', async () => {
   const found = await svc.members(1, { search: 'cs-2024-031' });
   assert.equal(found.length, 1);
   assert.equal(found[0]!.user?.name, 'Karthik Subramanian');
+});
+
+// ---------------------------------------------------------------------------
+// CMP-05 -- who is in a lecturer's directory
+// ---------------------------------------------------------------------------
+
+test('a lecturer sees the students they teach, and no other learner', async () => {
+  const { db, svc } = await make();
+  // Two students; only one is on the course this lecturer teaches.
+  const mine = await svc.invite(1, { name: 'Mine', email: 'mine@x.test', role: 'student' });
+  const theirs = await svc.invite(1, { name: 'Theirs', email: 'theirs@x.test', role: 'student' });
+  (db.tables.onyx_enrollments as Record<string, unknown>[]).push(
+    { id: 1, tenant_id: 1, course_id: 7, user_id: mine.user.id, status: 1 },
+    { id: 2, tenant_id: 1, course_id: 8, user_id: theirs.user.id, status: 1 });
+
+  const seen = await svc.members(1, { onlyStudentsOn: [7] });
+  const emails = seen.filter((m) => m.role === 'student').map((m) => m.user?.email);
+  assert.deepEqual(emails, ['mine@x.test']);
+  assert.ok(!emails.includes('theirs@x.test'),
+    'a lecturer was shown a learner they do not teach');
+});
+
+test('colleagues keep their names but lose their contact details', async () => {
+  const { db, svc } = await make();
+  const student = await svc.invite(1, { name: 'Mine', email: 'mine@x.test', role: 'student' });
+  (db.tables.onyx_enrollments as Record<string, unknown>[]).push(
+    { id: 1, tenant_id: 1, course_id: 7, user_id: student.user.id, status: 1 });
+
+  const seen = await svc.members(1, { onlyStudentsOn: [7] });
+  const colleague = seen.find((m) => m.role === 'admin');
+  // Redacted, not removed: a timetable naming who teaches the next session,
+  // or a picker for a second lecturer on a course, are not directory lookups
+  // -- dropping staff would turn those screens back into raw ids.
+  assert.ok(colleague, 'staff disappeared entirely');
+  assert.ok(colleague!.user?.name, 'a colleague lost their name');
+  assert.equal(colleague!.user?.email, '', 'a colleague’s email was still readable');
+});
+
+test('a lecturer teaching nothing sees no learners at all', async () => {
+  const { db, svc } = await make();
+  const student = await svc.invite(1, { name: 'Mine', email: 'mine@x.test', role: 'student' });
+  (db.tables.onyx_enrollments as Record<string, unknown>[]).push(
+    { id: 1, tenant_id: 1, course_id: 7, user_id: student.user.id, status: 1 });
+
+  // No courses means no students -- emphatically not "see everybody", which is
+  // the way an empty filter list usually fails.
+  const seen = await svc.members(1, { onlyStudentsOn: [] });
+  assert.equal(seen.filter((m) => m.role === 'student').length, 0);
+});
+
+test('an administrator still gets the whole roster', async () => {
+  const { svc } = await make();
+  await svc.invite(1, { name: 'A', email: 'a@x.test', role: 'student' });
+  await svc.invite(1, { name: 'B', email: 'b@x.test', role: 'student' });
+  const all = await svc.members(1);
+  const emails = all.filter((m) => m.role === 'student').map((m) => m.user?.email);
+  assert.ok(emails.includes('a@x.test') && emails.includes('b@x.test'));
 });
