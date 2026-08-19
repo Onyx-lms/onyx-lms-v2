@@ -555,6 +555,49 @@ export class AcademicsService {
     return this.enroll(tenantId, courseId, userId, { enrolledBy: userId });
   }
 
+  /**
+   * The courses a stranger may see, before they have an account.
+   *
+   * Scoped to institutions that have opened student registration -- the same
+   * flag that decides whether somebody can join at all (0025). An institution
+   * that enrols its own cohorts and never takes public learners does not
+   * appear here, and neither do its courses: publishing a customer's catalogue
+   * because the software could is not a decision this should make for them.
+   *
+   * Published, self-startable courses only. A draft is not a product, and a
+   * `batch` course cannot be joined by somebody who walks up to it.
+   */
+  async publicCatalogue(limit = 24) {
+    const { data: tenants } = await this.#db.from('onyx_tenants')
+      .select('id, name, slug').eq('student_signup', true).eq('status', 1);
+    const open = tenants ?? [];
+    if (!open.length) return [];
+
+    const { data } = await this.#db.from('onyx_courses')
+      .select(COURSE_COLUMNS)
+      .in('tenant_id', open.map((t) => Number(t.id)))
+      .eq('status', 1)
+      .in('access', ['open', 'locked'])
+      .order('access', { ascending: false })
+      .limit(limit);
+
+    const byTenant = new Map(open.map((t) => [Number(t.id), t]));
+    return (data ?? []).map((c) => ({
+      id: Number(c.id),
+      code: String(c.code),
+      title: String(c.title),
+      description: c.description ? String(c.description) : null,
+      credits: Number(c.credits ?? 0),
+      access: String(c.access) as 'open' | 'locked',
+      price_minor: Number(c.price_minor ?? 0),
+      currency: String(c.currency ?? 'INR'),
+      institution: {
+        name: String(byTenant.get(Number(c.tenant_id))?.name ?? ''),
+        slug: String(byTenant.get(Number(c.tenant_id))?.slug ?? ''),
+      },
+    }));
+  }
+
   /** Whether this learner has already bought this course. */
   async hasPurchased(tenantId: number, courseId: number, userId: string): Promise<boolean> {
     const { data } = await this.#db.from('onyx_course_purchases')

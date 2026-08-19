@@ -16,8 +16,7 @@ import {
   CourseFacultyManager, CourseRosterManager, CourseSettingsForm, DeleteCourseButton,
 } from '@/components/onyx-manage';
 import {
-  Banner, Card, Empty, Hero, Icon, ListRow, Meter, Pill, RowList, SectionHead,
-  relativeDue, type IconName,
+  BackLink, Banner, Card, Empty, Hero, Icon, ListRow, Meter, Pill, RowList, SectionHead, relativeDue, type IconName,
 } from '@/components/onyx-ui';
 
 export const metadata: Metadata = { title: 'Course' };
@@ -122,6 +121,7 @@ export default async function OnyxCoursePage({ params }: { params: Promise<{ id:
       title={outline.course.title}
       subtitle={outline.course.code + (outline.course.credits ? ' · ' + outline.course.credits + ' credits' : '')}
     >
+      <BackLink href="/onyx/courses" label="All courses" />
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
         <div className="min-w-0 space-y-6">
           {outline.enrolled ? (

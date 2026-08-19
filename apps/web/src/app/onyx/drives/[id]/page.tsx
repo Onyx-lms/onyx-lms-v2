@@ -2,8 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import {
-  Banner, Card, DataTable, Empty, EmptyRow, Icon, Meter, Pill, Score, SectionHead,
-  StatTile, State, Stepper, relativeDue,
+  BackLink, Banner, Card, DataTable, Empty, EmptyRow, Icon, Meter, Pill, Score, SectionHead, StatTile, State, Stepper, relativeDue,
 } from '@/components/onyx-ui';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
@@ -80,6 +79,7 @@ export default async function OnyxDrivePage({ params }: { params: Promise<{ id: 
         summary.drive.venue,
       ].filter(Boolean).join(' · ')}
     >
+      <BackLink href="/onyx/placement" label="Placement" />
       <nav aria-label="Breadcrumb" className="mb-4">
         <Link href="/onyx/placement"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-600

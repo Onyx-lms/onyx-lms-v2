@@ -110,6 +110,31 @@ export function Card({ children, className = '', as: As = 'div' }: {
 }
 
 /** A section label + optional action, at the one size used everywhere. */
+/**
+ * The way back out of a detail screen.
+ *
+ * Every screen under /onyx that opens a single record -- a course, a paper, an
+ * exam, a bank, a drive -- was reached from a list, and six of the nine had no
+ * way back to it. The browser's own button is not the answer: a learner who
+ * arrived from the dashboard, or from a link somebody sent them, has no history
+ * to go back through, and on a phone the browser chrome is hidden while
+ * scrolling. A link that names its destination also says where you are, which
+ * a chevron alone does not.
+ *
+ * Rendered above the page title rather than beside it, so it reads as the level
+ * above rather than as an action on this record.
+ */
+export function BackLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link href={href}
+      className="mb-3 inline-flex min-h-[36px] items-center gap-1.5 text-[13px] font-semibold
+                 text-muted hover:text-brand-700 hover:underline">
+      <Icon name="chevron" className="h-3.5 w-3.5 rotate-180" />
+      {label}
+    </Link>
+  );
+}
+
 export function SectionHead({ title, id, action }: {
   title: string; id?: string; action?: { href: string; label: string };
 }) {

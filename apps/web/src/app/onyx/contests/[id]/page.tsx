@@ -3,8 +3,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxContestTeams } from '@/components/onyx-career';
 import {
-  Banner, Card, DataTable, EmptyRow, Hero, Icon, ListRow, Meter, Pill, RowList,
-  SectionHead, State,
+  BackLink, Banner, Card, DataTable, EmptyRow, Hero, Icon, ListRow, Meter, Pill, RowList, SectionHead, State,
 } from '@/components/onyx-ui';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, type Me } from '@/lib/onyx-session';
@@ -82,6 +81,7 @@ export default async function OnyxContestPage({ params }: { params: Promise<{ id
             + (totalPoints ? ', ' + totalPoints + ' points' : '')
           : '')}
     >
+      <BackLink href="/onyx/contests" label="All contests" />
       <nav aria-label="Breadcrumb"
         className="mb-4 flex items-center gap-1.5 text-[13px] text-muted">
         <Link href="/onyx/contests"

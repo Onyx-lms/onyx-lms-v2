@@ -530,6 +530,16 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
    * same as self-enrolling. The service refuses anything that is not a
    * published, locked course.
    */
+  /**
+   * The catalogue a visitor sees before they have an account.
+   *
+   * Unauthenticated, and narrow because of it: published, self-startable
+   * courses at institutions that have opened registration, carrying only what
+   * a card shows. No roster, no faculty, no enrolment counts -- a public
+   * endpoint should hand over what it is for and nothing adjacent to it.
+   */
+  app.get('/api/onyx/catalogue', async () => ok(await ctx.onyxAcademics.publicCatalogue()));
+
   app.post('/api/onyx/courses/:id/purchase', async (req) => {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
     const result = await ctx.onyxAcademics.purchase(claims.tenant_id, idOf(req), claims.user_id);

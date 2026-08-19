@@ -10,8 +10,7 @@ import {
 import type { Assessment, MarkingQueueRow } from '@/lib/onyx-assess';
 import { ActionButton } from '@/components/onyx-create';
 import {
-  Card, DataTable, Empty, EmptyRow, Icon, Meter, Pill, Score, SectionHead, State,
-  Stepper, StatTile,
+  BackLink, Card, DataTable, Empty, EmptyRow, Icon, Meter, Pill, Score, SectionHead, StatTile, State, Stepper,
 } from '@/components/onyx-ui';
 
 export const metadata: Metadata = { title: 'Exam' };
@@ -183,6 +182,7 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
       title={exam.title}
       subtitle={when.lead + ' · ' + exam.duration_minutes + ' minutes · out of ' + exam.max_marks}
     >
+      <BackLink href="/onyx/exams" label="All examinations" />
       <nav aria-label="Breadcrumb"
         className="mb-4 flex items-center gap-1.5 text-[13px] text-muted">
         <Link href="/onyx/exams" className="font-semibold text-brand-600 hover:underline">

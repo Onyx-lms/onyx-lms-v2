@@ -57,7 +57,16 @@ export async function SiteHeader({ settings, categories }: {
         ) : (
           // Straight to Onyx rather than through /login's redirect: the
           // destination shows on hover, and it is one navigation fewer.
-          <Link href="/onyx/login" className="btn-primary ml-auto md:ml-0">Sign in</Link>
+          // A learner arriving cold needs the other door too, and it was not on
+          // any page of the storefront.
+          <span className="ml-auto flex items-center gap-2 md:ml-0">
+            <Link href="/onyx/signup"
+              className="hidden min-h-[40px] items-center rounded-lg px-3 text-sm font-semibold
+                         text-brand-700 hover:underline sm:inline-flex">
+              Create account
+            </Link>
+            <Link href="/onyx/login" className="btn-primary">Sign in</Link>
+          </span>
         )}
       </div>
 

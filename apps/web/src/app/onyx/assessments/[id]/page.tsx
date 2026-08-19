@@ -9,7 +9,7 @@ import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
 import { isExamsStaff, type Assessment, type MyAttempt } from '@/lib/onyx-assess';
 import {
-  ActionLink, Card, CardGrid, Icon, SectionHead, State, StatTile, Stepper,
+  ActionLink, BackLink, Card, CardGrid, Icon, SectionHead, StatTile, State, Stepper,
 } from '@/components/onyx-ui';
 
 export const metadata: Metadata = { title: 'Assessment' };
@@ -81,6 +81,7 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
       subtitle={assessment.duration_minutes + ' minutes'
         + (assessment.pass_mark !== null ? ', pass mark ' + assessment.pass_mark : '')}
     >
+      <BackLink href="/onyx/assessments" label="All papers" />
       <nav aria-label="Breadcrumb" className="mb-3 flex items-center gap-1.5 text-sm text-muted">
         <Link href="/onyx/assessments" className="font-semibold text-brand-600 hover:underline">
           Assessments

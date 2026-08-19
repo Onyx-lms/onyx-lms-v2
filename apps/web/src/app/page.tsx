@@ -93,8 +93,20 @@ function LessonRow({ title, meta, state }: {
   );
 }
 
+interface PublicCourse {
+  id: number; code: string; title: string; description: string | null; credits: number;
+  access: 'open' | 'locked'; price_minor: number; currency: string;
+  institution: { name: string; slug: string };
+}
+
 export default async function HomePage() {
   const settings = await apiSafe<SiteSettings>('/api/settings');
+  // Real courses somebody can actually join, from institutions that have opened
+  // registration. Empty is a legitimate answer -- the section is not rendered
+  // at all rather than showing an empty grid with a filter bar, which is what
+  // the storefront catalogue does and the reason it was never worth linking to
+  // from the hero.
+  const catalogue = (await apiSafe<PublicCourse[]>('/api/onyx/catalogue')) ?? [];
   const name = settings?.system_title ?? 'Onyx LMS';
 
   return (
@@ -148,19 +160,26 @@ export default async function HomePage() {
                 Sign in
                 <Icon name="arrow" className="h-4 w-4" />
               </Link>
-              <Link href="/courses"
+              {/* Second, and a real destination: "Browse courses" pointed at the
+                  storefront catalogue, which is empty on this deployment -- a
+                  first click that lands on "nothing matches those filters" is
+                  the worst thing a landing page can do. Learners are the people
+                  arriving here without an account, so the second action is the
+                  one they need. */}
+              <Link href="/onyx/signup"
                 className="inline-flex min-h-[48px] items-center gap-2 rounded-2xl border
                            border-line bg-white px-6 text-[15px] font-bold text-slate-700
                            transition hover:border-brand-300 hover:bg-brand-50
                            focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600
                            focus-visible:ring-offset-2">
-                Browse courses
+                Create a student account
               </Link>
             </div>
 
             <p className="mt-5 flex items-center gap-2 text-[13px] text-muted">
               <Icon name="lock" className="h-3.5 w-3.5 shrink-0" />
-              Institutions are set up by the {name} platform team.
+              Learners register with the email their institution issued. Institutions
+              themselves are set up by the {name} platform team.
             </p>
           </div>
 
@@ -296,6 +315,77 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ------------------------------------------------------------ catalogue */}
+      {catalogue.length ? (
+        <section className="border-t border-line bg-canvas">
+          <div className="container-page py-16 lg:py-20">
+            <p className="text-center text-[12px] font-bold uppercase tracking-[.14em] text-muted">
+              Open for enrolment
+            </p>
+            <h2 className="mx-auto mt-3 max-w-[22ch] text-center text-[26px] font-extrabold
+                           leading-tight tracking-tight sm:text-[32px]">
+              Courses you can start right now
+            </h2>
+            <p className="mx-auto mt-3 max-w-[52ch] text-center text-[15.5px] leading-relaxed
+                          text-muted">
+              Register with the address your institution gave you, and free courses open
+              immediately. Paid ones open the moment they are bought.
+            </p>
+
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {catalogue.slice(0, 6).map((c) => (
+                <article key={c.id}
+                  className="flex min-w-0 flex-col gap-2.5 rounded-2xl border border-line bg-white
+                             p-5 shadow-card">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[12px] font-bold text-muted">{c.code}</span>
+                    {c.access === 'locked' ? (
+                      <span className="rounded-full bg-accent-50 px-2 py-0.5 text-[11.5px]
+                                       font-bold text-accent-700">Paid</span>
+                    ) : (
+                      <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11.5px]
+                                       font-bold text-brand-700">Free</span>
+                    )}
+                  </div>
+                  <h3 className="text-[16px] font-bold leading-snug">{c.title}</h3>
+                  {c.description ? (
+                    <p className="line-clamp-2 text-[13px] leading-relaxed text-muted">
+                      {c.description}
+                    </p>
+                  ) : null}
+                  <p className="mt-auto flex items-center gap-1.5 pt-2 text-[12.5px] text-muted">
+                    <Icon name="building" className="h-3.5 w-3.5" />
+                    <span className="truncate">{c.institution.name}</span>
+                  </p>
+                  <div className="flex items-center justify-between gap-3 border-t border-line
+                                  pt-3">
+                    {/* The price, on the card. A catalogue that makes somebody
+                        click to find out what a course costs is a catalogue
+                        they close. */}
+                    <span className="text-[17px] font-extrabold tabular-nums">
+                      {c.access === 'locked'
+                        ? c.currency + ' ' + Math.floor(c.price_minor / 100).toLocaleString('en-IN')
+                        : 'Free'}
+                    </span>
+                    <Link href="/onyx/signup"
+                      className="inline-flex min-h-[38px] items-center rounded-xl bg-brand-600
+                                 px-3.5 text-[13px] font-bold text-white hover:bg-brand-700">
+                      {c.access === 'locked' ? 'Sign up to buy' : 'Sign up to start'}
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            {catalogue.length > 6 ? (
+              <p className="mt-6 text-center text-[13px] text-muted">
+                and {catalogue.length - 6} more once you are signed in.
+              </p>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
       {/* ----------------------------------------------------------- closing CTA */}
       <section className="container-page py-16 lg:py-20">
         <div className="relative overflow-hidden rounded-xl2 bg-gradient-to-br from-brand-700
@@ -308,8 +398,8 @@ export default async function HomePage() {
             Ready when you are
           </h2>
           <p className="relative mx-auto mt-3 max-w-[48ch] text-[15.5px] leading-relaxed text-white/80">
-            Sign in to your institution, or check a credential somebody has shown you — that one
-            needs no account at all.
+            Sign in to your institution, register with the address it gave you, or check a
+            credential somebody has shown you — that last one needs no account at all.
           </p>
           <div className="relative mt-7 flex flex-wrap justify-center gap-3">
             <Link href="/onyx/login"
@@ -320,12 +410,12 @@ export default async function HomePage() {
               Sign in
               <Icon name="arrow" className="h-4 w-4" />
             </Link>
-            <Link href="/courses"
+            <Link href="/onyx/signup"
               className="inline-flex min-h-[48px] items-center rounded-2xl border border-white/30
                          px-6 text-[15px] font-bold text-white transition hover:bg-white/10
                          focus:outline-none focus-visible:ring-2 focus-visible:ring-white
                          focus-visible:ring-offset-2 focus-visible:ring-offset-brand-800">
-              Browse courses
+              Create a student account
             </Link>
           </div>
         </div>
