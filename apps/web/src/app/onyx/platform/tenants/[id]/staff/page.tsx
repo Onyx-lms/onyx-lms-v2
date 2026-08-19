@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import {
-  attempt, ago, SCROLLER, AccountState, TenantBackLink, Unavailable, type PeoplePayload,
+  attempt, ago, SCROLLER, AccountState, RosterHeader, TenantBackLink, Unavailable,
+  type PeoplePayload,
 } from '@/lib/onyx-platform-tenant';
-import { MemberEditToggle, RemoveMemberButton } from '@/components/onyx-platform-forms';
+import {
+  CreateProfileForm, MemberEditToggle, RemoveMemberButton,
+} from '@/components/onyx-platform-forms';
 import { DataTable, EmptyRow, Pill } from '@/components/onyx-ui';
 
 export const metadata: Metadata = { title: 'Other roles' };
@@ -45,45 +48,57 @@ export default async function OnyxPlatformOtherRolesPage(
       <TenantBackLink tenantId={tenantId} />
 
       {anyFailed ? <Unavailable what="staff and guardian list" /> : (
-        <div tabIndex={0} role="region" aria-label="Other roles" className={SCROLLER}>
-          <DataTable
-            caption="Examinations staff, placement staff, employer contacts, guardians and
-                     other administrators at this institution."
-            head={
-              <>
-                <th scope="col">Member</th>
-                <th scope="col">Role</th>
-                <th scope="col">Account</th>
-                <th scope="col">Joined</th>
-                <th scope="col">&nbsp;</th>
-              </>
-            }
-          >
-            {people.length === 0 ? (
-              <EmptyRow colSpan={5} icon="user">
-                Nobody holds one of these roles here yet. Creating one is the platform
-                sidebar&rsquo;s &ldquo;Create a profile&rdquo;.
-              </EmptyRow>
-            ) : people.map((p) => (
-              <tr key={p.user_id} className="align-top">
-                <td>
-                  <div className="font-semibold">{p.name}</div>
-                  <div className="break-all text-[12.5px] text-muted">{p.email}</div>
-                </td>
-                <td><Pill tone="brand">{ROLE_LABEL[p.role] ?? p.role}</Pill></td>
-                <td><AccountState status={p.account_status} /></td>
-                <td className="whitespace-nowrap text-[12.5px] text-muted">{ago(p.joined_at)}</td>
-                <td className="text-right">
-                  <div className="flex flex-col items-end gap-1.5">
-                    <MemberEditToggle tenantId={tenantId} person={p} />
-                    <RemoveMemberButton tenantId={tenantId} membershipId={p.membership_id}
-                      name={p.name} />
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </DataTable>
-        </div>
+        <>
+          {/* No `only` here, unlike Students and Faculty: this tab is five
+              roles at once, so the kind genuinely is still an open question
+              and the picker earns its place. */}
+          {/* Summed across the five reads, not one payload's `total`: this tab
+              is five role queries stitched together. */}
+          <RosterHeader
+            count={results.reduce((n, r) => n + (r?.total ?? 0), 0)} noun="person" plural="people"
+            action={<CreateProfileForm lockedTenant={{ id: tenantId }} defaultType="exams"
+              cta="Add someone" />}
+          />
+          <div tabIndex={0} role="region" aria-label="Other roles" className={SCROLLER}>
+            <DataTable
+              caption="Examinations staff, placement staff, employer contacts, guardians and
+                       other administrators at this institution."
+              head={
+                <>
+                  <th scope="col">Member</th>
+                  <th scope="col">Role</th>
+                  <th scope="col">Account</th>
+                  <th scope="col">Joined</th>
+                  <th scope="col">&nbsp;</th>
+                </>
+              }
+            >
+              {people.length === 0 ? (
+                <EmptyRow colSpan={5} icon="user">
+                  Nobody holds one of these roles here yet. &ldquo;Add someone&rdquo;
+                  above this table creates one.
+                </EmptyRow>
+              ) : people.map((p) => (
+                <tr key={p.user_id} className="align-top">
+                  <td>
+                    <div className="font-semibold">{p.name}</div>
+                    <div className="break-all text-[12.5px] text-muted">{p.email}</div>
+                  </td>
+                  <td><Pill tone="brand">{ROLE_LABEL[p.role] ?? p.role}</Pill></td>
+                  <td><AccountState status={p.account_status} /></td>
+                  <td className="whitespace-nowrap text-[12.5px] text-muted">{ago(p.joined_at)}</td>
+                  <td className="text-right">
+                    <div className="flex flex-col items-end gap-1.5">
+                      <MemberEditToggle tenantId={tenantId} person={p} />
+                      <RemoveMemberButton tenantId={tenantId} membershipId={p.membership_id}
+                        name={p.name} />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </DataTable>
+          </div>
+        </>
       )}
     </div>
   );

@@ -216,6 +216,34 @@ export function TenantBackLink({ tenantId }: { tenantId: number }) {
   );
 }
 
+/**
+ * The strip above a roster table: what the table holds on the left, the one
+ * action that adds to it on the right.
+ *
+ * Adding a person used to live only in the sidebar's "Create a profile",
+ * which asked which of eight kinds to create -- a question the operator had
+ * already answered by opening the Students tab. The control now sits directly
+ * above the table it changes, says what it will add, and asks nothing that the
+ * tab has already settled. Same idea on all three People tabs, so moving
+ * between them does not mean learning a different screen.
+ *
+ * The count is here rather than in a stat tile because it is the caption for
+ * the table underneath, and it tells an operator whether the row they just
+ * added actually arrived.
+ */
+export function RosterHeader({ count, noun, plural: many, action }: {
+  count: number; noun: string; plural?: string; action: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className="text-[13px] font-semibold text-muted">
+        {plural(count, noun, many)} at this institution
+      </p>
+      <div className="w-full sm:w-auto">{action}</div>
+    </div>
+  );
+}
+
 export const SCROLLER = 'min-w-0';
 
 export const money = (minor: number, currency = 'INR') => currency + ' ' + (minor / 100).toFixed(2);

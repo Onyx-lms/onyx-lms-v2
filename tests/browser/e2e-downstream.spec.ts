@@ -142,6 +142,9 @@ test('setup: an institution with a course, a teacher and two learners', async ({
     ['Ana Learner', mail('ana'), 'student'],
     ['Ben Learner', mail('ben'), 'student'],
   ] as const) {
+    // The roster leads with the roster now: the add form is behind the
+    // toolbar's button, and closes again once the person is created.
+    await page.getByRole('button', { name: 'Add someone' }).click();
     await page.locator('input[name="name"]').fill(name);
     await page.locator('input[name="email"]').fill(email);
     await page.locator('select[name="role"]').selectOption(role);
@@ -564,6 +567,7 @@ test('CMP-04 a guardian is created, linked, and sees nothing until they accept',
   async ({ page }) => {
     await signIn(page, mail('admin'));
     await page.goto('/onyx/people');
+    await page.getByRole('button', { name: 'Add someone' }).click();
     await page.locator('input[name="name"]').fill('Gita Guardian');
     await page.locator('input[name="email"]').fill(mail('guardian'));
     await page.locator('select[name="role"]').selectOption('guardian');
