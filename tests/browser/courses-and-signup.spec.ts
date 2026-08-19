@@ -10,6 +10,7 @@
  * accumulates a "Signup Probe" per run is a worse problem than no test.
  */
 import { test, expect, request as playwrightRequest, type Page } from '@playwright/test';
+import { withDb } from './helpers.ts';
 
 const ADMIN = { email: 'admin@demo.onyx', password: 'Demo#2026!' };
 const STUDENT = { email: 'student@demo.onyx', password: 'Demo#2026!' };
@@ -57,6 +58,30 @@ async function lockedCourse(admin: string) {
 }
 
 test.afterAll(async () => {
+  /*
+   * Buying leaves the demo student owning the course, and there is no
+   * "un-buy" in the product -- correctly, since refunds are not a thing this
+   * builds. So the fixture is reset the same way every other suite resets what
+   * it wrote: straight in the database, scoped to the one learner and the one
+   * course this file touches.
+   *
+   * Without it the second run finds the course already owned and fails on the
+   * assertion that it is not -- which is what happened the first time this ran
+   * against production.
+   */
+  await withDb(async (c) => {
+    await c.query(
+      `DELETE FROM public."onyx_course_purchases" p
+         USING public."onyx_courses" co, public."onyx_users" u
+        WHERE p.course_id = co.id AND p.user_id = u.id
+          AND co.code = 'ABC301' AND u.email = $1`, [STUDENT.email]);
+    await c.query(
+      `DELETE FROM public."onyx_enrollments" e
+         USING public."onyx_courses" co, public."onyx_users" u
+        WHERE e.course_id = co.id AND e.user_id = u.id
+          AND co.code = 'ABC301' AND u.email = $1`, [STUDENT.email]);
+  });
+
   // The account the signup test made, and the purchase the buying test made.
   const admin = await token(ADMIN.email, ADMIN.password);
   const roster = await api('/api/onyx/members', { token: admin });
