@@ -1,10 +1,29 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
+import { Fraunces, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { apiSafe, type CategoryNode, type SiteSettings } from '@/lib/api';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 
+
+/*
+ * The administrator's console wears the EZiL Design Labs pairing: a display
+ * serif over a geometric sans. Declared here rather than in the shell because
+ * next/font is build-time -- it self-hosts the files and emits one class, so
+ * there is no network request to a font CDN at runtime and no layout shift.
+ *
+ * Both are loaded on every page but USED only inside `[data-skin='ezil']`
+ * (globals.css). `display: 'swap'` and the variable form keep them out of the
+ * critical path for every other role, who never reference the variables.
+ */
+const fraunces = Fraunces({
+  subsets: ['latin'], display: 'swap', variable: '--font-fraunces', weight: ['600', '700'],
+});
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'], display: 'swap', variable: '--font-jakarta',
+});
+const FONTS = fraunces.variable + ' ' + jakarta.variable;
 
 /** C-05: site-wide defaults, overridden per page by generateMetadata. */
 export async function generateMetadata(): Promise<Metadata> {
@@ -23,7 +42,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const onyx = ((await headers()).get('x-pathname') ?? '').startsWith('/onyx');
   if (onyx) {
     return (
-      <html lang="en">
+      <html lang="en" className={FONTS}>
         <body className="flex min-h-screen flex-col">
           {/* WCAG 2.4.1: the Onyx shell repeats the same sidebar on every
               page, so a keyboard user gets a way past it. tabIndex={-1} is

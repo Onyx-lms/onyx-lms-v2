@@ -64,7 +64,10 @@ export function TrendBars({ points, title, unit, height = 108, tone = 'brand' }:
   const peakAt = points.findIndex((p) => p.value === peak);
   const scale = (v: number) => (peak <= 0 ? 0 : Math.round((v / peak) * plot));
 
-  const fill = tone === 'accent' ? '#D87818' : '#307890';
+  // A class, not a hex. `fill-*` resolves through the same colour variables
+  // every other surface uses, so the administrator's skin repaints the chart
+  // with everything else instead of leaving one teal element on a navy page.
+  const fill = tone === 'accent' ? 'fill-accent-500' : 'fill-brand-500';
   const total = points.reduce((n, p) => n + p.value, 0);
 
   return (
@@ -91,7 +94,7 @@ export function TrendBars({ points, title, unit, height = 108, tone = 'brand' }:
               </rect>
               <rect
                 x={x} y={y} width={bar} height={h} rx={Math.min(4, bar / 2)}
-                fill={p.value === 0 ? '#E2E8F0' : fill}
+                className={p.value === 0 ? 'fill-line' : fill}
                 opacity={p.value === 0 ? 1 : i === peakAt ? 1 : 0.82}
               />
               {i === peakAt && peak > 0 ? (
@@ -106,7 +109,7 @@ export function TrendBars({ points, title, unit, height = 108, tone = 'brand' }:
 
         {/* The baseline: one hairline, no gridlines. */}
         <line x1={0} y1={top + plot + 0.5} x2={W} y2={top + plot + 0.5}
-          stroke="#E2E8F0" strokeWidth={1} />
+          className="stroke-line" strokeWidth={1} />
 
         {/* Two dates, not eleven: the ends anchor the range and the tooltip
             answers everything in between. */}

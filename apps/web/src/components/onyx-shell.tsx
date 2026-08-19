@@ -43,7 +43,18 @@ export function OnyxShell({ me, title, subtitle, children, action }: {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-canvas">
+    /*
+     * The administrator's console wears the EZiL Design Labs skin; every other
+     * role's product is untouched.
+     *
+     * One attribute, and the work is all in globals.css: the palette resolves
+     * through CSS variables now, so `data-skin` repaints the same markup
+     * rather than selecting a second set of components. Nothing here changes
+     * what a screen shows, what it links to, or what it may do -- an
+     * administrator's Courses page is the same page it was, in the design
+     * language.
+     */
+    <div className="min-h-screen bg-canvas" data-skin={me.role === 'admin' ? 'ezil' : undefined}>
       <Header me={me} onMenu={() => setMenuOpen(true)} />
 
       {menuOpen ? (
@@ -52,7 +63,7 @@ export function OnyxShell({ me, title, subtitle, children, action }: {
 
       <div className="grid gap-7 px-4 pb-24 pt-5
                       lg:grid-cols-[216px_minmax(0,1fr)] lg:items-start lg:px-7 lg:pb-10 lg:pt-7">
-        <aside className="hidden lg:sticky lg:top-[84px] lg:block">
+        <aside className="hidden lg:sticky lg:top-[84px] lg:block" data-rail>
           <TenantCard tenant={me.tenant} role={me.role}
             memberships={me.memberships} />
           {/* An institution admin creates a profile the same way a platform
@@ -66,7 +77,7 @@ export function OnyxShell({ me, title, subtitle, children, action }: {
               <NavGroup key={g.label ?? i} group={g} />
             ))}
           </nav>
-          <div className="mt-4 rounded-2xl border border-line bg-white p-3">
+          <div className="rail-card mt-4 rounded-2xl border border-line bg-white p-3">
             <div className="truncate text-xs text-muted" title={me.email}>{me.email}</div>
             <SignOutButton />
           </div>
@@ -273,7 +284,8 @@ function TenantCard({ tenant, role, memberships }: {
     // restyling the shell broke six passing tests that had found no real
     // defect -- a test coupled to a class name tests the stylesheet, not the
     // product.
-    <div data-testid="tenant-card" className="rounded-2xl border border-line bg-white p-3.5">
+    <div data-testid="tenant-card"
+      className="rail-card rounded-2xl border border-line bg-white p-3.5">
       <div className="text-[10.5px] font-bold uppercase tracking-[.09em] text-muted">
         Institution
       </div>

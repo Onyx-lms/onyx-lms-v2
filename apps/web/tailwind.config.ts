@@ -24,37 +24,52 @@ export default {
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      /*
+       * Every colour resolves through a CSS variable holding space-separated
+       * RGB channels, with the defaults in globals.css set to exactly the hex
+       * values that used to be written here. Nothing changes appearance from
+       * this alone -- what it buys is a re-skin that costs one block of
+       * variables instead of a rewrite of every className in the product.
+       *
+       * The channel form (`31 95 117`) rather than a hex string is what lets
+       * Tailwind's alpha modifiers keep working: `bg-brand-50/40` compiles to
+       * `rgb(var(--c-brand-50) / 0.4)`, which a hex variable cannot express.
+       *
+       * See `[data-skin='ezil']` in globals.css for the administrator's skin.
+       */
       colors: {
         brand: {
-          50:  '#F0F7F9',
-          100: '#D7E9EE',
-          200: '#B4D5DE',
-          300: '#8ABCCC',
-          400: '#5A9CB2',
-          500: '#307890', // logo teal
-          600: '#1F5F75', // primary — 7.11:1 on white
-          700: '#17505F',
-          800: '#113E4A',
-          900: '#0B2F3A',
+          50:  'rgb(var(--c-brand-50) / <alpha-value>)',
+          100: 'rgb(var(--c-brand-100) / <alpha-value>)',
+          200: 'rgb(var(--c-brand-200) / <alpha-value>)',
+          300: 'rgb(var(--c-brand-300) / <alpha-value>)',
+          400: 'rgb(var(--c-brand-400) / <alpha-value>)',
+          500: 'rgb(var(--c-brand-500) / <alpha-value>)',
+          600: 'rgb(var(--c-brand-600) / <alpha-value>)',
+          700: 'rgb(var(--c-brand-700) / <alpha-value>)',
+          800: 'rgb(var(--c-brand-800) / <alpha-value>)',
+          900: 'rgb(var(--c-brand-900) / <alpha-value>)',
         },
         accent: {
-          50:  '#FEF6EC',
-          100: '#FCE9CE',
-          200: '#F8D3A2',
-          400: '#EE9B3C',
-          500: '#D87818', // logo orange — fills only
-          600: '#B45309',
-          700: '#9A4508', // 5.71:1 — safe for text on the peach card
+          50:  'rgb(var(--c-accent-50) / <alpha-value>)',
+          100: 'rgb(var(--c-accent-100) / <alpha-value>)',
+          200: 'rgb(var(--c-accent-200) / <alpha-value>)',
+          400: 'rgb(var(--c-accent-400) / <alpha-value>)',
+          500: 'rgb(var(--c-accent-500) / <alpha-value>)',
+          600: 'rgb(var(--c-accent-600) / <alpha-value>)',
+          700: 'rgb(var(--c-accent-700) / <alpha-value>)',
         },
-        ink:   '#0F172A',
-        muted: '#5C6B7E',
-        // Decorative marks only -- dots, rules, disabled glyphs. It does not
-        // clear 4.5:1 and must never carry text; `text-faint` was tried on
-        // the profile page's "of 20" labels and failed axe on five nodes.
-        // Anything with words in it uses `muted`.
-        faint: '#6E7D8F',
-        line:  '#E2E8F0',
-        canvas: '#F6F8FA',
+        ink:    'rgb(var(--c-ink) / <alpha-value>)',
+        muted:  'rgb(var(--c-muted) / <alpha-value>)',
+        faint:  'rgb(var(--c-faint) / <alpha-value>)',
+        line:   'rgb(var(--c-line) / <alpha-value>)',
+        canvas: 'rgb(var(--c-canvas) / <alpha-value>)',
+        surface: 'rgb(var(--c-surface) / <alpha-value>)',
+      },
+      fontFamily: {
+        // The skin supplies a display face; everywhere else inherits the
+        // stack the body already had.
+        display: 'var(--font-display, inherit)',
       },
       borderRadius: { xl2: '1.25rem' },
       boxShadow: {

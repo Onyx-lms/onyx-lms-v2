@@ -18,6 +18,81 @@
  */
 :root { color-scheme: light; }
 
+/*
+ * The palette, as channels.
+ *
+ * These are the exact values that used to sit in tailwind.config.ts -- the
+ * Onyx teal, the logo orange, the slate inks -- moved here so a skin can
+ * replace them without touching a single className. Nothing about the default
+ * appearance changed when they moved.
+ */
+:root {
+  --c-brand-50:  240 247 249;
+  --c-brand-100: 215 233 238;
+  --c-brand-200: 180 213 222;
+  --c-brand-300: 138 188 204;
+  --c-brand-400: 90 156 178;
+  --c-brand-500: 48 120 144;
+  --c-brand-600: 31 95 117;
+  --c-brand-700: 23 80 95;
+  --c-brand-800: 17 62 74;
+  --c-brand-900: 11 47 58;
+
+  --c-accent-50:  254 246 236;
+  --c-accent-100: 252 233 206;
+  --c-accent-200: 248 211 162;
+  --c-accent-400: 238 155 60;
+  --c-accent-500: 216 120 24;
+  --c-accent-600: 180 83 9;
+  --c-accent-700: 154 69 8;
+
+  --c-ink:     15 23 42;
+  --c-muted:   92 107 126;
+  --c-faint:   110 125 143;
+  --c-line:    226 232 240;
+  --c-canvas:  246 248 250;
+  --c-surface: 255 255 255;
+}
+
+/*
+ * The administrator's skin: EZiL Design Labs, "Gold Standard".
+ *
+ * Applied by OnyxShell to the administrator's console only (`data-skin`), and
+ * it is a REPAINT -- not a rebuild. Every screen keeps its markup, its links,
+ * its data and its behaviour; what changes is which colours and faces those
+ * classes resolve to. That is the whole reason the palette moved into
+ * variables: an administrator's console can look like the design language
+ * without a second copy of the product existing to maintain.
+ *
+ * Values are EZiL-Design-Labs/src/index.css, converted to channels: warm
+ * cream canvas, off-white surfaces, navy ink and primary, and the warm stone
+ * border that holds it together. The orange stays as the accent because it is
+ * the logo's, and the design language has a gold in the same position.
+ */
+[data-skin='ezil'] {
+  --c-brand-50:  237 241 247;
+  --c-brand-100: 214 223 236;
+  --c-brand-200: 173 190 216;
+  --c-brand-300: 124 150 190;
+  --c-brand-400: 74 108 156;
+  --c-brand-500: 40 80 133;
+  --c-brand-600: 27 64 121;
+  --c-brand-700: 19 46 88;
+  --c-brand-800: 15 36 69;
+  --c-brand-900: 11 26 50;
+
+  --c-accent-500: 200 160 46;
+  --c-accent-600: 154 106 18;
+  --c-accent-700: 122 84 14;
+
+  --c-ink:     15 28 51;
+  --c-muted:   85 97 122;
+  --c-faint:   110 122 145;
+  --c-line:    224 220 209;
+  --c-canvas:  245 243 238;
+  --c-surface: 251 250 246;
+}
+
 @layer base {
   body { @apply bg-white text-slate-800 antialiased; }
 
@@ -84,6 +159,72 @@
    */
   ::placeholder { @apply text-slate-500 opacity-100; }
 }
+
+/*
+ * The skin's own surfaces and type.
+ *
+ * The variables above repaint anything that already spoke in tokens. These
+ * five rules cover what does not: `bg-white` compiles to a literal, the body
+ * paints itself white, and the design language's serif display face is not
+ * something a colour variable can carry.
+ *
+ * Scoped to `[data-skin='ezil']` throughout, so every other role's product is
+ * byte-for-byte what it was.
+ */
+[data-skin='ezil'] {
+  background-color: rgb(var(--c-canvas));
+  /* Fraunces and Plus Jakarta Sans are loaded by the root layout (next/font,
+     self-hosted). The fallbacks are what renders if that ever fails, and they
+     are chosen to keep the same feel rather than to match metrics. */
+  font-family: var(--font-jakarta), system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Cards, headers, tables: white in the product, the skin's warm off-white here. */
+[data-skin='ezil'] .bg-white { background-color: rgb(var(--c-surface)); }
+[data-skin='ezil'] .bg-white\/90 { background-color: rgb(var(--c-surface) / 0.9); }
+[data-skin='ezil'] .bg-slate-50 { background-color: rgb(var(--c-canvas)); }
+
+/*
+ * A serif for the things a person reads first.
+ *
+ * The design language pairs a display serif with a UI sans, and that pairing
+ * is most of what makes it recognisable -- a navy palette on the same
+ * geometric sans would read as a recolour rather than as the system. Applied
+ * to page and section headings and to the figures on a tile, which is where
+ * the lab uses it, and nowhere else: a serif inside a data table would cost
+ * legibility for nothing.
+ */
+[data-skin='ezil'] h1,
+[data-skin='ezil'] h2,
+[data-skin='ezil'] h3 {
+  font-family: var(--font-fraunces), Georgia, 'Times New Roman', serif;
+  letter-spacing: -0.01em;
+}
+[data-skin='ezil'] h1 { font-weight: 600; }
+
+/* The figure on a stat tile is display type in the lab, not body type. */
+[data-skin='ezil'] [data-testid^='stat-'] + div {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-weight: 600;
+}
+
+/*
+ * The rail.
+ *
+ * The lab's sidebar sits DIRECTLY on the canvas -- no card, no border, no
+ * shadow -- with quiet uppercase group labels and one solid pill for where you
+ * are. Ours had the same bones inside a bordered white box, which reads as a
+ * panel bolted to the page rather than as part of it. These rules take the box
+ * off the two blocks that had one and let the groups breathe.
+ */
+[data-skin='ezil'] [data-rail] .rail-card {
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+[data-skin='ezil'] [data-rail] nav a { border-radius: var(--radius-md, 0.625rem); }
 
 @layer components {
   .container-page { @apply mx-auto w-full max-w-6xl px-4; }

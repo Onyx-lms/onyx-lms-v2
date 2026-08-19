@@ -149,11 +149,15 @@ test('granting a capability lets a role through a route it was refused before', 
   const accepted = await api('/api/onyx/members', { method: 'POST', token: exams, data: person });
   expect(accepted.status).toBe(200);
 
-  // Tidy the person this created; the matrix is reset by afterAll.
-  const made = accepted.body?.data?.user?.id;
-  if (made) {
-    await api('/api/onyx/members/' + accepted.body.data.membership.id, {
-      method: 'POST', token: admin, data: {},
-    }).catch(() => undefined);
+  // Tidy the person this created. DELETE, not POST -- the first version of
+  // this posted to the member URL, which is not a route, so every run left a
+  // "Matrix Probe" account behind in the demo institution.
+  const membershipId = accepted.body?.data?.membership?.id;
+  if (membershipId) {
+    const ctx = await playwrightRequest.newContext({
+      baseURL: API, extraHTTPHeaders: { Authorization: 'Bearer ' + admin },
+    });
+    await ctx.delete('/api/onyx/members/' + membershipId).catch(() => undefined);
+    await ctx.dispose();
   }
 });
