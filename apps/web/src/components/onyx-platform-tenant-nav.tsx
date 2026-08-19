@@ -43,6 +43,9 @@ const GROUPS: TenantNavGroup[] = [
     { seg: 'examinations', label: 'Examinations', icon: 'award' },
     { seg: 'assessments', label: 'Assessments', icon: 'target' },
   ] },
+  { label: 'Governance', items: [
+    { seg: 'permissions', label: 'Permissions', icon: 'shield' },
+  ] },
   { label: 'Records', items: [
     { seg: 'grades', label: 'Grades', icon: 'trophy' },
     { seg: 'fees', label: 'Fees', icon: 'wallet' },

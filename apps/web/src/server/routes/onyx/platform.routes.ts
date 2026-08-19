@@ -10,7 +10,11 @@
  */
 import type { Router, ReqLike } from '../../router.ts';
 import { z } from 'zod';
-import { validate, ok, requirePlatformAdmin, ROLES } from '@onyx/core';
+import {
+  validate, ok, requirePlatformAdmin, ROLES,
+  CAPABILITIES, CAPABILITY_AREAS, holdersOf, normaliseOverrides,
+  type PermissionOverrides,
+} from '@onyx/core';
 import type { Role } from '@onyx/types';
 import type { AppContext } from '../../app-context.ts';
 
@@ -56,6 +60,41 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
   app.get('/api/onyx/platform/tenants/:id', async (req) => {
     await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     return ok(await ctx.onyxPlatform.tenant(idOf(req)));
+  });
+
+  /**
+   * One institution's permission matrix, from above it.
+   *
+   * A platform admin holds everything everywhere by definition, so this is not
+   * about what THEY may do -- it is the same screen an administrator sees,
+   * reachable when the person who needs it changed is on the phone rather than
+   * in the console. Every save is recorded in the platform audit log against
+   * the operator who made it, which is the difference between helping a
+   * customer and quietly editing their institution.
+   */
+  app.get('/api/onyx/platform/tenants/:id/permissions', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const tenant = await ctx.onyxPlatform.tenant(idOf(req));
+    const overrides = (tenant?.permissions ?? {}) as PermissionOverrides;
+    return ok({
+      capabilities: CAPABILITIES.map((cap) => ({
+        ...cap,
+        holders_now: holdersOf(cap.key, overrides),
+        changed: Object.prototype.hasOwnProperty.call(overrides, cap.key),
+      })),
+      areas: CAPABILITY_AREAS,
+      tenant: { id: tenant.id, name: tenant.name },
+    });
+  });
+
+  app.put('/api/onyx/platform/tenants/:id/permissions', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      permissions: z.record(z.string(), z.array(z.string())),
+    }), req.body);
+    const overrides = normaliseOverrides(body.permissions);
+    const tenant = await ctx.onyxPlatform.setPermissions(idOf(req), claims.user_id, overrides);
+    return ok(tenant, 'Permissions saved.');
   });
 
   // The drill-in reads. Same guard as everything else in this file: a tenant

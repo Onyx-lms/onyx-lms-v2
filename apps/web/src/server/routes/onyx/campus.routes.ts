@@ -19,6 +19,7 @@ import { z } from 'zod';
 import { validate, ok, requireOnyx, requireOnyxRole, HttpError } from '@onyx/core';
 import type { Role } from '@onyx/types';
 import type { AppContext } from '../../app-context.ts';
+import { assertCan } from '../../capability.ts';
 
 const asReq = (req: ReqLike) => ({
   headers: req.headers as Record<string, string | string[] | undefined>,
@@ -35,7 +36,10 @@ const uidOf = (req: ReqLike, key: string) =>
 const ipOf = (req: ReqLike) => (req as unknown as { ip?: string }).ip ?? null;
 
 /** The registry: who builds the term. */
-const REGISTRY = ['admin'] as const;
+// The outer bound: roles the timetable and registry capabilities may ever be
+// granted to (permissions.ts `holders`). Which of them actually hold one is
+// the institution's answer, checked by assertCan inside each route.
+const REGISTRY = ['admin', 'exams', 'faculty'] as const;
 /** The examinations office. */
 const EXAMS = ['admin', 'exams'] as const;
 /** Faculty may enter marks for a paper; only EXAMS may moderate or publish. */
@@ -91,6 +95,12 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
    * actions too.
    */
   async function assertCanScheduleExam(tenantId: number, role: Role) {
+    // The matrix answers this for every role now (permissions.ts,
+    // `exams.schedule`). The 0012 flag is kept as a FLOOR rather than dropped:
+    // an institution that switched faculty scheduling off before the matrix
+    // existed has that decision recorded only in the flag, and honouring the
+    // matrix alone would silently hand the capability back.
+    await assertCan(ctx, tenantId, role, 'exams.schedule');
     if (role !== 'faculty') return;
     const tenant = await ctx.onyxTenancy.tenant(tenantId);
     if (!tenant.faculty_can_schedule_exams) {
@@ -189,6 +199,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/rooms', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...REGISTRY);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'timetable.manage');
     const body = validate(z.object({
       code: z.string().min(1).max(40),
       name: z.string().min(1).max(255),
@@ -212,6 +223,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
    */
   app.post('/api/onyx/timetable/check', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...REGISTRY);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'timetable.manage');
     const body = validate(z.object({
       semester_id: z.number().int().positive(),
       course_id: z.number().int().positive(),
@@ -229,6 +241,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/timetable', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...REGISTRY);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'timetable.manage');
     const body = validate(z.object({
       semester_id: z.number().int().positive(),
       course_id: z.number().int().positive(),
@@ -316,6 +329,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/timetable/publish', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...REGISTRY);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'timetable.publish');
     const body = validate(z.object({
       semester_id: z.number().int().positive(),
     }), req.body);
@@ -324,6 +338,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.delete('/api/onyx/timetable/:id', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...REGISTRY);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'timetable.manage');
     return ok(await ctx.onyxCampus.removeSlot(claims.tenant_id, idOf(req)));
   });
 
@@ -452,6 +467,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/halls', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...EXAMS);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'exams.halls');
     const body = validate(z.object({
       code: z.string().min(1).max(40),
       name: z.string().min(1).max(255),
@@ -469,6 +485,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/exams/:id/seating', async (req) => {
     const { claims, viewer } = await viewerOf(req);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'exams.seating');
     const body = validate(z.object({
       hall_ids: z.array(z.number().int().positive()).min(1).max(50),
     }), req.body);
@@ -514,6 +531,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/exams/:id/marks', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...MARKERS);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'exams.marks');
     const viewer = { role: claims.tenant_role, userId: claims.user_id };
     const exam = await ctx.onyxExams.exam(claims.tenant_id, idOf(req));
     // MARKERS lets any faculty member through the role check; this is the
@@ -585,6 +603,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/exams/:id/moderate', async (req) => {
     const { claims, viewer } = await viewerOf(req);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'exams.moderate');
     const exam = await ctx.onyxExams.exam(claims.tenant_id, idOf(req));
     await assertCanRunExam(
       claims.tenant_id, Number(exam.course_id), claims.user_id, claims.tenant_role);
@@ -598,6 +617,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/exams/:id/publish', async (req) => {
     const { claims, viewer } = await viewerOf(req);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'exams.publish');
     const exam = await ctx.onyxExams.exam(claims.tenant_id, idOf(req));
     await assertCanRunExam(
       claims.tenant_id, Number(exam.course_id), claims.user_id, claims.tenant_role);
@@ -625,6 +645,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/transcripts', async (req) => {
     const { claims, viewer } = await viewerOf(req);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'exams.transcripts');
     const body = validate(z.object({
       user_id: z.string().uuid(),
       program_id: z.number().int().positive().nullish(),
@@ -687,11 +708,13 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.get('/api/onyx/fee-heads', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...REGISTRY);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'fees.structures');
     return ok(await ctx.onyxFinance.heads(claims.tenant_id));
   });
 
   app.post('/api/onyx/fee-structures', async (req) => {
     const { claims, viewer } = await viewerOf(req);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'fees.structures');
     const body = validate(z.object({
       name: z.string().min(1).max(255),
       program_id: z.number().int().positive().nullish(),
@@ -723,6 +746,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/invoices', async (req) => {
     const { claims, viewer } = await viewerOf(req);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'fees.invoice');
     const body = validate(z.object({
       user_id: z.string().uuid(),
       structure_id: z.number().int().positive(),
@@ -765,6 +789,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
    */
   app.post('/api/onyx/payments', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...REGISTRY);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'fees.record_payment');
     const body = validate(z.object({
       invoice_id: z.number().int().positive(),
       gateway: z.string().min(1).max(30),
@@ -801,6 +826,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.put('/api/onyx/admin/gateways', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...REGISTRY);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'fees.gateways');
     const body = validate(z.object({
       identifier: z.string().min(1).max(30),
       title: z.string().max(120).optional(),

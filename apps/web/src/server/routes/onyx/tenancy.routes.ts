@@ -13,9 +13,12 @@ import { z } from 'zod';
 import {
   validate, ok, HttpError,
   requireOnyx, requireOnyxRole, requirePlatformAdmin, ROLES,
+  CAPABILITIES, CAPABILITY_AREAS, holdersOf, can, normaliseOverrides,
+  type PermissionOverrides,
 } from '@onyx/core';
 import type { Role } from '@onyx/types';
 import type { AppContext } from '../../app-context.ts';
+import { assertCan } from '../../capability.ts';
 
 const asReq = (req: ReqLike) => ({
   headers: req.headers as Record<string, string | string[] | undefined>,
@@ -132,6 +135,66 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
     return ok(tenant, 'Updated.');
   });
 
+  /**
+   * The permission matrix: what this institution delegates, and to whom.
+   *
+   * GET is open to any member, not just an administrator, and deliberately so.
+   * Every screen that hides a control needs to know whether the person holding
+   * it may act -- a lecturer's course page has to decide whether to offer
+   * "Publish", and the honest way to decide is to ask, rather than to keep a
+   * second copy of the rules in the browser and let the two drift.
+   *
+   * It returns the catalogue as well as the answers, because a matrix without
+   * its labels is a list of keys nobody can render, and the catalogue is the
+   * one place those labels live.
+   */
+  app.get('/api/onyx/permissions', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const tenant = await ctx.onyxTenancy.tenant(claims.tenant_id);
+    const overrides = (tenant?.permissions ?? {}) as PermissionOverrides;
+    return ok({
+      capabilities: CAPABILITIES.map((cap) => ({
+        ...cap,
+        holders_now: holdersOf(cap.key, overrides),
+        changed: Object.prototype.hasOwnProperty.call(overrides, cap.key),
+      })),
+      areas: CAPABILITY_AREAS,
+      /** What THIS caller may do, so a screen can hide what it must. */
+      mine: CAPABILITIES.filter((cap) => can(claims.tenant_role, cap.key, overrides))
+        .map((cap) => cap.key),
+    });
+  });
+
+  /**
+   * Saving the matrix is itself a capability (`settings.manage`), which is why
+   * this is not simply an admin-only route: an institution that has delegated
+   * settings to somebody has said who may change them, and the check should
+   * read that answer like every other one.
+   *
+   * The whole matrix is sent, not a delta -- a screen that saves one row at a
+   * time turns "revoke marking from faculty" into a state where the save
+   * half-applied. `normaliseOverrides` drops anything a capability may not be
+   * given to, so a hand-written request cannot grant a student the fee ledger.
+   */
+  app.put('/api/onyx/permissions', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'settings.manage');
+    const body = validate(z.object({
+      permissions: z.record(z.string(), z.array(z.string())),
+    }), req.body);
+
+    const before = await ctx.onyxTenancy.tenant(claims.tenant_id);
+    const overrides = normaliseOverrides(body.permissions);
+    const tenant = await ctx.onyxTenancy.setPermissions(claims.tenant_id, overrides);
+    await ctx.onyxAudit.record(claims, {
+      action: 'tenant.updated', entityType: 'tenant', entityId: claims.tenant_id,
+      before: { permissions: before?.permissions ?? {} },
+      after: { permissions: overrides },
+      ip: ipOf(req),
+    });
+    return ok(tenant, 'Permissions saved.');
+  });
+
   // ---- F-06: onboarding a new institution ----
 
   /**
@@ -201,7 +264,8 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
   });
 
   app.post('/api/onyx/members', async (req) => {
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'exams', 'placement');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'people.invite');
     const body = validate(z.object({
       name: z.string().min(1).max(255),
       email: z.string().email(),
@@ -240,7 +304,10 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
    * for any existing caller; everything else is additive.
    */
   app.patch('/api/onyx/members/:id', async (req) => {
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    // The outer bound for both capabilities this route can serve: `people.edit`
+    // (exams, placement) and `people.roll_numbers` (exams, faculty).
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret,
+      'admin', 'exams', 'placement', 'faculty');
     const body = validate(z.object({
       name: z.string().min(1).max(255).optional(),
       email: z.string().email().optional(),
@@ -252,6 +319,17 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
       // person needs a way back.
       roll_number: z.string().max(40).nullish(),
     }), req.body);
+
+    // Which capability this is depends on what is being written. The roll
+    // number travels on the same PATCH as the rest of a membership, and it is
+    // its own capability: an institution that lets the examinations office keep
+    // roll numbers has not thereby let it rename people or change their role.
+    // So a body that carries only a roll number is checked against the narrow
+    // one, and anything else against `people.edit`.
+    const onlyRollNumber = Object.keys(body).length === 1
+      && Object.prototype.hasOwnProperty.call(body, 'roll_number');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role,
+      onlyRollNumber ? 'people.roll_numbers' : 'people.edit');
 
     const result = await ctx.onyxTenancy.updateMember(claims.tenant_id, idOf(req), body);
     if (result.userChange) {
@@ -278,7 +356,11 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
   });
 
   app.delete('/api/onyx/members/:id', async (req) => {
+    // Not widened: `people.remove` has no holders beyond admin (permissions.ts),
+    // so the outer bound and the capability agree rather than the guard being
+    // looser than anything that could ever pass it.
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'people.remove');
     const removed = await ctx.onyxTenancy.removeMember(claims.tenant_id, idOf(req));
     await ctx.onyxAudit.record(claims, {
       action: 'membership.removed', entityType: 'membership', entityId: idOf(req),
@@ -290,7 +372,8 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
   // ---- F-05: the audit log ----
 
   app.get('/api/onyx/audit', async (req) => {
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'exams');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'audit.read');
     const q = req.query as { action?: string; entity_type?: string; limit?: string };
     // Always this tenant's log. audit_logs has RLS with no select policy, so
     // this service-role path is the only way to read it at all.

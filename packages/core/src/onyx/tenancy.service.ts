@@ -19,8 +19,9 @@ import { onyxAuthAdmin, onyxAuthClient } from './db.ts';
 import type { Role } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
 import { slugify } from '../authoring/slug.ts';
+import type { PermissionOverrides } from './permissions.ts';
 
-const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, created_at, updated_at';
+const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, created_at, updated_at';
 const USER_COLUMNS = 'id, email, name, phone, photo, status, email_verified_at, created_at';
 const MEMBERSHIP_COLUMNS = 'id, tenant_id, user_id, role, status, roll_number, created_at';
 
@@ -272,6 +273,27 @@ export class TenancyService {
       .update({ faculty_can_schedule_exams: allow, updated_at: new Date().toISOString() })
       .eq('id', tenantId).select(TENANT_COLUMNS).maybeSingle();
     if (error) throw new HttpError(500, 'Could not change that setting: ' + error.message);
+    if (!data) throw new HttpError(404, 'Institution not found.');
+    return data;
+  }
+
+  /**
+   * What this institution has changed about who may do what.
+   *
+   * Stored as the DIFFERENCE from the shipped defaults (see permissions.ts and
+   * migration 0023), so a capability added in a later release arrives switched
+   * on for the roles that release intends rather than missing from every
+   * institution that ever saved a matrix.
+   *
+   * The sanitising is done in `normaliseOverrides` rather than here: it is the
+   * same rule the settings screen needs to render the matrix, and two copies of
+   * "which roles may hold this" is how they come to disagree.
+   */
+  async setPermissions(tenantId: number, overrides: PermissionOverrides) {
+    const { data, error } = await this.#db.from('onyx_tenants')
+      .update({ permissions: overrides as never, updated_at: new Date().toISOString() })
+      .eq('id', tenantId).select(TENANT_COLUMNS).maybeSingle();
+    if (error) throw new HttpError(500, 'Could not save those permissions: ' + error.message);
     if (!data) throw new HttpError(404, 'Institution not found.');
     return data;
   }

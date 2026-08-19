@@ -25,6 +25,7 @@ import {
 } from '@onyx/core';
 import type { OnyxQuestionType, MarkRole } from '@onyx/core';
 import type { AppContext } from '../../app-context.ts';
+import { assertCan } from '../../capability.ts';
 
 const asReq = (req: ReqLike) => ({
   headers: req.headers as Record<string, string | string[] | undefined>,
@@ -55,6 +56,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/banks', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assess.banks');
     const body = validate(z.object({
       name: z.string().min(1).max(255),
       description: z.string().max(5000).nullish(),
@@ -81,6 +83,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/banks/:id/questions', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assess.banks');
     const body = validate(z.object({
       type: TypeSchema.optional(),
       prompt: z.string().min(1).max(20_000),
@@ -137,6 +140,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/assessments', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assess.papers');
     const body = validate(z.object({
       title: z.string().min(1).max(255),
       course_id: z.number().int().positive().nullish(),
@@ -254,6 +258,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/assessments/:id/publish', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assess.publish');
     // The actor, so publishing is held to the same course check as every
     // other authoring act rather than being the one hole in it.
     const published = await ctx.onyxAssess.publishAssessment(claims.tenant_id, idOf(req),
@@ -364,6 +369,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/proctor/events/:id/review', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assess.proctor');
     const body = validate(z.object({
       decision: z.enum(['dismissed', 'upheld']),
       note: z.string().max(5000).nullish(),
@@ -399,6 +405,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/attempts/:id/mark', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assess.mark');
     const body = validate(z.object({
       role: z.enum(['first', 'second', 'moderation']).optional(),
       marks: z.array(z.object({
@@ -431,6 +438,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
    */
   app.post('/api/onyx/assessments/:id/results/publish', async (req) => {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assess.release');
     if (claims.tenant_role !== 'admin' && claims.tenant_role !== 'exams') {
       const assessment = await ctx.onyxAssess.assessment(claims.tenant_id, idOf(req));
       if (!assessment.course_id) {

@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { validate, ok, requireOnyx, requireOnyxRole, TICKET_PRIORITIES } from '@onyx/core';
 import type { TicketPriority, TicketStatus, DiscussionStatus } from '@onyx/types';
 import type { AppContext } from '../../app-context.ts';
+import { assertCan } from '../../capability.ts';
 
 const asReq = (req: ReqLike) => ({
   headers: req.headers as Record<string, string | string[] | undefined>,
@@ -165,7 +166,8 @@ export function registerOnyxEngageRoutes(app: Router, ctx: AppContext): void {
   });
 
   app.post('/api/onyx/tickets/:id/assign', async (req) => {
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...MENTORS);
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty', 'placement', 'exams');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'support.assign');
     const viewer = { role: claims.tenant_role, userId: claims.user_id };
     const body = validate(z.object({
       owner_id: z.string().uuid().optional(),

@@ -21,7 +21,7 @@ import { slugify } from '../authoring/slug.ts';
 import { ROLES } from './tenancy.service.ts';
 import { gradeFor } from './examinations.service.ts';
 
-const TENANT_COLUMNS = 'id, name, slug, status, plan, created_at, updated_at';
+const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, created_at, updated_at';
 const ADMIN_COLUMNS = 'id, user_id, granted_by, created_at';
 
 /**
@@ -964,6 +964,24 @@ export class PlatformService {
       .eq('id', id).select(TENANT_COLUMNS).maybeSingle();
     await this.#log(actorId, 'tenant.suspended', 'tenant', id,
       { status: before.status }, { status: 0 });
+    return data;
+  }
+
+  /**
+   * One institution's permission matrix, set from the platform console.
+   *
+   * The same write an administrator makes from their own Settings, recorded in
+   * the PLATFORM log instead of the tenant's -- an operator editing a
+   * customer's permissions is an act of the platform, and it belongs where the
+   * other things operators do to institutions are already written down.
+   */
+  async setPermissions(id: number, actorId: string | null, overrides: unknown) {
+    const before = await this.tenant(id);
+    const { data } = await this.#db.from('onyx_tenants')
+      .update({ permissions: overrides as never, updated_at: new Date().toISOString() })
+      .eq('id', id).select(TENANT_COLUMNS).maybeSingle();
+    await this.#log(actorId, 'tenant.updated', 'tenant', id,
+      { permissions: before?.permissions ?? {} }, { permissions: overrides });
     return data;
   }
 

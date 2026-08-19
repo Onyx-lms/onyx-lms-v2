@@ -25,6 +25,7 @@ import {
 } from '@onyx/core';
 import type { AttendanceStatus, LatePolicy, LessonType } from '@onyx/types';
 import type { AppContext } from '../../app-context.ts';
+import { assertCan } from '../../capability.ts';
 import { checkInUrl, checkInQrSvg } from '../../attendance-qr.ts';
 
 const asReq = (req: ReqLike) => ({
@@ -81,7 +82,8 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
   });
 
   app.post('/api/onyx/programs', async (req) => {
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'academics.programmes');
     const body = validate(z.object({
       name: z.string().min(1).max(255),
       code: z.string().min(1).max(50),
@@ -99,7 +101,8 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
   });
 
   app.post('/api/onyx/semesters', async (req) => {
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'academics.programmes');
     const body = validate(z.object({
       program_id: z.number().int().positive(),
       name: z.string().min(1).max(255),
@@ -118,7 +121,8 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
   });
 
   app.post('/api/onyx/batches', async (req) => {
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty', 'exams');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'academics.batches');
     const body = validate(z.object({
       program_id: z.number().int().positive(),
       name: z.string().min(1).max(255),
@@ -134,7 +138,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
   });
 
   app.post('/api/onyx/batches/:id/members', async (req) => {
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty', 'exams');
     const body = validate(z.object({
       user_ids: z.array(z.string().uuid()).min(1).max(1000),
     }), req.body);
@@ -192,6 +196,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
    */
   app.post('/api/onyx/courses', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.create');
     const body = validate(z.object({
       code: z.string().min(1).max(50),
       title: z.string().min(1).max(255),
@@ -276,7 +281,10 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
   });
 
   app.post('/api/onyx/courses/:id/faculty', async (req) => {
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.publish');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.publish');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.assign_faculty');
     const body = validate(z.object({ user_id: z.string().uuid() }), req.body);
 
     // They have to teach here before they can teach this.
@@ -433,6 +441,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/courses/:id/enroll', async (req) => {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'academics.enrol');
     const body = validate(z.object({
       user_id: z.string().uuid().optional(),
       batch_id: z.number().int().positive().optional(),
@@ -485,6 +494,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/courses/:id/modules', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.author');
     await ctx.onyxAcademics.assertCanTeach(
       claims.tenant_id, idOf(req), claims.user_id, claims.tenant_role);
     const body = validate(z.object({
@@ -498,6 +508,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/modules/:id/lessons', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.author');
     const body = validate(z.object({
       title: z.string().min(1).max(255),
       type: TypeSchema.optional(),
@@ -620,7 +631,8 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
   // -------------------------------------------------------------------------
 
   app.post('/api/onyx/courses/:id/attendance', async (req) => {
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty', 'exams');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'attendance.take');
     await ctx.onyxAcademics.assertCanTeach(
       claims.tenant_id, idOf(req), claims.user_id, claims.tenant_role);
     const body = validate(z.object({

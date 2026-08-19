@@ -81,6 +81,7 @@ export * from './onyx/audit.service.ts';
 export * from './onyx/notify.service.ts';
 export * from './onyx/metrics.ts';
 export * from './onyx/tenancy.service.ts';
+export * from './onyx/permissions.ts';
 export * from './onyx/academics.service.ts';
 export * from './onyx/content.service.ts';
 export * from './onyx/attendance.service.ts';

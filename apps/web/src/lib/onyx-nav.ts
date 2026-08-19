@@ -122,10 +122,25 @@ const NAV: Record<Role, OnyxNavGroup[]> = {
     // People split into Students and Faculty -- the two an administrator
     // actually reaches for -- rather than one combined roster that also
     // holds the exams office, placement office, employers and guardians.
-    { label: 'Campus', items: [I.programs, I.timetable, I.allocate,
+    { label: 'Campus', items: [I.programs, I.timetable,
       I.students, I.facultyList, I.finance] },
     { label: 'Career', items: [I.placement, I.jobs] },
-    { label: 'Operations', items: [I.mentor, I.inbox, I.audit, I.settings, I.profile] },
+    // Three links left this menu, all for the same reason: they were places an
+    // administrator arrived at and found nothing of theirs to do.
+    //
+    //   Mentor queue  — the escalation queue a TEACHER works; an administrator
+    //                   opening it sees other people's course discussions.
+    //   Inbox         — notifications addressed to this account, which for an
+    //                   operator account is almost nothing. It is still routed
+    //                   and still linked from the bell in the header, where a
+    //                   count actually tells them when it is worth opening.
+    //   Teaching load — allocation of teaching hours across faculty, which is
+    //                   read off the timetable and belongs with it rather than
+    //                   as a peer of it.
+    //
+    // The routes are untouched. Nothing here is a deletion of a feature; it is
+    // a menu that stopped offering an administrator work that is not theirs.
+    { label: 'Operations', items: [I.audit, I.settings, I.profile] },
   ],
 };
 
