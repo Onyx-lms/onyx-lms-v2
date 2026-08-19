@@ -42,7 +42,7 @@ export default async function InstructorCourses(
         </p>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-lg border border-slate-200">
-          <table className="w-full text-sm">
+          <table className="rows-linked w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3">Course</th>

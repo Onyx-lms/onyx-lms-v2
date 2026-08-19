@@ -92,4 +92,56 @@
   .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
   .btn-ghost { @apply btn border border-slate-300 text-slate-700 hover:bg-slate-50; }
   .chip { @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium; }
+
+  /**
+   * A table row you can click anywhere on.
+   *
+   * Every table in this product puts the row's destination on a link in the
+   * first cell -- the paper's title, the institution's name, the learner's
+   * name. That link was the only clickable pixel in the row, so hitting it
+   * meant aiming at a few words while the other 90% of a 1400px row did
+   * nothing, and rows with a short title were the worst of all.
+   *
+   * This is the "stretched link" pattern rather than a click handler on the
+   * row, and the difference matters:
+   *
+   *   * It stays ONE link. A row-level onclick is invisible to a screen
+   *     reader, cannot be tabbed to, has no href to show in the status bar,
+   *     and cannot be opened in a new tab or copied -- all of which the
+   *     anchor already does, and keeps doing here.
+   *   * It needs no JavaScript, so it works on pages that ship none.
+   *   * Anything else interactive in the row -- an Open button, a Remove, a
+   *     roll-number field, a select -- sits above the overlay and still
+   *     receives its own clicks, because it comes later in the row and is
+   *     given the same stacking level.
+   *
+   * The trade-off is that dragging to select text inside a linked row is not
+   * possible; the overlay swallows it. That is the accepted cost of the
+   * pattern, and every cell whose content is worth copying (an id, an
+   * address) is reachable from the page the row opens.
+   */
+  .rows-linked tbody tr { position: relative; }
+  .rows-linked tbody tr > td:first-child a:first-of-type::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    /* Above the row's background, below the controls that come after it. */
+    z-index: 0;
+  }
+  .rows-linked tbody tr :is(a, button, input, select, textarea, label, [role='button']) {
+    position: relative;
+    z-index: 1;
+  }
+  /*
+   * ...except the row link itself, which must stay unpositioned.
+   *
+   * `inset: 0` resolves against the nearest POSITIONED ancestor. Give the
+   * anchor `position: relative` along with everything else and the overlay
+   * stretches to the anchor -- which is the words it already was -- so the row
+   * looks clickable, has the cursor for it, and does nothing. It has to stay
+   * static for the row to be what the overlay measures.
+   */
+  .rows-linked tbody tr > td:first-child a:first-of-type { position: static; }
+  /* The whole row is a target, so it should look like one. */
+  .rows-linked tbody tr:has(> td:first-child a) { cursor: pointer; }
 }

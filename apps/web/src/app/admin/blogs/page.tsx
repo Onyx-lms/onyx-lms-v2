@@ -41,7 +41,7 @@ export default async function AdminBlogs() {
           No posts yet.
         </p>
       ) : (
-        <table className="mt-6 w-full text-sm">
+        <table className="rows-linked mt-6 w-full text-sm">
           <thead className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
             <tr>
               <th className="py-2">Title</th>

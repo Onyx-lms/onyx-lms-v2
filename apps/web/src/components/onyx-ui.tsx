@@ -416,7 +416,13 @@ export function DataTable({ caption, head, children, empty, scroll = true }: {
   scroll?: boolean;
 }) {
   const table = (
-    <table className="w-full text-sm">
+    // `rows-linked` (globals.css) makes the whole row activate the link in its
+    // first cell. It is applied here rather than per table because every table
+    // in the product is built the same way -- destination in the first cell,
+    // extra controls at the end -- and a row that opens only when you hit the
+    // words is a target the width of the words. A table whose first cell has no
+    // link is unaffected: the rule has nothing to match.
+    <table className="rows-linked w-full text-sm">
       <caption className="sr-only">{caption}</caption>
       <thead>
         <tr className="border-b border-line bg-slate-50 text-left text-[11px] uppercase
