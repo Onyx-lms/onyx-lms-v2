@@ -774,6 +774,33 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
     return ok(await ctx.onyxFinance.reconcile(claims.tenant_id, idOf(req), viewer));
   });
 
+  /**
+   * Everything the institution has taken, both ways it arrives.
+   *
+   * Admin only, and behind `fees.structures` rather than a role list, because
+   * "may see the money" is the same delegation question as everything else in
+   * Settings. Not paginated: a term's takings are hundreds of rows, and a
+   * financial report that silently stopped at fifty would be worse than the
+   * query taking a moment.
+   */
+  app.get('/api/onyx/finance/receipts', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'fees.structures');
+    return ok(await ctx.onyxFinance.receipts(claims.tenant_id));
+  });
+
+  /**
+   * The same report, narrowed to the person asking.
+   *
+   * A learner's fees screen showed invoices only, so a course they had bought
+   * -- money they had actually paid -- appeared nowhere on the one page in the
+   * product about what they have paid.
+   */
+  app.get('/api/onyx/my/receipts', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxFinance.receipts(claims.tenant_id, { userId: claims.user_id }));
+  });
+
   app.get('/api/onyx/finance/outstanding', async (req) => {
     const { claims, viewer } = await viewerOf(req);
     return ok(await ctx.onyxFinance.outstanding(claims.tenant_id, viewer));

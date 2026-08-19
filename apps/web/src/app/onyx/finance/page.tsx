@@ -4,6 +4,7 @@ import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
 import { money } from '@/lib/onyx-campus';
 import { CreatePanel } from '@/components/onyx-create';
+import { ReceiptsReport, type ReceiptsPayload } from '@/components/onyx-receipts';
 import { BuildFeeStructure } from '@/components/onyx-manage';
 import { ConfigureGateways } from '@/components/onyx-pay';
 import type { GatewayConfigSummary } from '@/lib/onyx-campus';
@@ -36,13 +37,18 @@ function daysLate(due: string | null, now = Date.now()): number {
 /** CMP-03 -- what is owed, institution-wide. Administrators only. */
 export default async function OnyxFinancePage() {
   const claims = await requireOnyxPageRole('admin');
-  const [me, outstanding, heads, structures, members] = await Promise.all([
+  const [me, outstanding, heads, structures, members, receipts] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
     onyxApi<Outstanding>('/api/onyx/finance/outstanding'),
     onyxApiSafe<{ id: number; code: string; name: string }[]>('/api/onyx/fee-heads'),
     onyxApiSafe<{ id: number; name: string; status: string }[]>('/api/onyx/fee-structures'),
     onyxApiSafe<{ user_id: number; role: string; user: { name: string } | null }[]>(
       '/api/onyx/members'),
+    // What has actually come in, both ways it arrives -- fee payments settling
+    // an invoice, and locked courses bought outright. Safe rather than fatal:
+    // arrears are the rest of this page's job and should not disappear because
+    // the takings could not be read.
+    onyxApiSafe<ReceiptsPayload>('/api/onyx/finance/receipts'),
   ]);
   // CMP-03b: where this institution's fees settle to. Its own merchant
   // account, not the platform's -- two institutions are two merchants.
@@ -113,6 +119,24 @@ export default async function OnyxFinancePage() {
         <StatTile label="Learners" value={byPerson.size}
           note="with something overdue" />
       </div>
+
+      {/* What has come in, before what has not.
+          The tiles above are arrears -- money the institution is waiting for.
+          This is the other half, and it is the half an administrator is asked
+          about: who has paid, for what, and what reference did they get. Both
+          kinds of payment are here, because "what have we taken this term"
+          does not distinguish between a fee and a course sale. */}
+      <section className="mb-6">
+        <SectionHead title="Payments received" />
+        {receipts ? (
+          <ReceiptsReport data={receipts} />
+        ) : (
+          <Card className="p-4 text-[13px] text-muted">
+            The payment report could not be read just now. Nothing has changed — reload to
+            try again.
+          </Card>
+        )}
+      </section>
 
       {/* CMP-03: "configure fee structures, generate invoices, process
           online payments, issue receipts and reconcile accounts". The third of

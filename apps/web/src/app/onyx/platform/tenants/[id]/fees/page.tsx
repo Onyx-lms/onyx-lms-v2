@@ -6,7 +6,8 @@ import {
 import {
   CreateFeeHeadForm, CreateFeeStructureForm, FeeStructureStatusButtons,
 } from '@/components/onyx-platform-forms';
-import { Card, DataTable, Empty, EmptyRow, Pill, StatTile } from '@/components/onyx-ui';
+import { Card, DataTable, Empty, EmptyRow, Pill, SectionHead, StatTile } from '@/components/onyx-ui';
+import { ReceiptsReport, type ReceiptsPayload } from '@/components/onyx-receipts';
 
 export const metadata: Metadata = { title: 'Fees' };
 
@@ -19,8 +20,15 @@ export default async function OnyxPlatformFeesPage(
   await requirePlatformSession();
   const { id } = await params;
   const tenantId = Number(id);
-  const fees = await attempt<FeesPayload>(
-    '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/fees');
+  const [fees, receipts] = await Promise.all([
+    attempt<FeesPayload>(
+      '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/fees'),
+    // What this institution has actually taken -- the question behind every
+    // billing conversation with a customer. Same rows their own administrator
+    // sees; there is no operator-only view of somebody else's money.
+    attempt<ReceiptsPayload>(
+      '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/receipts'),
+  ]);
 
   if (fees === null) {
     return (
@@ -41,6 +49,21 @@ export default async function OnyxPlatformFeesPage(
           note={fees.outstanding.invoices.length + ' unpaid invoice'
             + (fees.outstanding.invoices.length === 1 ? '' : 's')} />
       </div>
+
+      {/* Taken, before owed. The tiles above say what is outstanding; an
+          operator on a billing call is usually asked the other question --
+          what has this institution actually been paid, and under which
+          reference. */}
+      <section className="min-w-0">
+        <SectionHead title="Payments received" />
+        {receipts ? (
+          <ReceiptsReport data={receipts} />
+        ) : (
+          <Card className="p-4 text-[13px] text-muted">
+            The payment report could not be read just now.
+          </Card>
+        )}
+      </section>
 
       <section className="min-w-0 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">

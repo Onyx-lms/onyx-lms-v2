@@ -453,6 +453,152 @@ export class FinanceService {
   }
 
   /** What is owed, for the finance office. */
+  /**
+   * Every rupee that has come in, both ways it can arrive.
+   *
+   * An institution takes money twice over in this product and they were never
+   * in one place: a FEE payment settles an invoice raised from a fee structure
+   * (tuition, examination, library), and a COURSE PURCHASE buys a locked course
+   * outright. An administrator asking "who has paid us, and for what" had to
+   * read two screens and add up, and one of the two had no screen at all.
+   *
+   * The rows are unified deliberately rather than returned as two lists: they
+   * answer the same question, and a report a person has to interleave by hand
+   * is a report they will get wrong. What tells them apart is `kind`, and the
+   * reference each carries -- an invoice number for a fee, a gateway reference
+   * for a purchase -- because "which payment was that?" is asked with one of
+   * those two strings in hand.
+   *
+   * Read-only, and admin-only at the route. No pagination: an institution's
+   * takings for a term are hundreds of rows, and a cap that silently truncated
+   * a financial report would be worse than the query costing a moment.
+   */
+  async receipts(tenantId: number, opts: { userId?: string } = {}) {
+    let paymentQuery = this.#db.from('onyx_payments')
+      .select('id, invoice_id, user_id, amount_minor, currency, status, method, gateway, '
+        + 'reference, captured_at, created_at')
+      .eq('tenant_id', tenantId);
+    if (opts.userId) paymentQuery = paymentQuery.eq('user_id', opts.userId);
+
+    let purchaseQuery = this.#db.from('onyx_course_purchases')
+      .select('id, course_id, user_id, amount_minor, currency, status, gateway, reference, '
+        + 'created_at')
+      .eq('tenant_id', tenantId);
+    if (opts.userId) purchaseQuery = purchaseQuery.eq('user_id', opts.userId);
+
+    const [{ data: payments }, { data: purchases }] = await Promise.all([
+      paymentQuery.order('id', { ascending: false }),
+      purchaseQuery.order('id', { ascending: false }),
+    ]);
+
+    interface PaymentRow {
+      id: number; invoice_id: number | null; user_id: string; amount_minor: number;
+      currency: string | null; status: string; method: string | null; gateway: string | null;
+      reference: string | null; captured_at: string | null; created_at: string;
+    }
+    interface PurchaseRow {
+      id: number; course_id: number; user_id: string; amount_minor: number;
+      currency: string | null; status: string; gateway: string; reference: string;
+      created_at: string;
+    }
+    const paymentRows = (payments ?? []) as unknown as PaymentRow[];
+    const purchaseRows = (purchases ?? []) as unknown as PurchaseRow[];
+
+    // The names, invoice numbers and course titles those rows point at. Three
+    // lookups for the whole report rather than one per row.
+    const userIds = [...new Set([...paymentRows, ...purchaseRows]
+      .map((r) => String(r.user_id)).filter(Boolean))];
+    const invoiceIds = [...new Set(paymentRows.map((r) => Number(r.invoice_id)).filter(Boolean))];
+    const courseIds = [...new Set(purchaseRows.map((r) => Number(r.course_id)).filter(Boolean))];
+
+    const [{ data: users }, { data: invoices }, { data: courses }] = await Promise.all([
+      userIds.length
+        ? this.#db.from('onyx_users').select('id, name, email').in('id', userIds)
+        : Promise.resolve({ data: [] as { id: string; name: string; email: string }[] }),
+      invoiceIds.length
+        ? this.#db.from('onyx_invoices').select('id, number, total_minor, status')
+          .in('id', invoiceIds)
+        : Promise.resolve({ data: [] as { id: number; number: string }[] }),
+      courseIds.length
+        ? this.#db.from('onyx_courses').select('id, code, title').in('id', courseIds)
+        : Promise.resolve({ data: [] as { id: number; code: string; title: string }[] }),
+    ]);
+
+    const byUser = new Map((users ?? []).map((u) => [String(u.id), u]));
+    const byInvoice = new Map((invoices ?? []).map((i) => [Number(i.id), i]));
+    const byCourse = new Map((courses ?? []).map((c) => [Number(c.id), c]));
+
+    // Roll numbers, because an institution looks people up by them.
+    const { data: memberships } = userIds.length
+      ? await this.#db.from('onyx_memberships').select('user_id, roll_number')
+        .eq('tenant_id', tenantId).in('user_id', userIds)
+      : { data: [] as { user_id: string; roll_number: string | null }[] };
+    const rollOf = new Map((memberships ?? [])
+      .map((m) => [String(m.user_id), m.roll_number ?? null]));
+
+    const person = (id: string) => ({
+      id,
+      name: byUser.get(id)?.name ?? null,
+      email: byUser.get(id)?.email ?? null,
+      roll_number: rollOf.get(id) ?? null,
+    });
+
+    const rows = [
+      ...paymentRows.map((p) => {
+        const invoice = byInvoice.get(Number(p.invoice_id));
+        return {
+          kind: 'fee' as const,
+          id: 'payment-' + p.id,
+          at: String(p.captured_at ?? p.created_at),
+          learner: person(String(p.user_id)),
+          /** What it was for, in the words the screen shows. */
+          what: invoice ? 'Invoice ' + invoice.number : 'Fee payment',
+          /** The string somebody quotes when they ring up about it. */
+          reference: invoice?.number ?? String(p.reference ?? ''),
+          gateway_reference: p.reference ? String(p.reference) : null,
+          invoice_id: p.invoice_id ? Number(p.invoice_id) : null,
+          course: null as null | { id: number; code: string; title: string },
+          amount_minor: Number(p.amount_minor),
+          currency: String(p.currency ?? 'INR'),
+          method: p.method ? String(p.method) : String(p.gateway ?? ''),
+          status: String(p.status),
+        };
+      }),
+      ...purchaseRows.map((p) => {
+        const course = byCourse.get(Number(p.course_id));
+        return {
+          kind: 'course' as const,
+          id: 'purchase-' + p.id,
+          at: String(p.created_at),
+          learner: person(String(p.user_id)),
+          what: course ? course.code + ' · ' + course.title : 'Course purchase',
+          reference: String(p.reference),
+          gateway_reference: String(p.reference),
+          invoice_id: null,
+          course: course ? { id: Number(course.id), code: String(course.code), title: String(course.title) } : null,
+          amount_minor: Number(p.amount_minor),
+          currency: String(p.currency ?? 'INR'),
+          method: String(p.gateway),
+          status: String(p.status),
+        };
+      }),
+    ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+
+    const settled = rows.filter((r) => r.status === 'captured' || r.status === 'paid');
+    return {
+      rows,
+      summary: {
+        count: rows.length,
+        collected_minor: settled.reduce((n, r) => n + r.amount_minor, 0),
+        from_fees_minor: settled.filter((r) => r.kind === 'fee')
+          .reduce((n, r) => n + r.amount_minor, 0),
+        from_courses_minor: settled.filter((r) => r.kind === 'course')
+          .reduce((n, r) => n + r.amount_minor, 0),
+        learners: new Set(settled.map((r) => r.learner.id)).size,
+      },
+    };
+  }
+
   async outstanding(tenantId: number, viewer: { role: Role }) {
     if (!canManageFees(viewer.role)) throw new HttpError(403, 'Only an administrator can see this.');
     const { data } = await this.#db.from('onyx_invoices').select(INVOICE_COLUMNS)

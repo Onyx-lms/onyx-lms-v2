@@ -270,6 +270,20 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
     return ok(await ctx.onyxPlatform.tenantFees(idOf(req)));
   });
 
+  /**
+   * One institution's takings, from above it.
+   *
+   * The fees page beside this one answers "what is owed"; this answers "what
+   * has been paid", which for a platform operator is the question behind
+   * every billing conversation with a customer. Same rows the institution's
+   * own administrator sees -- there is no operator-only view of somebody
+   * else's money.
+   */
+  app.get('/api/onyx/platform/tenants/:id/receipts', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxFinance.receipts(idOf(req)));
+  });
+
   app.post('/api/onyx/platform/tenants/:id/fee-heads', async (req) => {
     const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     const body = validate(z.object({

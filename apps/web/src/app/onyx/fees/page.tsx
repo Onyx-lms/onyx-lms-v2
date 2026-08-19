@@ -4,6 +4,7 @@ import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
 import { money, type Invoice, type PayableGateway } from '@/lib/onyx-campus';
 import { PayInvoice } from '@/components/onyx-pay';
+import { ReceiptsReport, type ReceiptsPayload } from '@/components/onyx-receipts';
 import { ConfirmPayment } from '@/components/onyx-pay-return';
 import {
   Banner, Card, DataTable, Empty, EmptyRow, Hero, ListRow, Meter, Pill, RowList,
@@ -44,12 +45,16 @@ export default async function OnyxFeesPage(
   await requireOnyxSession();
   const { paid: paidInvoice, cancelled, ref } = await searchParams;
 
-  const [me, invoices, gateways] = await Promise.all([
+  const [me, invoices, gateways, receipts] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
     onyxApi<Invoice[]>('/api/onyx/invoices'),
     // Absent rather than fatal: an institution that has not set up a gateway
     // still has a fees page, it just has nothing to click.
     onyxApiSafe<PayableGateway[]>('/api/onyx/gateways'),
+    // Everything this learner has actually paid -- invoices settled AND courses
+    // bought. The page used to show invoices alone, so a course somebody had
+    // paid for appeared nowhere on the one screen about what they have paid.
+    onyxApiSafe<ReceiptsPayload>('/api/onyx/my/receipts'),
   ]);
 
   const open = invoices.filter((i) => i.status === 'issued' || i.status === 'part_paid');
@@ -180,6 +185,18 @@ export default async function OnyxFeesPage(
               </RowList>
             </div>
           )}
+
+          {/* Everything paid, in one place -- the invoices below are only half
+              of what a learner has actually handed over now that a course can
+              be bought outright. Courses first, because that is the payment
+              they made themselves and are most likely to be looking for. */}
+          {receipts && receipts.rows.length ? (
+            <div className="mb-6">
+              <SectionHead title="What you have paid" />
+              <ReceiptsReport data={receipts} showLearner={false}
+                emptyNote="Nothing paid yet." />
+            </div>
+          ) : null}
 
           <SectionHead title="Settled" />
           {/* tabIndex makes the horizontal scroll reachable by keyboard: a
