@@ -88,6 +88,9 @@ test('2. its administrator adds one faculty member and two students, through the
     ['Sam Student', mail('student1'), 'student'],
     ['Sara Second', mail('student2'), 'student'],
   ] as const) {
+    // The roster leads with the roster now: the add form is behind the
+    // toolbar's button, and closes again once the person is created.
+    await page.getByRole('button', { name: 'Add someone' }).click();
     await page.locator('input[name="name"]').fill(name);
     await page.locator('input[name="email"]').fill(email);
     await page.locator('select[name="role"]').selectOption(role);

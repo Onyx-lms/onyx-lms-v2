@@ -88,6 +88,9 @@ test('setup: an institution, an admin, a faculty member and a student', async ({
     ['Fern Faculty', mail('faculty'), 'faculty'],
     ['Stu Student', mail('student'), 'student'],
   ] as const) {
+    // The roster leads with the roster now: the add form is behind the
+    // toolbar's button, and closes again once the person is created.
+    await page.getByRole('button', { name: 'Add someone' }).click();
     await page.locator('input[name="name"]').fill(name);
     await page.locator('input[name="email"]').fill(email);
     await page.locator('select[name="role"]').selectOption(role);

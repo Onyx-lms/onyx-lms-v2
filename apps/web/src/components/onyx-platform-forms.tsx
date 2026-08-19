@@ -218,14 +218,28 @@ type ProfileType = 'student' | 'faculty' | 'exams' | 'placement' | 'employer' | 
  *   - Locked, inside one institution's own sidebar (`lockedTenant`): skips
  *     the institution picker and the platform-admin option entirely --
  *     "create a profile for THIS institution" has already answered "where".
+ *   - Locked to ONE ROLE (`only`), above the table that lists that role: the
+ *     Students tab offers "Add a student", the Faculty tab "Add faculty".
+ *
+ * That third case is why `only` exists. Adding somebody used to mean finding
+ * "Create a profile" in the sidebar and then answering "which kind?" from a
+ * menu of eight -- a question the operator had already answered by opening
+ * the Students tab and looking at a list of students. Where the tab settles
+ * the role, the form does not ask again: the picker is not rendered at all,
+ * rather than rendered with a default somebody can knock off by accident and
+ * so create a guardian on the Faculty tab.
  */
-export function CreateProfileForm({ lockedTenant, defaultType }: {
+export function CreateProfileForm({ lockedTenant, defaultType, only, cta }: {
   lockedTenant?: { id: number; name?: string };
   defaultType?: ProfileType;
+  /** Create this role and nothing else -- no type picker is shown. */
+  only?: Exclude<ProfileType, 'platform'>;
+  /** Overrides the button's words. Derived from `only` where that is set. */
+  cta?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [type, setType] = useState<ProfileType>(defaultType ?? 'student');
+  const [type, setType] = useState<ProfileType>(only ?? defaultType ?? 'student');
   const [tenants, setTenants] = useState<TenantOption[] | null>(null);
   const [loadingTenants, setLoadingTenants] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -244,14 +258,22 @@ export function CreateProfileForm({ lockedTenant, defaultType }: {
     }
   }
 
-  const title = lockedTenant
-    ? 'Create a profile for ' + (lockedTenant.name ?? 'this institution')
-    : 'Create a profile';
+  // "Add a student", not "Create a student profile": the words on the button
+  // and the words on the tab it sits above should be the same words.
+  const noun = only ? (only === 'admin' ? 'an administrator'
+    : only === 'faculty' ? 'a faculty member'
+      : only === 'guardian' ? 'a parent or guardian'
+        : 'a ' + ROLE_LABELS[only].toLowerCase()) : null;
+  const words = cta ?? (noun ? 'Add ' + noun : 'Create a profile');
+  const where = lockedTenant?.name ?? 'this institution';
+  const title = noun ? 'Add ' + noun + ' to ' + where
+    : lockedTenant ? 'Create a profile for ' + where
+      : 'Create a profile';
 
   return (
     <>
       <button type="button" onClick={openModal} className={lockedTenant ? button : navButtonQuiet}>
-        Create a profile
+        {words}
       </button>
       {open ? (
         <Modal title={title} onClose={() => setOpen(false)}>
@@ -283,22 +305,24 @@ export function CreateProfileForm({ lockedTenant, defaultType }: {
             }}
           >
             {error ? <p role="alert" className="text-[13px] text-red-700">{error}</p> : null}
-            <div>
-              <label className={label} htmlFor="cp-type">Profile type</label>
-              <select id="cp-type" name="type" value={type}
-                onChange={(e) => setType(e.target.value as ProfileType)} className={field}>
-                <option value="student">{ROLE_LABELS.student}</option>
-                <option value="faculty">{ROLE_LABELS.faculty}</option>
-                <option value="exams">{ROLE_LABELS.exams}</option>
-                <option value="placement">{ROLE_LABELS.placement}</option>
-                <option value="employer">{ROLE_LABELS.employer}</option>
-                <option value="guardian">{ROLE_LABELS.guardian}</option>
-                <option value="admin">Institution admin</option>
-                {lockedTenant ? null : (
-                  <option value="platform">Platform admin (superadmin)</option>
-                )}
-              </select>
-            </div>
+            {only ? null : (
+              <div>
+                <label className={label} htmlFor="cp-type">Profile type</label>
+                <select id="cp-type" name="type" value={type}
+                  onChange={(e) => setType(e.target.value as ProfileType)} className={field}>
+                  <option value="student">{ROLE_LABELS.student}</option>
+                  <option value="faculty">{ROLE_LABELS.faculty}</option>
+                  <option value="exams">{ROLE_LABELS.exams}</option>
+                  <option value="placement">{ROLE_LABELS.placement}</option>
+                  <option value="employer">{ROLE_LABELS.employer}</option>
+                  <option value="guardian">{ROLE_LABELS.guardian}</option>
+                  <option value="admin">Institution admin</option>
+                  {lockedTenant ? null : (
+                    <option value="platform">Platform admin (superadmin)</option>
+                  )}
+                </select>
+              </div>
+            )}
             {type === 'platform' ? (
               <p className="text-[12.5px] text-muted">
                 A platform admin belongs to no institution -- they operate the whole platform.

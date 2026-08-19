@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Fragment, useState, useTransition } from 'react';
+import { Fragment, useRef, useState, useTransition } from 'react';
 import { ROLE_LABELS } from '@/lib/onyx-nav';
 import type { Role } from '@/lib/onyx-session';
 
@@ -32,6 +32,21 @@ const ROLES: Role[] = [
 const field = 'rounded-lg border border-slate-300 px-3 py-2 text-sm '
   + 'focus:border-slate-900 focus:outline-none';
 
+/**
+ * What each role is called on a button that adds one. ROLE_LABELS names the
+ * role ("Examinations"); this names the person ("an examinations officer"),
+ * because "Add Examinations" reads as a section, not as a person.
+ */
+const NOUN: Record<Role, string> = {
+  student: 'a student',
+  faculty: 'a faculty member',
+  exams: 'an examinations officer',
+  placement: 'a placement officer',
+  employer: 'an employer contact',
+  guardian: 'a parent or guardian',
+  admin: 'an administrator',
+};
+
 export function OnyxPeople({ members, canEdit, initialRole }: {
   members: Member[]; canEdit: boolean; initialRole?: Role;
 }) {
@@ -40,9 +55,11 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
   const [roleFilter, setRoleFilter] = useState<Role | ''>(initialRole ?? '');
   const [notice, setNotice] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [adding, setAdding] = useState(false);
+  const nameField = useRef<HTMLInputElement>(null);
   const [pending, start] = useTransition();
 
-  const call = (path: string, init: RequestInit, success: string) => {
+  const call = (path: string, init: RequestInit, success: string, done?: () => void) => {
     setNotice(null);
     start(async () => {
       const res = await fetch('/api/proxy/onyx/' + path, init);
@@ -52,8 +69,29 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
         return;
       }
       setNotice({ tone: 'ok', text: success });
+      done?.();
       router.refresh();
     });
+  };
+
+  /**
+   * What the button offers to add, and what the panel then creates.
+   *
+   * The Students and Faculty nav links land here with the filter already set,
+   * so the roster in front of somebody who clicked "Students" is students --
+   * and asking them to answer "which role?" again, in a menu of seven, is
+   * asking a question they have already answered. Where the filter settles it,
+   * the panel does not ask; on the unfiltered roster it still does, because
+   * there the question is real.
+   */
+  const addRole: Role | null = roleFilter || null;
+  const addLabel = addRole ? 'Add ' + NOUN[addRole] : 'Add someone';
+
+  const openAdd = () => {
+    setAdding(true);
+    // The panel is useless without the cursor in it, and a keyboard user would
+    // otherwise have to tab back through the toolbar to reach the first field.
+    requestAnimationFrame(() => nameField.current?.focus());
   };
 
   const needle = search.trim().toLowerCase();
@@ -76,60 +114,13 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
         </p>
       ) : null}
 
-      {canEdit ? (
-        <form
-          className="grid gap-3 rounded-2xl border border-line p-4 sm:grid-cols-6"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const form = e.currentTarget;
-            const data = new FormData(form);
-            call('members', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                name: String(data.get('name') ?? ''),
-                email: String(data.get('email') ?? ''),
-                role: String(data.get('role') ?? 'student'),
-                password: String(data.get('password') ?? '') || undefined,
-                roll_number: String(data.get('roll_number') ?? '') || null,
-              }),
-            }, 'Added.');
-            form.reset();
-          }}
-        >
-          {/* Every one of these had a placeholder and no label, on the form
-              that creates a real login. A placeholder disappears at the first
-              keystroke, and a screen reader announces an unnamed box. */}
-          <input name="name" required placeholder="Name" aria-label="Full name"
-            className={field} />
-          <input name="email" type="email" required placeholder="Email address"
-            aria-label="Email address" className={field} />
-          <select name="role" defaultValue="student" aria-label="Role" className={field}>
-            {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-          </select>
-          {/* The institution's own number for this person. Everybody gets one,
-              not only students -- a staff ID is the same idea, and the
-              examinations office and the registry both work from it. */}
-          <input name="roll_number" maxLength={40} placeholder="Roll / staff no."
-            aria-label="Roll number or staff ID" className={field} />
-          <input name="password" type="password" minLength={8}
-            placeholder="Temporary password" aria-label="Temporary password"
-            className={field} />
-          <button type="submit" disabled={pending}
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
-                       hover:bg-brand-700 disabled:opacity-50">
-            Add
-          </button>
-          <p className="text-xs text-muted sm:col-span-5">
-            Someone who already has an Onyx account keeps it &mdash; they are attached to this
-            institution rather than given a second one. The roll number is optional and
-            belongs to this institution only; leave the password blank and they set their
-            own on first sign-in. A password must be at least 8 characters.
-          </p>
-        </form>
-      ) : null}
-
-      <div className="flex flex-wrap gap-2.5">
+      {/* Find on the left, add on the right, both directly above the table
+          they act on. The add form used to sit here permanently open -- six
+          empty boxes and a role menu between the page title and the roster,
+          on every visit, for the one visit in ten that is about adding
+          somebody. Reading the roster is the common act, so the roster is what
+          the screen leads with. */}
+      <div className="flex flex-wrap items-center gap-2.5">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -146,7 +137,83 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
           <option value="">Every role</option>
           {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
         </select>
+        {canEdit ? (
+          <button
+            type="button"
+            aria-expanded={adding}
+            aria-controls="add-a-member"
+            onClick={() => (adding ? setAdding(false) : openAdd())}
+            className="ml-auto min-h-[38px] rounded-lg bg-brand-600 px-4 py-2 text-sm
+                       font-medium text-white hover:bg-brand-700"
+          >
+            {adding ? 'Cancel' : addLabel}
+          </button>
+        ) : null}
       </div>
+
+      {canEdit && adding ? (
+        <form
+          id="add-a-member"
+          className="grid gap-3 rounded-2xl border border-line bg-slate-50/60 p-4 sm:grid-cols-6"
+          // Escape closes it, like every other dismissible thing on the web.
+          // Without this the only way out is the mouse, and a keyboard user who
+          // opened it by mistake has to tab past six fields to leave.
+          onKeyDown={(e) => { if (e.key === 'Escape') setAdding(false); }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            const form = e.currentTarget;
+            const data = new FormData(form);
+            call('members', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: String(data.get('name') ?? ''),
+                email: String(data.get('email') ?? ''),
+                // The filter decides the role where there is one, so what the
+                // button promised is what gets created -- there is no menu left
+                // to knock off "Student" by accident on the Students roster.
+                role: addRole ?? String(data.get('role') ?? 'student'),
+                password: String(data.get('password') ?? '') || undefined,
+                roll_number: String(data.get('roll_number') ?? '') || null,
+              }),
+            }, 'Added.', () => setAdding(false));
+            form.reset();
+          }}
+        >
+          <h3 className="text-sm font-semibold sm:col-span-6">{addLabel}</h3>
+          {/* Every one of these had a placeholder and no label, on the form
+              that creates a real login. A placeholder disappears at the first
+              keystroke, and a screen reader announces an unnamed box. */}
+          <input ref={nameField} name="name" required placeholder="Name" aria-label="Full name"
+            className={field} />
+          <input name="email" type="email" required placeholder="Email address"
+            aria-label="Email address" className={field} />
+          {addRole ? null : (
+            <select name="role" defaultValue="student" aria-label="Role" className={field}>
+              {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+            </select>
+          )}
+          {/* The institution's own number for this person. Everybody gets one,
+              not only students -- a staff ID is the same idea, and the
+              examinations office and the registry both work from it. */}
+          <input name="roll_number" maxLength={40} placeholder="Roll / staff no."
+            aria-label="Roll number or staff ID" className={field} />
+          <input name="password" type="password" minLength={8}
+            placeholder="Temporary password" aria-label="Temporary password"
+            className={field} />
+          <button type="submit" disabled={pending}
+            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
+                       hover:bg-brand-700 disabled:opacity-50">
+            Add
+          </button>
+          <p className="text-xs text-muted sm:col-span-6">
+            Someone who already has an Onyx account keeps it &mdash; they are attached to this
+            institution rather than given a second one. The roll number is optional and
+            belongs to this institution only; leave the password blank and they set their
+            own on first sign-in. A password must be at least 8 characters.
+          </p>
+        </form>
+      ) : null}
 
       {/* On a phone the email column is dropped rather than scrolled. A
           horizontally-scrolling table is a poor way to read a roster on a
