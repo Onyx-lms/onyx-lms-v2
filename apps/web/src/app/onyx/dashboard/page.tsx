@@ -10,10 +10,11 @@ import {
   Banner, Buckets, Card, Hero, Icon, ListRow, Meter, Pill, Ring, RowList,
   SectionHead, StackBar, State, StatTile, Empty, relativeDue,
 } from '@/components/onyx-ui';
+import { QueueRow, TrendBars } from '@/components/onyx-chart';
 import type {
   Discussion, Exam, ProgressSummary, Room, TimetableSlot,
 } from '@/lib/onyx-campus';
-import { WEEKDAYS, hhmm } from '@/lib/onyx-campus';
+import { WEEKDAYS, hhmm, money } from '@/lib/onyx-campus';
 import type { AttendanceAnalytics, AttendanceSession } from '@/lib/onyx-learn';
 import type { Drive, JobPost } from '@/lib/onyx-career';
 
@@ -31,6 +32,8 @@ interface Outstanding { total_minor: number; invoices: { overdue: boolean }[] }
 interface AuditRow {
   id: number; action: string; entity_type: string; created_at: string;
   actor: { name: string } | null;
+  /** What the action wrote. `membership.created` carries the role. */
+  after: { role?: string } | null;
 }
 
 /**
@@ -166,26 +169,65 @@ export default async function OnyxDashboard() {
   // the timetable and revenue -- none of which is "my courses", which is
   // why the top of this page used to say "Your courses: you teach 0" to
   // every administrator who does not also personally teach one.
-  const [exams, jobs, drives, outstanding, allSlots, activity] = staff ? await Promise.all([
-    onyxApiSafe<Exam[]>('/api/onyx/exams'),
-    onyxApiSafe<JobPost[]>('/api/onyx/jobs'),
-    onyxApiSafe<Drive[]>('/api/onyx/drives'),
-    onyxApiSafe<Outstanding>('/api/onyx/finance/outstanding'),
-    onyxApiSafe<TimetableSlot[]>('/api/onyx/timetable'),
-    // A wider pool than the six actually shown, filtered below: routine
-    // account plumbing (a membership created or removed, a guardian link
-    // accepted or its consent flipped) drowns out the operational news --
-    // an exam scheduled, a result published, a payment recorded -- the
-    // moment anyone does a run of ordinary admin work, and reads as noise
-    // even though every row is real.
-    onyxApiSafe<AuditRow[]>('/api/onyx/audit?limit=40'),
-  ]) : [null, null, null, null, null, null];
+  const [exams, jobs, drives, outstanding, allSlots, activity, allCourses] = staff
+    ? await Promise.all([
+      onyxApiSafe<Exam[]>('/api/onyx/exams'),
+      onyxApiSafe<JobPost[]>('/api/onyx/jobs'),
+      onyxApiSafe<Drive[]>('/api/onyx/drives'),
+      onyxApiSafe<Outstanding>('/api/onyx/finance/outstanding'),
+      onyxApiSafe<TimetableSlot[]>('/api/onyx/timetable'),
+      // A wider pool than the six shown in the rail, for two reasons. The
+      // rail filters out routine account plumbing (a membership created, a
+      // guardian link accepted) because it drowns out the operational news the
+      // moment anybody does a run of ordinary admin work. The fortnight chart
+      // below wants the opposite -- every recorded action, plumbing included,
+      // because "how busy has this institution been" is a question about all
+      // of it. One read, both answers.
+      onyxApiSafe<AuditRow[]>('/api/onyx/audit?limit=400'),
+      onyxApiSafe<Course[]>('/api/onyx/courses?all=1'),
+    ]) : [null, null, null, null, null, null, null];
   const ROUTINE_ACTIVITY = new Set([
     'membership.created', 'membership.removed', 'membership.role_changed',
     'membership.updated', 'user.updated', 'guardian.linked', 'guardian.consent_changed',
   ]);
-  const recentActivity = (activity ?? [])
+  const log = activity ?? [];
+  const recentActivity = log
     .filter((a) => !ROUTINE_ACTIVITY.has(a.action)).slice(0, 6);
+
+  /**
+   * The last fortnight, a day at a time.
+   *
+   * Built from the audit log because that is the only history this product
+   * keeps: there is no metrics table, and inventing a trend line out of
+   * current-state counts (12 students today, so 12 students every day) would
+   * draw a chart that is simply false. Every bar here is a count of things
+   * that actually happened on that day.
+   */
+  const DAY_MS = 86_400_000;
+  const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+  const perDay = new Map<string, number>();
+  for (let i = 13; i >= 0; i -= 1) {
+    perDay.set(new Date(midnight.getTime() - i * DAY_MS).toDateString(), 0);
+  }
+  let newStudentsThisWeek = 0;
+  for (const row of log) {
+    const at = new Date(row.created_at);
+    const key = at.toDateString();
+    if (perDay.has(key)) perDay.set(key, perDay.get(key)! + 1);
+    // Students only, because the tile it sits under counts students. Counting
+    // every membership put "12 students, 18 joined this week" on the same card.
+    if (row.action === 'membership.created' && row.after?.role === 'student'
+      && at.getTime() >= midnight.getTime() - 6 * DAY_MS) newStudentsThisWeek += 1;
+  }
+  const activityTrend = [...perDay.entries()].map(([key, value]) => {
+    const d = new Date(key);
+    return {
+      label: d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+      full: d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }),
+      value,
+    };
+  });
+  const busiest = Math.max(...activityTrend.map((p) => p.value));
 
   const now = Date.now();
   const examList = exams ?? [];
@@ -212,8 +254,43 @@ export default async function OnyxDashboard() {
 
   const overdueInvoices = (outstanding?.invoices ?? []).filter((i) => i.overdue).length;
 
+  /**
+   * What is waiting for somebody.
+   *
+   * The counters above say how big the institution is; this says what has not
+   * been done, which is the question an operator actually opens a home screen
+   * with. Every row is a state the product can genuinely be in and a link to
+   * the screen that clears it -- a draft course nobody can enrol on, a
+   * timetable slot never published, an exam sat but not released, an invoice
+   * past its date. Rows with nothing waiting are not rendered, so this list is
+   * either work or an empty state, never a column of noughts.
+   */
+  const courseList = allCourses ?? [];
+  const draftCourses = courseList.filter((c) => c.status !== 1).length;
+  const examsUnpublished = examList.filter((e) =>
+    e.status === 'completed' || (Date.parse(e.starts_at) < now && e.status === 'scheduled')).length;
+  const queue = [
+    { key: 'invoices', href: '/onyx/finance', icon: 'wallet' as const, tone: 'late' as const,
+      title: 'Invoices overdue', meta: 'past their due date and unpaid', count: overdueInvoices },
+    { key: 'exams', href: '/onyx/exams', icon: 'award' as const, tone: 'warn' as const,
+      title: 'Exams awaiting results', meta: 'sat, but marks not released', count: examsUnpublished },
+    { key: 'timetable', href: '/onyx/timetable', icon: 'calendar' as const, tone: 'warn' as const,
+      title: 'Timetable slots in draft', meta: 'invisible to learners until published',
+      count: timetableDrafts },
+    { key: 'courses', href: '/onyx/courses', icon: 'book' as const, tone: 'neutral' as const,
+      title: 'Courses in draft', meta: 'nobody can enrol on these yet', count: draftCourses },
+    { key: 'jobs', href: '/onyx/jobs', icon: 'briefcase' as const, tone: 'neutral' as const,
+      title: 'Job posts in draft', meta: 'not yet open to applications', count: jobsByStatus.draft },
+  ].filter((row) => row.count > 0);
+
+  const liveCourses = courseList.length - draftCourses;
+  const arrears = outstanding?.total_minor ?? 0;
+
   const firstName = (me.email ?? '').split('@')[0]!.split(/[._]/)[0]!;
   const greeting = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+
+  const today = new Date().toLocaleDateString(undefined,
+    { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
     <OnyxShell
@@ -221,7 +298,24 @@ export default async function OnyxDashboard() {
       title={isLearner ? `Hi, ${greeting} 👋` : me.tenant.name}
       subtitle={isLearner
         ? progressLine(progress)
-        : 'Signed in as ' + ROLE_LABELS[me.role].toLowerCase() + '.'}
+        // The date, not the role. An operator knows what they signed in as --
+        // the sidebar says so twice -- and "Signed in as administrator" was
+        // the least useful sentence available in that position. What a home
+        // screen is for is orientation in time: this is today, and everything
+        // under it is as of now.
+        : today + ' · ' + headcount + (headcount === 1 ? ' person' : ' people')
+          + ' at this institution'}
+      action={staff ? (
+        // One primary action, and it is the one an administrator does most:
+        // put somebody on the register. Everything else on this page is a
+        // link to a screen that has its own controls.
+        <Link href="/onyx/people?role=student"
+          className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-brand-600 px-4
+                     text-[14px] font-bold text-white hover:bg-brand-700">
+          <Icon name="users" className="h-4 w-4" />
+          Add a student
+        </Link>
+      ) : undefined}
     >
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.62fr)_minmax(290px,.92fr)] xl:items-start">
         {/* ---------------- main column ---------------- */}
@@ -238,81 +332,74 @@ export default async function OnyxDashboard() {
                   also personally teach, since teaching is not the job this
                   screen is for. Revenue is covered by the Finance card in
                   Operations below rather than a bare total up here. */}
-              <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {/* Four numbers, each about a different part of the institution
+                  -- people, teaching, examinations, money. The old row was
+                  three counts of the same register (students, faculty, people,
+                  each captioned "of 19 people"), which is one fact printed
+                  three times. A tile earns its place by answering a question
+                  the tile beside it does not. */}
+              <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <StatTile label="Students" value={counts.student ?? 0}
-                  note={headcount ? 'of ' + headcount + ' people' : undefined} />
-                <StatTile label="Faculty" value={counts.faculty ?? 0}
-                  note={headcount ? 'of ' + headcount + ' people' : undefined} />
-                <StatTile label="People" value={headcount} note="on the register" />
+                  delta={newStudentsThisWeek || undefined}
+                  note={newStudentsThisWeek ? 'joined in the last 7 days' : 'on the register'} />
+                <StatTile label="Courses running" value={liveCourses}
+                  note={draftCourses ? draftCourses + ' still in draft' : 'all published'} />
+                <StatTile label="Examinations"
+                  value={examsRunning > 0 ? examsRunning : examsUpcoming}
+                  note={examsRunning > 0 ? 'sitting right now' : 'scheduled ahead'} />
+                <StatTile label="Fees outstanding"
+                  value={outstanding ? money(arrears) : '—'}
+                  note={!outstanding ? 'could not be read'
+                    : outstanding.invoices.length === 0 ? 'no invoices raised yet'
+                      : overdueInvoices ? overdueInvoices + ' invoice'
+                        + (overdueInvoices === 1 ? '' : 's') + ' overdue'
+                        : outstanding.invoices.length + ' unsettled, none overdue'} />
               </div>
 
-              {/* CMP-01/02/03/CAR-04 in one glance -- exams, placement, the
-                  timetable and revenue are what an operator actually checks
-                  in daily, and each card goes straight to where it is run. */}
+              {/* The one chart on the page, and it is about work rather than
+                  headcount: what this institution has actually been doing.
+                  Fourteen days is the span where a weekend still reads as a
+                  weekend and a quiet week is visible without a date picker. */}
               <section className="mb-5">
-                <SectionHead title="Operations" />
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <Link href="/onyx/exams" className="block">
-                    <Card className="p-4 transition hover:border-brand-200 hover:shadow-lift">
-                      <div className="text-[10.5px] font-bold uppercase tracking-[.08em] text-muted">
-                        Examinations
-                      </div>
-                      <div className="mt-1 text-[22px] font-extrabold leading-none tabular-nums">
-                        {examsRunning > 0 ? examsRunning : examsUpcoming}
-                      </div>
-                      <div className="mt-1 text-[12.5px] text-muted">
-                        {examsRunning > 0 ? 'sitting right now' : 'upcoming'}
-                        {examsDraft ? ' · ' + examsDraft + ' draft' + (examsDraft === 1 ? '' : 's') : ''}
-                      </div>
-                    </Card>
-                  </Link>
-                  <Link href="/onyx/placement" className="block">
-                    <Card className="p-4 transition hover:border-brand-200 hover:shadow-lift">
-                      <div className="text-[10.5px] font-bold uppercase tracking-[.08em] text-muted">
-                        Placement
-                      </div>
-                      <div className="mt-1 text-[22px] font-extrabold leading-none tabular-nums">
-                        {jobsByStatus.open}
-                      </div>
-                      <div className="mt-1 text-[12.5px] text-muted">
-                        open post{jobsByStatus.open === 1 ? '' : 's'}
-                        {drivesUpcoming
-                          ? ' · ' + drivesUpcoming + ' drive' + (drivesUpcoming === 1 ? '' : 's')
-                            + ' upcoming' : ''}
-                      </div>
-                    </Card>
-                  </Link>
-                  <Link href="/onyx/timetable" className="block">
-                    <Card className="p-4 transition hover:border-brand-200 hover:shadow-lift">
-                      <div className="text-[10.5px] font-bold uppercase tracking-[.08em] text-muted">
-                        Timetable
-                      </div>
-                      <div className="mt-1 text-[22px] font-extrabold leading-none tabular-nums">
-                        {slotList.length}
-                      </div>
-                      <div className="mt-1 text-[12.5px] text-muted">
-                        session{slotList.length === 1 ? '' : 's'} on the grid
-                        {timetableDrafts
-                          ? ' · ' + timetableDrafts + ' draft' + (timetableDrafts === 1 ? '' : 's') : ''}
-                      </div>
-                    </Card>
-                  </Link>
-                  <Link href="/onyx/finance" className="block">
-                    <Card className="p-4 transition hover:border-brand-200 hover:shadow-lift">
-                      <div className="text-[10.5px] font-bold uppercase tracking-[.08em] text-muted">
-                        Finance
-                      </div>
-                      <div className="mt-1 text-[22px] font-extrabold leading-none tabular-nums">
-                        {outstanding ? outstanding.invoices.length : '—'}
-                      </div>
-                      <div className="mt-1 text-[12.5px] text-muted">
-                        invoice{outstanding?.invoices.length === 1 ? '' : 's'} unsettled
-                        {overdueInvoices
-                          ? ' · ' + overdueInvoices + ' overdue' : outstanding ? ' · none overdue' : ''}
-                      </div>
-                    </Card>
-                  </Link>
-                </div>
+                <SectionHead title="Activity" action={{ href: '/onyx/audit', label: 'Full log' }} />
+                <Card className="p-4">
+                  <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+                    <div className="text-[22px] font-extrabold leading-none tabular-nums">
+                      {activityTrend.reduce((n, p) => n + p.value, 0)}
+                      <span className="ml-1.5 text-[13px] font-semibold text-muted">
+                        recorded actions
+                      </span>
+                    </div>
+                    <div className="text-[12.5px] text-muted">
+                      {busiest > 0 ? 'last 14 days · busiest day ' + busiest : 'last 14 days'}
+                    </div>
+                  </div>
+                  <TrendBars points={activityTrend} title="Recorded actions per day"
+                    unit="action" />
+                </Card>
+              </section>
+
+              {/* Work, not counters. This is the section an operator is here
+                  for: everything the institution is holding half-finished, in
+                  the order it hurts -- money first, then anything a learner
+                  can already see is missing. */}
+              <section className="mb-5">
+                <SectionHead title="Needs attention" />
+                {queue.length ? (
+                  <RowList label="Waiting for somebody">
+                    {queue.map((row) => (
+                      <QueueRow key={row.key} href={row.href} icon={row.icon} tone={row.tone}
+                        title={row.title} meta={row.meta} count={row.count} />
+                    ))}
+                  </RowList>
+                ) : (
+                  <Card className="p-4">
+                    <Empty icon="check">
+                      Nothing is waiting. No overdue invoices, no unpublished results, and
+                      nothing sitting in draft.
+                    </Empty>
+                  </Card>
+                )}
               </section>
 
               {/* The job board's own shape, read off the counts the cards
@@ -478,6 +565,43 @@ export default async function OnyxDashboard() {
               nothing here is gated behind "my courses", so it is the one
               section of this page that is never blank for the role it is
               built for. */}
+          {/* Where the rest of the institution is run. These were four large
+              cards in the main column, each repeating a number the tiles at the
+              top already carry -- Examinations twice, Finance twice. As rows in
+              the rail they keep what they were actually good for, which is
+              being a way in, and stop competing with the work list. */}
+          {staff ? (
+            <section>
+              <SectionHead title="Campus" />
+              <RowList label="Where the rest of the institution is run">
+                <ListRow icon="calendar" tone="neutral" href="/onyx/timetable"
+                  title="Timetable"
+                  meta={slotList.length + ' session' + (slotList.length === 1 ? '' : 's')
+                    + ' on the grid'
+                    + (timetableDrafts ? ' · ' + timetableDrafts + ' draft' : '')}
+                  trailing={<span className="text-[13px] font-bold tabular-nums">
+                    {slotList.length}
+                  </span>} />
+                <ListRow icon="briefcase" tone="neutral" href="/onyx/placement"
+                  title="Placement"
+                  meta={jobsByStatus.open + ' open post' + (jobsByStatus.open === 1 ? '' : 's')
+                    + (drivesUpcoming ? ' · ' + drivesUpcoming + ' drive upcoming' : '')}
+                  trailing={<span className="text-[13px] font-bold tabular-nums">
+                    {jobsByStatus.open}
+                  </span>} />
+                <ListRow icon="wallet" tone="neutral" href="/onyx/finance"
+                  title="Finance"
+                  meta={outstanding
+                    ? outstanding.invoices.length + ' invoice'
+                      + (outstanding.invoices.length === 1 ? '' : 's') + ' unsettled'
+                    : 'could not be read'}
+                  trailing={<span className="text-[13px] font-bold tabular-nums">
+                    {outstanding?.invoices.length ?? '—'}
+                  </span>} />
+              </RowList>
+            </section>
+          ) : null}
+
           {staff && recentActivity.length ? (
             <section>
               <SectionHead title="Recent activity"
