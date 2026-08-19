@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxPageRole, onyxApi, type Me } from '@/lib/onyx-session';
-import { FacultyExamPermissionToggle } from '@/components/onyx-settings';
+import { FacultyExamPermissionToggle, StudentSignupSettings } from '@/components/onyx-settings';
 import { PermissionMatrix, type CapabilityRow } from '@/components/onyx-permissions';
 import { SectionHead } from '@/components/onyx-ui';
 
@@ -59,6 +59,14 @@ export default async function OnyxSettingsPage() {
             same name on one page is a page nobody can give directions around.
             This one is not a duplicate of the matrix row -- it is the older,
             narrower switch the exams route still reads as a floor. */}
+        <section>
+          <SectionHead title="Student registration" />
+          <StudentSignupSettings
+            enabled={me.tenant.student_signup === true}
+            domains={me.tenant.signup_domains ?? ''}
+          />
+        </section>
+
         <section>
           <SectionHead title="Faculty exam scheduling" />
           <FacultyExamPermissionToggle

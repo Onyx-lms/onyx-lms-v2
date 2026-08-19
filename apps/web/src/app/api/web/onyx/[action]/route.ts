@@ -21,6 +21,10 @@ const API = appOrigin();
 const ROUTES: Record<string, { path: string; authed: boolean }> = {
   login: { path: '/api/onyx/auth/login', authed: false },
   switch: { path: '/api/onyx/auth/switch', authed: true },
+  // Self-registration returns a session exactly as login does, so it goes
+  // through this handler for the same reason: the token has to land in an
+  // httpOnly cookie rather than in the page's JavaScript.
+  signup: { path: '/api/onyx/auth/signup', authed: false },
 };
 
 export async function POST(request: Request, ctx: { params: Promise<{ action: string }> }) {
@@ -73,6 +77,26 @@ export async function POST(request: Request, ctx: { params: Promise<{ action: st
     delete payload.data.refresh_token;
     delete payload.data.expires_at;
   }
+  return NextResponse.json(payload, { status: res.status });
+}
+
+/**
+ * Which institution an address would register with.
+ *
+ * A GET beside the POSTs above because the signup form asks it while somebody
+ * is still typing -- and it is deliberately the ONLY read here that needs no
+ * session: it answers about one address and names at most one institution,
+ * never the list.
+ */
+export async function GET(request: Request, ctx: { params: Promise<{ action: string }> }) {
+  const { action } = await ctx.params;
+  if (action !== 'signup-institution') {
+    return NextResponse.json({ ok: false, message: 'Unknown action.' }, { status: 404 });
+  }
+  const email = new URL(request.url).searchParams.get('email') ?? '';
+  const res = await fetch(API + '/api/onyx/auth/signup/institution?email='
+    + encodeURIComponent(email));
+  const payload = await res.json().catch(() => ({ ok: false, message: 'Bad response' }));
   return NextResponse.json(payload, { status: res.status });
 }
 

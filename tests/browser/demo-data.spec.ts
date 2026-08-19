@@ -59,7 +59,9 @@ test.describe('the demo institution has a term of data behind it', () => {
     expect(await detailLinks(page, 'courses')).toBeGreaterThan(0);
     // The draft course is enrolled but unpublished, and a learner must not see
     // it -- the one assertion here that is about a rule rather than a count.
-    await expect(page.getByText('Cloud and DevOps')).toHaveCount(0);
+    // ABC302, not ABC301: 301 is the LOCKED course now, which a learner is
+    // meant to see (and to see a price on) before they buy it.
+    await expect(page.getByText('Advanced Database Systems')).toHaveCount(0);
 
     await page.goto('/onyx/timetable');
     // Any weekday name only appears once a slot is placed on it.

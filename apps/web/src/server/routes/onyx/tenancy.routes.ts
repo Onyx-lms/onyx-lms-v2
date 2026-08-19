@@ -121,11 +121,22 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
   app.patch('/api/onyx/tenant/settings', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
     const body = validate(z.object({
-      faculty_can_schedule_exams: z.boolean(),
+      faculty_can_schedule_exams: z.boolean().optional(),
+      student_signup: z.boolean().optional(),
+      signup_domains: z.string().max(500).optional(),
     }), req.body);
     const before = await ctx.onyxTenancy.tenant(claims.tenant_id);
-    const tenant = await ctx.onyxTenancy.setFacultyCanScheduleExams(
-      claims.tenant_id, body.faculty_can_schedule_exams);
+    let tenant = before;
+    if (body.faculty_can_schedule_exams !== undefined) {
+      tenant = await ctx.onyxTenancy.setFacultyCanScheduleExams(
+        claims.tenant_id, body.faculty_can_schedule_exams);
+    }
+    if (body.student_signup !== undefined || body.signup_domains !== undefined) {
+      tenant = await ctx.onyxTenancy.setSignupPolicy(
+        claims.tenant_id,
+        body.student_signup ?? Boolean(before.student_signup),
+        body.signup_domains ?? String(before.signup_domains ?? ''));
+    }
     await ctx.onyxAudit.record(claims, {
       action: 'tenant.updated', entityType: 'tenant', entityId: claims.tenant_id,
       before: { faculty_can_schedule_exams: before.faculty_can_schedule_exams },
@@ -193,6 +204,56 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
       ip: ipOf(req),
     });
     return ok(tenant, 'Permissions saved.');
+  });
+
+  /**
+   * Self-registration, for a learner at an institution that has opened it.
+   *
+   * Unauthenticated by necessity -- the whole point is that the person has no
+   * account yet -- and narrow because of it: it only ever creates a `student`,
+   * the institution comes from the email domain rather than from the request,
+   * and an institution that has not switched signup on cannot be found at all.
+   *
+   * The four fields are the ones an institution actually needs to recognise a
+   * learner: their name, the address it gave them, a number to reach them on,
+   * and the roll number everything else in this product is keyed to.
+   */
+  app.post('/api/onyx/auth/signup', async (req) => {
+    const body = validate(z.object({
+      name: z.string().min(1).max(255),
+      email: z.string().email(),
+      password: z.string().min(8).max(255),
+      phone: z.string().min(6).max(30).nullish(),
+      roll_number: z.string().max(40).nullish(),
+    }), req.body);
+
+    const result = await ctx.onyxTenancy.signUpStudent(body);
+
+    // Signed in immediately. Asking somebody to register and then to sign in
+    // with what they just typed is a form they fill in twice.
+    const session = await ctx.onyxTenancy.signIn(body.email, body.password);
+    return ok({
+      token: session.session.access_token,
+      refresh_token: session.session.refresh_token,
+      expires_at: session.session.expires_at,
+      user: result.user,
+      tenant: result.tenant,
+      role: 'student',
+    }, 'Welcome to ' + result.tenant.name + '.');
+  });
+
+  /**
+   * Which institution an address would join, before anybody types a password.
+   *
+   * The form uses this to say "this address registers with ABC Institution"
+   * while the learner is still filling it in -- and to say plainly that an
+   * address matches nothing, rather than accepting six fields and refusing at
+   * the end. It answers only about the address it was given.
+   */
+  app.get('/api/onyx/auth/signup/institution', async (req) => {
+    const email = String((req.query as { email?: string }).email ?? '');
+    if (!email.includes('@')) return ok(null);
+    return ok(await ctx.onyxTenancy.signupInstitutionFor(email));
   });
 
   // ---- F-06: onboarding a new institution ----

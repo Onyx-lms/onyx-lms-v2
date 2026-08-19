@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { BuyCourseButton } from '@/components/onyx-buy';
 import { isStaff, type Course, type Outline, type Program } from '@/lib/onyx-learn';
 import { CreatePanel, ActionButton } from '@/components/onyx-create';
 import {
@@ -39,12 +40,16 @@ export default async function OnyxCoursesPage() {
   // have gotten anyway. Without it, "All courses" was never actually all of
   // them for staff either, the one role the draft/published distinction is
   // for -- a course sat unpublished and simply was not in the list.
-  const [me, courses, mine, programs] = await Promise.all([
+  const [me, courses, mine, programs, purchases] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
     onyxApi<Course[]>('/api/onyx/courses?all=1'),
     onyxApi<Course[]>('/api/onyx/my/courses'),
     onyxApi<Program[]>('/api/onyx/programs'),
+    // What this learner has already bought: a locked course they own should
+    // offer "Start", not "Buy" a second time.
+    onyxApiSafe<number[]>('/api/onyx/my/purchases'),
   ]);
+  const owned = new Set((purchases ?? []).map(Number));
 
   // Progress lives on the outline, not on the course row, so a learner's own
   // list costs one request per course. Bounded by how many courses one person
@@ -96,7 +101,18 @@ export default async function OnyxCoursesPage() {
                 ...programs.map((pr) => ({ value: String(pr.id), label: pr.name }))] },
             { name: 'description', label: 'Description', type: 'textarea',
               placeholder: 'What this course covers.' },
-            { name: 'self_enroll', label: 'Learners may enrol themselves', type: 'checkbox' },
+            /* How a learner gets on, as one choice rather than a checkbox plus
+               a price that may or may not apply. `self_enroll` is set from
+               this on the server (updateCourse), so the two cannot disagree. */
+            { name: 'access', label: 'How learners get on', type: 'select',
+              options: [
+                { value: 'batch', label: 'The institution enrols them' },
+                { value: 'open', label: 'Open — anyone here may start it, free' },
+                { value: 'locked', label: 'Locked — they buy it first' },
+              ],
+              help: 'A locked course needs a price below.' },
+            { name: 'price_minor', label: 'Price in paise', type: 'number', min: 0,
+              help: '149900 is ₹1,499.00. Only used for a locked course.' },
           ]}
           // Created as a draft, then opened -- a course nobody can see is not
           // much use, and publishing is a separate right the API checks.
@@ -246,7 +262,10 @@ export default async function OnyxCoursesPage() {
                       whole register regardless of self_enroll, so the pill
                       told every administrator their own courses were "open
                       to join" -- true, but not theirs to join. */}
-                  {c.self_enroll && !enrolled.has(c.id) && me.role === 'student'
+                  {c.access === 'locked' && !enrolled.has(c.id)
+                    ? <Pill tone="soon">{owned.has(c.id) ? 'Bought' : 'Locked'}</Pill> : null}
+                  {c.access !== 'locked' && c.self_enroll && !enrolled.has(c.id)
+                    && me.role === 'student'
                     ? <Pill tone="brand">Open to join</Pill> : null}
                 </div>
 
@@ -298,11 +317,19 @@ export default async function OnyxCoursesPage() {
                     course was open to join and offer nothing to join it with --
                     and where self-enrolment is off, it said nothing at all,
                     which reads as a broken card rather than a closed door. */}
+                {/* Three doors, and the card says which one this is rather
+                    than leaving a learner to find out by clicking:
+                    bought-and-not-yet-started, for sale, or the institution's
+                    to hand out. */}
                 {me.role === 'student' && !enrolled.has(c.id) ? (
-                  c.self_enroll ? (
+                  c.access === 'locked' && !owned.has(c.id) ? (
+                    <BuyCourseButton courseId={c.id} title={c.title}
+                      price={Number(c.price_minor ?? 0)}
+                      currency={String(c.currency ?? 'INR')} />
+                  ) : c.self_enroll || c.access === 'open' || owned.has(c.id) ? (
                     <div className="relative z-10">
                       <ActionButton endpoint={'courses/' + c.id + '/enroll'}
-                        label="Join this course" />
+                        label={owned.has(c.id) ? 'Start — you own this' : 'Join this course'} />
                     </div>
                   ) : (
                     <p className="relative z-10 text-[12.5px] text-muted">

@@ -66,3 +66,99 @@ export function FacultyExamPermissionToggle({ enabled }: { enabled: boolean }) {
     </Card>
   );
 }
+
+/**
+ * Whether learners may register themselves, and from which addresses.
+ *
+ * The two belong on one card because neither works alone: registration open
+ * with no domains means an institution nobody can find, and domains listed
+ * with registration closed means a list that does nothing. Saving them
+ * together is also what stops the window in between, where the door is open
+ * and any address in the world matches.
+ *
+ * The domain is doing real work, not validation theatre: signup resolves the
+ * institution FROM it, so this list is the only thing that connects a stranger
+ * with an email address to this institution rather than another one.
+ */
+export function StudentSignupSettings({ enabled, domains }: {
+  enabled: boolean; domains: string;
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [on, setOn] = useState(enabled);
+  const [list, setList] = useState(domains);
+
+  const save = () => start(async () => {
+    setError(null);
+    setSaved(false);
+    const res = await fetch('/api/proxy/onyx/tenant/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ student_signup: on, signup_domains: list }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!body.ok) { setError(body.message ?? 'Could not save that.'); return; }
+    setSaved(true);
+    router.refresh();
+  });
+
+  return (
+    <Card className="p-4 sm:p-5">
+      <h3 className="text-[15px] font-bold">Learners may create their own account</h3>
+      <p className="mt-1 max-w-prose text-[13px] leading-relaxed text-muted">
+        {on
+          ? 'On — anyone with an email address at the domains below can register as a student '
+            + 'and is enrolled by you afterwards. They cannot choose a role, a programme or a '
+            + 'course.'
+          : 'Off — every learner is added by somebody here. This is how the institution '
+            + 'started, and nothing changes until you switch it on.'}
+      </p>
+
+      <div className="mt-3.5 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          aria-label="Learners may create their own account"
+          onClick={() => setOn((v) => !v)}
+          className={'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition '
+            + (on ? 'bg-brand-600' : 'bg-slate-300')}
+        >
+          <span className={'inline-block h-5 w-5 transform rounded-full bg-white transition '
+            + (on ? 'translate-x-6' : 'translate-x-1')} />
+        </button>
+        <span className="text-[13px] font-semibold">{on ? 'Open' : 'Closed'}</span>
+      </div>
+
+      <label className="mt-4 block text-[13.5px] font-semibold text-slate-700"
+        htmlFor="signup-domains">
+        Email domains that register here
+      </label>
+      <input
+        id="signup-domains"
+        value={list}
+        onChange={(e) => setList(e.target.value)}
+        placeholder="demo.onyx, students.demo.onyx"
+        className="mt-1.5 block min-h-[44px] w-full rounded-xl border border-line bg-white px-3.5
+                   text-[14px] focus:border-brand-500 focus:outline-none"
+      />
+      <p className="mt-1.5 text-[12.5px] text-muted">
+        Comma separated, no @. An address at any of these resolves to this institution;
+        anything else is told that no institution accepts it, without naming any.
+      </p>
+
+      {error ? <p role="alert" className="mt-3 text-[13px] text-red-700">{error}</p> : null}
+      {saved && !error ? (
+        <p role="status" className="mt-3 text-[13px] text-emerald-700">Saved.</p>
+      ) : null}
+
+      <button type="button" onClick={save} disabled={pending}
+        className="mt-4 min-h-[42px] rounded-xl bg-brand-600 px-4 text-sm font-bold text-white
+                   hover:bg-brand-700 disabled:opacity-50">
+        {pending ? 'Saving…' : 'Save registration settings'}
+      </button>
+    </Card>
+  );
+}

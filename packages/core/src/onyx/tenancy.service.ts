@@ -21,7 +21,7 @@ import { HttpError } from '../http/errors.ts';
 import { slugify } from '../authoring/slug.ts';
 import type { PermissionOverrides } from './permissions.ts';
 
-const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, created_at, updated_at';
+const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, student_signup, signup_domains, created_at, updated_at';
 const USER_COLUMNS = 'id, email, name, phone, photo, status, email_verified_at, created_at';
 const MEMBERSHIP_COLUMNS = 'id, tenant_id, user_id, role, status, roll_number, created_at';
 
@@ -133,7 +133,11 @@ export class TenancyService {
    * auth.users row already exists, a retry finds it via userByEmail() above
    * and attaches rather than double-creating -- see the email-exists branch.
    */
-  async upsertUser(input: { name: string; email: string; password?: string }) {
+  async upsertUser(input: {
+    name: string; email: string; password?: string;
+    /** Only ever set on creation -- an existing account keeps its own. */
+    phone?: string | null;
+  }) {
     const email = input.email.trim().toLowerCase();
     const existing = await this.userByEmail(email);
     if (existing) return existing;
@@ -147,16 +151,17 @@ export class TenancyService {
       if (/already.*registered|already.*exists/i.test(authError?.message ?? '')) {
         const { data: list } = await this.#authAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
         const found = list?.users.find((u) => u.email?.toLowerCase() === email);
-        if (found) return this.#insertProfile(found.id, email, input.name);
+        if (found) return this.#insertProfile(found.id, email, input.name, input.phone);
       }
       throw new HttpError(422, 'Could not create that account: ' + (authError?.message ?? 'unknown error'));
     }
-    return this.#insertProfile(authUser.user.id, email, input.name);
+    return this.#insertProfile(authUser.user.id, email, input.name, input.phone);
   }
 
-  async #insertProfile(authId: string, email: string, name: string) {
+  async #insertProfile(authId: string, email: string, name: string, phone?: string | null) {
     const { data, error } = await this.#db.from('onyx_users').insert({
       id: authId, email, name: name.trim(), status: 1,
+      ...(phone ? { phone: phone.trim() } : {}),
     }).select(USER_COLUMNS).maybeSingle();
     if (error) throw new HttpError(500, 'Could not create the account: ' + error.message);
     return data!;
@@ -244,6 +249,91 @@ export class TenancyService {
     const user = await this.upsertUser(input);
     const membership = await this.addMember(tenantId, user.id, input.role, input.roll_number);
     return { user: { id: user.id, email: user.email, name: user.name }, membership };
+  }
+
+  /**
+   * Self-registration: a learner asking for an account rather than being given
+   * one.
+   *
+   * The institution is resolved from the EMAIL DOMAIN, never from the request.
+   * A form that asked which institution you belong to would have to either
+   * show the customer list in a dropdown or trust a stranger to name one; the
+   * domain answers it, and an address matching nothing is refused without
+   * saying what would have matched. That last part is deliberate -- "no
+   * institution accepts this address" leaks nothing, while "Meridian does not
+   * accept gmail.com" confirms Meridian exists.
+   *
+   * Only ever creates a `student`. Every other role is somebody being given
+   * authority, and authority is granted, not requested.
+   */
+  async signUpStudent(input: {
+    name: string; email: string; password: string;
+    phone?: string | null; roll_number?: string | null;
+  }) {
+    const domain = input.email.split('@')[1]?.toLowerCase().trim() ?? '';
+    if (!domain) throw new HttpError(422, 'That does not look like an email address.');
+
+    const { data: tenants } = await this.#db.from('onyx_tenants')
+      .select(TENANT_COLUMNS).eq('student_signup', true).eq('status', 1);
+
+    const tenant = (tenants ?? []).find((t) => String(t.signup_domains ?? '')
+      .split(',').map((d) => d.trim().toLowerCase()).filter(Boolean)
+      .includes(domain));
+
+    if (!tenant) {
+      throw new HttpError(422,
+        'No institution here accepts registrations from that address. '
+        + 'Use the email your institution gave you, or ask them to invite you.');
+    }
+
+    // An address that already belongs to somebody is not told apart from one
+    // that does not -- upsertUser would attach the existing account, which is
+    // right for an administrator adding a colleague and wrong here, where it
+    // would hand a stranger a membership on an account they do not own.
+    const { data: existing } = await this.#db.from('onyx_users')
+      .select('id').eq('email', input.email.toLowerCase()).maybeSingle();
+    if (existing) {
+      throw new HttpError(409,
+        'That address already has an account. Sign in instead, or ask your '
+        + 'institution to add you to it.');
+    }
+
+    const user = await this.upsertUser({
+      name: input.name, email: input.email, password: input.password,
+      phone: input.phone ?? null,
+    });
+    const membership = await this.addMember(
+      Number(tenant.id), user.id, 'student', input.roll_number ?? null);
+
+    return {
+      user: { id: user.id, email: user.email, name: user.name },
+      membership,
+      tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug },
+    };
+  }
+
+  /** Whether an address could register, and where -- for the signup form. */
+  async signupInstitutionFor(email: string) {
+    const domain = email.split('@')[1]?.toLowerCase().trim() ?? '';
+    if (!domain) return null;
+    const { data: tenants } = await this.#db.from('onyx_tenants')
+      .select('id, name, slug, signup_domains')
+      .eq('student_signup', true).eq('status', 1);
+    const tenant = (tenants ?? []).find((t) => String(t.signup_domains ?? '')
+      .split(',').map((d) => d.trim().toLowerCase()).filter(Boolean).includes(domain));
+    return tenant ? { id: tenant.id, name: tenant.name } : null;
+  }
+
+  /** Whether this institution takes registrations, and from which domains. */
+  async setSignupPolicy(tenantId: number, open: boolean, domains: string) {
+    const clean = domains.split(',').map((d) => d.trim().toLowerCase().replace(/^@/, ''))
+      .filter(Boolean).join(',');
+    const { data, error } = await this.#db.from('onyx_tenants')
+      .update({ student_signup: open, signup_domains: clean, updated_at: new Date().toISOString() })
+      .eq('id', tenantId).select(TENANT_COLUMNS).maybeSingle();
+    if (error) throw new HttpError(500, 'Could not save that: ' + error.message);
+    if (!data) throw new HttpError(404, 'Institution not found.');
+    return data;
   }
 
   /**

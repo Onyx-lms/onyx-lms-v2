@@ -20,7 +20,7 @@ import { slugify } from '../authoring/slug.ts';
 const PROGRAM_COLUMNS = 'id, tenant_id, name, code, description, duration_semesters, status, created_at';
 const SEMESTER_COLUMNS = 'id, tenant_id, program_id, name, number, starts_on, ends_on, status';
 const BATCH_COLUMNS = 'id, tenant_id, program_id, name, code, year, status';
-const COURSE_COLUMNS = 'id, tenant_id, program_id, semester_id, code, title, slug, description, credits, self_enroll, status, created_by, created_at';
+const COURSE_COLUMNS = 'id, tenant_id, program_id, semester_id, code, title, slug, description, credits, self_enroll, access, price_minor, currency, status, created_by, created_at';
 const ENROLLMENT_COLUMNS = 'id, tenant_id, course_id, user_id, batch_id, status, enrolled_by, created_at';
 
 /**
@@ -41,6 +41,10 @@ export interface OnyxCourseInput {
   credits?: number;
   self_enroll?: boolean;
   status?: number;
+  /** 'batch' (institution enrols), 'open' (free self-enrol), 'locked' (paid). */
+  access?: 'batch' | 'open' | 'locked';
+  price_minor?: number;
+  currency?: string;
 }
 
 export class AcademicsService {
@@ -326,6 +330,16 @@ export class AcademicsService {
     if (input.program_id !== undefined) patch.program_id = input.program_id;
     if (input.semester_id !== undefined) patch.semester_id = input.semester_id;
     if (input.self_enroll !== undefined) patch.self_enroll = input.self_enroll ? 1 : 0;
+    if (input.access !== undefined) {
+      patch.access = input.access;
+      // The two travel together: `access` is what every read asks about, and
+      // `self_enroll` is what selfEnroll() has read since 0002. Setting one
+      // and not the other is how a course comes to say "open" on the catalogue
+      // and refuse the learner who clicks it.
+      patch.self_enroll = input.access === 'batch' ? 0 : 1;
+    }
+    if (input.price_minor !== undefined) patch.price_minor = input.price_minor;
+    if (input.currency !== undefined) patch.currency = input.currency.toUpperCase();
     if (input.status !== undefined) patch.status = input.status;
 
     const { error } = await this.#db.from('onyx_courses')
@@ -523,10 +537,90 @@ export class AcademicsService {
   async selfEnroll(tenantId: number, courseId: number, userId: string) {
     const course = await this.course(tenantId, courseId);
     if (course.status !== 1) throw new HttpError(403, 'This course is not open.');
-    if (!course.self_enroll) {
+
+    // A locked course is self-enrollable in the same sense an open one is --
+    // the learner starts it themselves -- but the door is a purchase. Refusing
+    // here rather than inside enroll() keeps the reason specific: "buy it"
+    // rather than "the institution enrols you", which is a different answer
+    // and sends the learner to a different place.
+    if (course.access === 'locked') {
+      const paid = await this.hasPurchased(tenantId, courseId, userId);
+      if (!paid) throw new HttpError(402, 'This course has to be bought before you can start it.');
+      return this.enroll(tenantId, courseId, userId, { enrolledBy: userId });
+    }
+
+    if (!course.self_enroll && course.access !== 'open') {
       throw new HttpError(403, 'This course is enrolled by the institution.');
     }
     return this.enroll(tenantId, courseId, userId, { enrolledBy: userId });
+  }
+
+  /** Whether this learner has already bought this course. */
+  async hasPurchased(tenantId: number, courseId: number, userId: string): Promise<boolean> {
+    const { data } = await this.#db.from('onyx_course_purchases')
+      .select('id').eq('tenant_id', tenantId).eq('course_id', courseId)
+      .eq('user_id', userId).eq('status', 'captured').maybeSingle();
+    return Boolean(data);
+  }
+
+  /** Everything this learner has bought, for the catalogue to mark as owned. */
+  async purchasesFor(tenantId: number, userId: string): Promise<number[]> {
+    const { data } = await this.#db.from('onyx_course_purchases')
+      .select('course_id').eq('tenant_id', tenantId).eq('user_id', userId)
+      .eq('status', 'captured');
+    return (data ?? []).map((r) => Number(r.course_id));
+  }
+
+  /**
+   * Buying a locked course, and being enrolled onto it.
+   *
+   * The payment is a MOCK: no gateway is called, the row is written as
+   * captured, and the learner is enrolled. It is deliberately shaped like the
+   * real thing -- a gateway name, a reference, an amount taken from the COURSE
+   * rather than from the request -- so wiring a real gateway later replaces
+   * one function rather than the flow around it. The amount coming from the
+   * course is the part that would otherwise be a way to buy a ₹9,000 course
+   * for ₹1 by editing a request.
+   *
+   * The unique index on (tenant, course, learner) is what makes a double-click
+   * safe: the second attempt finds the first purchase and enrols, rather than
+   * charging twice.
+   */
+  async purchase(tenantId: number, courseId: number, userId: string, opts: {
+    gateway?: string; reference?: string;
+  } = {}) {
+    const course = await this.course(tenantId, courseId);
+    if (course.status !== 1) throw new HttpError(403, 'This course is not open.');
+    if (course.access !== 'locked') {
+      throw new HttpError(422, 'This course is not for sale -- it is free to start.');
+    }
+
+    const already = await this.hasPurchased(tenantId, courseId, userId);
+    if (!already) {
+      const reference = opts.reference
+        ?? 'MOCK-' + tenantId + '-' + courseId + '-' + Date.now().toString(36).toUpperCase();
+      const { error } = await this.#db.from('onyx_course_purchases').insert({
+        tenant_id: tenantId, course_id: courseId, user_id: userId,
+        amount_minor: Number(course.price_minor), currency: String(course.currency ?? 'INR'),
+        gateway: opts.gateway ?? 'mock', reference, status: 'captured',
+      });
+      // A duplicate here is two clicks racing, not a failure: the row that won
+      // is the one that counts, and the learner still gets their enrolment.
+      if (error && !String(error.message).includes('duplicate')) {
+        throw new HttpError(500, 'The payment could not be recorded: ' + error.message);
+      }
+    }
+
+    // Buying is idempotent from the learner's side. `enroll()` refuses an
+    // active enrolment with a 422 -- correct when an administrator is enrolling
+    // somebody twice by mistake, wrong here, where the second click is somebody
+    // wondering whether the first one worked. The answer they need is "you own
+    // this", not an error.
+    const existing = await this.enrollment(tenantId, courseId, userId);
+    const enrollment = existing && existing.status === 1
+      ? existing
+      : await this.enroll(tenantId, courseId, userId, { enrolledBy: userId });
+    return { purchased: !already, enrollment };
   }
 
   /**

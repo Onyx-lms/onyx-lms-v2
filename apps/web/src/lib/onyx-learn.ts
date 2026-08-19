@@ -22,6 +22,16 @@ export interface Course {
   id: number; program_id: number | null; semester_id: number | null;
   code: string; title: string; slug: string; description: string | null;
   credits: number; self_enroll: number; status: number;
+  /**
+   * How a learner gets on: 'batch' (the institution enrols them), 'open'
+   * (free, self-started) or 'locked' (bought first). Optional because a
+   * response cached from before 0024 will not carry it, and absent means the
+   * behaviour every course had then.
+   */
+  access?: 'batch' | 'open' | 'locked';
+  /** Minor units. Only meaningful when `access` is 'locked'. */
+  price_minor?: number;
+  currency?: string;
   /** Present on the catalogue list (GET /courses); absent on a single course. */
   enrollment_count?: number;
   /** `name` is only present on the catalogue list -- GET /courses/:id's own

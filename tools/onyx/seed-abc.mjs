@@ -124,10 +124,16 @@ const COURSES = [
   { code: 'ABC102', title: 'Data Structures and Algorithms', credits: 4, publish: true, facultyIndex: 1 },
   { code: 'ABC103', title: 'Database Management Systems', credits: 3, publish: true, facultyIndex: 0 },
   { code: 'ABC201', title: 'Web Application Development', credits: 3, publish: true, facultyIndex: 1 },
+  // Sold rather than assigned: a published course a learner buys before they
+  // can start it, so the locked/price/purchase path has something real behind
+  // it. INR 1,499.00, in paise like every other amount in this product.
+  { code: 'ABC301', title: 'Cloud and DevOps', credits: 4, publish: true, facultyIndex: 1,
+    access: 'locked', price_minor: 149_900 },
   // Left in draft on purpose: the draft-visibility rule is only observable when
   // a draft actually exists, and a reviewer should be able to see this one from
   // the faculty side and confirm it is absent from the student's.
-  { code: 'ABC301', title: 'Cloud and DevOps', credits: 4, publish: false, facultyIndex: 1 },
+  { code: 'ABC302', title: 'Advanced Database Systems', credits: 3, publish: false,
+    facultyIndex: 0 },
 ];
 
 /** The Code Lab practice set. `source` is a solution that passes its own tests. */
@@ -368,6 +374,8 @@ for (const spec of COURSES) {
       code: spec.code, title: spec.title, credits: spec.credits,
       program_id: Number(program.id), semester_id: Number(semester.id),
       description: spec.title + ' for ' + PROGRAM.name + ', ' + SEMESTER.name + '.',
+      ...(spec.access ? { access: spec.access } : {}),
+      ...(spec.price_minor ? { price_minor: spec.price_minor } : {}),
     }, admin);
     if (facultyId) {
       await call('/api/onyx/courses/' + course.id + '/faculty',
@@ -379,8 +387,14 @@ for (const spec of COURSES) {
     // The draft one gets the cohort too: a draft course a batch is already
     // enrolled on is the state a registrar actually creates, and it leaves the
     // visibility rule as the only reason a student cannot see it.
-    await call('/api/onyx/courses/' + course.id + '/enroll',
-      { body: { batch_id: Number(batch.id) }, token: admin });
+    //
+    // A LOCKED course does not: enrolling the batch onto something they are
+    // meant to buy would leave nobody able to see the price, which is the one
+    // thing that course exists to show.
+    if (spec.access !== 'locked') {
+      await call('/api/onyx/courses/' + course.id + '/enroll',
+        { body: { batch_id: Number(batch.id) }, token: admin });
+    }
   }
   courses.push({ ...course, spec, facultyId });
 }

@@ -42,6 +42,9 @@ export interface Tenant {
   /** Whether faculty may schedule an exam themselves, or every one has to
    *  come from admin or the exams office. Set from Settings, admin only. */
   faculty_can_schedule_exams?: boolean;
+  /** Whether learners may register themselves, and from which email domains. */
+  student_signup?: boolean;
+  signup_domains?: string;
 }
 
 export interface Me {

@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxLoginForm } from '@/components/onyx-auth-forms';
 import { OnyxAuthSplit } from '@/components/onyx-auth-split';
@@ -77,12 +78,15 @@ export default async function OnyxLoginPage(
             </p>
           </div>
 
-          {/* No "start a new institution" link any more: institutions are
-              created by the platform team, from the platform console, so
-              inviting somebody to self-serve here would only lead them to a
-              page explaining that they cannot. */}
+          {/* A learner may open their own account where their institution has
+              switched registration on; an institution is still created by the
+              platform team, which is why only one of these is a link. */}
           <p className="mt-4 text-[13px] text-muted">
-            Institutions are set up by the Onyx platform team.
+            New here?{' '}
+            <Link href="/onyx/signup" className="font-semibold text-brand-700 hover:underline">
+              Create a student account
+            </Link>
+            . Institutions are set up by the Onyx platform team.
           </p>
         </>
       }

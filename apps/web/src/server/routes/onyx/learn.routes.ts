@@ -206,6 +206,11 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
       semester_id: z.number().int().positive().nullish(),
       credits: z.number().int().min(0).max(100).optional(),
       self_enroll: z.boolean().optional(),
+      // 'batch' -- the institution enrols; 'open' -- free to start; 'locked' --
+      // bought first. Absent means 'batch', which is what every course was.
+      access: z.enum(['batch', 'open', 'locked']).optional(),
+      price_minor: z.number().int().min(0).max(100_000_000).optional(),
+      currency: z.string().length(3).optional(),
     }), req.body);
 
     const course = await ctx.onyxAcademics.createCourse(claims.tenant_id, claims.user_id, body);
@@ -225,8 +230,20 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
       semester_id: z.number().int().positive().nullish(),
       credits: z.number().int().min(0).max(100).optional(),
       self_enroll: z.boolean().optional(),
+      access: z.enum(['batch', 'open', 'locked']).optional(),
+      price_minor: z.number().int().min(0).max(100_000_000).optional(),
+      currency: z.string().length(3).optional(),
       status: z.number().int().min(0).max(1).optional(),
     }), req.body);
+    // A locked course with no price is a course nobody can ever enter. The
+    // database says so too (0024), but a 422 naming the field is a better
+    // answer than a constraint violation.
+    if (body.access === 'locked' && !body.price_minor) {
+      const current = await ctx.onyxAcademics.course(claims.tenant_id, idOf(req));
+      if (!Number(current.price_minor)) {
+        throw new HttpError(422, 'A locked course needs a price before it can be locked.');
+      }
+    }
     return ok(await ctx.onyxAcademics.updateCourse(claims.tenant_id, idOf(req), body),
       'Course updated.');
   });
@@ -441,7 +458,6 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/courses/:id/enroll', async (req) => {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'academics.enrol');
     const body = validate(z.object({
       user_id: z.string().uuid().optional(),
       batch_id: z.number().int().positive().optional(),
@@ -451,6 +467,13 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
     // Enrolling somebody else, or a whole cohort, is an administrator's act,
     // or this course's own faculty acting on their own roster.
     if (body.batch_id) {
+      // `academics.enrol` is about enrolling OTHER people -- it is checked
+      // here and on the single-learner branch below, not at the top of the
+      // route, because the third branch is a learner starting an open course
+      // themselves. Checking it up front made self-enrolment an administrator's
+      // capability and told a student their institution would not allow them
+      // to join a course it had published as open.
+      await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'academics.enrol');
       await requireCourseManager(req, courseId);
       const result = await ctx.onyxAcademics.enrollBatch(
         claims.tenant_id, courseId, body.batch_id, claims.user_id);
@@ -462,6 +485,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
     }
 
     if (body.user_id && body.user_id !== claims.user_id) {
+      await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'academics.enrol');
       await requireCourseManager(req, courseId);
       const enrolled = await ctx.onyxAcademics.enroll(
         claims.tenant_id, courseId, body.user_id, { enrolledBy: claims.user_id });
@@ -491,6 +515,36 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
   // -------------------------------------------------------------------------
   // LRN-02 -- content
   // -------------------------------------------------------------------------
+
+  /**
+   * Buying a locked course.
+   *
+   * A MOCK payment: no gateway is called, the purchase is written as captured
+   * and the learner is enrolled. It is shaped like the real thing on purpose --
+   * the amount comes from the course rather than the request, so the price
+   * cannot be argued down by editing a payload, and the gateway and reference
+   * are recorded as if a provider had answered. Wiring a real gateway later
+   * replaces the write inside purchase(), not this route or the screen.
+   *
+   * No capability check: this is a learner acting on their own behalf, the
+   * same as self-enrolling. The service refuses anything that is not a
+   * published, locked course.
+   */
+  app.post('/api/onyx/courses/:id/purchase', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const result = await ctx.onyxAcademics.purchase(claims.tenant_id, idOf(req), claims.user_id);
+    await ctx.onyxAudit.record(claims, {
+      action: 'enrolment.created', entityType: 'course', entityId: idOf(req),
+      after: { purchased: result.purchased, user_id: claims.user_id }, ip: ipOf(req),
+    });
+    return ok(result, result.purchased ? 'Paid. You are enrolled.' : 'You already own this.');
+  });
+
+  /** What this learner has bought, so a catalogue can mark it owned. */
+  app.get('/api/onyx/my/purchases', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxAcademics.purchasesFor(claims.tenant_id, claims.user_id));
+  });
 
   app.post('/api/onyx/courses/:id/modules', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
