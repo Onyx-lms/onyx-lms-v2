@@ -347,7 +347,9 @@ export default async function HomePage() {
                                        font-bold text-brand-700">Free</span>
                     )}
                   </div>
-                  <h3 className="text-[16px] font-bold leading-snug">{c.title}</h3>
+                  <h3 className="text-[16px] font-bold leading-snug">
+                    <Link href={'/onyx/c/' + c.id} className="hover:underline">{c.title}</Link>
+                  </h3>
                   {c.description ? (
                     <p className="line-clamp-2 text-[13px] leading-relaxed text-muted">
                       {c.description}
@@ -367,10 +369,14 @@ export default async function HomePage() {
                         ? c.currency + ' ' + Math.floor(c.price_minor / 100).toLocaleString('en-IN')
                         : 'Free'}
                     </span>
-                    <Link href="/onyx/signup"
+                    {/* To the course, not to a form. Somebody deciding whether
+                        to register wants to see what they would be registering
+                        for; the page they land on asks for the account when
+                        they have decided. */}
+                    <Link href={'/onyx/c/' + c.id}
                       className="inline-flex min-h-[38px] items-center rounded-xl bg-brand-600
                                  px-3.5 text-[13px] font-bold text-white hover:bg-brand-700">
-                      {c.access === 'locked' ? 'Sign up to buy' : 'Sign up to start'}
+                      View course
                     </Link>
                   </div>
                 </article>

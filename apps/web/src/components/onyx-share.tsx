@@ -17,14 +17,25 @@ import { Icon } from '@/components/onyx-ui';
  * which for a paper they are not enrolled on is a refusal. Sharing an address
  * is not sharing a permission.
  */
-export function ShareLink({ label = 'Copy link' }: { label?: string }) {
+export function ShareLink({ label = 'Copy link', path }: {
+  label?: string;
+  /**
+   * Share this address instead of the current one.
+   *
+   * A course has a public page as well as an in-app one, and the public page is
+   * the right thing to send: it opens for anybody, and it asks for an account
+   * only once the reader has decided they want the course.
+   */
+  path?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   return (
     <button
       type="button"
       onClick={() => {
-        void navigator.clipboard?.writeText(window.location.href);
+        void navigator.clipboard?.writeText(
+          path ? window.location.origin + path : window.location.href);
         setCopied(true);
         window.setTimeout(() => setCopied(false), 2000);
       }}

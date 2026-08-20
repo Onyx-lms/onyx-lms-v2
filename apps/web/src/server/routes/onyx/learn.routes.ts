@@ -540,6 +540,17 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
    */
   app.get('/api/onyx/catalogue', async () => ok(await ctx.onyxAcademics.publicCatalogue()));
 
+  /**
+   * One course's public page. Unauthenticated, published courses only, and the
+   * outline is titles rather than content -- a syllabus is what somebody
+   * choosing a course needs; the lessons are what they enrol for.
+   */
+  app.get('/api/onyx/c/:id', async (req) => {
+    const course = await ctx.onyxAcademics.publicCourse(idOf(req));
+    if (!course) throw new HttpError(404, 'No course at that address.');
+    return ok(course);
+  });
+
   app.post('/api/onyx/courses/:id/purchase', async (req) => {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
     const result = await ctx.onyxAcademics.purchase(claims.tenant_id, idOf(req), claims.user_id);

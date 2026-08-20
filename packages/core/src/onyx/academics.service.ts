@@ -598,6 +598,107 @@ export class AcademicsService {
     }));
   }
 
+  /**
+   * A course's public page: what it is, who runs it, what is inside, and what
+   * it costs. No content, no roster, no marks.
+   *
+   * Every PUBLISHED course has one, whether or not its institution advertises
+   * publicly. The two are different things and the split is deliberate: the
+   * homepage catalogue LISTS courses, and listing an institution's internal
+   * cohort courses to the world would be advertising on their behalf, so that
+   * stays opt-in (publicCatalogue, gated on student_signup). This answers when
+   * somebody already has the address -- a lecturer sent it, or a learner is
+   * deciding whether to sign up -- and a link that 404s for the person it was
+   * sent to is a link nobody can use.
+   *
+   * A draft has no page at all. It is not a course yet.
+   *
+   * The outline is titles only: module names, lesson names, their kind and how
+   * long they run. That is a syllabus, which is what somebody choosing a course
+   * needs; the lessons themselves stay behind enrolment, which is what they are
+   * paying or registering for.
+   */
+  async publicCourse(courseId: number) {
+    const { data: course } = await this.#db.from('onyx_courses')
+      .select(COURSE_COLUMNS).eq('id', courseId).eq('status', 1).maybeSingle();
+    if (!course) return null;
+
+    const tenantId = Number(course.tenant_id);
+    const [{ data: tenant }, { data: modules }, { data: faculty }, { count: enrolled }] =
+      await Promise.all([
+        this.#db.from('onyx_tenants')
+          .select('id, name, slug, status, student_signup').eq('id', tenantId).maybeSingle(),
+        this.#db.from('onyx_modules')
+          .select('id, title, summary, sort').eq('tenant_id', tenantId)
+          .eq('course_id', courseId).order('sort'),
+        this.#db.from('onyx_course_faculty')
+          .select('user_id').eq('tenant_id', tenantId).eq('course_id', courseId),
+        this.#db.from('onyx_enrollments')
+          .select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId).eq('course_id', courseId).eq('status', 1),
+      ]);
+
+    if (!tenant || tenant.status !== 1) return null;
+
+    interface LessonRow {
+      id: number; module_id: number; title: string; type: string | null;
+      duration_seconds: number | null; is_preview: boolean | null; sort: number | null;
+    }
+    const moduleIds = (modules ?? []).map((m) => Number(m.id));
+    const { data: lessonRows } = moduleIds.length
+      ? await this.#db.from('onyx_lessons')
+        .select('id, module_id, title, type, duration_seconds, is_preview, sort')
+        .eq('tenant_id', tenantId).in('module_id', moduleIds).order('sort')
+      : { data: [] };
+    const lessons = (lessonRows ?? []) as unknown as LessonRow[];
+
+    const facultyIds = (faculty ?? []).map((f) => String(f.user_id));
+    const { data: people } = facultyIds.length
+      ? await this.#db.from('onyx_users').select('id, name').in('id', facultyIds)
+      : { data: [] as { id: string; name: string }[] };
+
+    const byModule = new Map<number, LessonRow[]>();
+    for (const l of lessons) {
+      const list = byModule.get(Number(l.module_id)) ?? [];
+      list.push(l);
+      byModule.set(Number(l.module_id), list);
+    }
+
+    const totalSeconds = lessons.reduce((n, l) => n + Number(l.duration_seconds ?? 0), 0);
+
+    return {
+      id: Number(course.id),
+      code: String(course.code),
+      title: String(course.title),
+      description: course.description ? String(course.description) : null,
+      credits: Number(course.credits ?? 0),
+      access: String(course.access) as 'batch' | 'open' | 'locked',
+      price_minor: Number(course.price_minor ?? 0),
+      currency: String(course.currency ?? 'INR'),
+      institution: {
+        name: String(tenant.name),
+        slug: String(tenant.slug),
+        /** Whether somebody without an account can register to take it. */
+        registration_open: Boolean(tenant.student_signup),
+      },
+      taught_by: (people ?? []).map((u) => String(u.name)),
+      learners: Number(enrolled ?? 0),
+      lesson_count: lessons.length,
+      total_minutes: Math.round(totalSeconds / 60),
+      modules: (modules ?? []).map((m) => ({
+        id: Number(m.id),
+        title: String(m.title),
+        summary: m.summary ? String(m.summary) : null,
+        lessons: (byModule.get(Number(m.id)) ?? []).map((l) => ({
+          title: String(l.title),
+          type: String(l.type ?? 'text'),
+          minutes: Math.round(Number(l.duration_seconds ?? 0) / 60),
+          preview: Boolean(l.is_preview),
+        })),
+      })),
+    };
+  }
+
   /** Whether this learner has already bought this course. */
   async hasPurchased(tenantId: number, courseId: number, userId: string): Promise<boolean> {
     const { data } = await this.#db.from('onyx_course_purchases')

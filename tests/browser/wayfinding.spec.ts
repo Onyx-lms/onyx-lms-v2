@@ -74,13 +74,17 @@ test.describe('the front page lets a learner in', () => {
       const section = page.getByRole('heading', { name: /Courses you can start/ });
       await expect(section).toBeVisible();
 
-      // A paid course states its price here rather than behind a click.
-      const paid = courses.find((c) => c.access === 'locked');
+      // A paid course states its price here rather than behind a click, and
+      // the card leads to the COURSE rather than straight at a signup form:
+      // somebody deciding whether to register wants to see what they would be
+      // registering for.
+      const paid = courses.find((c) => c.access === 'locked') as
+        { id: number; price_minor: number } | undefined;
       if (paid) {
         await expect(page.getByText('INR ' + Math.floor(paid.price_minor / 100)
           .toLocaleString('en-IN')).first()).toBeVisible();
-        await expect(page.getByRole('link', { name: 'Sign up to buy' }).first())
-          .toHaveAttribute('href', '/onyx/signup');
+        await expect(page.getByRole('link', { name: 'View course' }).first())
+          .toHaveAttribute('href', '/onyx/c/' + paid.id);
       }
     });
 });

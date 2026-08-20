@@ -124,7 +124,7 @@ export default async function OnyxCoursePage({ params }: { params: Promise<{ id:
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <BackLink href="/onyx/courses" label="All courses" />
-        <ShareLink label="Copy link" />
+        <ShareLink label="Copy public link" path={'/onyx/c/' + outline.course.id} />
       </div>
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
         <div className="min-w-0 space-y-6">
