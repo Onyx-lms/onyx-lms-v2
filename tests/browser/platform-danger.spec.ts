@@ -52,6 +52,10 @@ test.describe('the platform console', () => {
   test.beforeEach(async ({ page }) => { await signIn(page); });
 
   test('no institution tab carries a destructive control', async ({ page }) => {
+    // Eleven full page loads. Against a local build that is comfortably inside
+    // the default 30s; against a preview deployment, where several of these
+    // are the first request to a cold function, it is not.
+    test.setTimeout(150_000);
     const base = await openTenant(page);
     const tabs = ['', '/students', '/faculty', '/staff', '/courses', '/timetable',
       '/examinations', '/assessments', '/permissions', '/grades', '/fees'];
