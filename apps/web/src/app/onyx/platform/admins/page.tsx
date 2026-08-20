@@ -19,6 +19,7 @@ export default async function OnyxPlatformAdminsPage() {
   return (
     <OnyxPlatformShell
       email={session.email}
+      breadcrumb={[{ label: 'Platform' }, { label: 'Operators' }]}
       title="Operators"
       subtitle={admins.length === 1
         ? 'One operator.'

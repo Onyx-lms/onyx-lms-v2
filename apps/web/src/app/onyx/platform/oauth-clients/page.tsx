@@ -32,6 +32,7 @@ export default async function OnyxOAuthClientsPage() {
   return (
     <OnyxPlatformShell
       email={session.email}
+      breadcrumb={[{ label: 'Platform' }, { label: 'OAuth clients' }]}
       title="OAuth clients"
       subtitle={clients.length === 0
         ? 'No third-party app has registered yet.'

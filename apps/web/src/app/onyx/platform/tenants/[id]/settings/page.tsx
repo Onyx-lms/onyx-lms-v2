@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { requirePlatformSession, platformApi } from '@/lib/onyx-platform-session';
-import { TenantBackLink, type TenantDetail } from '@/lib/onyx-platform-tenant';
+import { type TenantDetail } from '@/lib/onyx-platform-tenant';
 import { SuspendToggle, TenantEditForm, DeleteTenantButton } from '@/components/onyx-platform-forms';
 import { Card } from '@/components/onyx-ui';
 
@@ -32,7 +32,6 @@ export default async function OnyxPlatformTenantSettingsPage(
 
   return (
     <div className="min-w-0 max-w-3xl space-y-4">
-      <TenantBackLink tenantId={tenant.id} />
 
       <Card className="p-4">
         <h2 className="text-[15px] font-bold">Institution details</h2>

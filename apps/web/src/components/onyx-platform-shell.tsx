@@ -6,6 +6,7 @@ import { OnyxMark } from '@/components/onyx-brand';
 import { PlatformSignOut, CreateProfileForm, CreateTenantForm } from '@/components/onyx-platform-forms';
 import { PlatformNavLinks } from '@/components/onyx-platform-nav-links';
 import { Icon } from '@/components/onyx-ui';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 /**
  * The platform console's own shell -- not OnyxShell.
@@ -36,13 +37,31 @@ import { Icon } from '@/components/onyx-ui';
  * OnyxShell: sidebar is desktop-only, a hamburger opens the same content as a
  * sheet on top of the page instead of pushing it down.
  */
-export function OnyxPlatformShell({ email, title, subtitle, children, action, sidebarNav }: {
+export interface Crumb { href?: string; label: string }
+
+export function OnyxPlatformShell({
+  email, title, subtitle, children, action, sidebarNav, breadcrumb, badge,
+}: {
   email: string;
   title: string;
   subtitle?: string;
   children: React.ReactNode;
   /** The primary action for this screen, beside the title. */
   action?: React.ReactNode;
+  /**
+   * The trail above the title -- "Institutions / ABC Institution / Students".
+   *
+   * Added because the console had no way to say where you were. Inside an
+   * institution every one of the thirteen sections used the institution's name
+   * as its h1, so the Fees page and the Students page and the grade book were
+   * all headed "ABC Institution" and the only clue which one you had open was
+   * which sidebar row happened to be filled in. Naming the section in the h1
+   * and putting the path above it is what Dialpad, Salesforce Setup, Etsy's
+   * seller console and Relevance AI all do, for the same reason.
+   */
+  breadcrumb?: Crumb[];
+  /** A status chip beside the title -- suspended institutions, mostly. */
+  badge?: React.ReactNode;
   /**
    * Institution-scoped navigation, rendered below the platform-wide links
    * rather than instead of them -- Institutions and Platform admins stay one
@@ -72,11 +91,20 @@ export function OnyxPlatformShell({ email, title, subtitle, children, action, si
         {/* Said out loud, in the one place it cannot be missed. Every other
             screen in this product acts on one institution; this one acts on
             all of them. */}
+        {/* `text-canvas`, not `text-white`: in dark mode `--c-ink` becomes a
+            near-white, so white-on-ink turned this badge into an unreadable
+            pale smear (1.17:1). Both tokens flip together, so the chip stays
+            legible in either theme. */}
         <span className="rounded-full bg-ink px-2.5 py-1 text-[11px] font-bold uppercase
-                         tracking-[.08em] text-white">
+                         tracking-[.08em] text-canvas">
           Platform
         </span>
         <span className="flex-1" />
+        {/* The console was the one surface in the product with no way to
+            switch theme -- OnyxShell and the marketing header both carry this
+            control, and an operator who works in the dark was stuck with a
+            white page here. */}
+        <ThemeToggle />
         <span className="hidden truncate text-xs text-muted sm:block" title={email}>{email}</span>
       </header>
 
@@ -116,12 +144,34 @@ export function OnyxPlatformShell({ email, title, subtitle, children, action, si
         {/* A div, for the same reason as onyx-shell.tsx: the root layout owns
             the one `<main id="main">` and the skip link targets it. */}
         <div className="min-w-0">
-          <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-extrabold tracking-tight sm:text-[28px]">{title}</h1>
-              {subtitle ? <p className="mt-1 text-sm text-muted">{subtitle}</p> : null}
+          <div className="mb-5">
+            {breadcrumb?.length ? (
+              <nav aria-label="Breadcrumb" className="mb-1.5">
+                <ol className="flex flex-wrap items-center gap-1 text-[12px] font-semibold
+                               uppercase tracking-[.07em] text-muted">
+                  {breadcrumb.map((c, i) => (
+                    <li key={c.label} className="flex items-center gap-1">
+                      {i > 0 ? <span aria-hidden="true" className="text-faint">/</span> : null}
+                      {c.href
+                        ? <Link href={c.href} className="hover:text-brand-700 hover:underline">
+                          {c.label}
+                        </Link>
+                        : <span>{c.label}</span>}
+                    </li>
+                  ))}
+                </ol>
+              </nav>
+            ) : null}
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h1 className="text-2xl font-extrabold tracking-tight sm:text-[28px]">{title}</h1>
+                  {badge}
+                </div>
+                {subtitle ? <p className="mt-1 text-sm text-muted">{subtitle}</p> : null}
+              </div>
+              {action}
             </div>
-            {action}
           </div>
           {children}
         </div>

@@ -178,6 +178,42 @@ export function DueCell({ at }: { at: string | null }) {
   return <Pill tone={due.tone}>{due.text}</Pill>;
 }
 
+/**
+ * A date whose meaning depends on whether the thing has happened yet.
+ *
+ * `DueCell` is a DEADLINE: it counts down, and once the date passes it says
+ * "26 days late" in red, which is exactly right for an assignment nobody has
+ * handed in. It was also being used for an exam's sitting date and an
+ * assessment's closing date, where it was exactly wrong -- the console showed
+ * "Completed · 26 days late" for an exam that was sat a month ago and marked,
+ * and "Closed · in 2 weeks" for an assessment that had already closed.
+ *
+ * Once a record has reached a terminal state the date behind it is history,
+ * not a deadline, so it is read backwards: "26 days ago", in neutral ink.
+ * Anything still open keeps the countdown, because for those the deadline
+ * still means something.
+ */
+const SETTLED = new Set(['completed', 'closed', 'cancelled', 'archived', 'published', 'graded']);
+
+export function WhenCell({ at, status }: { at: string | null; status: string }) {
+  if (!at) return <Pill tone="neutral">Not set</Pill>;
+  if (SETTLED.has(status)) {
+    // A settled record whose date is still in the future is a contradiction --
+    // an assessment marked closed that "closes in 2 weeks". Neither reading is
+    // safe to assert, so state the date itself and let the operator judge.
+    const future = Date.parse(at) > Date.now();
+    return (
+      <Pill tone="neutral">
+        {future
+          ? new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+          : ago(at)}
+      </Pill>
+    );
+  }
+  const due = relativeDue(at);
+  return <Pill tone={due.tone}>{due.text}</Pill>;
+}
+
 /** A fact in a summary card. Label above, value below. */
 export function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -198,23 +234,12 @@ export function Unavailable({ what }: { what: string }) {
   );
 }
 
-/**
- * A way back that does not depend on noticing the sidebar. The sidebar nav
- * is always there, but an operator who just finished a task on this page has
- * their eyes and mouse here, not over on the left -- a local "go up one
- * level" link is what browser back does when it works, and a step cheaper
- * when a click along the way changed the URL enough that back does not.
+/*
+ * TenantBackLink used to live here -- a "‹ Overview" link at the top of every
+ * section. The layout's breadcrumb (Institutions / ABC Institution / Students)
+ * now does that job, in the place a person looks for it, and does it better:
+ * it goes up two levels, not one, and it names where each step lands.
  */
-export function TenantBackLink({ tenantId }: { tenantId: number }) {
-  return (
-    <Link href={'/onyx/platform/tenants/' + tenantId}
-      className="inline-flex items-center gap-1 text-[13px] font-semibold text-muted
-                 hover:text-brand-700 hover:underline">
-      <Icon name="chevron" className="h-3.5 w-3.5 rotate-180" />
-      Overview
-    </Link>
-  );
-}
 
 /**
  * The strip above a roster table: what the table holds on the left, the one
@@ -231,17 +256,64 @@ export function TenantBackLink({ tenantId }: { tenantId: number }) {
  * the table underneath, and it tells an operator whether the row they just
  * added actually arrived.
  */
-export function RosterHeader({ count, noun, plural: many, action }: {
-  count: number; noun: string; plural?: string; action: React.ReactNode;
+export function RosterHeader({ count, noun, plural: many, action, aside }: {
+  count: number; noun: string; plural?: string; action?: React.ReactNode;
+  /** Anything between the count and the action -- a search box, usually. */
+  aside?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center gap-3">
       <p className="text-[13px] font-semibold text-muted">
         {plural(count, noun, many)} at this institution
       </p>
-      <div className="w-full sm:w-auto">{action}</div>
+      <span className="flex-1" />
+      {aside}
+      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   );
+}
+
+/**
+ * Search within a roster.
+ *
+ * A GET form rather than a client-side filter, for the same reasons the
+ * institutions directory uses one: the query lives in the URL so it survives a
+ * reload and can be sent to a colleague, and the page stays a server
+ * component. It narrows the rows the console already holds -- the API caps a
+ * roster at 200 -- which is the same set the table was showing anyway.
+ *
+ * It exists because the rosters had no search at all. Twelve rows is fine;
+ * four hundred is a page you scroll looking for one name, which is what an
+ * operator opening a customer's roll is almost always doing.
+ */
+export function RosterSearch({ q, placeholder }: { q?: string; placeholder: string }) {
+  return (
+    <form method="get" className="flex min-w-0 items-center gap-2">
+      <label className="sr-only" htmlFor="roster-q">Search this roster</label>
+      <div className="relative min-w-0">
+        <Icon name="search"
+          className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2
+                     text-faint" />
+        <input id="roster-q" name="q" defaultValue={q ?? ''} placeholder={placeholder}
+          className="block min-h-[38px] w-[17rem] max-w-full rounded-xl border border-line
+                     bg-white pl-8 pr-2.5 text-[13.5px] focus:border-slate-500
+                     focus:outline-none focus:ring-2 focus:ring-ink/20" />
+      </div>
+      {q ? (
+        <a href="?" className="text-[12.5px] font-semibold text-muted hover:text-brand-700
+                               hover:underline">Clear</a>
+      ) : null}
+    </form>
+  );
+}
+
+/** Does this person match what was typed? Name, email, roll, batch, programme. */
+export function matchesPerson(p: Person, q: string): boolean {
+  if (!q) return true;
+  const needle = q.trim().toLowerCase();
+  if (!needle) return true;
+  return [p.name, p.email, p.role, p.batch?.code, p.batch?.name, p.programme?.name]
+    .some((v) => typeof v === 'string' && v.toLowerCase().includes(needle));
 }
 
 export const SCROLLER = 'min-w-0';

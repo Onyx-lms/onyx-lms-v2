@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import {
-  attempt, ago, SCROLLER, AccountState, RosterHeader, TenantBackLink, Unavailable,
+  attempt, ago, SCROLLER, AccountState, RosterHeader, RosterSearch, matchesPerson, Unavailable,
   type PeoplePayload,
 } from '@/lib/onyx-platform-tenant';
 import {
@@ -31,21 +31,25 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export default async function OnyxPlatformOtherRolesPage(
-  { params }: { params: Promise<{ id: string }> },
+  { params, searchParams }: {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<{ q?: string }>;
+  },
 ) {
   await requirePlatformSession();
   const { id } = await params;
+  const { q } = await searchParams;
   const tenantId = Number(id);
 
   const results = await Promise.all(ROLES.map((role) => attempt<PeoplePayload>(
     '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/people?role=' + role)));
   const anyFailed = results.some((r) => r === null);
   const people = results.flatMap((r) => r?.people ?? [])
+    .filter((p) => matchesPerson(p, q ?? ''))
     .sort((a, b) => a.role.localeCompare(b.role) || a.name.localeCompare(b.name));
 
   return (
     <div className="min-w-0 space-y-4">
-      <TenantBackLink tenantId={tenantId} />
 
       {anyFailed ? <Unavailable what="staff and guardian list" /> : (
         <>
@@ -55,7 +59,9 @@ export default async function OnyxPlatformOtherRolesPage(
           {/* Summed across the five reads, not one payload's `total`: this tab
               is five role queries stitched together. */}
           <RosterHeader
-            count={results.reduce((n, r) => n + (r?.total ?? 0), 0)} noun="person" plural="people"
+            count={q ? people.length : results.reduce((n, r) => n + (r?.total ?? 0), 0)}
+            noun="person" plural="people"
+            aside={<RosterSearch q={q} placeholder="Name, email or role" />}
             action={<CreateProfileForm lockedTenant={{ id: tenantId }} defaultType="exams"
               cta="Add someone" />}
           />

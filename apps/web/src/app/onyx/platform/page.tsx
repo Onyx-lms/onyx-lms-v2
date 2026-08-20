@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxPlatformShell } from '@/components/onyx-platform-shell';
 import { requirePlatformSession, platformApi } from '@/lib/onyx-platform-session';
-import { attempt } from '@/lib/onyx-platform-tenant';
+import { attempt, plural } from '@/lib/onyx-platform-tenant';
 import { CreateTenantForm } from '@/components/onyx-platform-forms';
 import { TrendBars } from '@/components/onyx-chart';
 import {
@@ -107,8 +107,7 @@ export default async function OnyxPlatformPage(
     const slot = monthAt.get(d.getFullYear() + '-' + d.getMonth());
     if (slot) slot.value += 1;
   }
-  const newestFirst = [...headline]
-    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  const activeMonths = months.filter((m) => m.value > 0).length;
   const addedThisMonth = months[months.length - 1]!.value;
   const biggest = [...headline].sort((a, b) => b.member_count - a.member_count).slice(0, 4);
 
@@ -140,6 +139,11 @@ export default async function OnyxPlatformPage(
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)] xl:items-start">
           <div className="min-w-0 space-y-5">
+            {/* Drawn only when there is a shape to draw. Six buckets with one
+                bar in them is not a trend, it is a single number wearing an
+                axis -- and that is exactly what a young platform produces, so
+                the chart read as a rendering fault rather than as data. Below
+                two active months the same fact is stated in a sentence. */}
             <section>
               <SectionHead title="Institutions created" />
               <Card className="p-4">
@@ -154,8 +158,18 @@ export default async function OnyxPlatformPage(
                     {headline.length} on the platform in total
                   </div>
                 </div>
-                <TrendBars points={months} title="Institutions created per month"
-                  unit="institution" />
+                {activeMonths >= 2 ? (
+                  <TrendBars points={months} title="Institutions created per month"
+                    unit="institution" />
+                ) : (
+                  <p className="mt-1 text-[13px] leading-relaxed text-muted">
+                    {activeMonths === 0
+                      ? 'None were created in the last six months.'
+                      : 'All of them in ' + (months.find((m) => m.value)?.full ?? 'one month')
+                        + '. A month-by-month chart appears once there is more than one month'
+                        + ' to compare.'}
+                  </p>
+                )}
               </Card>
             </section>
 
@@ -169,11 +183,13 @@ export default async function OnyxPlatformPage(
                 <h2 className="text-[11.5px] font-bold uppercase tracking-[.085em] text-muted">
                   Every institution
                 </h2>
-                {filtered ? (
-                  <p className="text-[12.5px] text-muted">
-                    Showing {tenants.length} of {headline.length}
-                  </p>
-                ) : null}
+                {/* Always, not only while filtered: a table with no count is a
+                    table you have to scroll to the end of to know the size of. */}
+                <p className="text-[12.5px] text-muted">
+                  {filtered
+                    ? 'Showing ' + tenants.length + ' of ' + headline.length
+                    : plural(tenants.length, 'institution')}
+                </p>
               </div>
 
               {/* A GET form: the filter lives in the URL, so it survives a
@@ -316,30 +332,11 @@ export default async function OnyxPlatformPage(
               )}
             </section>
 
-            {/* Two short lists rather than two more tables: newest tells an
-                operator who has just arrived and may need looking after, and
-                largest tells them where the load actually is. Both are read
-                off the list already fetched. */}
-            <section>
-              <SectionHead title="Newest institutions" />
-              <RowList label="Most recently created institutions">
-                {newestFirst.slice(0, 4).map((t) => (
-                  <ListRow
-                    key={t.id}
-                    icon="building"
-                    tone="neutral"
-                    href={'/onyx/platform/tenants/' + t.id}
-                    title={t.name}
-                    meta={new Date(t.created_at).toLocaleDateString(undefined,
-                      { day: 'numeric', month: 'short', year: 'numeric' })}
-                    trailing={<span className="text-[13px] font-bold tabular-nums">
-                      {t.member_count}
-                    </span>}
-                  />
-                ))}
-              </RowList>
-            </section>
-
+            {/* One short list, not two. "Newest institutions" used to sit here
+                as well, and it was the table on the left in a narrower box --
+                the directory is already ordered newest-first, so the rail
+                repeated its top four rows verbatim. This one earns its place
+                by being a DIFFERENT ordering: where the load actually is. */}
             <section>
               <SectionHead title="Largest institutions" />
               <RowList label="Institutions by member count">

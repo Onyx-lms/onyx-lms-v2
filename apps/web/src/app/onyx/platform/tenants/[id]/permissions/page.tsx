@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
-import { attempt, TenantBackLink, Unavailable } from '@/lib/onyx-platform-tenant';
+import { attempt, Unavailable } from '@/lib/onyx-platform-tenant';
 import { PermissionMatrix, type CapabilityRow } from '@/components/onyx-permissions';
 
 export const metadata: Metadata = { title: 'Permissions' };
@@ -35,7 +35,6 @@ export default async function OnyxPlatformPermissionsPage(
 
   return (
     <div className="min-w-0 space-y-4">
-      <TenantBackLink tenantId={tenantId} />
       {data === null ? <Unavailable what="permissions" /> : (
         <PermissionMatrix
           capabilities={data.capabilities}

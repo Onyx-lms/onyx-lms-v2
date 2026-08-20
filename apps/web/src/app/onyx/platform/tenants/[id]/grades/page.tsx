@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import {
-  attempt, DueCell, SCROLLER, TenantBackLink, Unavailable, Workflow, type AcademicsPayload,
+  attempt, WhenCell, SCROLLER, Unavailable, Workflow, type AcademicsPayload,
 } from '@/lib/onyx-platform-tenant';
 import { DataTable, EmptyRow } from '@/components/onyx-ui';
 
@@ -33,7 +33,6 @@ export default async function OnyxPlatformGradesPage(
 
   return (
     <div className="min-w-0 space-y-6">
-      <TenantBackLink tenantId={tenantId} />
       <p className="max-w-prose text-[13px] text-muted">
         Pick an examination or an assessment below to see who sat it and what they scored.
       </p>
@@ -66,7 +65,7 @@ export default async function OnyxPlatformGradesPage(
                     <td className="font-mono text-[12.5px]">
                       {e.course?.code ?? <span className="font-sans text-muted">—</span>}
                     </td>
-                    <td><DueCell at={e.starts_at} /></td>
+                    <td><WhenCell at={e.starts_at} status={e.status} /></td>
                     <td className="whitespace-nowrap tabular-nums">
                       {e.marks_entered}
                       <span className="text-[12.5px] text-muted"> ({e.marks_published} published)</span>
@@ -110,7 +109,7 @@ export default async function OnyxPlatformGradesPage(
                     <td className="font-mono text-[12.5px]">
                       {a.course?.code ?? <span className="font-sans text-muted">—</span>}
                     </td>
-                    <td><DueCell at={a.closes_at} /></td>
+                    <td><WhenCell at={a.closes_at} status={a.status} /></td>
                     <td className="whitespace-nowrap tabular-nums">
                       {a.attempt_count}
                       <span className="text-[12.5px] text-muted"> ({a.submitted_count} sat)</span>

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import {
-  attempt, SCROLLER, TenantBackLink, Unavailable, Workflow, money, type FeesPayload,
+  attempt, SCROLLER, Unavailable, Workflow, money, type FeesPayload,
 } from '@/lib/onyx-platform-tenant';
 import {
   CreateFeeHeadForm, CreateFeeStructureForm, FeeStructureStatusButtons,
@@ -33,7 +33,6 @@ export default async function OnyxPlatformFeesPage(
   if (fees === null) {
     return (
       <div className="min-w-0 space-y-4">
-        <TenantBackLink tenantId={tenantId} />
         <Unavailable what="fees" />
       </div>
     );
@@ -41,7 +40,6 @@ export default async function OnyxPlatformFeesPage(
 
   return (
     <div className="min-w-0 space-y-6">
-      <TenantBackLink tenantId={tenantId} />
       <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <StatTile label="Fee heads" value={fees.heads.length} note="categories of charge" />
         <StatTile label="Structures" value={fees.structures.length} note="fee plans defined" />
@@ -66,12 +64,16 @@ export default async function OnyxPlatformFeesPage(
       </section>
 
       <section className="min-w-0 space-y-3">
+        {/* Heading on the left, the action that adds to this section on the
+            right -- the shape every other section in the console uses. The
+            create button used to sit on its own line below the heading, where
+            (being full-width at the time) it read as a page-wide banner. */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-[11.5px] font-bold uppercase tracking-[.085em] text-muted">
             Fee heads &middot; {fees.heads.length}
           </h2>
+          <CreateFeeHeadForm tenantId={tenantId} />
         </div>
-        <CreateFeeHeadForm tenantId={tenantId} />
         {fees.heads.length === 0 ? (
           <Card className="p-0"><Empty icon="wallet">No fee heads defined yet.</Empty></Card>
         ) : (
@@ -93,11 +95,13 @@ export default async function OnyxPlatformFeesPage(
       </section>
 
       <section className="min-w-0 space-y-3">
-        <h2 className="text-[11.5px] font-bold uppercase tracking-[.085em] text-muted">
-          Fee structures &middot; {fees.structures.length}
-        </h2>
-        <CreateFeeStructureForm tenantId={tenantId}
-          heads={fees.heads.map((h) => ({ id: h.id, code: h.code, name: h.name }))} />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-[11.5px] font-bold uppercase tracking-[.085em] text-muted">
+            Fee structures &middot; {fees.structures.length}
+          </h2>
+          <CreateFeeStructureForm tenantId={tenantId}
+            heads={fees.heads.map((h) => ({ id: h.id, code: h.code, name: h.name }))} />
+        </div>
         {fees.structures.length === 0 ? (
           <Card className="p-0"><Empty icon="wallet">No fee structures yet.</Empty></Card>
         ) : (

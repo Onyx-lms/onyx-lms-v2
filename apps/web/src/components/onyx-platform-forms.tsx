@@ -22,8 +22,22 @@ const field = 'mt-1.5 block min-h-[46px] w-full rounded-xl border border-line bg
   + 'hover:border-slate-300 focus:border-slate-500 focus:outline-none focus:ring-2 '
   + 'focus:ring-ink/20';
 const label = 'block text-[13.5px] font-semibold text-slate-700';
-const button = 'inline-flex min-h-[46px] w-full items-center justify-center rounded-xl '
-  + 'bg-brand-600 px-4 text-[15px] font-bold text-white shadow-card transition '
+/*
+ * The primary button, and the one place this file used to look amateur.
+ *
+ * It carried `w-full`, because the first two things that used it -- the two
+ * create actions in the 216px sidebar -- want to fill their column. Every
+ * later page-level action reused the same constant, so "Add a course", "Add a
+ * fee head" and "Grant platform admin" each rendered as a 1,140px teal slab
+ * across the top of its page: the single loudest element on screen, wider than
+ * the table it belonged to, and the first thing anyone saw when opening the
+ * console. Nobody ships an enterprise product with a full-bleed button.
+ *
+ * It is now sized to its label. The sidebar keeps its own full-width pair
+ * (navButton / navButtonQuiet), which is what those two forms already used.
+ */
+const button = 'inline-flex min-h-[42px] items-center justify-center rounded-xl '
+  + 'bg-brand-600 px-4 text-[14.5px] font-bold text-white shadow-card transition '
   + 'hover:bg-brand-700 disabled:opacity-50';
 
 function Error_({ message }: { message: string | null }) {

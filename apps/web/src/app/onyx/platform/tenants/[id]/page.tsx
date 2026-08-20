@@ -40,20 +40,13 @@ export default async function OnyxPlatformTenantOverviewPage(
           <h2 className="text-[11px] font-bold uppercase tracking-[.08em] text-muted">
             Institution
           </h2>
+          {/* Address and plan used to be here too. They are in the strip at
+              the top of every section now, and a fact stated twice on one
+              screen is a screen that has not decided where it lives. */}
           <dl className="mt-3 space-y-3">
             <div>
               <dt className="text-[11px] font-bold uppercase tracking-[.08em] text-muted">Id</dt>
               <dd className="mt-0.5 font-mono text-[13px]">#{tenant.id}</dd>
-            </div>
-            <div>
-              <dt className="text-[11px] font-bold uppercase tracking-[.08em] text-muted">
-                Address
-              </dt>
-              <dd className="mt-0.5 font-mono text-[13px]">{tenant.slug}</dd>
-            </div>
-            <div>
-              <dt className="text-[11px] font-bold uppercase tracking-[.08em] text-muted">Plan</dt>
-              <dd className="mt-0.5 text-[13px]">{tenant.plan ?? 'None recorded'}</dd>
             </div>
             <div>
               <dt className="text-[11px] font-bold uppercase tracking-[.08em] text-muted">

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import {
-  attempt, DueCell, SCROLLER, TenantBackLink, Unavailable, Workflow, type AcademicsPayload,
+  attempt, RosterHeader, WhenCell, SCROLLER, Unavailable, Workflow, type AcademicsPayload,
 } from '@/lib/onyx-platform-tenant';
 import { CreateAssessmentForm, AssessmentEditToggle } from '@/components/onyx-platform-forms';
 import { DataTable, EmptyRow } from '@/components/onyx-ui';
@@ -21,8 +21,8 @@ export default async function OnyxPlatformAssessmentsPage(
 
   return (
     <div className="min-w-0 space-y-4">
-      <TenantBackLink tenantId={tenantId} />
-      <CreateAssessmentForm tenantId={tenantId} courses={courses} />
+      <RosterHeader count={assessments.length} noun="assessment"
+        action={<CreateAssessmentForm tenantId={tenantId} courses={courses} />} />
 
       {academics === null ? <Unavailable what="assessment list" /> : (
         <div tabIndex={0} role="region" aria-label="Assessments" className={SCROLLER}>
@@ -54,7 +54,7 @@ export default async function OnyxPlatformAssessmentsPage(
                 <td className="font-mono text-[12.5px]">
                   {a.course?.code ?? <span className="font-sans text-muted">—</span>}
                 </td>
-                <td><DueCell at={a.closes_at} /></td>
+                <td><WhenCell at={a.closes_at} status={a.status} /></td>
                 <td className="whitespace-nowrap tabular-nums">
                   {a.attempt_count}
                   <span className="text-[12.5px] text-muted"> ({a.submitted_count} sat)</span>

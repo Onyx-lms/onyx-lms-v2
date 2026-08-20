@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
-import { attempt, SCROLLER, TenantBackLink, Unavailable, Workflow } from '@/lib/onyx-platform-tenant';
+import { attempt, SCROLLER, Unavailable, Workflow } from '@/lib/onyx-platform-tenant';
 import { WEEKDAYS, hhmm } from '@/lib/onyx-campus';
 import { DataTable, EmptyRow, SectionHead, StatTile } from '@/components/onyx-ui';
 
@@ -47,7 +47,6 @@ export default async function OnyxPlatformTimetablePage(
 
   return (
     <div className="min-w-0 space-y-4">
-      <TenantBackLink tenantId={tenantId} />
 
       {timetable === null ? <Unavailable what="timetable" /> : (
         <>

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxPlatformShell } from '@/components/onyx-platform-shell';
 import { requirePlatformSession, platformApi } from '@/lib/onyx-platform-session';
-import { ago } from '@/lib/onyx-platform-tenant';
+import { ago, plural } from '@/lib/onyx-platform-tenant';
 import { DataTable, Empty, Icon, Pill } from '@/components/onyx-ui';
 
 export const metadata: Metadata = { title: 'Audit log' };
@@ -42,60 +42,81 @@ export default async function OnyxPlatformAuditPage(
   if (q.entity_type) qs.set('entity_type', q.entity_type);
   qs.set('limit', '200');
 
-  const [rows, filters] = await Promise.all([
+  const [rows, filters, tenants] = await Promise.all([
     platformApi<AuditRow[]>('/api/onyx/platform/audit?' + qs.toString()),
     platformApi<{ actions: string[]; entityTypes: string[] }>('/api/onyx/platform/audit/filters'),
+    // Read so the log can NAME what was acted on. It listed "Institution #194"
+    // beside a link that 404'd, because #194 was a tenant somebody had since
+    // deleted -- an audit trail whose whole job is to say what happened, saying
+    // it in primary keys and offering a door to nowhere.
+    platformApi<{ id: number; name: string }[]>('/api/onyx/platform/tenants'),
   ]);
   const { actions, entityTypes } = filters;
   const filtered = Boolean(q.action || q.entity_type);
+  const liveTenants = new Map(tenants.map((t) => [t.id, t.name]));
+
+  /** The record's name: from the platform today, else from what was recorded. */
+  const nameOf = (r: AuditRow): string | null => {
+    if (r.entity_type === 'tenant' && r.entity_id != null) {
+      const live = liveTenants.get(r.entity_id);
+      if (live) return live;
+    }
+    const after = r.after as Record<string, unknown> | null;
+    const before = r.before as Record<string, unknown> | null;
+    for (const src of [after, before]) {
+      const n = src?.name ?? src?.title ?? src?.email;
+      if (typeof n === 'string' && n) return n;
+    }
+    return null;
+  };
 
   return (
     <OnyxPlatformShell
       email={session.email}
       title="Audit log"
-      subtitle="Every write a platform admin has made, across every institution -- the most privileged reads are logged too."
+      breadcrumb={[{ href: '/onyx/platform', label: 'Platform' }, { label: 'Audit log' }]}
+      subtitle={'Every write a platform admin has made, across every institution — the most '
+        + 'privileged reads are logged too.'}
     >
-      <div className="space-y-5">
-        <form method="get"
-          className="flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-white p-3.5">
-          <div>
-            <label className="block text-[13px] font-semibold text-slate-700" htmlFor="af-entity">
-              Entity
-            </label>
-            <select id="af-entity" name="entity_type" defaultValue={q.entity_type ?? ''}
-              className="mt-1 block min-h-[42px] rounded-xl border border-line bg-white px-3
-                         text-[14px] focus:border-slate-500 focus:outline-none
-                         focus:ring-2 focus:ring-ink/20">
-              <option value="">Any entity</option>
-              {entityTypes.map((e) => (
-                <option key={e} value={e}>{ENTITY_LABEL[e] ?? e}</option>
-              ))}
-            </select>
-          </div>
-          <div className="min-w-[220px]">
-            <label className="block text-[13px] font-semibold text-slate-700" htmlFor="af-action">
-              Action
-            </label>
-            <select id="af-action" name="action" defaultValue={q.action ?? ''}
-              className="mt-1 block min-h-[42px] w-full rounded-xl border border-line bg-white
-                         px-3 text-[14px] focus:border-slate-500 focus:outline-none
-                         focus:ring-2 focus:ring-ink/20">
-              <option value="">Any action</option>
-              {actions.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
-          </div>
+      <div className="space-y-4">
+        {/* One line of controls, matching the Institutions directory's filter
+            row. This was a boxed panel with stacked labels, which made the
+            filter the largest object on a page whose subject is the table
+            under it. */}
+        <form method="get" className="flex flex-wrap items-center gap-2">
+          <label className="sr-only" htmlFor="af-entity">Entity</label>
+          <select id="af-entity" name="entity_type" defaultValue={q.entity_type ?? ''}
+            className="min-h-[40px] rounded-xl border border-line bg-white px-3 text-[14px]
+                       focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-ink/20">
+            <option value="">Any entity</option>
+            {entityTypes.map((e) => (
+              <option key={e} value={e}>{ENTITY_LABEL[e] ?? e}</option>
+            ))}
+          </select>
+          <label className="sr-only" htmlFor="af-action">Action</label>
+          <select id="af-action" name="action" defaultValue={q.action ?? ''}
+            className="min-h-[40px] min-w-[200px] rounded-xl border border-line bg-white px-3
+                       text-[14px] focus:border-slate-500 focus:outline-none focus:ring-2
+                       focus:ring-ink/20">
+            <option value="">Any action</option>
+            {actions.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
           <button type="submit"
-            className="min-h-[42px] rounded-xl bg-brand-600 px-4 text-[14px] font-bold text-white
-                       hover:bg-brand-700">
+            className="min-h-[40px] rounded-xl border border-line bg-white px-4 text-[14px]
+                       font-bold hover:border-brand-300 hover:text-brand-700">
             Filter
           </button>
           {filtered ? (
             <Link href="/onyx/platform/audit"
-              className="inline-flex min-h-[42px] items-center px-1 text-[13px] font-semibold
+              className="inline-flex min-h-[40px] items-center px-1 text-[13px] font-semibold
                          text-muted hover:text-brand-700 hover:underline">
               Clear
             </Link>
           ) : null}
+          <span className="flex-1" />
+          <span className="text-[12.5px] text-muted">
+            {rows.length === 200 ? 'Showing the 200 most recent' : plural(rows.length, 'event')}
+          </span>
         </form>
 
         {rows.length === 0 ? (
@@ -132,19 +153,30 @@ export default async function OnyxPlatformAuditPage(
                     <Pill tone="neutral">{verb(r.action)}</Pill>
                   </td>
                   <td className="text-[13px]">
-                    {ENTITY_LABEL[r.entity_type] ?? r.entity_type}
-                    {r.entity_id != null ? (
-                      <span className="text-muted"> #{r.entity_id}</span>
-                    ) : null}
-                    {r.entity_type === 'tenant' && r.entity_id != null ? (
-                      <>
-                        {' · '}
-                        <Link href={'/onyx/platform/tenants/' + r.entity_id}
-                          className="font-semibold text-brand-700 hover:underline">
-                          Open
-                        </Link>
-                      </>
-                    ) : null}
+                    {/* Name first, kind and key underneath: an operator
+                        scanning for "who touched Meridian" reads names, and
+                        needs the id only once they have found the row. */}
+                    <div className="font-semibold">
+                      {nameOf(r) ?? (ENTITY_LABEL[r.entity_type] ?? r.entity_type)}
+                    </div>
+                    <div className="text-[12px] text-muted">
+                      {ENTITY_LABEL[r.entity_type] ?? r.entity_type}
+                      {r.entity_id != null ? ' #' + r.entity_id : ''}
+                      {/* Only where there is still something to open. A link to
+                          a deleted institution is a 404 dressed as an action. */}
+                      {r.entity_type === 'tenant' && r.entity_id != null
+                        && liveTenants.has(r.entity_id) ? (
+                          <>
+                            {' · '}
+                            <Link href={'/onyx/platform/tenants/' + r.entity_id}
+                              className="font-semibold text-brand-700 hover:underline">
+                              Open
+                            </Link>
+                          </>
+                        ) : r.entity_type === 'tenant' ? (
+                          <span className="text-muted"> · deleted</span>
+                        ) : null}
+                    </div>
                   </td>
                   <td className="whitespace-nowrap text-[12.5px] text-muted">
                     {ago(r.created_at)}

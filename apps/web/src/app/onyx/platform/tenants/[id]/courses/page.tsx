@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import {
-  attempt, SCROLLER, TenantBackLink, Unavailable, type AcademicsPayload,
+  attempt, SCROLLER, RosterHeader, Unavailable, type AcademicsPayload,
 } from '@/lib/onyx-platform-tenant';
 import { CreateCourseForm, CourseEditToggle } from '@/components/onyx-platform-forms';
 import { DataTable, EmptyRow, Icon, State } from '@/components/onyx-ui';
@@ -21,19 +21,20 @@ export default async function OnyxPlatformCoursesPage(
 
   return (
     <div className="min-w-0 space-y-4">
-      <TenantBackLink tenantId={tenantId} />
-      <div className="flex flex-wrap items-center gap-3">
-        <CreateCourseForm tenantId={tenantId} />
-        {/* An assignment belongs to a course, not to its own top-level nav
-            entry -- same as courses/[id]/page.tsx shows them to faculty and
-            students. This is where a platform admin reaches them too. */}
-        <Link href={'/onyx/platform/tenants/' + tenantId + '/assignments'}
-          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand-700
-                     hover:underline">
-          <Icon name="edit" className="h-4 w-4" />
-          All assignments, across every course
-        </Link>
-      </div>
+      {/* An assignment belongs to a course, not to its own top-level nav entry
+          -- same as courses/[id]/page.tsx shows them to faculty and students.
+          This is where a platform admin reaches them too, so the link sits
+          between the count and the action rather than on a line of its own. */}
+      <RosterHeader count={courses.length} noun="course"
+        action={<CreateCourseForm tenantId={tenantId} />}
+        aside={(
+          <Link href={'/onyx/platform/tenants/' + tenantId + '/assignments'}
+            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand-700
+                       hover:underline">
+            <Icon name="edit" className="h-4 w-4" />
+            All assignments, across every course
+          </Link>
+        )} />
 
       {academics === null ? <Unavailable what="course list" /> : (
         <div tabIndex={0} role="region" aria-label="Courses" className={SCROLLER}>

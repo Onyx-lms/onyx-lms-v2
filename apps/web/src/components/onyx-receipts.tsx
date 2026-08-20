@@ -128,7 +128,7 @@ export function ReceiptsReport({ data, showLearner = true, emptyNote }: {
           </button>
         ))}
 
-        <div className="relative ml-auto min-w-[220px] flex-1 sm:flex-none">
+        <div className="relative ml-auto min-w-[220px] flex-1 sm:w-[19rem] sm:flex-none">
           <Icon name="search"
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2
                        text-faint" />

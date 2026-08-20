@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import {
-  attempt, DueCell, SCROLLER, TenantBackLink, Unavailable, Workflow,
+  attempt, RosterHeader, WhenCell, SCROLLER, Unavailable, Workflow,
   type AcademicsPayload, type Semester,
 } from '@/lib/onyx-platform-tenant';
 import { CreateExamForm, ExamEditToggle } from '@/components/onyx-platform-forms';
@@ -25,8 +25,8 @@ export default async function OnyxPlatformExamsPage(
 
   return (
     <div className="min-w-0 space-y-4">
-      <TenantBackLink tenantId={tenantId} />
-      <CreateExamForm tenantId={tenantId} courses={courses} semesters={semesters ?? []} />
+      <RosterHeader count={exams.length} noun="examination"
+        action={<CreateExamForm tenantId={tenantId} courses={courses} semesters={semesters ?? []} />} />
 
       {academics === null ? <Unavailable what="examination list" /> : (
         <div tabIndex={0} role="region" aria-label="Examinations" className={SCROLLER}>
@@ -56,7 +56,7 @@ export default async function OnyxPlatformExamsPage(
                 <td className="font-mono text-[12.5px]">
                   {e.course?.code ?? <span className="font-sans text-muted">—</span>}
                 </td>
-                <td><DueCell at={e.starts_at} /></td>
+                <td><WhenCell at={e.starts_at} status={e.status} /></td>
                 <td className="tabular-nums">{e.max_marks}</td>
                 <td className="tabular-nums">{e.seats_allocated}</td>
                 <td className="whitespace-nowrap tabular-nums">

@@ -110,7 +110,13 @@ export function PermissionMatrix({ capabilities, areas, canEdit, scope }: {
         </p>
       ) : null}
 
-      <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+      {/* Sticky, because this is a forty-two row matrix across ten sections:
+          the tick an operator changes is usually several screens below the
+          only button that commits it, and scrolling back up to find out
+          whether you still have unsaved changes is not a thing an admin
+          console should ask. */}
+      <Card className="sticky top-[70px] z-30 flex flex-wrap items-center justify-between gap-3
+                       p-4">
         <p className="max-w-prose text-[13px] leading-relaxed text-muted">
           Administrators hold every permission here and always will.
           {scope.institution ? ' You are editing ' + scope.institution + '.' : ''}

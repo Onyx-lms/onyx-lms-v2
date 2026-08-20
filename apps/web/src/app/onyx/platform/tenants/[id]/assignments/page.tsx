@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import {
-  attempt, DueCell, SCROLLER, Unavailable, Workflow, type AcademicsPayload,
+  attempt, RosterHeader, DueCell, SCROLLER, Unavailable, Workflow, type AcademicsPayload,
 } from '@/lib/onyx-platform-tenant';
 import {
   CreateAssignmentForm, AssignmentEditToggle, AssignmentSubmissionsToggle,
@@ -33,7 +33,8 @@ export default async function OnyxPlatformAssignmentsPage(
                    hover:text-brand-700 hover:underline">
         &larr; Courses
       </Link>
-      <CreateAssignmentForm tenantId={tenantId} courses={courses} />
+      <RosterHeader count={assignments.length} noun="assignment"
+        action={<CreateAssignmentForm tenantId={tenantId} courses={courses} />} />
 
       {academics === null ? <Unavailable what="assignment list" /> : (
         <div tabIndex={0} role="region" aria-label="Assignments" className={SCROLLER}>

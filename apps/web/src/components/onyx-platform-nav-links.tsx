@@ -53,7 +53,7 @@ export function PlatformNavLinks() {
     <nav className="mt-4" aria-label="Platform">
       {GROUPS.map((group) => (
         <div key={group.label} className="mb-3.5">
-          <div className="mb-1 px-2.5 text-[10px] font-bold uppercase tracking-[.08em] text-faint">
+          <div className="mb-1 px-2.5 text-[10px] font-bold uppercase tracking-[.08em] text-muted">
             {group.label}
           </div>
           {group.items.map((l) => {

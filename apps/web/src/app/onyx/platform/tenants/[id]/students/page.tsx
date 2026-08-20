@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import {
-  attempt, ago, SCROLLER, AccountState, RosterHeader, TenantBackLink, Unavailable,
+  attempt, ago, SCROLLER, AccountState, RosterHeader, RosterSearch, matchesPerson, Unavailable,
   type PeoplePayload,
 } from '@/lib/onyx-platform-tenant';
 import {
@@ -12,23 +12,28 @@ import { DataTable, EmptyRow, Pill } from '@/components/onyx-ui';
 export const metadata: Metadata = { title: 'Students' };
 
 export default async function OnyxPlatformStudentsPage(
-  { params }: { params: Promise<{ id: string }> },
+  { params, searchParams }: {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<{ q?: string }>;
+  },
 ) {
   await requirePlatformSession();
   const { id } = await params;
+  const { q } = await searchParams;
   const tenantId = Number(id);
   const people = await attempt<PeoplePayload>(
     '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/people?role=student');
-  const students = people?.people ?? [];
+  const all = people?.people ?? [];
+  const students = all.filter((p) => matchesPerson(p, q ?? ''));
 
   return (
     <div className="min-w-0 space-y-4">
-      <TenantBackLink tenantId={tenantId} />
 
       {people === null ? <Unavailable what="roll" /> : (
         <>
           <RosterHeader
-            count={people.total} noun="student"
+            count={q ? students.length : people.total} noun="student"
+            aside={<RosterSearch q={q} placeholder="Name, email or batch" />}
             action={<CreateProfileForm lockedTenant={{ id: tenantId }} only="student" />}
           />
           <div tabIndex={0} role="region" aria-label="Students" className={SCROLLER}>
@@ -50,8 +55,9 @@ export default async function OnyxPlatformStudentsPage(
             >
               {students.length === 0 ? (
                 <EmptyRow colSpan={7} icon="users">
-                  No students yet. A new institution starts with its administrator and
-                  nobody else — students arrive once someone invites or imports them.
+                  {q
+                    ? 'Nobody on this roll matches “' + q + '”.'
+                    : 'No students yet. A new institution starts with its administrator and nobody else — students arrive once someone invites or imports them.'}
                 </EmptyRow>
               ) : students.map((p) => (
                 <tr key={p.user_id} className="align-top">

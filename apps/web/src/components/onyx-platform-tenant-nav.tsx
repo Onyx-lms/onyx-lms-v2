@@ -75,7 +75,7 @@ export function TenantSidebarNav({ tenantId, tenantName }: { tenantId: number; t
         {GROUPS.map((g, i) => (
           <div key={g.label ?? i} className="mb-3.5">
             {g.label ? (
-              <div className="mb-1 px-2.5 text-[10px] font-bold uppercase tracking-[.08em] text-faint">
+              <div className="mb-1 px-2.5 text-[10px] font-bold uppercase tracking-[.08em] text-muted">
                 {g.label}
               </div>
             ) : null}
