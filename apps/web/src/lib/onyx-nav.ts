@@ -140,7 +140,12 @@ const NAV: Record<Role, OnyxNavGroup[]> = {
     //
     // The routes are untouched. Nothing here is a deletion of a feature; it is
     // a menu that stopped offering an administrator work that is not theirs.
-    { label: 'Operations', items: [I.audit, I.settings, I.profile] },
+    // Audit log dropped from the menu, and the route left alone -- the same
+    // treatment Mentor queue, Inbox and Teaching load got above. It is a
+    // forensic screen, opened when something specific is being chased rather
+    // than as somewhere to go, and the dashboard's "Full log" links still
+    // reach it from where the question actually starts.
+    { label: 'Operations', items: [I.settings, I.profile] },
   ],
 };
 
