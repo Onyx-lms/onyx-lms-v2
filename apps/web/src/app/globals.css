@@ -193,6 +193,26 @@
 :root[data-theme='dark'] .border-green-200,
 :root[data-theme='dark'] .border-emerald-200 { border-color: rgb(28 74 52); }
 
+/*
+ * The platform console's danger panels, in the dark.
+ *
+ * Every destructive action in the operator console now wears one shape
+ * (DangerPanel in onyx-platform-forms.tsx), and that shape uses a handful of
+ * red and amber steps the list above did not cover -- the tinted panel ground,
+ * its hairline, and the heading over it. Without these it renders as a
+ * near-white block on a near-black page, which is the one place in the product
+ * where "did not notice the warning" is expensive.
+ */
+:root[data-theme='dark'] .bg-red-50\/40 { background-color: rgb(48 19 22); }
+:root[data-theme='dark'] .bg-amber-50\/50 { background-color: rgb(48 34 12); }
+:root[data-theme='dark'] .hover\:bg-red-50:hover { background-color: rgb(58 22 26); }
+:root[data-theme='dark'] .text-red-800 { color: rgb(252 165 165); }
+:root[data-theme='dark'] .text-amber-900 { color: rgb(252 211 138); }
+:root[data-theme='dark'] .border-red-100 { border-color: rgb(72 30 35); }
+:root[data-theme='dark'] .border-red-300 { border-color: rgb(122 48 55); }
+:root[data-theme='dark'] .border-amber-300 { border-color: rgb(118 84 28); }
+:root[data-theme='dark'] .hover\:border-red-500:hover { border-color: rgb(180 70 78); }
+
 /* Shadows do nothing on a dark surface; a hairline does the same job. */
 :root[data-theme='dark'] .shadow-card { box-shadow: 0 0 0 1px rgb(var(--c-line)); }
 :root[data-theme='dark'] .shadow-lift { box-shadow: 0 8px 24px rgb(0 0 0 / 0.45); }

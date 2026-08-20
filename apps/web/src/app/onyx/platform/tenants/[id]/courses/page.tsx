@@ -4,7 +4,7 @@ import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import {
   attempt, SCROLLER, TenantBackLink, Unavailable, type AcademicsPayload,
 } from '@/lib/onyx-platform-tenant';
-import { CreateCourseForm, CourseEditToggle, CourseDeleteButton } from '@/components/onyx-platform-forms';
+import { CreateCourseForm, CourseEditToggle } from '@/components/onyx-platform-forms';
 import { DataTable, EmptyRow, Icon, State } from '@/components/onyx-ui';
 
 export const metadata: Metadata = { title: 'Courses' };
@@ -70,10 +70,7 @@ export default async function OnyxPlatformCoursesPage(
                   {c.status === 1 ? <State tone="on">Open</State> : <State tone="idle">Draft</State>}
                 </td>
                 <td className="text-right">
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    <CourseEditToggle tenantId={tenantId} course={c} />
-                    <CourseDeleteButton tenantId={tenantId} course={c} />
-                  </div>
+                  <CourseEditToggle tenantId={tenantId} course={c} />
                 </td>
               </tr>
             ))}

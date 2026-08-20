@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useId, useState, useTransition } from 'react';
 import { Modal } from '@/components/onyx-modal';
 import { ROLE_LABELS } from '@/lib/onyx-nav';
 
@@ -489,6 +489,99 @@ async function patch(path: string, body: unknown) {
   return post(path, body, 'PATCH');
 }
 
+/**
+ * The one shape every destructive action in this console now wears.
+ *
+ * The console used to put its red buttons on list rows -- Remove beside every
+ * member, Delete beside every course, Revoke beside every operator -- so the
+ * fastest thing to reach on a screen full of records was the one action that
+ * cannot be undone. Worse, the tenant layout's danger zone rendered under
+ * EVERY institution tab, which meant "Delete institution" was on the bottom of
+ * the fees page, the timetable, the grade book: nine chances to end a customer
+ * while doing something else entirely.
+ *
+ * The rule now, taken from the operator consoles that get this right (Toggl's
+ * admin console keeps "Organization actions" as one isolated block at the foot
+ * of one page; Google Workspace and Docusign both bury account deletion a
+ * level in behind the record itself):
+ *
+ *   1. A destructive control never appears on a list row.
+ *   2. It appears once you have OPENED the specific record it destroys.
+ *   3. When it appears, it is at the bottom, in its own bordered block, under
+ *      a plain sentence naming what will actually be lost.
+ *
+ * `confirmWith` adds the type-the-name step, for the cases where losing the
+ * record loses a lot with it.
+ */
+export function DangerPanel({ heading, what, cta, confirmWith, onConfirm, note }: {
+  heading: string;
+  /** Plain prose: what disappears, and whether it comes back. */
+  what: React.ReactNode;
+  cta: string;
+  confirmWith?: string;
+  note?: string;
+  onConfirm: () => Promise<{ ok?: boolean; message?: string }>;
+}) {
+  const inputId = useId();
+  const [open, setOpen] = useState(false);
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  return (
+    <div className="mt-5 rounded-xl border border-red-200 bg-red-50/40 p-3.5">
+      <h3 className="text-[11px] font-bold uppercase tracking-[.08em] text-red-800">{heading}</h3>
+      <p className="mt-1 max-w-prose text-[12.5px] leading-relaxed text-muted">{what}</p>
+
+      {!open ? (
+        <button type="button" onClick={() => setOpen(true)}
+          className="mt-2.5 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-[12.5px]
+                     font-semibold text-red-700 hover:border-red-500 hover:bg-red-50">
+          {cta}
+        </button>
+      ) : (
+        <div className="mt-2.5 space-y-2">
+          {confirmWith ? (
+            <>
+              <label className="block text-[12px] font-semibold text-red-800"
+                htmlFor={inputId}>
+                Type <span className="font-mono">{confirmWith}</span> to confirm
+              </label>
+              <input id={inputId} value={confirm}
+                onChange={(e) => setConfirm(e.target.value)} placeholder={confirmWith}
+                className="block min-h-[38px] w-full max-w-sm rounded-lg border border-red-300
+                           bg-white px-2.5 text-[13.5px] focus:border-red-500 focus:outline-none
+                           focus:ring-2 focus:ring-red-200" />
+            </>
+          ) : null}
+          {note ? <p className="text-[12px] text-muted">{note}</p> : null}
+          {error ? <p role="alert" className="text-[12.5px] text-red-700">{error}</p> : null}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={pending || (confirmWith ? confirm !== confirmWith : false)}
+              onClick={() => start(async () => {
+                setError(null);
+                const res = await onConfirm();
+                if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+              })}
+              className="rounded-lg bg-red-600 px-3.5 py-2 text-[12.5px] font-bold text-white
+                         hover:bg-red-700 disabled:opacity-40"
+            >
+              {pending ? 'Working…' : cta}
+            </button>
+            <button type="button"
+              onClick={() => { setOpen(false); setConfirm(''); setError(null); }}
+              className={cancelButton}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const ROLE_OPTIONS = ['student', 'faculty', 'exams', 'placement', 'employer', 'admin', 'guardian'];
 
 export interface PlatformPerson {
@@ -609,6 +702,10 @@ export function MemberEditToggle({ tenantId, person }: {
   return (
     <Modal title={'Edit ' + person.name} onClose={() => setOpen(false)}>
       <MemberEditForm tenantId={tenantId} person={person} onClose={() => setOpen(false)} />
+      {/* Below the form, not beside the row: by the time this is on screen the
+          operator has named the person they are acting on. */}
+      <RemoveMemberButton tenantId={tenantId} membershipId={person.membership_id}
+        name={person.name} onDone={() => setOpen(false)} />
     </Modal>
   );
 }
@@ -1002,6 +1099,7 @@ export function CourseEditToggle({ tenantId, course }: {
           <button type="button" onClick={() => setOpen(false)} className={cancelButton}>Cancel</button>
         </div>
       </form>
+      <CourseDeleteButton tenantId={tenantId} course={course} onDone={() => setOpen(false)} />
     </Modal>
   );
 }
@@ -1015,47 +1113,29 @@ export function CourseEditToggle({ tenantId, course }: {
  * institution, so this asks a plain yes/no rather than DeleteTenantButton's
  * type-the-name confirmation.
  */
-export function CourseDeleteButton({ tenantId, course }: {
-  tenantId: number; course: { id: number; title: string };
+export function CourseDeleteButton({ tenantId, course, onDone }: {
+  tenantId: number; course: { id: number; title: string; code?: string }; onDone?: () => void;
 }) {
   const router = useRouter();
-  const [confirming, setConfirming] = useState(false);
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  if (!confirming) {
-    return (
-      <button type="button" onClick={() => setConfirming(true)}
-        className="rounded-lg border border-red-600 px-3 py-1.5 text-xs text-red-700">
-        Delete
-      </button>
-    );
-  }
   return (
-    <div className="flex flex-wrap items-center justify-end gap-1.5">
-      <span className="max-w-[14rem] truncate text-[12px] text-muted">
-        Delete {course.title}?
-      </span>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => start(async () => {
-          setError(null);
-          const res = await post(
-            'onyx/platform/tenants/' + tenantId + '/courses/' + course.id, undefined, 'DELETE');
-          if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
-          router.refresh();
-        })}
-        className="text-[12.5px] font-bold text-red-700 hover:underline disabled:opacity-50"
-      >
-        {pending ? 'Deleting…' : 'Yes'}
-      </button>
-      <button type="button" onClick={() => setConfirming(false)}
-        className="text-[12.5px] text-muted hover:underline">
-        No
-      </button>
-      {error ? <span role="alert" className="text-[12px] text-red-700">{error}</span> : null}
-    </div>
+    <DangerPanel
+      heading="Delete this course"
+      what={<>
+        Permanent. Every module, lesson, enrolment, assignment, attendance record and exam mark
+        belonging to <strong className="text-slate-700">{course.title}</strong> goes with it.
+        A question bank, assessment or certificate that drew on the course survives, unlinked.
+        To take it out of circulation without losing any of that, set Status to <em>Draft</em>
+        {' '}above.
+      </>}
+      cta="Delete course"
+      confirmWith={course.code}
+      onConfirm={async () => {
+        const res = await post(
+          'onyx/platform/tenants/' + tenantId + '/courses/' + course.id, undefined, 'DELETE');
+        if (res.ok) { onDone?.(); router.refresh(); }
+        return res;
+      }}
+    />
   );
 }
 
@@ -1379,100 +1459,58 @@ export function TenantEditForm({ tenant }: {
  */
 export function DeleteTenantButton({ tenantId, tenantName }: { tenantId: number; tenantName: string }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [confirm, setConfirm] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-
-  if (!open) {
-    return (
-      <button type="button" onClick={() => setOpen(true)}
-        className="rounded-lg border border-red-600 px-3 py-1.5 text-sm font-semibold text-red-700
-                   hover:bg-red-50">
-        Delete institution
-      </button>
-    );
-  }
   return (
-    <div className="mt-3 space-y-2 rounded-xl border border-red-300 bg-red-50/60 p-3.5">
-      <p className="text-[13px] text-red-800">
-        This permanently deletes <strong>{tenantName}</strong> and everything in it -- every
-        member, course, enrolment, mark and invoice. There is no undo. Type the institution&rsquo;s
-        name to confirm.
-      </p>
-      <input value={confirm} onChange={(e) => setConfirm(e.target.value)}
-        placeholder={tenantName}
-        className="block min-h-[42px] w-full rounded-xl border border-red-300 bg-white px-3
-                   text-[14px] focus:border-red-500 focus:outline-none focus:ring-2
-                   focus:ring-red-200" />
-      {error ? <p role="alert" className="text-[12.5px] text-red-700">{error}</p> : null}
-      <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={pending || confirm !== tenantName}
-          onClick={() => start(async () => {
-            setError(null);
-            const res = await post('onyx/platform/tenants/' + tenantId, { confirm_name: confirm },
-              'DELETE');
-            if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
-            router.push('/onyx/platform');
-            router.refresh();
-          })}
-          className="rounded-lg bg-red-600 px-3.5 py-2 text-[13px] font-bold text-white
-                     hover:bg-red-700 disabled:opacity-40"
-        >
-          {pending ? 'Deleting…' : 'Permanently delete'}
-        </button>
-        <button type="button" onClick={() => { setOpen(false); setConfirm(''); setError(null); }}
-          className={cancelButton}>
-          Cancel
-        </button>
-      </div>
-    </div>
+    <DangerPanel
+      heading="Delete this institution"
+      what={<>
+        Permanent, and it takes everything with it: every member, course, enrolment, mark,
+        register and invoice belonging to <strong className="text-slate-700">{tenantName}</strong>.
+        There is no undo and no export. Suspending sign-in, above, achieves everything except
+        the losing.
+      </>}
+      cta="Delete institution"
+      confirmWith={tenantName}
+      onConfirm={async () => {
+        const res = await post('onyx/platform/tenants/' + tenantId,
+          { confirm_name: tenantName }, 'DELETE');
+        // The page this ran from stops existing the moment it succeeds.
+        if (res.ok) { router.push('/onyx/platform'); router.refresh(); }
+        return res;
+      }}
+    />
   );
 }
 
-/** Remove a member from this institution -- distinct from RevokeAdminButton,
- * which removes platform-admin standing rather than institution membership. */
-export function RemoveMemberButton({ tenantId, membershipId, name }: {
-  tenantId: number; membershipId: number; name: string;
+/**
+ * Remove a member from this institution -- distinct from RevokeAdminButton,
+ * which removes platform-admin standing rather than institution membership.
+ *
+ * No longer a red word at the end of every row in the roster. It lives at the
+ * foot of that one person's edit panel, which is the only place an operator
+ * can be sure WHICH of four hundred near-identical rows they are acting on.
+ * Suspending a membership -- the reversible thing, and nearly always the thing
+ * actually wanted -- is a dropdown in the form above it.
+ */
+export function RemoveMemberButton({ tenantId, membershipId, name, onDone }: {
+  tenantId: number; membershipId: number; name: string; onDone?: () => void;
 }) {
   const router = useRouter();
-  const [confirming, setConfirming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-
-  if (!confirming) {
-    return (
-      <button type="button" onClick={() => setConfirming(true)}
-        className="text-[12.5px] font-semibold text-red-700 hover:underline">
-        Remove
-      </button>
-    );
-  }
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="max-w-[14rem] truncate text-[12px] text-muted">Remove {name}?</span>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => start(async () => {
-          setError(null);
-          const res = await post(
-            'onyx/platform/tenants/' + tenantId + '/members/' + membershipId, undefined, 'DELETE');
-          if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
-          router.refresh();
-        })}
-        className="text-[12.5px] font-bold text-red-700 hover:underline disabled:opacity-50"
-      >
-        {pending ? 'Removing…' : 'Yes'}
-      </button>
-      <button type="button" onClick={() => setConfirming(false)}
-        className="text-[12.5px] text-muted hover:underline">
-        No
-      </button>
-      {error ? <span role="alert" className="text-[12px] text-red-700">{error}</span> : null}
-    </div>
+    <DangerPanel
+      heading="Remove from this institution"
+      what={<>
+        Takes {name}&rsquo;s membership away: they lose access to this institution and drop off
+        its rosters. Their marks, submissions and invoices stay on record. To stop them signing
+        in without removing them, set Membership to <em>Suspended</em> above instead.
+      </>}
+      cta="Remove member"
+      onConfirm={async () => {
+        const res = await post(
+          'onyx/platform/tenants/' + tenantId + '/members/' + membershipId, undefined, 'DELETE');
+        if (res.ok) { onDone?.(); router.refresh(); }
+        return res;
+      }}
+    />
   );
 }
 
@@ -2000,99 +2038,153 @@ export function FeeStructureStatusButtons({ tenantId, structureId, status }: {
   );
 }
 
-/**
- * Revoking someone's global platform power used to fire on a single click,
- * with no confirm step at all -- the only high-consequence action in this
- * file that had none (compare RemoveMemberButton just above, or
- * DeleteTenantButton's type-to-confirm). One fat finger, and a colleague is
- * locked out of the console. Same inline "Revoke {name}? Yes/No" pattern as
- * RemoveMemberButton now.
- */
-/**
- * OAuth Server Mode -- a registered third-party client can no longer request
- * delegated access to this project's users. Sibling to RevokeAdminButton,
- * same inline confirm rather than a full Modal (see that component's own
- * shape for why: this is a small, single-consequence action on a list row,
- * not a destructive action worth a full-screen interruption).
- */
-export function RevokeOAuthClientButton({ clientId, name }: { clientId: string; name: string }) {
-  const router = useRouter();
-  const [confirming, setConfirming] = useState(false);
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  if (!confirming) {
-    return (
-      <button type="button" onClick={() => setConfirming(true)}
-        className="rounded-lg border border-red-600 px-3 py-1.5 text-xs text-red-700">
-        Revoke
-      </button>
-    );
-  }
+/** One labelled fact inside a manage panel. */
+function Fact({ term, children }: { term: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="max-w-[14rem] truncate text-[12px] text-muted">
-        Revoke {name}&rsquo;s registration?
-      </span>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => start(async () => {
-          setError(null);
-          const res = await post('onyx/platform/oauth-clients/' + clientId, undefined, 'DELETE');
-          if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
-          router.refresh();
-        })}
-        className="text-[12.5px] font-bold text-red-700 hover:underline disabled:opacity-50"
-      >
-        {pending ? 'Revoking…' : 'Yes'}
-      </button>
-      <button type="button" onClick={() => setConfirming(false)}
-        className="text-[12.5px] text-muted hover:underline">
-        No
-      </button>
-      {error ? <span role="alert" className="text-[12px] text-red-700">{error}</span> : null}
+    <div className="min-w-0">
+      <dt className="text-[11px] font-bold uppercase tracking-[.06em] text-muted">{term}</dt>
+      <dd className="mt-0.5 break-all text-[13px]">{children}</dd>
     </div>
   );
 }
 
-export function RevokeAdminButton({ id, name }: { id: number; name: string }) {
-  const router = useRouter();
-  const [confirming, setConfirming] = useState(false);
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+/**
+ * A registered OAuth client, opened.
+ *
+ * The list used to carry a red "Revoke" at the end of every row -- the only
+ * control on the page, so the page's whole vocabulary was destruction. What an
+ * operator actually does first is LOOK: which redirect URIs did this thing
+ * register, is it confidential, when did it appear. So that is what opening a
+ * row gives, and revoking is at the foot of it, once, framed by what breaks.
+ */
+export function OAuthClientManageToggle({ client }: {
+  client: {
+    client_id: string; client_name?: string; client_type: string;
+    redirect_uris: string[]; grant_types: string[]; registration_type: string; created_at: string;
+  };
+}) {
+  const [open, setOpen] = useState(false);
+  const name = client.client_name ?? client.client_id;
 
-  if (!confirming) {
+  if (!open) {
     return (
-      <button type="button" onClick={() => setConfirming(true)}
-        className="rounded-lg border border-red-600 px-3 py-1.5 text-xs text-red-700">
-        Revoke
+      <button type="button" onClick={() => setOpen(true)}
+        className="rounded-lg border border-slate-300 px-3 py-1.5 text-[12.5px] font-semibold
+                   hover:border-brand-300 hover:text-brand-700">
+        Manage
       </button>
     );
   }
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="max-w-[14rem] truncate text-[12px] text-muted">
-        Revoke {name}&rsquo;s admin access?
-      </span>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => start(async () => {
-          setError(null);
-          const res = await post('onyx/platform/admins/' + id, undefined, 'DELETE');
-          if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
-          router.refresh();
-        })}
-        className="text-[12.5px] font-bold text-red-700 hover:underline disabled:opacity-50"
-      >
-        {pending ? 'Revoking…' : 'Yes'}
+    <Modal title={name} onClose={() => setOpen(false)}>
+      <dl className="grid gap-3 sm:grid-cols-2">
+        <Fact term="Client ID"><span className="font-mono text-[12px]">{client.client_id}</span></Fact>
+        <Fact term="Type">{client.client_type}</Fact>
+        <Fact term="Registered">
+          {client.registration_type === 'dynamic' ? 'Self-registered' : 'Registered manually'}
+          {' · '}
+          {new Date(client.created_at).toLocaleDateString(undefined,
+            { day: 'numeric', month: 'short', year: 'numeric' })}
+        </Fact>
+        <Fact term="Grant types">{client.grant_types.join(', ') || '—'}</Fact>
+        <div className="sm:col-span-2">
+          <dt className="text-[11px] font-bold uppercase tracking-[.06em] text-muted">
+            Redirect URIs
+          </dt>
+          <dd className="mt-0.5 space-y-0.5">
+            {client.redirect_uris.length
+              ? client.redirect_uris.map((u) => (
+                <div key={u} className="break-all font-mono text-[12px]">{u}</div>
+              ))
+              : <span className="text-[13px] text-muted">None registered.</span>}
+          </dd>
+        </div>
+      </dl>
+      <RevokeOAuthClientButton clientId={client.client_id} name={name}
+        onDone={() => setOpen(false)} />
+    </Modal>
+  );
+}
+
+export function RevokeOAuthClientButton({ clientId, name, onDone }: {
+  clientId: string; name: string; onDone?: () => void;
+}) {
+  const router = useRouter();
+  return (
+    <DangerPanel
+      heading="Revoke this registration"
+      what={<>
+        {name} stops being able to ask anyone here for delegated access, and tokens it already
+        holds stop working. Anybody who signed in through it will be signed out of it. If it
+        registered itself once it can register itself again.
+      </>}
+      cta="Revoke registration"
+      onConfirm={async () => {
+        const res = await post('onyx/platform/oauth-clients/' + clientId, undefined, 'DELETE');
+        if (res.ok) { onDone?.(); router.refresh(); }
+        return res;
+      }}
+    />
+  );
+}
+
+/**
+ * One operator, opened. Same reasoning as the OAuth panel above -- and one
+ * step stricter: revoking here is confirmed by typing the person's name,
+ * because platform admin is the standing that reaches every customer on the
+ * platform and the mistake is not visible from anywhere else.
+ */
+export function AdminManageToggle({ admin }: {
+  admin: { id: number; name: string; email: string; granted_at: string };
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)}
+        className="rounded-lg border border-slate-300 px-3 py-1.5 text-[12.5px] font-semibold
+                   hover:border-brand-300 hover:text-brand-700">
+        Manage
       </button>
-      <button type="button" onClick={() => setConfirming(false)}
-        className="text-[12.5px] text-muted hover:underline">
-        No
-      </button>
-      {error ? <span role="alert" className="text-[12px] text-red-700">{error}</span> : null}
-    </div>
+    );
+  }
+  return (
+    <Modal title={admin.name} onClose={() => setOpen(false)}>
+      <dl className="grid gap-3 sm:grid-cols-2">
+        <Fact term="Email">{admin.email}</Fact>
+        <Fact term="Granted">
+          {new Date(admin.granted_at).toLocaleDateString(undefined,
+            { day: 'numeric', month: 'short', year: 'numeric' })}
+        </Fact>
+        <div className="sm:col-span-2 rounded-lg bg-amber-50 px-3 py-2 text-[12.5px] text-amber-900">
+          Holds platform admin: can create, suspend, read and delete every institution, and can
+          grant the same to anyone else.
+        </div>
+      </dl>
+      <RevokeAdminButton id={admin.id} name={admin.name} onDone={() => setOpen(false)} />
+    </Modal>
+  );
+}
+
+export function RevokeAdminButton({ id, name, onDone }: {
+  id: number; name: string; onDone?: () => void;
+}) {
+  const router = useRouter();
+  return (
+    <DangerPanel
+      heading="Revoke platform admin"
+      what={<>
+        {name} loses access to this console and to every institution on the platform. Their own
+        user account and any institution membership they hold are untouched. Another operator can
+        grant it back.
+      </>}
+      cta="Revoke access"
+      confirmWith={name}
+      onConfirm={async () => {
+        const res = await post('onyx/platform/admins/' + id, undefined, 'DELETE');
+        if (res.ok) { onDone?.(); router.refresh(); }
+        return res;
+      }}
+    />
   );
 }

@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { OnyxPlatformShell } from '@/components/onyx-platform-shell';
-import { GrantAdminForm, RevokeAdminButton } from '@/components/onyx-platform-forms';
+import { GrantAdminForm, AdminManageToggle } from '@/components/onyx-platform-forms';
 import { requirePlatformSession, platformApi } from '@/lib/onyx-platform-session';
 import { Empty, Pill } from '@/components/onyx-ui';
 
-export const metadata: Metadata = { title: 'Platform admins' };
+export const metadata: Metadata = { title: 'Operators' };
 
 interface AdminRow {
   id: number; user_id: number; created_at: string;
@@ -19,7 +19,7 @@ export default async function OnyxPlatformAdminsPage() {
   return (
     <OnyxPlatformShell
       email={session.email}
-      title="Platform admins"
+      title="Operators"
       subtitle={admins.length === 1
         ? 'One operator.'
         : admins.length + ' operators.'}
@@ -57,7 +57,12 @@ export default async function OnyxPlatformAdminsPage() {
                 </span>
               </span>
               {admins.length > 1
-                ? <RevokeAdminButton id={a.id} name={a.user?.name ?? 'User #' + a.user_id} />
+                ? <AdminManageToggle admin={{
+                  id: a.id,
+                  name: a.user?.name ?? 'User #' + a.user_id,
+                  email: a.user?.email ?? '—',
+                  granted_at: a.created_at,
+                }} />
                 : <Pill tone="neutral">Last operator</Pill>}
             </li>
           ))}

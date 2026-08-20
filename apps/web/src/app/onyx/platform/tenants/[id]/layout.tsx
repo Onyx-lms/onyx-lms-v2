@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { OnyxPlatformShell } from '@/components/onyx-platform-shell';
 import { TenantSidebarNav } from '@/components/onyx-platform-tenant-nav';
-import { SuspendToggle, TenantEditForm, DeleteTenantButton } from '@/components/onyx-platform-forms';
 import { requirePlatformSession, platformApi } from '@/lib/onyx-platform-session';
 import type { TenantDetail } from '@/lib/onyx-platform-tenant';
 import { plural } from '@/lib/onyx-platform-tenant';
@@ -16,13 +15,14 @@ import { Card, Icon, StatusDot } from '@/components/onyx-ui';
  * Grades/Fees as their own routes, navigated the same way every tenant-side
  * role already navigates (OnyxShell's NavGroup).
  *
- * Suspend and delete used to sit in that same top card, level with the
- * institution's name -- the first thing anyone saw on opening an institution
- * was a red "Suspend" button. They are now a "Danger zone" after every tab's
- * content, at the bottom of the page: an admin has to read past what the
- * institution actually is before reaching a control that can lock every one
- * of its members out. Read state (the status dot, "nobody can sign in") stays
- * up top where it belongs -- only the *actions* moved.
+ * Nothing destructive renders here any more, and that is the point. Suspend
+ * and delete sat in the top card first, then in a "Danger zone" below the
+ * content -- but this is a LAYOUT, so either way they appeared under all nine
+ * tabs. An operator reading the fee ledger or the timetable had "Delete
+ * institution" on the same screen, for no reason connected to what they came
+ * to do. Both now live once, on `settings/`, reached by the link in this card.
+ * Read state (the status dot, "nobody can sign in") stays up top where it
+ * belongs -- it is information, not a lever.
  *
  * The tenant read is fetched here, once, for the identity card and the nav's
  * institution name -- each child page still reads its own section data
@@ -74,50 +74,22 @@ export default async function OnyxPlatformTenantLayout(
                   : 'Nobody at this institution can sign in. Their data is untouched.'}
               </p>
             </div>
+            {/* A link, not a form and not a red button: the card says who this
+                institution is, and everything that CHANGES it -- rename,
+                suspend, delete -- is one click away on its own page. */}
             <div className="w-full shrink-0 sm:w-auto">
-              <TenantEditForm
-                tenant={{ id: tenant.id, name: tenant.name, slug: tenant.slug, plan: tenant.plan }}
-              />
+              <Link href={'/onyx/platform/tenants/' + tenant.id + '/settings'}
+                className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border
+                           border-slate-300 px-3 text-[13px] font-semibold hover:border-brand-300
+                           hover:text-brand-700">
+                <Icon name="settings" className="h-4 w-4" />
+                Settings
+              </Link>
             </div>
           </div>
         </Card>
 
         <div className="min-w-0">{children}</div>
-
-        <Card className="border-red-200 p-4">
-          <h2 className="text-[11px] font-bold uppercase tracking-[.08em] text-red-800">
-            Danger zone
-          </h2>
-          <p className="mt-1 max-w-prose text-[13px] text-muted">
-            These act on <strong className="text-slate-700">{tenant.name}</strong> immediately,
-            for every one of its members. They are down here, not next to the name above, on
-            purpose.
-          </p>
-          <div className="mt-3 flex flex-col gap-3 border-t border-red-100 pt-3 sm:flex-row
-                           sm:flex-wrap sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-slate-700">
-                {live ? 'Suspend sign-in' : 'Reactivate sign-in'}
-              </p>
-              <p className="mt-0.5 max-w-sm text-[12.5px] text-muted">
-                {live
-                  ? 'Nobody at this institution will be able to sign in. Their data is untouched, and this reverses instantly.'
-                  : 'Sign-in is currently blocked for everyone here. This restores it immediately.'}
-              </p>
-              <div className="mt-2"><SuspendToggle tenantId={tenant.id} suspended={!live} /></div>
-            </div>
-            <div className="min-w-0 border-t border-red-100 pt-3 sm:border-t-0 sm:border-l
-                             sm:pl-4 sm:pt-0">
-              <p className="text-[13px] font-semibold text-slate-700">Delete institution</p>
-              <p className="mt-0.5 max-w-sm text-[12.5px] text-muted">
-                Permanent. Every member, course, enrolment, mark and invoice goes with it.
-              </p>
-              <div className="mt-2">
-                <DeleteTenantButton tenantId={tenant.id} tenantName={tenant.name} />
-              </div>
-            </div>
-          </div>
-        </Card>
       </div>
     </OnyxPlatformShell>
   );

@@ -5,7 +5,7 @@ import {
   type PeoplePayload,
 } from '@/lib/onyx-platform-tenant';
 import {
-  CreateProfileForm, MemberEditToggle, RemoveMemberButton,
+  CreateProfileForm, MemberEditToggle,
 } from '@/components/onyx-platform-forms';
 import { DataTable, EmptyRow, Pill } from '@/components/onyx-ui';
 
@@ -63,11 +63,7 @@ export default async function OnyxPlatformFacultyPage(
                     {ago(p.joined_at)}
                   </td>
                   <td className="text-right">
-                    <div className="flex flex-col items-end gap-1.5">
-                      <MemberEditToggle tenantId={tenantId} person={p} />
-                      <RemoveMemberButton tenantId={tenantId} membershipId={p.membership_id}
-                        name={p.name} />
-                    </div>
+                    <MemberEditToggle tenantId={tenantId} person={p} />
                   </td>
                 </tr>
               ))}

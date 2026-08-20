@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { OnyxPlatformShell } from '@/components/onyx-platform-shell';
-import { RevokeOAuthClientButton } from '@/components/onyx-platform-forms';
+import { OAuthClientManageToggle } from '@/components/onyx-platform-forms';
 import { requirePlatformSession, platformApi } from '@/lib/onyx-platform-session';
 import { Empty, Pill } from '@/components/onyx-ui';
 
@@ -75,8 +75,7 @@ export default async function OnyxOAuthClientsPage() {
                     { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
               </span>
-              <RevokeOAuthClientButton clientId={c.client_id}
-                name={c.client_name ?? c.client_id} />
+              <OAuthClientManageToggle client={c} />
             </li>
           ))}
           {clients.length === 0 ? (

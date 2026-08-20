@@ -13,10 +13,12 @@ import { Icon, type IconName } from '@/components/onyx-ui';
  * otherwise always navigates from the left. Consistency meant becoming the
  * same kind of nav, not a nicer version of the different one.
  *
- * The identity card and its destructive controls (edit, suspend, delete)
- * stay in the main content area, in layout.tsx -- those are actions on this
- * record, not places to go, the same distinction OnyxShell draws between its
- * TenantCard (who/where) and its NavGroup (navigation).
+ * The identity card stays in the main content area, in layout.tsx -- who this
+ * institution is and whether it can sign in, the same distinction OnyxShell
+ * draws between its TenantCard (who/where) and its NavGroup (navigation).
+ * What CHANGES the institution -- rename, suspend, delete -- is not in that
+ * card and not in this nav twice: it is one destination, Settings, at the
+ * bottom.
  */
 interface TenantNavItem { seg: string; label: string; icon: IconName }
 interface TenantNavGroup { label?: string; items: TenantNavItem[] }
@@ -50,6 +52,11 @@ const GROUPS: TenantNavGroup[] = [
     { seg: 'grades', label: 'Grades', icon: 'trophy' },
     { seg: 'fees', label: 'Fees', icon: 'wallet' },
   ] },
+  // Last, on its own, and the only route from which this institution can be
+  // renamed, suspended or deleted -- see settings/page.tsx. Being a
+  // destination rather than a control on every screen is what keeps the other
+  // nine sections free of a red button.
+  { items: [{ seg: 'settings', label: 'Settings', icon: 'settings' }] },
 ];
 
 export function TenantSidebarNav({ tenantId, tenantName }: { tenantId: number; tenantName: string }) {
