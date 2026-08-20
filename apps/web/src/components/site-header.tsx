@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { CategoryNode, SiteSettings } from '@/lib/api';
 import { getSession, homeForRole } from '@/lib/session';
 import { OnyxMark } from '@/components/onyx-brand';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export async function SiteHeader({ settings, categories }: {
   settings: SiteSettings | null;
@@ -50,8 +51,12 @@ export async function SiteHeader({ settings, categories }: {
           />
         </form>
 
+        {/* The storefront gets it too: somebody reading a course page at night
+            is the same person who will be reading lessons at night. */}
+        <ThemeToggle className="ml-auto md:ml-0" />
+
         {session ? (
-          <Link href={homeForRole(session.app_role)} className="btn-primary ml-auto md:ml-0">
+          <Link href={homeForRole(session.app_role)} className="btn-primary">
             Dashboard
           </Link>
         ) : (
@@ -59,7 +64,7 @@ export async function SiteHeader({ settings, categories }: {
           // destination shows on hover, and it is one navigation fewer.
           // A learner arriving cold needs the other door too, and it was not on
           // any page of the storefront.
-          <span className="ml-auto flex items-center gap-2 md:ml-0">
+          <span className="flex items-center gap-2">
             <Link href="/onyx/signup"
               className="hidden min-h-[40px] items-center rounded-lg px-3 text-sm font-semibold
                          text-brand-700 hover:underline sm:inline-flex">

@@ -25,6 +25,22 @@ const jakarta = Plus_Jakarta_Sans({
 });
 const FONTS = fraunces.variable + ' ' + jakarta.variable;
 
+/*
+ * Runs before the first paint.
+ *
+ * A theme applied by React lands after hydration, which means a dark-mode user
+ * gets a white flash on every cold load -- the one bug that makes people stop
+ * using a dark theme. This reads their choice (or the OS setting when they
+ * have not made one) and stamps the attribute the CSS keys off, synchronously,
+ * before anything is painted.
+ *
+ * Deliberately inline and tiny: an external file would be a second request in
+ * front of the first paint, which is the thing being avoided.
+ */
+const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('onyx-theme');`
+  + `if(!t){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}`
+  + `document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
+
 /** C-05: site-wide defaults, overridden per page by generateMetadata. */
 export async function generateMetadata(): Promise<Metadata> {
   const s = await apiSafe<SiteSettings>('/api/settings');
@@ -42,7 +58,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const onyx = ((await headers()).get('x-pathname') ?? '').startsWith('/onyx');
   if (onyx) {
     return (
-      <html lang="en" className={FONTS}>
+      <html lang="en" className={FONTS} suppressHydrationWarning>
+        <head>
+          <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        </head>
         <body className="flex min-h-screen flex-col">
           {/* WCAG 2.4.1: the Onyx shell repeats the same sidebar on every
               page, so a keyboard user gets a way past it. tabIndex={-1} is
@@ -65,7 +84,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   ]);
 
   return (
-    <html lang="en">
+    <html lang="en" className={FONTS} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="flex min-h-screen flex-col">
         <a href="#main" className="skip-link">Skip to the main content</a>
         <SiteHeader settings={settings} categories={categories ?? []} />

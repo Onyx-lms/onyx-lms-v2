@@ -7,6 +7,7 @@ import type { Me, Role, Tenant } from '@/lib/onyx-session';
 import { ROLE_LABELS, navFor, tabsFor, type OnyxNavGroup } from '@/lib/onyx-nav';
 import { Icon } from '@/components/onyx-ui';
 import { NotificationBell } from '@/components/onyx-inbox';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { OnyxCreateProfileButton } from '@/components/onyx-create-profile-nav';
 
 /**
@@ -129,6 +130,10 @@ function Header({ me, onMenu }: { me: Me; onMenu: () => void }) {
       </Link>
 
       <span className="flex-1" />
+
+      {/* Beside the bell rather than buried in a settings screen: it is a
+          preference somebody changes because the room changed, not once. */}
+      <ThemeToggle />
 
       <span className="hidden truncate text-xs text-muted sm:block lg:hidden"
         title={me.tenant.name}>

@@ -55,6 +55,149 @@
 }
 
 /*
+ * Dark mode.
+ *
+ * A second set of the same variables, so every screen repaints without a
+ * single `dark:` class anywhere in the product -- the same mechanism the
+ * administrator's skin uses, applied to the other axis.
+ *
+ * The ramp is NOT inverted, and that is the whole design decision. Inverting
+ * it looks right on a swatch board and breaks in use, because this codebase
+ * uses the steps by ROLE rather than by lightness:
+ *
+ *   50-200  backgrounds and tints  (`bg-brand-50` is a hover wash)
+ *   400-600 fills                  (`bg-brand-600` is a button, with white on it)
+ *   700-900 hovers and depth       (`hover:bg-brand-700`)
+ *
+ * So 50-200 become dark teal washes, and 600/700 stay mid-dark -- light enough
+ * to read as the brand, dark enough that the white text already sitting on
+ * them still passes AA. The one thing that genuinely has to flip is brand and
+ * accent used as TEXT (`text-brand-700` on a link), which is handled below as
+ * its own rule rather than by moving the step and breaking every button.
+ *
+ * Surfaces lift rather than glow: canvas is the darkest, cards sit above it,
+ * table headers above those. Pure black is avoided deliberately -- it makes
+ * the shadows this product uses invisible and reads as a terminal rather than
+ * as an enterprise console.
+ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --c-brand-50:  16 36 43;
+  --c-brand-100: 21 47 56;
+  --c-brand-200: 28 62 74;
+  --c-brand-300: 40 88 104;
+  --c-brand-400: 46 110 133;
+  --c-brand-500: 42 124 150;
+  --c-brand-600: 31 111 139;
+  --c-brand-700: 26 92 115;
+  --c-brand-800: 20 72 90;
+  --c-brand-900: 15 55 69;
+
+  --c-accent-50:  46 33 15;
+  --c-accent-100: 62 44 20;
+  --c-accent-200: 86 60 26;
+  --c-accent-400: 190 124 48;
+  --c-accent-500: 216 120 24;
+  --c-accent-600: 180 96 20;
+  --c-accent-700: 150 80 16;
+
+  --c-ink:     231 237 243;
+  --c-muted:   157 172 184;
+  --c-faint:   126 141 153;
+  --c-line:    38 51 60;
+  --c-canvas:  13 20 24;
+  --c-surface: 21 30 36;
+}
+
+/*
+ * The literals dark mode cannot reach through a variable.
+ *
+ * `bg-white` compiles to `#fff` and `text-slate-700` to a fixed slate; both
+ * are used in the hundreds across the product, and rewriting every one into a
+ * token would be a change to a thousand lines to fix a colour. These are the
+ * sixteen that actually appear, mapped once.
+ */
+:root[data-theme='dark'] body { background-color: rgb(var(--c-canvas)); color: rgb(var(--c-ink)); }
+
+:root[data-theme='dark'] .bg-white { background-color: rgb(var(--c-surface)); }
+:root[data-theme='dark'] .bg-white\/90 { background-color: rgb(var(--c-surface) / 0.9); }
+:root[data-theme='dark'] .bg-white\/95 { background-color: rgb(var(--c-surface) / 0.95); }
+/* One step up from a card, which is what these are for: table headers, wells. */
+:root[data-theme='dark'] .bg-slate-50 { background-color: rgb(28 38 45); }
+:root[data-theme='dark'] .bg-slate-100 { background-color: rgb(33 45 53); }
+:root[data-theme='dark'] .bg-slate-300 { background-color: rgb(60 76 88); }
+
+:root[data-theme='dark'] .text-slate-900,
+:root[data-theme='dark'] .text-slate-800 { color: rgb(var(--c-ink)); }
+:root[data-theme='dark'] .text-slate-700 { color: rgb(214 223 231); }
+:root[data-theme='dark'] .text-slate-600 { color: rgb(var(--c-muted)); }
+:root[data-theme='dark'] .text-slate-500 { color: rgb(var(--c-muted)); }
+:root[data-theme='dark'] .text-slate-400 { color: rgb(var(--c-faint)); }
+
+:root[data-theme='dark'] .border-slate-300,
+:root[data-theme='dark'] .border-slate-200 { border-color: rgb(var(--c-line)); }
+:root[data-theme='dark'] .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+:root[data-theme='dark'] .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgb(var(--c-line));
+}
+
+/*
+ * Brand and accent AS TEXT.
+ *
+ * `text-brand-700` is the link colour, and the step it points at has to stay
+ * dark so `hover:bg-brand-700` keeps working underneath white text. Rather
+ * than move the step and break every button, the text usage is remapped here
+ * to a step that reads on a dark surface: 8.9:1 against the canvas, against
+ * 1.6:1 if it had been left alone.
+ */
+:root[data-theme='dark'] .text-brand-700,
+:root[data-theme='dark'] .text-brand-600 { color: rgb(125 200 224); }
+:root[data-theme='dark'] .text-accent-700 { color: rgb(240 176 96); }
+:root[data-theme='dark'] .hover\:text-brand-700:hover { color: rgb(150 214 234); }
+
+/* A white-on-brand button keeps its white; a wash keeps its ink. */
+:root[data-theme='dark'] .bg-brand-50 .text-brand-700 { color: rgb(150 214 234); }
+
+/*
+ * Status colours.
+ *
+ * A pill is a light wash with dark text on it -- `bg-red-50 text-red-700` --
+ * and left alone on a dark page that inverts into a bright white-pink chip
+ * that glares harder than the thing it is warning about. Washes become deep
+ * tints of the same hue and the text becomes the light end of it, so a late
+ * assignment still reads as late without lighting up the screen.
+ *
+ * The hues are unchanged. Red still means late, green still means done: a
+ * theme may not repaint meaning.
+ */
+:root[data-theme='dark'] .bg-red-50,
+:root[data-theme='dark'] .bg-rose-50 { background-color: rgb(58 22 26); }
+:root[data-theme='dark'] .bg-amber-50 { background-color: rgb(56 40 14); }
+:root[data-theme='dark'] .bg-amber-100 { background-color: rgb(68 49 17); }
+:root[data-theme='dark'] .bg-green-50,
+:root[data-theme='dark'] .bg-emerald-50 { background-color: rgb(18 48 34); }
+
+:root[data-theme='dark'] .text-red-700,
+:root[data-theme='dark'] .text-rose-700 { color: rgb(252 165 165); }
+:root[data-theme='dark'] .text-amber-800,
+:root[data-theme='dark'] .text-amber-700 { color: rgb(252 211 138); }
+:root[data-theme='dark'] .text-green-700,
+:root[data-theme='dark'] .text-green-800,
+:root[data-theme='dark'] .text-emerald-700 { color: rgb(134 224 172); }
+
+/* The same, for the borders those chips sometimes carry. */
+:root[data-theme='dark'] .border-red-200,
+:root[data-theme='dark'] .border-rose-200 { border-color: rgb(90 38 44); }
+:root[data-theme='dark'] .border-amber-200 { border-color: rgb(88 64 22); }
+:root[data-theme='dark'] .border-green-200,
+:root[data-theme='dark'] .border-emerald-200 { border-color: rgb(28 74 52); }
+
+/* Shadows do nothing on a dark surface; a hairline does the same job. */
+:root[data-theme='dark'] .shadow-card { box-shadow: 0 0 0 1px rgb(var(--c-line)); }
+:root[data-theme='dark'] .shadow-lift { box-shadow: 0 8px 24px rgb(0 0 0 / 0.45); }
+
+/*
  * The administrator's skin: EZiL Design Labs, "Gold Standard".
  *
  * Applied by OnyxShell to the administrator's console only (`data-skin`), and
@@ -159,6 +302,54 @@
    */
   ::placeholder { @apply text-slate-500 opacity-100; }
 }
+
+/*
+ * The administrator's skin, at night.
+ *
+ * The skin sets its own variables on a descendant of <html>, so in dark mode
+ * it won every colour inside the console while the dark rules for the literal
+ * classes still applied to the same elements -- cream cards with light text on
+ * them, which is the worst of both and unreadable.
+ *
+ * So the skin gets a dark direction of its own rather than being switched off:
+ * the same navy-and-gold language, moved to a night palette. Canvas is a deep
+ * navy-charcoal rather than the neutral the rest of the product uses, because
+ * the warmth is what makes the skin recognisable and dropping it would make
+ * the console look like a different product after sunset.
+ */
+:root[data-theme='dark'] [data-skin='ezil'] {
+  --c-brand-50:  22 32 48;
+  --c-brand-100: 28 41 62;
+  --c-brand-200: 35 53 80;
+  --c-brand-300: 44 70 108;
+  --c-brand-400: 47 84 132;
+  --c-brand-500: 44 90 158;
+  --c-brand-600: 38 82 146;
+  --c-brand-700: 30 66 118;
+  --c-brand-800: 24 52 94;
+  --c-brand-900: 18 40 72;
+
+  --c-accent-500: 200 160 46;
+  --c-accent-600: 176 138 36;
+  --c-accent-700: 150 116 28;
+
+  --c-ink:     232 237 245;
+  --c-muted:   160 173 192;
+  --c-faint:   130 143 162;
+  --c-line:    42 51 65;
+  --c-canvas:  14 20 28;
+  --c-surface: 21 29 39;
+}
+
+/* The skin's light-surface rules, undone: they hard-code the day palette. */
+:root[data-theme='dark'] [data-skin='ezil'] .bg-white { background-color: rgb(var(--c-surface)); }
+:root[data-theme='dark'] [data-skin='ezil'] .bg-white\/90 {
+  background-color: rgb(var(--c-surface) / 0.9);
+}
+:root[data-theme='dark'] [data-skin='ezil'] .bg-slate-50 { background-color: rgb(27 37 49); }
+:root[data-theme='dark'] [data-skin='ezil'] { background-color: rgb(var(--c-canvas)); }
+:root[data-theme='dark'] [data-skin='ezil'] .text-brand-700,
+:root[data-theme='dark'] [data-skin='ezil'] .text-brand-600 { color: rgb(140 180 236); }
 
 /*
  * The skin's own surfaces and type.
