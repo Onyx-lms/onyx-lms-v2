@@ -23,6 +23,7 @@ import type { PermissionOverrides } from './permissions.ts';
 
 const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, student_signup, signup_domains, created_at, updated_at';
 const USER_COLUMNS = 'id, email, name, phone, photo, status, email_verified_at, created_at';
+const PROFILE_COLUMNS = 'id, email, name, phone, photo, status, created_at, username, headline, bio, skills_text, interests, experience, website, profile_public';
 const MEMBERSHIP_COLUMNS = 'id, tenant_id, user_id, role, status, roll_number, created_at';
 
 /**
@@ -334,6 +335,115 @@ export class TenancyService {
     if (error) throw new HttpError(500, 'Could not save that: ' + error.message);
     if (!data) throw new HttpError(404, 'Institution not found.');
     return data;
+  }
+
+  /**
+   * The profile a person writes about themselves, and the address it lives at.
+   *
+   * Everything on the old profile screen came from somewhere else -- courses,
+   * marks, awarded skills -- which made it a record rather than a profile. This
+   * is the half only the person can supply, and the half worth sharing.
+   */
+  async updateProfile(userId: string, input: {
+    username?: string | null; headline?: string; bio?: string; skills_text?: string;
+    interests?: string; experience?: string; website?: string; profile_public?: boolean;
+  }) {
+    const patch: Record<string, unknown> = {};
+
+    if (input.username !== undefined) {
+      const handle = (input.username ?? '').trim().toLowerCase();
+      if (handle) {
+        // Letters, digits, dot, dash, underscore. A handle appears in a URL a
+        // person reads out loud, so anything needing percent-encoding is
+        // refused rather than silently mangled.
+        if (!/^[a-z0-9][a-z0-9._-]{2,39}$/.test(handle)) {
+          throw new HttpError(422,
+            'A username is 3-40 characters: letters, numbers, dots, dashes or underscores, '
+            + 'starting with a letter or number.');
+        }
+        const { data: taken } = await this.#db.from('onyx_users')
+          .select('id').ilike('username', handle).neq('id', userId).maybeSingle();
+        if (taken) throw new HttpError(409, 'That username is already taken.');
+        patch.username = handle;
+      } else {
+        // Clearing it takes the public address away with it: an address that
+        // resolves to nobody is worse than no address.
+        patch.username = null;
+        patch.profile_public = false;
+      }
+    }
+
+    for (const field of ['headline', 'bio', 'skills_text', 'interests', 'experience', 'website'] as const) {
+      if (input[field] !== undefined) patch[field] = String(input[field] ?? '').trim();
+    }
+    if (input.profile_public !== undefined) patch.profile_public = input.profile_public;
+
+    if (patch.profile_public === true) {
+      const { data: current } = await this.#db.from('onyx_users')
+        .select('username').eq('id', userId).maybeSingle();
+      const handle = patch.username ?? current?.username;
+      if (!handle) {
+        throw new HttpError(422, 'Choose a username first — that is the address to share.');
+      }
+    }
+
+    const { data, error } = await this.#db.from('onyx_users')
+      .update(patch).eq('id', userId).select(PROFILE_COLUMNS).maybeSingle();
+    if (error) throw new HttpError(500, 'Could not save your profile: ' + error.message);
+    return data;
+  }
+
+  /** The person's own profile, editable fields included. */
+  async profileFor(userId: string) {
+    const { data } = await this.#db.from('onyx_users')
+      .select(PROFILE_COLUMNS).eq('id', userId).maybeSingle();
+    return data;
+  }
+
+  /**
+   * A public profile, by handle.
+   *
+   * Deliberately its own projection rather than the row: an email address and a
+   * phone number are on the same record and neither belongs to a stranger. What
+   * comes back is what the person wrote plus where they belong -- and only if
+   * they have said the page may answer at all.
+   */
+  async publicProfile(username: string) {
+    const handle = username.trim().toLowerCase();
+    if (!handle) return null;
+
+    const { data: user } = await this.#db.from('onyx_users')
+      .select(PROFILE_COLUMNS).ilike('username', handle).maybeSingle();
+    if (!user || !user.profile_public || user.status !== 1) return null;
+
+    // Where they belong, and as what. Institution and role only -- a roll
+    // number identifies somebody inside an institution and is not a stranger's
+    // business.
+    const { data: memberships } = await this.#db.from('onyx_memberships')
+      .select('role, created_at, tenant:onyx_tenants(id, name, slug, status)')
+      .eq('user_id', user.id).eq('status', 1);
+
+    const places = (memberships ?? [])
+      .map((m) => ({
+        role: String(m.role),
+        since: String(m.created_at),
+        institution: (m as unknown as { tenant: { name: string; status: number } | null }).tenant,
+      }))
+      .filter((m) => m.institution && m.institution.status === 1)
+      .map((m) => ({ role: m.role, since: m.since, institution: m.institution!.name }));
+
+    return {
+      username: String(user.username),
+      name: String(user.name),
+      headline: String(user.headline ?? ''),
+      bio: String(user.bio ?? ''),
+      skills: String(user.skills_text ?? '').split(',').map((x) => x.trim()).filter(Boolean),
+      interests: String(user.interests ?? '').split(',').map((x) => x.trim()).filter(Boolean),
+      experience: String(user.experience ?? ''),
+      website: String(user.website ?? ''),
+      since: String(user.created_at),
+      places,
+    };
   }
 
   /**

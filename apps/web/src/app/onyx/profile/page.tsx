@@ -3,7 +3,9 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxReadiness, OnyxSkills } from '@/components/onyx-career';
 import { navFor, ROLE_LABELS } from '@/lib/onyx-nav';
+import { headers } from 'next/headers';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { ProfileEditor, type ProfileDetails } from '@/components/onyx-profile-editor';
 import type { Profile } from '@/lib/onyx-career';
 import type { GuardianLink } from '@/lib/onyx-campus';
 import type { ExamMark } from '@/lib/onyx-campus';
@@ -47,6 +49,13 @@ const RECENT = 5;
 export default async function OnyxProfilePage() {
   await requireOnyxSession();
   const me = await onyxApi<Me>('/api/onyx/me');
+  // The half of the profile only its owner writes, and the origin the shareable
+  // link is built from -- read from the request rather than hard-coded, so the
+  // address shown is the one the person is actually on.
+  const details = await onyxApiSafe<ProfileDetails>('/api/onyx/my/profile-details');
+  const head = await headers();
+  const origin = (head.get('x-forwarded-proto') ?? 'https') + '://'
+    + (head.get('host') ?? 'onyx-lms-v2.vercel.app');
   const isStudent = me.role === 'student';
   // Deliberately not admin: an admin's profile is the identity card and
   // nothing under it. Admin can teach a course (assertCanTeach lets them
@@ -87,6 +96,17 @@ export default async function OnyxProfilePage() {
         ? 'What you have done here, and what it adds up to.'
         : 'Who this account is, at ' + me.tenant.name + '.'}
     >
+      {/* What you say about yourself, before what the system says about you.
+          Everything below this is derived -- courses, marks, awarded skills --
+          and none of it was ever a profile: it is a record. This is the part a
+          person writes, and the part worth sending somebody a link to. */}
+      {details ? (
+        <section className="mb-6">
+          <SectionHead title="Your public profile" />
+          <ProfileEditor details={details} role={me.role} origin={origin} />
+        </section>
+      ) : null}
+
       {/* Identity first, and it is the institution's record of you rather than
           a profile you fill in. Only what the session actually holds is shown:
           a programme or a batch printed from nothing would be the one place a

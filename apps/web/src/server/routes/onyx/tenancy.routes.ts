@@ -256,6 +256,43 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
     return ok(await ctx.onyxTenancy.signupInstitutionFor(email));
   });
 
+  /** The person's own profile, with the fields only they can fill in. */
+  app.get('/api/onyx/my/profile-details', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxTenancy.profileFor(claims.user_id));
+  });
+
+  app.patch('/api/onyx/my/profile-details', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      username: z.string().max(40).nullish(),
+      headline: z.string().max(160).optional(),
+      bio: z.string().max(2000).optional(),
+      skills_text: z.string().max(600).optional(),
+      interests: z.string().max(600).optional(),
+      experience: z.string().max(3000).optional(),
+      website: z.string().max(200).optional(),
+      profile_public: z.boolean().optional(),
+    }), req.body);
+    return ok(await ctx.onyxTenancy.updateProfile(claims.user_id, body), 'Profile saved.');
+  });
+
+  /**
+   * Somebody's public profile, by handle.
+   *
+   * Unauthenticated on purpose -- a shareable link that demands a login is not
+   * shareable. It answers only for a person who has switched their profile on,
+   * and with only what they wrote plus where they belong; a 404 covers "no such
+   * handle" and "not public" alike, so the endpoint cannot be used to discover
+   * who exists.
+   */
+  app.get('/api/onyx/p/:username', async (req) => {
+    const handle = String((req.params as { username: string }).username ?? '');
+    const profile = await ctx.onyxTenancy.publicProfile(handle);
+    if (!profile) throw new HttpError(404, 'No public profile at that address.');
+    return ok(profile);
+  });
+
   // ---- F-06: onboarding a new institution ----
 
   /**
