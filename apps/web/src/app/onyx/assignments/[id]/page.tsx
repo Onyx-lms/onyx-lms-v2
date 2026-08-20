@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { RubricBuilder } from '@/components/onyx-rubric-builder';
 import {
-  Card, Empty, ListRow, Pill, RowList, SectionHead, relativeDue,
+  Card, Empty, ListRow, Pill, RowList, SectionHead, relativeWhen,
 } from '@/components/onyx-ui';
 import { OnyxReturnedWork, OnyxSubmissionForm } from '@/components/onyx-assignment';
 import { ActionButton } from '@/components/onyx-create';
@@ -36,7 +36,11 @@ export default async function OnyxAssignmentPage({ params }: { params: Promise<{
     : null;
   const names = new Map((members ?? []).map((m) => [m.user_id, m.user]));
   const mine = assignment.my_submission ?? null;
-  const when = relativeDue(assignment.due_at);
+  // For the learner, the deadline stops counting once their own work has
+  // been marked and returned: a red '26 days late' on a piece somebody has
+  // already graded is telling them off for something that is finished.
+  const settledForMe = mine?.status === 'graded' || mine?.status === 'returned';
+  const when = relativeWhen(assignment.due_at, settledForMe);
   // Graded but not yet released. What "return all" would actually release.
   const readyToReturn = (assignment.submissions ?? [])
     .filter((sub) => sub.status === 'graded').length;

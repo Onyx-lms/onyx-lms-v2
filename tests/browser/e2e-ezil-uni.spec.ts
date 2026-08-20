@@ -69,7 +69,10 @@ test('1. the platform admin creates the institution, through the console', async
   await page.getByRole('button', { name: 'Create', exact: true }).click();
 
   // It appears in the platform's own list of every institution.
-  await expect(page.getByRole('link', { name: NAME })).toBeVisible({ timeout: 15_000 });
+  // Scoped to the directory table: the overview's right rail also lists
+  // institutions, so an unscoped locator can resolve to two.
+  await expect(page.getByLabel('Institutions', { exact: true })
+    .getByRole('link', { name: NAME })).toBeVisible({ timeout: 15_000 });
 
   await withDb(async (c) => {
     const { rows } = await c.query(
@@ -162,7 +165,10 @@ test('3. a course, lessons and two assignments are set up (no UI exists for this
     return withDb(async (c) => {
       const { rows } = await c.query('SELECT id FROM public."onyx_users" WHERE email = $1',
         [email]);
-      return Number(rows[0].id);
+      // A string, not Number(): onyx_users.id became a uuid at the auth
+      // cutover, so Number() produced NaN and every route validating
+      // z.string().uuid() answered "The given data was invalid."
+      return String(rows[0].id);
     });
   }
 });
@@ -218,7 +224,8 @@ test('6. every number on the student dashboard matches the database', async ({ p
       Number((await c.query(sql, params)).rows[0].n);
     const userRow = await c.query('SELECT id FROM public."onyx_users" WHERE email = $1',
       [mail('student1')]);
-    const uid = Number(userRow.rows[0].id);
+    // A uuid string since the auth cutover, not a number.
+    const uid = String(userRow.rows[0].id);
     return {
       uid,
       lessonsTotal: await one(

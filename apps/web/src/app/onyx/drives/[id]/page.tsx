@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import {
-  BackLink, Banner, Card, DataTable, Empty, EmptyRow, Icon, Meter, Pill, Score, SectionHead, StatTile, State, Stepper, relativeDue,
+  BackLink, Banner, Card, DataTable, Empty, EmptyRow, Icon, Meter, Pill, Score, SectionHead, StatTile, State, Stepper, relativeWhen,
 } from '@/components/onyx-ui';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
@@ -67,7 +67,9 @@ export default async function OnyxDrivePage({ params }: { params: Promise<{ id: 
 
   const recorded = (r: { attended: number; absent: number }) => r.attended + r.absent > 0;
   const firstOpen = summary.rounds.findIndex((r) => !recorded(r));
-  const when = relativeDue(summary.drive.scheduled_at);
+  const driveOver = summary.drive.status === 'complete'
+    || summary.drive.status === 'cancelled';
+  const when = relativeWhen(summary.drive.scheduled_at, driveOver);
 
   return (
     <OnyxShell

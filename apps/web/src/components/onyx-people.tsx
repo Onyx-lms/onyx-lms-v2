@@ -5,6 +5,7 @@ import { Fragment, useState, useTransition } from 'react';
 import { ROLE_LABELS } from '@/lib/onyx-nav';
 import { Modal } from '@/components/onyx-modal';
 import { Icon } from '@/components/onyx-ui';
+import { DangerPanel } from '@/components/onyx-danger';
 import type { Role } from '@/lib/onyx-session';
 
 /**
@@ -64,8 +65,10 @@ const NOUN: Record<Role, string> = {
   admin: 'an administrator',
 };
 
-export function OnyxPeople({ members, canEdit, initialRole }: {
+export function OnyxPeople({ members, canEdit, initialRole, tenantName }: {
   members: Member[]; canEdit: boolean; initialRole?: Role;
+  /** Named in the remove panel, so the consequence is not stated in the abstract. */
+  tenantName: string;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState('');
@@ -374,45 +377,33 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
                       {m.user?.status === 1 ? 'Active' : 'Disabled'}
                     </span>
                   </td>
+                  {/* Edit, and only Edit. "Remove" used to sit here in red on
+                      every row -- forty near-identical lines, and the one
+                      irreversible act among them was the easiest thing on the
+                      screen to hit. It is at the foot of this person's own
+                      edit panel now, which is the only place an administrator
+                      can be certain which of the forty they are ending. Same
+                      rule the platform console was put on. */}
                   {canEdit ? (
                     <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setEditingId(editingId === m.id ? null : m.id)}
-                          className="text-sm font-medium text-brand-700 hover:underline"
-                        >
-                          {editingId === m.id ? 'Close' : 'Edit'}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={pending}
-                          // Asked first. This ends somebody's access to the
-                          // institution, and it was one click with nothing
-                          // between the pointer and the consequence -- while
-                          // the identical action in the platform console has
-                          // had a confirmation for months.
-                          onClick={() => {
-                            if (!window.confirm('Remove ' + (m.user?.name ?? 'this member')
-                              + ' from this institution? They lose access immediately.')) return;
-                            call('members/' + m.id, { method: 'DELETE' }, 'Removed.');
-                          }}
-                          // rose-600 is 4.7:1 on white and would pass on its own,
-                          // but `disabled:opacity-50` halves it to ~2.4:1 while
-                          // the control is still rendered. A dimmed colour token
-                          // says "disabled" without taking the text below AA.
-                          className="text-sm font-medium text-rose-700 hover:underline
-                                     disabled:text-muted disabled:no-underline"
-                        >
-                          Remove
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(editingId === m.id ? null : m.id)}
+                        className="text-sm font-medium text-brand-700 hover:underline"
+                      >
+                        {editingId === m.id ? 'Close' : 'Edit'}
+                      </button>
                     </td>
                   ) : null}
                 </tr>
                 {canEdit && editingId === m.id ? (
                   <tr key={m.id + '-edit'}>
-                    <td colSpan={5} className="bg-slate-50 px-4 py-3.5">
+                    {/* Six columns, not five: Name, Roll, Email, Role, Account and the
+                        actions cell. This row only renders when canEdit is true,
+                        which is exactly when that sixth column exists -- the
+                        panel had been stopping one column short of the table
+                        ever since the actions cell was added. */}
+                    <td colSpan={6} className="bg-slate-50 px-4 py-3.5">
                       <form
                         className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
                         onSubmit={(e) => {
@@ -479,6 +470,31 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
                           </button>
                         </div>
                       </form>
+
+                      {/* The one irreversible act on this screen, at the foot
+                          of the panel for the one person it acts on, naming
+                          them and naming the reversible alternative above it. */}
+                      <DangerPanel
+                        heading="Remove from this institution"
+                        what={<>
+                          {m.user?.name ?? 'This member'} loses access to {tenantName} and drops
+                          off its rosters. Their marks, submissions and invoices stay on record.
+                          To stop them signing in without removing them, set Account to
+                          {' '}<em>Disabled</em> above instead.
+                        </>}
+                        cta="Remove member"
+                        onConfirm={async () => {
+                          const res = await fetch('/api/proxy/onyx/members/' + m.id,
+                            { method: 'DELETE' });
+                          const body = await res.json().catch(() => ({ ok: false }));
+                          if (body.ok) {
+                            setEditingId(null);
+                            setNotice({ tone: 'ok', text: 'Removed.' });
+                            router.refresh();
+                          }
+                          return body;
+                        }}
+                      />
                     </td>
                   </tr>
                 ) : null}
@@ -486,7 +502,7 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
             ))}
             {shown.length === 0 ? (
               <tr>
-                <td colSpan={canEdit ? 5 : 4} className="px-4 py-8 text-center text-muted">
+                <td colSpan={canEdit ? 6 : 5} className="px-4 py-8 text-center text-muted">
                   {members.length === 0 ? 'Nobody here yet.' : 'Nobody matches that.'}
                 </td>
               </tr>

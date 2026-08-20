@@ -284,6 +284,45 @@ export function relativeDue(due: string | null | undefined, now = Date.now()): {
     tone: 'neutral' };
 }
 
+/**
+ * The same date, read for something that has already happened.
+ *
+ * `relativeDue` is a DEADLINE: it counts down and, once the date passes, says
+ * "26 days late" in red -- exactly right for an assignment nobody has handed
+ * in, and exactly wrong everywhere it was being used for a record that has
+ * finished. The product was telling an administrator a filled job post was
+ * "26 days late", a completed placement drive was "12 days late", and a
+ * learner whose marked work had come back that their assignment was overdue.
+ * A settled record's date is history, so it is read backwards.
+ *
+ * Pass `settled` as the answer to "is this thing over?" -- usually a status
+ * comparison at the call site, because what counts as over differs (a job is
+ * `open`, an invoice is `paid`, a submission is `graded`).
+ */
+export function relativeWhen(
+  at: string | null | undefined,
+  settled: boolean,
+  now = Date.now(),
+): { text: string; tone: 'neutral' | 'soon' | 'late' } {
+  if (!settled) return relativeDue(at, now);
+  if (!at) return { text: 'No date', tone: 'neutral' };
+  const t = Date.parse(at);
+  if (!Number.isFinite(t)) return { text: 'No date', tone: 'neutral' };
+
+  const days = Math.floor((now - t) / 86_400_000);
+  // Still ahead, on something already finished: neither reading is safe to
+  // assert, so state the date and let the reader judge.
+  if (days < 0) {
+    return { text: new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+      tone: 'neutral' };
+  }
+  if (days === 0) return { text: 'Today', tone: 'neutral' };
+  if (days === 1) return { text: 'Yesterday', tone: 'neutral' };
+  if (days < 30) return { text: days + ' days ago', tone: 'neutral' };
+  return { text: new Date(t).toLocaleDateString(undefined,
+    { day: 'numeric', month: 'short', year: 'numeric' }), tone: 'neutral' };
+}
+
 /** Empty states, styled once so no screen invents its own. */
 export function Empty({ children, icon }: { children: React.ReactNode; icon?: IconName }) {
   return (
@@ -482,7 +521,18 @@ export function DataTable({ caption, head, children, empty, scroll = true }: {
   return (
     <div className="relative min-w-0 overflow-hidden rounded-2xl border border-line
                     bg-white shadow-card">
-      <div className={'relative min-w-0 ' + (scroll ? 'overflow-x-auto' : '')}>
+      {/*
+        * `tabIndex` on the element that actually scrolls, which is this one.
+        *
+        * Callers wrap DataTable in `<div tabIndex={0} role="region">` to make
+        * the sideways scroll reachable from the keyboard -- but that wrapper
+        * has no overflow, so it was a focusable box around a scroller nobody
+        * could scroll. A keyboard-only user could not reach the right-hand
+        * columns of any table in the product. axe names it exactly:
+        * `scrollable-region-focusable`.
+        */}
+      <div className={'relative min-w-0 ' + (scroll ? 'overflow-x-auto' : '')}
+        tabIndex={scroll ? 0 : undefined}>
         {table}
       </div>
       {empty}

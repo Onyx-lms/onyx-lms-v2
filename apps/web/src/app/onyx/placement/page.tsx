@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import {
   Buckets, Card, DataTable, Empty, EmptyRow, ListRow, Pill, RowList, SectionHead,
-  StackBar, StatTile, State, relativeDue,
+  StackBar, StatTile, State, relativeWhen,
 } from '@/components/onyx-ui';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
@@ -183,7 +183,10 @@ export default async function OnyxPlacementPage() {
               }
             >
               {sorted.map((d) => {
-                const when = relativeDue(d.scheduled_at);
+                // "complete"/"cancelled" are over; the countdown is only
+                // meaningful for one still planned or running.
+                const settled = d.status === 'complete' || d.status === 'cancelled';
+                const when = relativeWhen(d.scheduled_at, settled);
                 const future = d.scheduled_at ? Date.parse(d.scheduled_at) >= now : false;
                 return (
                   <tr key={d.id}>
@@ -235,7 +238,7 @@ export default async function OnyxPlacementPage() {
             <SectionHead title="Posts" action={{ href: '/onyx/jobs', label: 'All posts' }} />
             <RowList label="Posts on the board">
               {jobs.map((j) => {
-                const closes = relativeDue(j.closes_at);
+                const closes = relativeWhen(j.closes_at, j.status !== 'open');
                 return (
                   <ListRow
                     key={j.id}

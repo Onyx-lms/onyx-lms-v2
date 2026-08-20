@@ -57,7 +57,7 @@ export default async function OnyxPeoplePage(
 
       <SectionHead title="Roster" />
       <OnyxPeople members={members} canEdit={claims.tenant_role === 'admin'}
-        initialRole={initialRole} />
+        initialRole={initialRole} tenantName={me.tenant.name} />
 
       {/* CMP-04: a guardian is a member of the institution in their own right,
           linked to a student. The link starts unaccepted -- the guardian

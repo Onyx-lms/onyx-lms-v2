@@ -306,7 +306,29 @@ export class AcademicsService {
       slug,
       description: input.description ?? null,
       credits: input.credits ?? 0,
-      self_enroll: input.self_enroll ? 1 : 0,
+      /*
+       * How learners get on, honoured at creation and not only at update.
+       *
+       * This wrote `self_enroll` from a boolean the form stopped sending when
+       * open/locked courses landed, and dropped `access` and `price_minor` on
+       * the floor entirely -- so an administrator who chose "Open — anyone here
+       * may start it" or "Locked — they buy it first" got a batch course at no
+       * price, with no error and nothing on screen to say the answer had been
+       * discarded. updateCourse was fixed for this; create was not, which is
+       * why it only showed up on the first save.
+       *
+       * `access` and `self_enroll` travel together for the reason updateCourse
+       * gives: `access` is what every read asks about, `self_enroll` is what
+       * selfEnroll() has read since 0002, and setting one without the other is
+       * how a course comes to say "open" on the catalogue and then refuse the
+       * learner who clicks it.
+       */
+      access: input.access ?? 'batch',
+      self_enroll: input.access !== undefined
+        ? (input.access === 'batch' ? 0 : 1)
+        : (input.self_enroll ? 1 : 0),
+      price_minor: input.price_minor ?? 0,
+      ...(input.currency ? { currency: input.currency.toUpperCase() } : {}),
       // Courses start unpublished: an empty course visible to a cohort is worse
       // than no course at all.
       status: input.status ?? 0,

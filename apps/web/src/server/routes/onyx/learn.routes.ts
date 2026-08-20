@@ -299,8 +299,8 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/courses/:id/faculty', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.publish');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.publish');
+    // Assigning teaching is its own capability. `courses.publish` was checked
+    // here twice, and neither copy was the right one to check.
     await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.assign_faculty');
     const body = validate(z.object({ user_id: z.string().uuid() }), req.body);
 

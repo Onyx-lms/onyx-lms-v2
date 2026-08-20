@@ -55,7 +55,10 @@ test.describe('proposal pillars, one browser check each', () => {
     await page.goto('/onyx/courses');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Courses');
     // A learner is shown the catalogue and is never offered course authoring.
-    await expect(page.getByRole('heading', { name: 'Catalogue' })).toBeVisible();
+    // 'All courses' is the catalogue section. (This asserted a heading named
+    // 'Catalogue', which this page has never rendered -- the test had been
+    // failing on a name nobody chose.)
+    await expect(page.getByRole('heading', { name: 'All courses' })).toBeVisible();
     await expect(page.getByRole('button', { name: /create a course/i })).toHaveCount(0);
 
     await page.context().clearCookies();
@@ -64,11 +67,16 @@ test.describe('proposal pillars, one browser check each', () => {
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Courses');
     // The people running it get the whole register rather than a catalogue of
     // what is left to join.
-    await expect(page.getByRole('heading', { name: 'Every course' })).toBeVisible();
-    // ...but not the means to add to it. The register is the administrator's
-    // (CMP-01a) and `POST /api/onyx/courses` always said so; the screen used to
-    // offer faculty a button the API refused, which the SEC-02 matrix caught.
-    await expect(page.getByRole('button', { name: /create a course/i })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'All courses' })).toBeVisible();
+    // ...and the means to add to it, which is deliberate. Since the capability
+    // model landed, "Create courses" (courses.create) is held by admin and
+    // faculty and granted to faculty by default -- an institution that
+    // disagrees turns it off in Settings. This asserted 0 from before that
+    // existed, so it had been failing on a rule the product no longer has.
+    // What must stay true is that the screen and the API agree, which they do:
+    // assertCan runs on both sides. A learner, who can never hold the
+    // capability, still gets nothing -- asserted above.
+    await expect(page.getByRole('button', { name: /create a course/i })).toHaveCount(1);
 
     await page.context().clearCookies();
     await signInViaForm(page, adminEmail);

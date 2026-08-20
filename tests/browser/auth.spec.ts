@@ -71,8 +71,10 @@ test.describe('signing in and out', () => {
     await expect(page).toHaveURL(/\/onyx\/login$/);
 
     // The cookie is gone. A direct visit is turned back by the server
-    // component's redirect, not rendered with an empty or broken shell.
+    // component's redirect, not rendered with an empty or broken shell -- and
+    // it carries `?next=` so signing back in returns to where they were going,
+    // which is what makes a shared link to a paper survive the login wall.
     await page.goto('/onyx/dashboard');
-    await expect(page).toHaveURL(/\/onyx\/login$/);
+    await expect(page).toHaveURL(/\/onyx\/login\?next=%2Fonyx%2Fdashboard$/);
   });
 });

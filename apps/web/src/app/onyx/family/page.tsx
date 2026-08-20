@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import {
   Card, DataTable, Empty, Icon, Pill, Ring, Score, SectionHead, StatTile,
-  relativeDue,
+  relativeWhen,
 } from '@/components/onyx-ui';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxPageRole, onyxApi, type Me } from '@/lib/onyx-session';
@@ -137,8 +137,12 @@ export default async function OnyxFamilyPage() {
                         {fees.invoices.length ? (
                           <ul className="mt-4 divide-y divide-line border-t border-line">
                             {fees.invoices.map((inv) => {
-                              const due = relativeDue(inv.due_at);
                               const paid = inv.status === 'paid';
+                              // A settled invoice is not overdue. This printed
+                              // "INV-0007 · 26 days late · Paid" -- the same
+                              // row contradicting itself twice over.
+                              const due = relativeWhen(inv.due_at,
+                                paid || inv.status === 'void');
                               return (
                                 <li key={inv.id}
                                   className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2.5

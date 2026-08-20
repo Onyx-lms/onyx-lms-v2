@@ -31,6 +31,51 @@ async function send(path: string, body?: unknown,
   return res.json().catch(() => ({ ok: false, message: 'Something went wrong.' }));
 }
 
+/**
+ * A destructive control on a row, asked once before it fires.
+ *
+ * Three of these -- taking a lecturer off a course, withdrawing a learner from
+ * one, and cutting a verified guardian's link to their child -- went straight
+ * through on a single click, in lists where the rows look alike and the next
+ * row's button is 40px below the one you meant. Every other destructive act in
+ * this file already asked first; these three were simply never given the same
+ * treatment.
+ *
+ * A two-step inline confirm rather than a modal, because that is what the rest
+ * of this file uses for row-scoped acts (DeleteExamButton, the question-bank
+ * trash, the timetable ✕) and one idiom is worth more than a nicer second one.
+ * `subject` names who it is about, so the question is answerable without
+ * looking back up at the row.
+ */
+function ConfirmRowAction({ label, question, subject, onConfirm }: {
+  label: string; question: string; subject: string; onConfirm: () => Promise<void>;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [pending, start] = useTransition();
+
+  if (!confirming) {
+    return (
+      <button type="button" onClick={() => setConfirming(true)}
+        className="inline-flex min-h-[36px] shrink-0 items-center px-2 text-xs font-semibold
+                   text-rose-700 hover:underline">
+        {label}
+      </button>
+    );
+  }
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5 text-xs">
+      <span className="max-w-[12rem] truncate text-muted">{question} {subject}?</span>
+      <button type="button" disabled={pending}
+        onClick={() => start(async () => { await onConfirm(); setConfirming(false); })}
+        className="font-bold text-rose-700 hover:underline disabled:opacity-50">
+        {pending ? 'Working…' : 'Yes'}
+      </button>
+      <button type="button" onClick={() => setConfirming(false)}
+        className="text-muted hover:underline">No</button>
+    </span>
+  );
+}
+
 function Shell({ title, open, setOpen, cta, children, onSubmit, pending, error }: {
   title: string; open: boolean; setOpen: (v: boolean) => void; cta: string;
   children: React.ReactNode; onSubmit: () => void; pending: boolean; error: string | null;
@@ -1965,7 +2010,7 @@ export function LinkEmployerAccount({ employerId, candidates }: {
       </button>
       <button type="button" onClick={() => setOpen(false)}
         className="inline-flex min-h-[36px] items-center px-2 text-[11px] font-semibold
-                   text-faint hover:text-slate-600">
+                   text-muted hover:text-slate-600">
         Cancel
       </button>
       {error ? <span role="alert" className="text-[11px] text-rose-700">{error}</span> : null}
@@ -2028,12 +2073,9 @@ export function GuardianConsent({ links }: {
                 <div className="text-xs capitalize text-muted">{l.relationship}</div>
               </div>
               {l.verified_at ? (
-                <button type="button" disabled={pending}
-                  onClick={() => act('guardians/' + l.id, undefined, 'DELETE')}
-                  className="rounded-xl border border-rose-600 px-3 py-2 text-[13px]
-                             font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60">
-                  Remove
-                </button>
+                <ConfirmRowAction label="Remove" question="Cut the link to"
+                  subject={l.name ?? 'this guardian'}
+                  onConfirm={async () => { act('guardians/' + l.id, undefined, 'DELETE'); }} />
               ) : (
                 <button type="button" disabled={pending}
                   onClick={() => act('guardians/' + l.id + '/accept')}
@@ -2144,21 +2186,14 @@ export function CourseFacultyManager({ courseId, current, options, canManage }: 
                          bg-white px-3 py-2 text-sm">
               <span className="min-w-0 truncate font-semibold">{f.name}</span>
               {canManage ? (
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => start(async () => {
+                <ConfirmRowAction label="Remove" question="Take this course off" subject={f.name}
+                  onConfirm={async () => {
                     setError(null);
                     const res = await send(
                       'courses/' + courseId + '/faculty/' + f.user_id, undefined, 'DELETE');
                     if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
                     router.refresh();
-                  })}
-                  className="inline-flex min-h-[36px] shrink-0 items-center px-2 text-xs
-                             font-semibold text-rose-700 hover:underline disabled:opacity-50"
-                >
-                  Remove
-                </button>
+                  }} />
               ) : null}
             </li>
           ))}
@@ -2186,7 +2221,8 @@ export function CourseFacultyManager({ courseId, current, options, canManage }: 
             });
           }}
         >
-          <select value={userId} onChange={(e) => setUserId(e.target.value)} required
+          <select name="user_id" value={userId} onChange={(e) => setUserId(e.target.value)}
+            required aria-label="Faculty member to assign to this course"
             className={input + ' w-full'}>
             <option value="">Choose a faculty member</option>
             {remaining.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
@@ -2247,21 +2283,14 @@ export function CourseRosterManager({ courseId, roster, options, canManage }: {
                 <span className="block truncate text-xs text-muted">{r.email}</span>
               </span>
               {canManage ? (
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => start(async () => {
+                <ConfirmRowAction label="Withdraw" question="Withdraw" subject={r.name}
+                  onConfirm={async () => {
                     setError(null);
                     const res = await send(
                       'courses/' + courseId + '/enroll/' + r.user_id, undefined, 'DELETE');
                     if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
                     router.refresh();
-                  })}
-                  className="inline-flex min-h-[36px] shrink-0 items-center px-2 text-xs
-                             font-semibold text-rose-700 hover:underline disabled:opacity-50"
-                >
-                  Withdraw
-                </button>
+                  }} />
               ) : null}
             </li>
           ))}
@@ -2284,7 +2313,8 @@ export function CourseRosterManager({ courseId, roster, options, canManage }: {
             });
           }}
         >
-          <select value={userId} onChange={(e) => setUserId(e.target.value)} required
+          <select name="user_id" value={userId} onChange={(e) => setUserId(e.target.value)}
+            required aria-label="Student to enrol on this course"
             className={input + ' w-full'}>
             <option value="">Choose a student</option>
             {remaining.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
@@ -2712,8 +2742,10 @@ export function CreatePaper({ courses }: { courses: { id: number; label: string 
                   <label key={id} className="flex items-center gap-2 text-xs">
                     <input type="radio" name={'pp-correct-' + i} checked={q.correct === id}
                       disabled={q.manualOnly}
+                      aria-label={'Option ' + id.toUpperCase() + ' is the correct answer'}
                       onChange={() => setQuestion(i, { correct: id })} />
                     <input value={q.options[oi] ?? ''} placeholder={'Option ' + id.toUpperCase()}
+                      aria-label={'Option ' + id.toUpperCase()}
                       className={input + ' flex-1 text-xs'}
                       onChange={(e) => setOption(i, oi, e.target.value)} />
                   </label>

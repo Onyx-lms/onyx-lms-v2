@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { OnyxMark } from '@/components/onyx-brand';
-import { PlatformSignOut, CreateProfileForm, CreateTenantForm } from '@/components/onyx-platform-forms';
+import { PlatformSignOut } from '@/components/onyx-platform-forms';
 import { PlatformNavLinks } from '@/components/onyx-platform-nav-links';
 import { Icon } from '@/components/onyx-ui';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -123,15 +123,17 @@ export function OnyxPlatformShell({
             <div className="text-xs text-muted">Every institution</div>
           </div>
 
-          {/* The two creation actions live in the navbar itself, not a
-              page header -- so they are reachable from every screen,
-              including from inside an institution, not just the
-              Institutions list. Each opens as its own modal. */}
-          <div className="mt-4 space-y-2">
-            <CreateProfileForm />
-            <CreateTenantForm />
-          </div>
-
+          {/* Creating is not navigating.
+              These two used to sit here as full-width buttons above the whole
+              menu, and "Create an institution" was ALSO the Institutions
+              page's own header action -- the same primary control twice on one
+              screen, loud enough in the sidebar to outrank every destination
+              under it. Both now live where the thing they create belongs:
+              an institution on the Institutions list, a person on the roster
+              tab for that institution (Students / Faculty / Other roles, each
+              with the tenant already fixed, which is a better form than the
+              one this offered). Same rule the administrator's own sidebar was
+              put on. */}
           <PlatformNavLinks />
 
           {sidebarNav}
@@ -184,13 +186,12 @@ export function OnyxPlatformShell({
  * The phone menu. A sheet, so it covers rather than displaces the content --
  * same idea as OnyxShell's own MobileMenu.
  *
- * Only the plain navigation links (PlatformNavLinks, sidebarNav) auto-close
- * the sheet on click. CreateProfileForm and CreateTenantForm each open their
- * own modal from a click on the SAME button that would trigger auto-close --
- * closing this sheet mid-click would unmount that button's instance (and the
- * `open` state driving its modal) before the modal ever painted. Left outside
- * that wrapper, exactly like OnyxShell leaves its TenantCard's multi-step
- * switcher outside its own auto-close nav.
+ * Everything in it is a link now, so everything auto-closes on click. It used
+ * to carry the two create buttons as well, which had to be kept outside the
+ * auto-close wrapper: closing the sheet mid-click unmounted the button's own
+ * instance, and the `open` state driving its modal with it, before the modal
+ * ever painted. Moving creation onto the pages that own it took that special
+ * case with it.
  */
 function PlatformMobileMenu({ email, sidebarNav, onClose }: {
   email: string; sidebarNav?: React.ReactNode; onClose: () => void;
@@ -215,11 +216,6 @@ function PlatformMobileMenu({ email, sidebarNav, onClose }: {
           </div>
           <div className="mt-0.5 truncate text-sm font-bold" title={email}>{email}</div>
           <div className="text-xs text-muted">Every institution</div>
-        </div>
-
-        <div className="mt-4 space-y-2">
-          <CreateProfileForm />
-          <CreateTenantForm />
         </div>
 
         <div className="flex-1" onClick={onClose}>

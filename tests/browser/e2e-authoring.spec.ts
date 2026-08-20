@@ -41,7 +41,13 @@ async function signIn(page: Page, email: string) {
 async function create(page: Page, cta: string, values: Record<string, string | boolean>,
   submitLabel = cta) {
   await page.getByRole('button', { name: cta, exact: true }).first().click();
-  const form = page.locator('form').filter({ has: page.getByRole('button', { name: submitLabel }) });
+  // Two shapes of panel: one that expands in place, whose submit repeats the
+  // trigger's words, and one that opens as a Modal, where the trigger stays
+  // outside the form and the dialog carries the title. Filtering on the submit
+  // button only ever found the first.
+  const form = page.locator('form')
+    .filter({ has: page.getByRole('button', { name: submitLabel }) })
+    .or(page.getByRole('dialog').locator('form'));
   for (const [name, value] of Object.entries(values)) {
     const field = form.locator(`[name="${name}"]`).first();
     if (typeof value === 'boolean') { if (value) await field.check(); continue; }
@@ -53,7 +59,11 @@ async function create(page: Page, cta: string, values: Record<string, string | b
     }
     else await field.fill(value);
   }
-  await form.getByRole('button', { name: submitLabel }).click();
+  // A modal's submit is named for the act ("Create", "Add the lesson"), not
+  // for the trigger that opened it, so fall back to the form's own submit.
+  const named = form.getByRole('button', { name: submitLabel });
+  if (await named.count()) await named.click();
+  else await form.locator('button[type="submit"]').first().click();
   // The panel closes on success; if it stays open there is an error to read.
   await expect(form).toBeHidden({ timeout: 20_000 });
 }
@@ -77,7 +87,11 @@ test('setup: an institution, an admin, a faculty member and a student', async ({
   await page.locator('#ct-admin-email').fill(mail('admin'));
   await page.locator('#ct-admin-password').fill(PW);
   await page.getByRole('button', { name: 'Create', exact: true }).click();
-  await expect(page.getByRole('link', { name: NAME })).toBeVisible({ timeout: 15_000 });
+  // Scoped to the directory table: the overview's right rail also lists
+  // institutions ("Largest institutions"), and a brand-new one lands in both
+  // on a platform with few customers -- an unscoped locator resolved to two.
+  await expect(page.getByLabel('Institutions', { exact: true })
+    .getByRole('link', { name: NAME })).toBeVisible({ timeout: 15_000 });
 
   w.tenantId = await withDb(async (c) => Number(
     (await c.query('SELECT id FROM public."onyx_tenants" WHERE name=$1', [NAME])).rows[0].id));
@@ -133,7 +147,12 @@ test('LRN-01 an administrator creates a course, through the product', async ({ p
 
   await create(page, 'Create a course', {
     code: 'CS101', title: 'Introduction to Programming', credits: '4',
-    description: 'Where everyone starts.', self_enroll: true,
+    description: 'Where everyone starts.',
+    // `self_enroll` stopped being a checkbox when open/locked courses landed:
+    // the form asks how learners get on, and the server derives self_enroll
+    // from the answer (see updateCourse), so the two cannot disagree. This
+    // spec was still ticking a box that no longer exists.
+    access: 'Open — anyone here may start it, free',
   });
 
   await expect(page.getByText('Introduction to Programming').first()).toBeVisible();
@@ -160,8 +179,11 @@ test('LRN-02 a module and lessons are authored on the course', async ({ page }) 
   await expect(page.getByText('Core concepts').first()).toBeVisible();
 
   for (const title of ['Binary and bits', 'How a CPU works']) {
+    // A text lesson. `duration_seconds` was filled here too, but the composer
+    // only shows that field for a video -- the two are mutually exclusive, and
+    // asking for both meant waiting on an input that is never rendered.
     await create(page, 'Add a lesson to Core concepts', {
-      title, body: `Notes on ${title.toLowerCase()}.`, duration_seconds: '300',
+      title, body: `Notes on ${title.toLowerCase()}.`,
     });
   }
   await expect(page.getByText('Binary and bits').first()).toBeVisible();
@@ -178,7 +200,8 @@ test('LRN-02 a module and lessons are authored on the course', async ({ page }) 
 test('CMP-01 an administrator allocates a teacher to the course', async ({ page }) => {
   await signIn(page, mail('admin'));
   await page.goto('/onyx/courses/' + w.courseId);
-  await create(page, 'Assign a teacher', { user_id: 'Fern Faculty' });
+  // The trigger says "Assign a teacher"; the form's own submit says "Assign".
+  await create(page, 'Assign a teacher', { user_id: 'Fern Faculty' }, 'Assign');
 
   await page.screenshot({ path: OUT + 'feat-CMP01-faculty-allocation.png', fullPage: true });
   await withDb(async (c) => {

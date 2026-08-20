@@ -78,7 +78,12 @@ test.describe('role-aware navigation', () => {
   test('the roster gives an administrator editing controls that faculty do not get', async ({ page }) => {
     await signInViaForm(page, adminEmail);
     await page.goto('/onyx/people');
-    await expect(page.getByRole('button', { name: 'Remove' }).first()).toBeVisible();
+    // Edit is what a row offers. Removing somebody is no longer one of the
+    // things sitting in red at the end of forty near-identical lines -- it is
+    // at the foot of the panel Edit opens, where the person is named.
+    await expect(page.getByRole('button', { name: 'Remove member' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Edit' }).first().click();
+    await expect(page.getByRole('button', { name: 'Remove member' })).toBeVisible();
 
     // The login page redirects a signed-in visitor straight to the dashboard,
     // so switching who this page is signed in as means clearing the session
@@ -86,6 +91,7 @@ test.describe('role-aware navigation', () => {
     await page.context().clearCookies();
     await signInViaForm(page, facultyEmail);
     await page.goto('/onyx/people');
-    await expect(page.getByRole('button', { name: 'Remove' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /remove/i })).toHaveCount(0);
   });
 });

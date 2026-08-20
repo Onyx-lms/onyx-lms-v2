@@ -40,7 +40,10 @@ const ROLE_LABEL: Record<keyof typeof ROLE_EMAIL, string> = {
 // A link every role in the map should see, and one it should never see --
 // lifted straight from onyx-nav.ts's five menus.
 const NAV_EXPECT: Record<keyof typeof ROLE_EMAIL, { has: string; lacks: string }> = {
-  admin: { has: 'Audit log', lacks: 'Your posts' },
+  // Not 'Audit log': that was deliberately taken out of the administrator's
+  // menu (it is a forensic screen reached from the dashboard, and the route is
+  // untouched). Students is the link only an admin and faculty get.
+  admin: { has: 'Students', lacks: 'Your posts' },
   faculty: { has: 'People', lacks: 'Audit log' },
   student: { has: 'Practice', lacks: 'People' },
   exams: { has: 'Examinations', lacks: 'Programmes' },

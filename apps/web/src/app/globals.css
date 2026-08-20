@@ -127,6 +127,25 @@
 :root[data-theme='dark'] .bg-slate-50 { background-color: rgb(28 38 45); }
 :root[data-theme='dark'] .bg-slate-100 { background-color: rgb(33 45 53); }
 :root[data-theme='dark'] .bg-slate-300 { background-color: rgb(60 76 88); }
+/*
+ * The alpha variants, which are a separate class each and inherit nothing from
+ * the ones above. `bg-slate-50/70` was left out and stayed near-white in the
+ * dark: the programme cards' header strip painted #b4b8bc under near-white
+ * bold text -- 1.69:1, a heading nobody could read. Tailwind generates
+ * `.bg-slate-50\/70` as its own rule, so it needs its own override, and so
+ * does every other opacity in use.
+ *
+ * Only the literal Tailwind palettes need this. Anything built on a brand
+ * token (`bg-brand-50` and its opacities) already follows the theme, because
+ * `--c-brand-50` is itself redefined for dark -- and hard-coding those here
+ * would break the EZiL skin, which redefines the same token a third time.
+ */
+:root[data-theme='dark'] .bg-slate-50\/60 { background-color: rgb(28 38 45 / 0.6); }
+:root[data-theme='dark'] .bg-slate-50\/70 { background-color: rgb(28 38 45 / 0.7); }
+:root[data-theme='dark'] .bg-red-50\/60 { background-color: rgb(58 22 26 / 0.6); }
+:root[data-theme='dark'] .bg-white\/80 { background-color: rgb(var(--c-surface) / 0.8); }
+:root[data-theme='dark'] .bg-white\/60 { background-color: rgb(var(--c-surface) / 0.6); }
+:root[data-theme='dark'] .bg-white\/40 { background-color: rgb(var(--c-surface) / 0.4); }
 
 :root[data-theme='dark'] .text-slate-900,
 :root[data-theme='dark'] .text-slate-800 { color: rgb(var(--c-ink)); }

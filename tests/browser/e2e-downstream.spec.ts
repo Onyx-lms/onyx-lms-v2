@@ -61,7 +61,12 @@ async function signIn(page: Page, email: string) {
  * the panel had not finished writing to. The heading is the one part of a
  * panel that does not change while it works.
  */
-const panelOf = (page: Page) => page.locator('form').filter({ has: page.locator('h3') });
+const panelOf = (page: Page) => page.locator('form')
+  .filter({ has: page.locator('h3') })
+  // A create panel that opens as a Modal has no h3 of its own: the dialog
+  // supplies the title as its h2, so the form inside carries only fields.
+  // The roster's "Add a student" is one of these.
+  .or(page.getByRole('dialog').locator('form'));
 
 /**
  * Submit, and if the click did nothing at all, submit once more.
@@ -130,7 +135,10 @@ test('setup: an institution with a course, a teacher and two learners', async ({
   await page.locator('#ct-admin-email').fill(mail('admin'));
   await page.locator('#ct-admin-password').fill(PW);
   await page.getByRole('button', { name: 'Create', exact: true }).click();
-  await expect(page.getByRole('link', { name: NAME })).toBeVisible({ timeout: 15_000 });
+  // Scoped to the directory table: the overview's right rail also lists
+  // institutions, so an unscoped locator can resolve to two.
+  await expect(page.getByLabel('Institutions', { exact: true })
+    .getByRole('link', { name: NAME })).toBeVisible({ timeout: 15_000 });
 
   w.tenantId = await withDb(async (c) => Number(
     (await c.query('SELECT id FROM public."onyx_tenants" WHERE name=$1', [NAME])).rows[0].id));
@@ -165,7 +173,10 @@ test('setup: an institution with a course, a teacher and two learners', async ({
 
   await page.goto('/onyx/courses');
   await create(page, 'Create a course', {
-    code: 'MA201', title: 'Discrete Mathematics', credits: '4', self_enroll: true,
+    code: 'MA201', title: 'Discrete Mathematics', credits: '4',
+    // The form asks how learners get on; the server derives self_enroll from
+    // the answer. The self_enroll checkbox this used to tick is gone.
+    access: 'Open — anyone here may start it, free',
   });
   w.courseId = await withDb(async (c) => Number((await c.query(
     `SELECT id FROM public."onyx_courses" WHERE tenant_id=$1 AND code='MA201'`,

@@ -53,6 +53,13 @@ async function post(action: string, body: unknown) {
  * sending them to the dashboard would lose the code in the URL, which rotates
  * within seconds and cannot be recovered by going back.
  */
+/*
+ * OnyxSignupForm used to live below this one and was imported by nobody: the
+ * signup page renders OnyxSignUpForm (different capitalisation) from
+ * onyx-signup-form.tsx, which asks for the roll number, phone and organisation
+ * email that registration actually needs. Two signup forms that could drift
+ * apart, one of which could never render, deleted down to the one that does.
+ */
 export function OnyxLoginForm({ next }: { next?: string } = {}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -97,67 +104,3 @@ export function OnyxLoginForm({ next }: { next?: string } = {}) {
   );
 }
 
-export function OnyxSignupForm() {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-
-  return (
-    <form
-      className="space-y-4"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const data = new FormData(e.currentTarget);
-        const email = String(data.get('email') ?? '');
-        const password = String(data.get('password') ?? '');
-        setError(null);
-        start(async () => {
-          const created = await post('signup', {
-            name: String(data.get('name') ?? ''),
-            slug: String(data.get('slug') ?? '') || undefined,
-            admin: { name: String(data.get('admin_name') ?? ''), email, password },
-          });
-          if (!created.ok) { setError(created.message ?? 'Could not create it.'); return; }
-          // Creating an institution does not sign you in -- the token has to
-          // carry the new tenant, so it comes from a fresh login.
-          const signedIn = await post('login', { email, password });
-          if (!signedIn.ok) { router.push('/onyx/login'); return; }
-          router.push('/onyx/dashboard');
-          router.refresh();
-        });
-      }}
-    >
-      <Error_ message={error} />
-      <div>
-        <label className={label} htmlFor="name">Institution name</label>
-        <input id="name" name="name" required maxLength={255} className={field} />
-      </div>
-      <div>
-        <label className={label} htmlFor="slug">Address</label>
-        <input id="slug" name="slug" maxLength={255} className={field}
-          placeholder="Left blank, this is taken from the name" />
-      </div>
-      <hr className="border-line" />
-      <div>
-        <label className={label} htmlFor="admin_name">Your name</label>
-        <input id="admin_name" name="admin_name" required maxLength={255} className={field} />
-      </div>
-      <div>
-        <label className={label} htmlFor="signup_email">Your email address</label>
-        <input id="signup_email" name="email" type="email" required
-          autoComplete="email" className={field} />
-      </div>
-      <div>
-        <label className={label} htmlFor="signup_password">Password</label>
-        <input id="signup_password" name="password" type="password" required minLength={8}
-          autoComplete="new-password" className={field} />
-        <p className="mt-1 text-xs text-muted">
-          At least 8 characters. You will be this institution&rsquo;s first administrator.
-        </p>
-      </div>
-      <button type="submit" disabled={pending} className={button}>
-        {pending ? 'Creating…' : 'Create the institution'}
-      </button>
-    </form>
-  );
-}

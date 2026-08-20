@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxApplicants, OnyxApply } from '@/components/onyx-career';
 import {
-  Card, Icon, Pill, SectionHead, StatTile, State, Stepper, relativeDue,
+  Card, Icon, Pill, SectionHead, StatTile, State, Stepper, relativeWhen,
 } from '@/components/onyx-ui';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
@@ -62,7 +62,10 @@ export default async function OnyxJobPage({ params }: { params: Promise<{ id: st
   const myApplication = (mine ?? []).find((a) => a.job_id === Number(id));
   const alreadyApplied = Boolean(myApplication);
 
-  const closes = relativeDue(job.closes_at);
+  // A post that is not open is not counting down to anything: a filled or
+  // closed one used to read "26 days late", in red, beside a status tile
+  // already saying it takes no more applications.
+  const closes = relativeWhen(job.closes_at, job.status !== 'open');
   const rules = job.eligibility?.checks ?? [];
   const met = rules.filter((c) => c.met).length;
 
