@@ -36,14 +36,21 @@ test.describe('role-aware navigation', () => {
       const adminPage = await adminCtx.newPage();
       await signInViaForm(adminPage, adminEmail);
       const adminNav = adminPage.getByRole('navigation');
-      // Only an administrator gets these two -- the roster and the audit log.
-      await expect(adminNav.getByRole('link', { name: 'Audit log' })).toBeVisible();
-      await expect(adminNav.getByRole('link', { name: 'People' })).toBeVisible();
+      // The roster, which only an administrator and faculty get -- and which
+      // an administrator gets as the two halves they actually reach for
+      // rather than one combined "People" (see onyx-nav.ts).
+      await expect(adminNav.getByRole('link', { name: 'Students' })).toBeVisible();
+      await expect(adminNav.getByRole('link', { name: 'Faculty' })).toBeVisible();
+      // The audit log is deliberately NOT in this menu: it is a forensic
+      // screen, opened from the dashboard's "Full log" when something specific
+      // is being chased. The route is untouched -- this asserts the menu.
+      await expect(adminNav.getByRole('link', { name: 'Audit log' })).toHaveCount(0);
 
       const studentPage = await studentCtx.newPage();
       await signInViaForm(studentPage, studentEmail);
       const studentNav = studentPage.getByRole('navigation');
       await expect(studentNav.getByRole('link', { name: 'Audit log' })).toHaveCount(0);
+      await expect(studentNav.getByRole('link', { name: 'Students' })).toHaveCount(0);
       await expect(studentNav.getByRole('link', { name: 'People' })).toHaveCount(0);
       // A student's menu is not just "the admin menu minus some items" -- it
       // has entries of its own, like the practice bank.

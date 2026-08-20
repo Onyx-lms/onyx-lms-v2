@@ -8,7 +8,6 @@ import { ROLE_LABELS, navFor, tabsFor, type OnyxNavGroup } from '@/lib/onyx-nav'
 import { Icon } from '@/components/onyx-ui';
 import { NotificationBell } from '@/components/onyx-inbox';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { OnyxCreateProfileButton } from '@/components/onyx-create-profile-nav';
 
 /**
  * F-07 -- the Onyx shell.
@@ -67,12 +66,12 @@ export function OnyxShell({ me, title, subtitle, children, action }: {
         <aside className="hidden lg:sticky lg:top-[84px] lg:block" data-rail>
           <TenantCard tenant={me.tenant} role={me.role}
             memberships={me.memberships} />
-          {/* An institution admin creates a profile the same way a platform
-              operator does -- same modal, same idea -- except there is no
-              institution to choose: this account is always this institution. */}
-          {me.role === 'admin' ? (
-            <div className="mt-4"><OnyxCreateProfileButton /></div>
-          ) : null}
+          {/* Adding a person is not a navigation item. It used to be a
+              full-width blue button here, above Dashboard, on every screen an
+              administrator opened -- the loudest control in the sidebar, for
+              an act that belongs to one page. It lives on the roster now,
+              above the table it adds a row to: Students, Faculty, or People
+              with the role still to choose. */}
           <nav className="mt-4" aria-label="Main">
             {groups.map((g, i) => (
               <NavGroup key={g.label ?? i} group={g} />
@@ -210,9 +209,6 @@ function MobileMenu({ me, groups, onClose }: {
           </button>
         </div>
         <TenantCard tenant={me.tenant} role={me.role} memberships={me.memberships} />
-        {me.role === 'admin' ? (
-          <div className="mt-4"><OnyxCreateProfileButton /></div>
-        ) : null}
         <nav className="mt-4 flex-1" aria-label="All sections" onClick={onClose}>
           {groups.map((g, i) => <NavGroup key={g.label ?? i} group={g} />)}
         </nav>

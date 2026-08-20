@@ -1,8 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Fragment, useRef, useState, useTransition } from 'react';
+import { Fragment, useState, useTransition } from 'react';
 import { ROLE_LABELS } from '@/lib/onyx-nav';
+import { Modal } from '@/components/onyx-modal';
+import { Icon } from '@/components/onyx-ui';
 import type { Role } from '@/lib/onyx-session';
 
 /**
@@ -32,6 +34,21 @@ const ROLES: Role[] = [
 const field = 'rounded-lg border border-slate-300 px-3 py-2 text-sm '
   + 'focus:border-slate-900 focus:outline-none';
 
+/** A field with a real label above it, and room for a line of guidance. */
+function Labelled({ label, htmlFor, hint, wide, children }: {
+  label: string; htmlFor: string; hint?: string; wide?: boolean; children: React.ReactNode;
+}) {
+  return (
+    <div className={wide ? 'sm:col-span-2' : undefined}>
+      <label htmlFor={htmlFor} className="block text-[13px] font-semibold text-slate-700">
+        {label}
+      </label>
+      <div className="mt-1.5">{children}</div>
+      {hint ? <p className="mt-1 text-[12px] text-muted">{hint}</p> : null}
+    </div>
+  );
+}
+
 /**
  * What each role is called on a button that adds one. ROLE_LABELS names the
  * role ("Examinations"); this names the person ("an examinations officer"),
@@ -56,7 +73,6 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
   const [notice, setNotice] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
-  const nameField = useRef<HTMLInputElement>(null);
   const [pending, start] = useTransition();
 
   const call = (path: string, init: RequestInit, success: string, done?: () => void) => {
@@ -87,12 +103,10 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
   const addRole: Role | null = roleFilter || null;
   const addLabel = addRole ? 'Add ' + NOUN[addRole] : 'Add someone';
 
-  const openAdd = () => {
-    setAdding(true);
-    // The panel is useless without the cursor in it, and a keyboard user would
-    // otherwise have to tab back through the toolbar to reach the first field.
-    requestAnimationFrame(() => nameField.current?.focus());
-  };
+  // Modal puts the cursor in its own first field on mount and traps Tab inside
+  // it, so there is nothing to do here beyond opening it -- the rAF focus call
+  // this used to make raced the modal's and sometimes lost.
+  const openAdd = () => setAdding(true);
 
   const needle = search.trim().toLowerCase();
   const byRole = roleFilter ? members.filter((m) => m.role === roleFilter) : members;
@@ -140,25 +154,27 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
         {canEdit ? (
           <button
             type="button"
-            aria-expanded={adding}
-            aria-controls="add-a-member"
-            onClick={() => (adding ? setAdding(false) : openAdd())}
-            className="ml-auto min-h-[38px] rounded-lg bg-brand-600 px-4 py-2 text-sm
-                       font-medium text-white hover:bg-brand-700"
+            onClick={openAdd}
+            title={addLabel}
+            className="ml-auto inline-flex min-h-[38px] items-center gap-1.5 rounded-lg
+                       bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white
+                       hover:bg-brand-700"
           >
-            {adding ? 'Cancel' : addLabel}
+            <Icon name="plus" className="h-4 w-4" aria-hidden="true" />
+            {/* The words are the button on anything wider than a phone; below
+                that the plus carries it alone and `title`/`aria-label` say what
+                it does. A bare icon is not a label. */}
+            <span className="hidden sm:inline">{addLabel}</span>
+            <span className="sr-only sm:hidden">{addLabel}</span>
           </button>
         ) : null}
       </div>
 
       {canEdit && adding ? (
+        <Modal title={addLabel} onClose={() => setAdding(false)} wide>
         <form
           id="add-a-member"
-          className="grid gap-3 rounded-2xl border border-line bg-slate-50/60 p-4 sm:grid-cols-6"
-          // Escape closes it, like every other dismissible thing on the web.
-          // Without this the only way out is the mouse, and a keyboard user who
-          // opened it by mistake has to tab past six fields to leave.
-          onKeyDown={(e) => { if (e.key === 'Escape') setAdding(false); }}
+          className="grid gap-3 sm:grid-cols-2"
           onSubmit={(e) => {
             e.preventDefault();
             const form = e.currentTarget;
@@ -180,39 +196,60 @@ export function OnyxPeople({ members, canEdit, initialRole }: {
             form.reset();
           }}
         >
-          <h3 className="text-sm font-semibold sm:col-span-6">{addLabel}</h3>
-          {/* Every one of these had a placeholder and no label, on the form
-              that creates a real login. A placeholder disappears at the first
-              keystroke, and a screen reader announces an unnamed box. */}
-          <input ref={nameField} name="name" required placeholder="Name" aria-label="Full name"
-            className={field} />
-          <input name="email" type="email" required placeholder="Email address"
-            aria-label="Email address" className={field} />
+          {/* Real labels, not placeholders: a placeholder disappears at the
+              first keystroke, and a screen reader announces an unnamed box --
+              on the form that creates somebody a login. */}
+          {/* The role picker appears only where the role is still an open
+              question. Reached from Students or Faculty, the filter has
+              already answered it and the modal is titled with the answer. */}
           {addRole ? null : (
-            <select name="role" defaultValue="student" aria-label="Role" className={field}>
-              {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-            </select>
+            <Labelled label="Role" htmlFor="ap-role" wide>
+              <select id="ap-role" name="role" defaultValue="student" className={field + ' w-full'}>
+                {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+              </select>
+            </Labelled>
           )}
+          <Labelled label="Full name" htmlFor="ap-name">
+            <input id="ap-name" name="name" required autoComplete="off"
+              className={field + ' w-full'} />
+          </Labelled>
+          <Labelled label="Email address" htmlFor="ap-email">
+            {/* autoComplete off: an email beside a password reads as a sign-in
+                form to the browser, which then offers to fill this create form
+                with the administrator's own saved credentials. */}
+            <input id="ap-email" name="email" type="email" required autoComplete="off"
+              className={field + ' w-full'} />
+          </Labelled>
           {/* The institution's own number for this person. Everybody gets one,
               not only students -- a staff ID is the same idea, and the
               examinations office and the registry both work from it. */}
-          <input name="roll_number" maxLength={40} placeholder="Roll / staff no."
-            aria-label="Roll number or staff ID" className={field} />
-          <input name="password" type="password" minLength={8}
-            placeholder="Temporary password" aria-label="Temporary password"
-            className={field} />
-          <button type="submit" disabled={pending}
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
-                       hover:bg-brand-700 disabled:opacity-50">
-            Add
-          </button>
-          <p className="text-xs text-muted sm:col-span-6">
+          <Labelled label="Roll number or staff ID" htmlFor="ap-roll" hint="Optional.">
+            <input id="ap-roll" name="roll_number" maxLength={40} autoComplete="off"
+              className={field + ' w-full'} />
+          </Labelled>
+          <Labelled label="Temporary password" htmlFor="ap-password"
+            hint="Leave blank and they set their own on first sign-in.">
+            <input id="ap-password" name="password" type="password" minLength={8}
+              autoComplete="new-password" className={field + ' w-full'} />
+          </Labelled>
+          <p className="text-xs leading-relaxed text-muted sm:col-span-2">
             Someone who already has an Onyx account keeps it &mdash; they are attached to this
-            institution rather than given a second one. The roll number is optional and
-            belongs to this institution only; leave the password blank and they set their
-            own on first sign-in. A password must be at least 8 characters.
+            institution rather than given a second one.
           </p>
+          <div className="flex gap-2 sm:col-span-2">
+            <button type="submit" disabled={pending}
+              className="min-h-[42px] rounded-lg bg-brand-600 px-4 text-sm font-semibold
+                         text-white hover:bg-brand-700 disabled:opacity-50">
+              {pending ? 'Adding…' : 'Add'}
+            </button>
+            <button type="button" onClick={() => setAdding(false)}
+              className="min-h-[42px] rounded-lg border border-slate-300 px-4 text-sm
+                         font-semibold hover:bg-slate-50">
+              Cancel
+            </button>
+          </div>
         </form>
+        </Modal>
       ) : null}
 
       {/* On a phone the email column is dropped rather than scrolled. A

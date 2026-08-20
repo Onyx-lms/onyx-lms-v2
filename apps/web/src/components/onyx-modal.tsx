@@ -93,12 +93,24 @@ export function Modal({ title, onClose, children, wide }: {
     };
   }, [closeSafely]);
 
-  // Into the dialog, not left on whatever opened it -- otherwise the first Tab
-  // walks the page underneath.
+  /**
+   * Into the dialog, not left on whatever opened it -- otherwise the first Tab
+   * walks the page underneath.
+   *
+   * Fields before buttons. This used to take the first of
+   * `input, select, textarea, button` in document order, and the close ✕ sits
+   * above the form, so every modal in the product opened with focus on Close:
+   * a keyboard user's first Enter dismissed the dialog they had just asked
+   * for. A control that closes the thing is the last place to put the cursor,
+   * so the button is only the fallback for dialogs that have no fields.
+   */
   useEffect(() => {
     if (!mounted) return;
-    panel.current?.querySelector<HTMLElement>(
-      'input, select, textarea, button')?.focus();
+    const root = panel.current;
+    if (!root) return;
+    const target = root.querySelector<HTMLElement>('input, select, textarea')
+      ?? root.querySelector<HTMLElement>('button');
+    target?.focus();
   }, [mounted]);
 
   if (!mounted) return null;

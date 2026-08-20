@@ -120,6 +120,42 @@ test.describe("an institution administrator's own roster", () => {
     await expect(page.getByLabel('Role', { exact: true })).toBeVisible();
   });
 
+  /**
+   * "Create a profile" used to be a full-width blue button in the sidebar,
+   * above Dashboard, on every screen an administrator opened -- the loudest
+   * control in the nav, for an act that belongs to one page, and a second
+   * create-a-person code path that asked for less than the roster's own
+   * (no roll number). Adding somebody is not a destination.
+   */
+  test('adding a person is not in the navigation, on any width', async ({ page }) => {
+    for (const size of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(size);
+      await page.goto('/onyx/dashboard');
+      if (size.width < 1024) {
+        await page.getByRole('button', { name: /open navigation/i }).click();
+      }
+      await expect(page.getByRole('button', { name: /create a profile/i })).toHaveCount(0);
+    }
+    await page.setViewportSize({ width: 1440, height: 900 });
+  });
+
+  test('the add control is a modal over the roster, not a form pushing it down',
+    async ({ page }) => {
+      await page.goto('/onyx/people?role=student');
+      const tableBefore = await page.getByRole('table').boundingBox();
+
+      await page.getByRole('button', { name: 'Add a student' }).click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      await expect(dialog).toContainText('Add a student');
+      // Every field is named, and the roster has not moved underneath it.
+      for (const label of ['Full name', 'Email address', 'Roll number or staff ID',
+        'Temporary password']) {
+        await expect(dialog.getByLabel(label)).toBeVisible();
+      }
+      expect((await page.getByRole('table').boundingBox())?.y).toBe(tableBefore?.y);
+    });
+
   test('faculty are offered no add control at all', async ({ page }) => {
     await page.context().clearCookies();
     await signIn(page, '/onyx/login', { email: 'faculty@demo.onyx', password: ADMIN.password });
