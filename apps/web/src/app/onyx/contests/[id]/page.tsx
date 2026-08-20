@@ -5,6 +5,7 @@ import { OnyxContestTeams } from '@/components/onyx-career';
 import {
   BackLink, Banner, Card, DataTable, EmptyRow, Hero, Icon, ListRow, Meter, Pill, RowList, SectionHead, State,
 } from '@/components/onyx-ui';
+import { ShareLink } from '@/components/onyx-share';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, type Me } from '@/lib/onyx-session';
 import type { Contest, Leaderboard, LeaderboardRow } from '@/lib/onyx-career';
@@ -81,7 +82,10 @@ export default async function OnyxContestPage({ params }: { params: Promise<{ id
             + (totalPoints ? ', ' + totalPoints + ' points' : '')
           : '')}
     >
-      <BackLink href="/onyx/contests" label="All contests" />
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <BackLink href="/onyx/contests" label="All contests" />
+        <ShareLink label="Copy link" />
+      </div>
       <nav aria-label="Breadcrumb"
         className="mb-4 flex items-center gap-1.5 text-[13px] text-muted">
         <Link href="/onyx/contests"

@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { appOrigin } from '@/lib/app-origin';
 
@@ -138,8 +138,20 @@ export async function onyxApiSafe<T>(path: string): Promise<T | null> {
 export async function requireOnyxSession(returnTo?: string): Promise<OnyxClaims> {
   const session = await getOnyxSession();
   if (!session) {
-    redirect(returnTo
-      ? '/onyx/login?next=' + encodeURIComponent(returnTo)
+    // Where they were trying to go, ALWAYS -- not only where a caller
+    // remembered to pass it.
+    //
+    // This used to take `returnTo` from the caller and almost nobody passed
+    // one, so a lecturer sharing a link to a paper sent their students to the
+    // sign-in page and then to the dashboard, with no way back to the thing
+    // they had been sent. The path is already on the request (middleware.ts
+    // sets it for every route); reading it here means every gated page keeps
+    // its destination without each one having to remember to.
+    const head = await headers();
+    const here = returnTo
+      ?? ((head.get('x-pathname') ?? '') + (head.get('x-search') ?? ''));
+    redirect(here && here.startsWith('/onyx')
+      ? '/onyx/login?next=' + encodeURIComponent(here)
       : '/onyx/login');
   }
   return session;
@@ -151,6 +163,10 @@ export async function requireOnyxSession(returnTo?: string): Promise<OnyxClaims>
  */
 export async function requireOnyxPageRole(...allowed: Role[]): Promise<OnyxClaims> {
   const session = await requireOnyxSession();
+  // Signed in, but not for this. The link was still worth following -- it is
+  // the role that is wrong, not the address -- so this is /onyx/denied rather
+  // than a sign-in page that would ask them to prove something they have
+  // already proved.
   if (!allowed.includes(session.tenant_role)) redirect('/onyx/denied');
   return session;
 }

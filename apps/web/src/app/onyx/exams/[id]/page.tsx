@@ -12,6 +12,7 @@ import { ActionButton } from '@/components/onyx-create';
 import {
   BackLink, Card, DataTable, Empty, EmptyRow, Icon, Meter, Pill, Score, SectionHead, StatTile, State, Stepper,
 } from '@/components/onyx-ui';
+import { ShareLink } from '@/components/onyx-share';
 
 export const metadata: Metadata = { title: 'Exam' };
 
@@ -182,7 +183,10 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
       title={exam.title}
       subtitle={when.lead + ' · ' + exam.duration_minutes + ' minutes · out of ' + exam.max_marks}
     >
-      <BackLink href="/onyx/exams" label="All examinations" />
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <BackLink href="/onyx/exams" label="All examinations" />
+        <ShareLink label="Copy link for candidates" />
+      </div>
       <nav aria-label="Breadcrumb"
         className="mb-4 flex items-center gap-1.5 text-[13px] text-muted">
         <Link href="/onyx/exams" className="font-semibold text-brand-600 hover:underline">

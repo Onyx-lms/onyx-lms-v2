@@ -79,7 +79,7 @@ export default async function OnyxDrivePage({ params }: { params: Promise<{ id: 
         summary.drive.venue,
       ].filter(Boolean).join(' · ')}
     >
-      <BackLink href="/onyx/placement" label="Placement" />
+      <div className="mb-3"><BackLink href="/onyx/placement" label="Placement" /></div>
       <nav aria-label="Breadcrumb" className="mb-4">
         <Link href="/onyx/placement"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-600

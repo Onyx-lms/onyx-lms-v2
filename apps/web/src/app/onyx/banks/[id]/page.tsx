@@ -86,7 +86,7 @@ export default async function OnyxBankPage({ params }: { params: Promise<{ id: s
       subtitle={questions.length + ' question' + (questions.length === 1 ? '' : 's')
         + ', ' + marks + ' marks in total'}
     >
-      <BackLink href="/onyx/banks" label="All question banks" />
+      <div className="mb-3"><BackLink href="/onyx/banks" label="All question banks" /></div>
       <nav aria-label="Breadcrumb" className="mb-3 flex flex-wrap items-center gap-1.5 text-sm text-muted">
         <Link href="/onyx/assessments" className="font-semibold text-brand-600 hover:underline">
           Assessments

@@ -11,6 +11,7 @@ import { isExamsStaff, type Assessment, type MyAttempt } from '@/lib/onyx-assess
 import {
   ActionLink, BackLink, Card, CardGrid, Icon, SectionHead, StatTile, State, Stepper,
 } from '@/components/onyx-ui';
+import { ShareLink } from '@/components/onyx-share';
 
 export const metadata: Metadata = { title: 'Assessment' };
 
@@ -81,7 +82,10 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
       subtitle={assessment.duration_minutes + ' minutes'
         + (assessment.pass_mark !== null ? ', pass mark ' + assessment.pass_mark : '')}
     >
-      <BackLink href="/onyx/assessments" label="All papers" />
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <BackLink href="/onyx/assessments" label="All papers" />
+        <ShareLink label="Copy link for students" />
+      </div>
       <nav aria-label="Breadcrumb" className="mb-3 flex items-center gap-1.5 text-sm text-muted">
         <Link href="/onyx/assessments" className="font-semibold text-brand-600 hover:underline">
           Assessments

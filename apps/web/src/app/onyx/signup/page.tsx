@@ -22,8 +22,19 @@ export const metadata: Metadata = { title: 'Create an account' };
  * better failure than a 404, which would leave a learner following a link from
  * their college wondering whether the link was wrong.
  */
-export default async function OnyxSignUpPage() {
-  if (await getOnyxSession()) redirect('/onyx/dashboard');
+function safeNext(next: string | undefined): string | undefined {
+  // Same rule the sign-in page uses: a path on this site, never an absolute
+  // URL somebody put in a query string.
+  if (!next) return undefined;
+  if (!next.startsWith('/') || next.startsWith('//')) return undefined;
+  return next;
+}
+
+export default async function OnyxSignUpPage(
+  { searchParams }: { searchParams: Promise<{ next?: string }> },
+) {
+  const next = safeNext((await searchParams).next);
+  if (await getOnyxSession()) redirect(next ?? '/onyx/dashboard');
 
   return (
     <OnyxAuthSplit
@@ -52,7 +63,8 @@ export default async function OnyxSignUpPage() {
 
           <p className="mt-4 text-[13px] text-muted">
             Already have an account?{' '}
-            <Link href="/onyx/login" className="font-semibold text-brand-700 hover:underline">
+            <Link href={'/onyx/login' + (next ? '?next=' + encodeURIComponent(next) : '')}
+              className="font-semibold text-brand-700 hover:underline">
               Sign in
             </Link>
             .
@@ -60,7 +72,7 @@ export default async function OnyxSignUpPage() {
         </>
       }
     >
-      <OnyxSignUpForm />
+      <OnyxSignUpForm next={next} />
     </OnyxAuthSplit>
   );
 }

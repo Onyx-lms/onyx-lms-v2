@@ -83,7 +83,8 @@ export default async function OnyxLoginPage(
               platform team, which is why only one of these is a link. */}
           <p className="mt-4 text-[13px] text-muted">
             New here?{' '}
-            <Link href="/onyx/signup" className="font-semibold text-brand-700 hover:underline">
+            <Link href={'/onyx/signup' + (next ? '?next=' + encodeURIComponent(next) : '')}
+              className="font-semibold text-brand-700 hover:underline">
               Create a student account
             </Link>
             . Institutions are set up by the Onyx platform team.

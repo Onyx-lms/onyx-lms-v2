@@ -24,7 +24,7 @@ const label = 'block text-[13.5px] font-semibold text-slate-700';
  * is the one answer worth giving before somebody types a password and a phone
  * number they are about to lose.
  */
-export function OnyxSignUpForm() {
+export function OnyxSignUpForm({ next }: { next?: string } = {}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -61,10 +61,10 @@ export function OnyxSignUpForm() {
           });
           const body = await res.json().catch(() => ({}));
           if (!body.ok) { setError(body.message ?? 'That did not work.'); return; }
-          // Straight in: the account exists and the session is already set, so
-          // asking them to sign in with what they just typed is the same form
-          // twice.
-          router.push('/onyx/dashboard');
+          // Straight in, and straight to whatever they were sent: somebody who
+          // followed a link to a paper and had no account yet should land on
+          // the paper, not on a dashboard that says nothing about why they came.
+          router.push(next || '/onyx/dashboard');
           router.refresh();
         });
       }}

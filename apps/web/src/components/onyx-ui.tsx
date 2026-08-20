@@ -127,7 +127,7 @@ export function Card({ children, className = '', as: As = 'div' }: {
 export function BackLink({ href, label }: { href: string; label: string }) {
   return (
     <Link href={href}
-      className="mb-3 inline-flex min-h-[36px] items-center gap-1.5 text-[13px] font-semibold
+      className="inline-flex min-h-[36px] items-center gap-1.5 text-[13px] font-semibold
                  text-muted hover:text-brand-700 hover:underline">
       <Icon name="chevron" className="h-3.5 w-3.5 rotate-180" />
       {label}
