@@ -8,7 +8,7 @@
  */
 import {
   SettingsService, I18nService, StorageService, AuthService,
-  AcademicsService, ContentService, AttendanceService, AssignmentsService,
+  AcademicsService, ContentService, DomainsService, AttendanceService, AssignmentsService,
   QueueService, CodeLabService, WorkspaceService,
   AssessService, ProctorService, AssessAnalyticsService,
   CareerService, PlacementService, ContestService,
@@ -97,6 +97,7 @@ export interface AppContext {
   onyxAudit: AuditService;
   onyxAcademics: AcademicsService;
   onyxContent: ContentService;
+  onyxDomains: DomainsService;
   onyxAttendance: AttendanceService;
   onyxAssignments: AssignmentsService;
   onyxQueue: QueueService;
@@ -243,6 +244,7 @@ export function createContext(): AppContext {
     // Onyx shares the port's bucket -- storage is per project, not per schema --
     // and namespaces its own files under onyx/<tenant>/.
     onyxContent: new ContentService(onyxDb, onyxAcademics, storage),
+    onyxDomains: new DomainsService(onyxDb, storage),
     onyxAttendance,
     onyxAssignments: new AssignmentsService(onyxDb, onyxAcademics),
     onyxQueue,

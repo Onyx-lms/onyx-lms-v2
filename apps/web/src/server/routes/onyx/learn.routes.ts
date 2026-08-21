@@ -567,6 +567,108 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
     return ok(await ctx.onyxAcademics.purchasesFor(claims.tenant_id, claims.user_id));
   });
 
+  // ---- Live Classes: domains ----------------------------------------------
+  //
+  // A domain is a field of study an institution advertises -- see 0027's header
+  // for why it is its own table and not a flag on a course. These live in this
+  // file because it is the catalogue file: /courses, /catalogue and /c/:id are
+  // already here, and a tenth route module for six routes is churn.
+  //
+  // Reading is open to every member of the institution: the Live Classes page
+  // is a catalogue, and hiding it from a role would only hide it, since the
+  // route is the control. Writing needs `domains.manage`.
+
+  /** Every domain. `?all=1` includes hidden ones, for the roles that can hide one. */
+  app.get('/api/onyx/domains', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const all = (req.query as { all?: string }).all === '1'
+      && (claims.tenant_role === 'admin' || claims.tenant_role === 'faculty');
+    return ok(await ctx.onyxDomains.list(claims.tenant_id, { includeHidden: all }));
+  });
+
+  app.get('/api/onyx/domains/:id', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxDomains.domain(claims.tenant_id, idOf(req)));
+  });
+
+  /**
+   * A ticket to upload a thumbnail, before the domain it belongs to exists.
+   *
+   * Guarded by the capability that creates a domain, so only somebody who could
+   * add one can mint a key -- and the key itself is derived from the tenant in
+   * the token, never from the request. See DomainsService.signUpload.
+   */
+  app.post('/api/onyx/domains/uploads/sign', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'domains.manage');
+    const body = validate(z.object({ filename: z.string().min(1).max(255) }), req.body);
+    return ok(await ctx.onyxDomains.signUpload(claims.tenant_id, body.filename));
+  });
+
+  app.post('/api/onyx/domains', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'domains.manage');
+    const body = validate(z.object({
+      title: z.string().min(1).max(200),
+      summary: z.string().max(4000).optional(),
+      curriculum_url: z.string().max(500).optional(),
+      image_path: z.string().max(500).nullish(),
+      certificate: z.string().max(200).optional(),
+      duration_label: z.string().max(80).optional(),
+      // The same ceiling the course route uses. The two are the same kind of
+      // number and should not be allowed to drift apart.
+      price_minor: z.number().int().min(0).max(100_000_000).optional(),
+      currency: z.string().length(3).optional(),
+      sort: z.number().int().min(0).max(9999).optional(),
+      status: z.number().int().min(0).max(1).optional(),
+    }), req.body);
+    const domain = await ctx.onyxDomains.create(claims.tenant_id, claims.user_id, body);
+    await ctx.onyxAudit.record(claims, {
+      action: 'domain.created', entityType: 'domain', entityId: Number(domain.id),
+      after: { title: domain.title, price_minor: domain.price_minor }, ip: ipOf(req),
+    });
+    return ok(domain, 'Domain added.');
+  });
+
+  app.patch('/api/onyx/domains/:id', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'domains.manage');
+    const body = validate(z.object({
+      title: z.string().min(1).max(200).optional(),
+      summary: z.string().max(4000).optional(),
+      curriculum_url: z.string().max(500).optional(),
+      image_path: z.string().max(500).nullish(),
+      certificate: z.string().max(200).optional(),
+      duration_label: z.string().max(80).optional(),
+      price_minor: z.number().int().min(0).max(100_000_000).optional(),
+      currency: z.string().length(3).optional(),
+      sort: z.number().int().min(0).max(9999).optional(),
+      status: z.number().int().min(0).max(1).optional(),
+    }), req.body);
+    const before = await ctx.onyxDomains.domain(claims.tenant_id, idOf(req));
+    const domain = await ctx.onyxDomains.update(claims.tenant_id, idOf(req), body);
+    await ctx.onyxAudit.record(claims, {
+      action: 'domain.updated', entityType: 'domain', entityId: idOf(req),
+      before: { title: before.title, price_minor: before.price_minor, status: before.status },
+      after: { title: domain.title, price_minor: domain.price_minor, status: domain.status },
+      ip: ipOf(req),
+    });
+    return ok(domain, 'Saved.');
+  });
+
+  app.delete('/api/onyx/domains/:id', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'domains.manage');
+    const before = await ctx.onyxDomains.domain(claims.tenant_id, idOf(req));
+    await ctx.onyxDomains.remove(claims.tenant_id, idOf(req));
+    await ctx.onyxAudit.record(claims, {
+      action: 'domain.deleted', entityType: 'domain', entityId: idOf(req),
+      before: { title: before.title }, ip: ipOf(req),
+    });
+    return ok({}, 'Removed.');
+  });
+
+
   app.post('/api/onyx/courses/:id/modules', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
     await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.author');

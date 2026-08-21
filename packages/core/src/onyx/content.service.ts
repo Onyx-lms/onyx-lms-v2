@@ -42,6 +42,14 @@ export interface SignedUrlSource {
   upload(key: string, body: Uint8Array, contentType?: string): Promise<string>;
   /** Optional so a test fake need only provide it when it exercises uploads. */
   signedUpload?(key: string): Promise<{ path: string; token: string; signedUrl: string }>;
+  /**
+   * A permanent, unsigned URL. Optional for the same reason as the two above:
+   * only a caller serving public assets -- a domain's thumbnail, say -- needs
+   * it, and a test fake should not have to grow a method it never exercises.
+   */
+  publicUrl?(storedPath: string): string | null;
+  /** Optional. Used when a record that owns a file is deleted. */
+  remove?(storedPath: string): Promise<void>;
 }
 
 /**
@@ -52,17 +60,28 @@ export interface SignedUrlSource {
  * with the Laravel port (storage is per project, not per schema), so the `onyx/`
  * prefix keeps the two apart there too.
  */
-export function onyxStorageKey(tenantId: number, courseId: number, filename: string): string {
+export function onyxAssetKey(tenantId: number, folder: string, filename: string): string {
   const safe = (filename || 'file')
     .replace(/[^A-Za-z0-9._-]+/g, '-')
-    // Dots survive the pass above, so `../../x` would still read as a traversal
-    // to a human even though the separators are gone. Collapse them.
+    // Dots survive the pass above, so a traversal written with them would still
+    // read as one to a human even though the separators are gone. Collapse them.
     .replace(/\.{2,}/g, '.')
     .replace(/^[-.]+|[-.]+$/g, '')
     .slice(-120) || 'file';
   // A timestamp rather than the bare name: two people uploading "notes.pdf" to
-  // the same course must not overwrite each other.
-  return 'onyx/' + tenantId + '/courses/' + courseId + '/' + Date.now() + '-' + safe;
+  // the same place must not overwrite each other.
+  return 'onyx/' + tenantId + '/' + folder + '/' + Date.now() + '-' + safe;
+}
+
+/**
+ * A course's own folder.
+ *
+ * Unchanged in signature and in what it returns -- it is now one caller of
+ * onyxAssetKey rather than its own copy of the sanitiser, because a second
+ * sanitiser is a second chance to get traversal wrong.
+ */
+export function onyxStorageKey(tenantId: number, courseId: number, filename: string): string {
+  return onyxAssetKey(tenantId, 'courses/' + courseId, filename);
 }
 
 export class ContentService {

@@ -52,6 +52,8 @@ export type CapabilityKey =
   // Courses and content
   | 'courses.create' | 'courses.author' | 'courses.publish' | 'courses.assign_faculty'
   | 'attendance.take'
+  // Live Classes
+  | 'domains.manage'
   // Assessment
   | 'assess.banks' | 'assess.papers' | 'assess.publish' | 'assess.mark'
   | 'assess.release' | 'assess.proctor'
@@ -137,6 +139,16 @@ export const CAPABILITIES: Capability[] = [
   A('attendance.take', 'Courses', 'Take attendance',
     'Open a session, mark the register and close it.',
     ['admin', 'faculty'], ['faculty', 'exams']),
+
+  // ---- Live Classes -------------------------------------------------------
+  // One key for the whole of it, not three. Create, edit and remove on the same
+  // small catalogue are only ever granted together -- the same reasoning
+  // assess.banks and lab.problems already follow -- and three switches an
+  // administrator always flips at once is three chances to leave one behind.
+  A('domains.manage', 'Live Classes', 'Manage domains',
+    'Create, edit and remove the domains shown on Live Classes, including their '
+    + 'price, curriculum link and thumbnail.',
+    ['admin'], ['faculty']),
 
   // ---- Assessment ---------------------------------------------------------
   A('assess.banks', 'Assessment', 'Question banks',

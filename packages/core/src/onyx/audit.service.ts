@@ -37,7 +37,10 @@ export type AuditAction =
   // Changing where an institution's fees settle to is a finance-grade event,
   // so it is logged like one. The entry names which credentials were written,
   // never their values.
-  | 'gateway.configured';
+  | 'gateway.configured'
+  // Live Classes. A domain carries a price and a link that leaves the product,
+  // so who changed one, and to what, is worth keeping.
+  | 'domain.created' | 'domain.updated' | 'domain.deleted';
 
 export interface AuditEntry {
   action: AuditAction;
