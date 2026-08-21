@@ -244,8 +244,33 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
         throw new HttpError(422, 'A locked course needs a price before it can be locked.');
       }
     }
-    return ok(await ctx.onyxAcademics.updateCourse(claims.tenant_id, idOf(req), body),
-      'Course updated.');
+    /*
+     * Recorded, like every other write on a course.
+     *
+     * This handler was the one that did not. DELETE and /publish both write an
+     * audit row and this did not, which meant the single most consequential
+     * edit a course can carry -- its PRICE -- changed with no trace of who did
+     * it or what it was before. A price change is exactly the change somebody
+     * later needs to reconstruct.
+     *
+     * The read costs one round trip and only happens on a write, and it is what
+     * makes the entry a before/after rather than an assertion.
+     */
+    const before = await ctx.onyxAcademics.course(claims.tenant_id, idOf(req));
+    const course = await ctx.onyxAcademics.updateCourse(claims.tenant_id, idOf(req), body);
+    await ctx.onyxAudit.record(claims, {
+      action: 'course.updated', entityType: 'course', entityId: idOf(req),
+      before: {
+        title: before.title, code: before.code, access: before.access,
+        price_minor: before.price_minor, currency: before.currency, status: before.status,
+      },
+      after: {
+        title: course.title, code: course.code, access: course.access,
+        price_minor: course.price_minor, currency: course.currency, status: course.status,
+      },
+      ip: ipOf(req),
+    });
+    return ok(course, 'Course updated.');
   });
 
   /**

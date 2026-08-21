@@ -34,6 +34,9 @@ export type AuditAction =
   | 'marks.entered' | 'marks.moderated' | 'marks.overridden' | 'assessment.updated'
   | 'invoice.issued' | 'guardian.linked' | 'guardian.consent_changed'
   | 'course.faculty_assigned' | 'course.faculty_removed' | 'course.removed'
+  // Including a price change, which is why this one exists: the edit route
+  // recorded nothing at all until it was noticed.
+  | 'course.updated'
   // Changing where an institution's fees settle to is a finance-grade event,
   // so it is logged like one. The entry names which credentials were written,
   // never their values.
