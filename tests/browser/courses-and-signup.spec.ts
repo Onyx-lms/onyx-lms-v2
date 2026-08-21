@@ -138,6 +138,20 @@ test.describe('a locked course is bought before it can be started', () => {
     await expect(page.getByRole('button', { name: /Buy for/ })).toHaveCount(0, { timeout: 15_000 });
     const mine = await api('/api/onyx/my/courses', { token: student });
     expect((mine.body.data as { id: number }[]).some((c) => c.id === course!.id)).toBe(true);
+
+    /*
+     * And the money arrives where the institution counts it.
+     *
+     * Asserted here rather than in the deployment sweep, because here the
+     * purchase is one that this test just made: the sweep would be asserting
+     * somebody else's fixture, and this file deletes that fixture in afterAll.
+     * A payment a learner makes has to show up in the administrator's own
+     * report or the two halves of the product disagree about what happened.
+     */
+    await signIn(page, ADMIN);
+    await page.goto('/onyx/finance');
+    await expect(page.locator('main'), 'the purchase reaches the finance report')
+      .toContainText(/1,?499|Cloud and DevOps/i);
   });
 
   test('a free course cannot be bought', async () => {

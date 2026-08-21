@@ -108,10 +108,11 @@ test.describe('the deployment, role by role', () => {
       ['/onyx/profile', /profile/i], ['/onyx/audit', /audit/i],
     ] as [string, RegExp][]) await healthy(page, path, heading);
 
-    // The money a learner spent reaches the institution's own report.
-    await page.goto('/onyx/finance', { waitUntil: 'networkidle' });
-    await expect(page.locator('main'), 'the purchase shows in finance')
-      .toContainText(/1,?499|Cloud and DevOps/i);
+    // Deliberately no assertion that a particular payment is listed. Whether
+    // one exists depends on whether the purchase suite has run and cleaned up
+    // after itself, and a sweep that fails on another suite's fixture is a
+    // sweep nobody trusts. The money trail is asserted in
+    // courses-and-signup, where the purchase is made and therefore certain.
   });
 
   test('a platform operator', async ({ page }) => {
@@ -134,9 +135,5 @@ test.describe('the deployment, role by role', () => {
       ['/onyx/platform/tenants/1/fees', /fees/i],
       ['/onyx/platform/tenants/1/settings', /settings/i],
     ] as [string, RegExp][]) await healthy(page, path, heading);
-
-    // The same purchase, seen from the platform.
-    await page.goto('/onyx/platform/tenants/1/fees', { waitUntil: 'networkidle' });
-    await expect(page.locator('main')).toContainText(/1,?499|Cloud and DevOps/i);
   });
 });
