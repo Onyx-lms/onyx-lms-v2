@@ -586,6 +586,29 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
     return ok(result, result.purchased ? 'Paid. You are enrolled.' : 'You already own this.');
   });
 
+  /**
+   * Starts a real payment for a locked course.
+   *
+   * A sibling of POST /api/onyx/invoices/:id/checkout, deliberately the same
+   * shape so a reader who knows one knows this. The mock route above is
+   * untouched and still works: which of the two a learner gets is decided on
+   * the server from whether their institution has configured a gateway, never
+   * by the client, because a client that could choose would be a client that
+   * could choose to pay nothing.
+   *
+   * No capability check. A learner buying a course is acting on their own
+   * behalf, the same as self-enrolling.
+   */
+  app.post('/api/onyx/courses/:id/checkout', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      gateway: z.string().min(1).max(30),
+    }), req.body);
+    return ok(await ctx.onyxCheckout.beginCourse(claims.tenant_id, idOf(req),
+      { userId: claims.user_id },
+      { gateway: body.gateway, email: claims.email ?? null }));
+  });
+
   /** What this learner has bought, so a catalogue can mark it owned. */
   app.get('/api/onyx/my/purchases', async (req) => {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);

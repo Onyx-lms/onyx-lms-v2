@@ -273,6 +273,9 @@ export function createContext(): AppContext {
     onyxFinance: onyxFinance,
     onyxCheckout: new OnyxCheckoutService(onyxDb, onyxFinance, {
       secret: process.env.SUPABASE_JWT_SECRET ?? '',
+      // Needed to settle a course sale, which writes to onyx_course_purchases
+      // rather than raising an invoice (see 0024's header).
+      academics: onyxAcademics,
       baseUrl: process.env.WEB_URL,
     }),
     onyxGuardians: new GuardianService(onyxDb, onyxAudit, onyxExams),

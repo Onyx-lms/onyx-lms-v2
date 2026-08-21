@@ -129,8 +129,27 @@ test.describe('a locked course is bought before it can be started', () => {
     // The price is on the button, not hidden behind the click.
     await expect(buy).toContainText('1,499');
 
+    /*
+     * Which of the two checkouts this is, said out loud.
+     *
+     * The Buy button runs the mock or a real gateway, and the choice is made
+     * on the SERVER from whether this institution has a merchant account -- a
+     * client that could choose would be a client that could choose to pay
+     * nothing. The demo institution has none, so the mock is what should
+     * appear. Asserted rather than assumed: the day somebody configures a
+     * gateway on the demo tenant, this should fail HERE saying exactly that,
+     * instead of failing four lines down on a missing dialog.
+     */
+    const gateways = await api('/api/onyx/gateways', { token: student });
+    expect(gateways.body.data,
+      'a gateway is configured on the demo institution, so this is no longer the mock path')
+      .toEqual([]);
+
     await buy.click();
-    // The dialog says what it is before anybody pays.
+    // The dialog says what it is before anybody pays -- and only while it is
+    // true. With a gateway configured the notice is not rendered at all,
+    // because leaving it up over a real charge is the exact lie it exists to
+    // prevent.
     await expect(page.getByRole('dialog')).toContainText('test payment');
     await page.getByRole('button', { name: /^Pay / }).click();
 

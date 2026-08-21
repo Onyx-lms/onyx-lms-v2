@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { GatewayConfigSummary, PayableGateway } from '@/lib/onyx-campus';
+import { completeCheckout } from '@/lib/onyx-checkout-client';
 
 /**
  * CMP-03b -- paying an invoice, and setting up the account it is paid into.
@@ -65,16 +66,17 @@ export function PayInvoice({ invoiceId, gateways, outstanding }: {
           });
           const body = await res.json().catch(() => ({ ok: false }));
           if (!body.ok) { setError(body.message ?? 'Could not start the payment.'); return; }
-          if (body.data?.redirect_url) {
-            // A full navigation, not a router push: the destination is the
-            // gateway's own domain.
-            window.location.href = body.data.redirect_url as string;
-            return;
-          }
-          // A provider that renders its own widget rather than redirecting has
-          // nowhere to send us. Say so instead of appearing to do nothing.
-          setError('That gateway needs to be completed on its own page, and did not '
-            + 'supply one. Tell the finance office.');
+
+          // Widget first, redirect second, and the reason that order matters
+          // lives in the helper -- both this and the course Buy button used to
+          // decide it separately, and disagreed.
+          const end = await completeCheckout(body.data ?? {});
+          if (end.status === 'redirected') return;    // the browser is leaving
+          if (end.status === 'failed') { setError(end.message); return; }
+          if (end.status === 'dismissed') { setError('You have not been charged.'); return; }
+          // The ledger is what this page states, so re-read it either way: a
+          // payment the bank has not confirmed yet simply stays due, which is
+          // the truth.
           router.refresh();
         })}
         className="rounded-xl bg-brand-600 px-3 py-1.5 text-[13px] font-semibold text-white
@@ -98,9 +100,15 @@ export function PayInvoice({ invoiceId, gateways, outstanding }: {
  * sixth is a row in this table, not a code change anywhere else.
  */
 const PROVIDERS: { id: string; label: string; keys: { name: string; label: string }[] }[] = [
+  // The webhook secret is a SEPARATE secret from the key secret, generated
+  // when the webhook is registered in the Razorpay dashboard. Without it
+  // `parseWebhook` returns null at its first line and every webhook is
+  // silently ignored -- so a payment whose browser never came back would
+  // never settle at all, with nothing anywhere saying why.
   { id: 'razorpay', label: 'Razorpay', keys: [
     { name: 'razorpay_key', label: 'Key id' },
     { name: 'razorpay_secret', label: 'Key secret' },
+    { name: 'razorpay_webhook_secret', label: 'Webhook secret' },
   ] },
   { id: 'stripe', label: 'Stripe', keys: [
     { name: 'stripe_key', label: 'Publishable key' },

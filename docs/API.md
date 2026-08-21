@@ -276,6 +276,7 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/catalogue` | **no token** — public by design |
 | `GET` | `/api/onyx/c/:id` | **no token** — public by design |
 | `POST` | `/api/onyx/courses/:id/purchase` | any member |
+| `POST` | `/api/onyx/courses/:id/checkout` | any member |
 | `GET` | `/api/onyx/my/purchases` | any member |
 | `GET` | `/api/onyx/domains` | any member |
 | `GET` | `/api/onyx/domains/:id` | any member |
@@ -406,4 +407,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_320 endpoints across 9 route files._
+_321 endpoints across 9 route files._

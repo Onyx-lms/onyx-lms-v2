@@ -37,6 +37,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { OnyxDb } from './db.ts';
 import type { Role } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
+import type { AcademicsService } from './academics.service.ts';
 import { increment } from './metrics.ts';
 import {
   getProvider, hasProvider,
@@ -72,9 +73,37 @@ export interface OnyxGatewaySummary {
 /** A checkout older than this is stale, and its token stops verifying. */
 const MAX_AGE_SECONDS = 60 * 60 * 2;
 
+/**
+ * What a signed reference settles.
+ *
+ * It was an invoice and only an invoice, because invoices were the only thing
+ * Onyx charged for. A course sale writes to a different table -- migration
+ * 0024's header explains why a course purchase is deliberately NOT run through
+ * the fee ledger -- so the token had to learn to name its target.
+ *
+ * One token with a discriminator rather than a second sign/read pair. The HMAC
+ * is the one piece of this system that must never have two implementations, and
+ * a second reader would also force webhook() to decide which kind it held by
+ * trying both and seeing which failed to parse.
+ */
+export type OnyxIntentKind = 'invoice' | 'course';
+
 export interface OnyxPaymentIntent {
   tenantId: number;
-  invoiceId: number;
+  /** Absent on tokens written before course sales existed. See readIntent. */
+  kind?: OnyxIntentKind;
+  /** The invoice, or the course. */
+  targetId: number;
+  /**
+   * Still written for invoice intents, and still read as a fallback.
+   *
+   * A token lives two hours. A deploy that stopped writing this would strand
+   * every learner already mid-payment for that long, holding a reference this
+   * build could no longer parse. It becomes dead weight two hours after the
+   * first deploy that writes `targetId`, and deleting it then is one line
+   * nobody has to coordinate.
+   */
+  invoiceId?: number;
   userId: string;
   gateway: string;
   amountMinor: number;
@@ -120,7 +149,12 @@ export function readIntent(
   } catch {
     return null;
   }
-  if (!intent?.tenantId || !intent.invoiceId || !intent.amountMinor) return null;
+  // A token from before course sales carries invoiceId and no targetId; one
+  // written since carries both. Either shape must keep working.
+  const targetId = intent?.targetId ?? intent?.invoiceId;
+  if (!intent?.tenantId || !targetId || !intent.amountMinor) return null;
+  intent.targetId = targetId;
+  intent.kind = intent.kind ?? 'invoice';
   if (Math.floor(now / 1000) - intent.issuedAt > MAX_AGE_SECONDS) return null;
   return intent;
 }
@@ -128,16 +162,25 @@ export function readIntent(
 export class OnyxCheckoutService {
   #db: OnyxDb;
   #finance: FinanceService;
+  #academics: AcademicsService | null = null;
   #secret: string;
   #baseUrl: string;
   #now: () => number;
 
+  /**
+   * `academics` is optional so every existing caller and test that builds this
+   * with two collaborators keeps working. A deployment without it can still
+   * settle invoices; a course sale asks for it and says so plainly if it is
+   * missing, rather than failing somewhere further down.
+   */
   constructor(
-    db: OnyxDb, finance: FinanceService, opts: { secret: string; baseUrl?: string },
+    db: OnyxDb, finance: FinanceService,
+    opts: { secret: string; baseUrl?: string; academics?: AcademicsService },
     now: () => number = Date.now,
   ) {
     this.#db = db;
     this.#finance = finance;
+    this.#academics = opts.academics ?? null;
     this.#secret = opts.secret;
     this.#baseUrl = (opts.baseUrl ?? 'http://127.0.0.1:5173').replace(/\/+$/, '');
     this.#now = now;
@@ -246,6 +289,8 @@ export class OnyxCheckoutService {
 
     const reference = signIntent({
       tenantId,
+      kind: 'invoice',
+      targetId: invoiceId,
       invoiceId,
       userId: String(invoice.user_id),
       gateway: config.identifier,
@@ -288,6 +333,83 @@ export class OnyxCheckoutService {
       gateway: config.identifier,
       amount_minor: outstanding,
       currency: invoice.currency,
+      redirect_url: session.redirectUrl,
+      provider_ref: session.providerRef,
+      client_payload: session.clientPayload ?? null,
+    };
+  }
+
+  /**
+   * Starts a payment for a locked course.
+   *
+   * The invoice twin of this computes what is owed rather than trusting the
+   * caller, and the same rule applies harder here: the amount comes from the
+   * course row, never from the request, or a nine-thousand-rupee course could
+   * be bought for one.
+   *
+   * Everything it refuses, it refuses before signing anything -- an unpublished
+   * course, a free one, and one the learner already owns. The last is not an
+   * error the mock path has, because the mock is idempotent by construction;
+   * here it matters, since sending somebody to a payment window for something
+   * they have already bought is how you take money twice.
+   */
+  async beginCourse(tenantId: number, courseId: number, viewer: { userId: string }, input: {
+    gateway: string; email?: string | null;
+  }) {
+    if (!this.#academics) {
+      throw new HttpError(500, 'This deployment cannot sell a course.');
+    }
+    const course = await this.#academics.course(tenantId, courseId);
+    if (Number(course.status) !== 1) throw new HttpError(403, 'This course is not open.');
+    if (String(course.access) !== 'locked') {
+      throw new HttpError(422, 'This course is not for sale -- it is free to start.');
+    }
+    const owned = await this.#academics.hasPurchased(tenantId, courseId, viewer.userId);
+    if (owned) throw new HttpError(409, 'You already own this course.');
+
+    const amountMinor = Number(course.price_minor);
+    if (!amountMinor) throw new HttpError(422, 'This course has no price set.');
+
+    const config = await this.#config(tenantId, input.gateway);
+    const provider = getProvider(config.identifier);
+
+    const reference = signIntent({
+      tenantId,
+      kind: 'course',
+      targetId: courseId,
+      userId: viewer.userId,
+      gateway: config.identifier,
+      amountMinor,
+      currency: String(course.currency ?? 'INR'),
+    }, this.#secret, this.#now());
+
+    // The same minor-to-major seam begin() uses. The providers speak major
+    // units and convert back themselves; a third convention here would be one
+    // more place for a factor of a hundred to hide.
+    const major = amountMinor / 100;
+    const order: CheckoutOrder = {
+      reference,
+      userId: 0,
+      userEmail: input.email ?? '',
+      // A real course id at last: this field was built for one, and the invoice
+      // path has always had to pass 0 to mean "not a course sale".
+      items: [{ course_id: courseId, title: String(course.title), price: major }],
+      subtotal: major,
+      discount: 0,
+      tax: 0,
+      total: major,
+      currency: String(course.currency ?? 'INR'),
+      successUrl: this.#baseUrl + '/onyx/courses/' + courseId
+        + '?paid=1&ref=' + encodeURIComponent(reference),
+      cancelUrl: this.#baseUrl + '/onyx/courses/' + courseId + '?cancelled=1',
+    };
+
+    const session = await provider.createCheckout(order, config);
+    return {
+      reference,
+      gateway: config.identifier,
+      amount_minor: amountMinor,
+      currency: String(course.currency ?? 'INR'),
       redirect_url: session.redirectUrl,
       provider_ref: session.providerRef,
       client_payload: session.clientPayload ?? null,
@@ -378,8 +500,10 @@ export class OnyxCheckoutService {
       return { status: 'pending' as const, payment: null, invoice: null };
     }
 
+    if ((intent.kind ?? 'invoice') === 'course') return this.#settleCourse(intent, outcome);
+
     const result = await this.#finance.recordPayment(intent.tenantId, {
-      invoice_id: intent.invoiceId,
+      invoice_id: Number(intent.invoiceId ?? intent.targetId),
       gateway: intent.gateway,
       // Keyed on the gateway's own transaction id, not on our reference: two
       // captures against one checkout are two payments, and a card retried
@@ -398,6 +522,48 @@ export class OnyxCheckoutService {
       replayed: result.replayed,
       payment: result.payment,
       invoice: result.invoice,
+    };
+  }
+
+  /**
+   * A captured course sale.
+   *
+   * Writes to onyx_course_purchases and raises no invoice. That is deliberate
+   * and migration 0024's header gives the reason: a course bought outright is
+   * not a debt anybody was in, and forcing it through the fee ledger would put
+   * rows in an arrears report that nobody is in arrears on.
+   *
+   * Idempotent for the same reason the invoice branch is -- the redirect back
+   * and the webhook race constantly, and whichever arrives second must find the
+   * first one's row rather than charge again.
+   */
+  async #settleCourse(intent: OnyxPaymentIntent, outcome: PaymentOutcome) {
+    if (outcome.status !== 'paid') {
+      return { status: 'pending' as const, payment: null, invoice: null };
+    }
+    if (!this.#academics) {
+      throw new HttpError(500, 'This deployment cannot settle a course purchase.');
+    }
+
+    const result = await this.#academics.recordPurchase(
+      intent.tenantId, intent.targetId, intent.userId, {
+        gateway: intent.gateway,
+        // Keyed on the gateway's own transaction id, not on our reference, for
+        // the reason the invoice branch gives: two captures against one
+        // checkout are two payments.
+        reference: outcome.providerRef,
+        providerRef: outcome.providerRef,
+        amountMinor: intent.amountMinor,
+      });
+
+    increment('onyx_payments_total',
+      { gateway: intent.gateway, replayed: String(result.replayed) });
+    return {
+      status: 'captured' as const,
+      replayed: result.replayed,
+      purchase: result.purchase,
+      payment: null,
+      invoice: null,
     };
   }
 

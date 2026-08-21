@@ -40,7 +40,7 @@ export default async function OnyxCoursesPage() {
   // have gotten anyway. Without it, "All courses" was never actually all of
   // them for staff either, the one role the draft/published distinction is
   // for -- a course sat unpublished and simply was not in the list.
-  const [me, courses, mine, programs, purchases] = await Promise.all([
+  const [me, courses, mine, programs, purchases, gateways] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
     onyxApi<Course[]>('/api/onyx/courses?all=1'),
     onyxApi<Course[]>('/api/onyx/my/courses'),
@@ -48,8 +48,20 @@ export default async function OnyxCoursesPage() {
     // What this learner has already bought: a locked course they own should
     // offer "Start", not "Buy" a second time.
     onyxApiSafe<number[]>('/api/onyx/my/purchases'),
+    // Whether this institution can actually take money. Asked HERE, on the
+    // server, and never in the Buy button: a client that chose between the
+    // mock and the real gateway would be a client that could choose to pay
+    // nothing. Safe if it fails -- no gateway means the mock, which is what
+    // an institution that has configured none should get anyway.
+    onyxApiSafe<{ identifier: string; title?: string | null }[]>('/api/onyx/gateways'),
   ]);
   const owned = new Set((purchases ?? []).map(Number));
+
+  // The first configured gateway. A chooser belongs on a page where somebody
+  // is paying a fee bill of their own choosing; a course card is one price and
+  // one button, and offering a radio group there is a worse checkout than
+  // simply using the account the institution set up.
+  const gateway = gateways?.[0]?.identifier ?? null;
 
   // Progress lives on the outline, not on the course row, so a learner's own
   // list costs one request per course. Bounded by how many courses one person
@@ -325,7 +337,8 @@ export default async function OnyxCoursesPage() {
                   c.access === 'locked' && !owned.has(c.id) ? (
                     <BuyCourseButton courseId={c.id} title={c.title}
                       price={Number(c.price_minor ?? 0)}
-                      currency={String(c.currency ?? 'INR')} />
+                      currency={String(c.currency ?? 'INR')}
+                      gateway={gateway} />
                   ) : c.self_enroll || c.access === 'open' || owned.has(c.id) ? (
                     <div className="relative z-10">
                       <ActionButton endpoint={'courses/' + c.id + '/enroll'}

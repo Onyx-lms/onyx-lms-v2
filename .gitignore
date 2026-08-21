@@ -33,6 +33,10 @@ test-results/
 playwright-report/
 .vercel
 .env*
+# ...except the one that is deliberately all placeholders. It is the only
+# record of what a deployment needs set, and ignoring it meant a new variable
+# could be read by the code and documented nowhere anybody would look.
+!.env.example
 
 # Generated credential exports hold plaintext passwords for real seeded
 # accounts -- never commit one of these, wherever it ends up.

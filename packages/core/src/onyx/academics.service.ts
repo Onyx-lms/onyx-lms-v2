@@ -790,6 +790,97 @@ export class AcademicsService {
   }
 
   /**
+   * A real gateway's answer, written down.
+   *
+   * Split out of purchase() rather than bolted into it, because the two have
+   * different jobs: purchase() is the mock -- one statement, always captured,
+   * nothing to reconcile. This one lands a payment that already happened
+   * somewhere else, and everything about it is shaped by that arriving twice.
+   *
+   * The order below is the whole method and it has to be exactly this:
+   *
+   *   1. Look for the gateway's own transaction id FIRST, before any write. A
+   *      capture that is already recorded is reported, not repeated. This is
+   *      what makes the redirect-versus-webhook race harmless rather than a
+   *      double charge.
+   *   2. Only then write, and never downgrade. A `begin` that arrives late --
+   *      after a webhook already captured -- must not reset the row to pending.
+   *   3. Enrol using the same idempotent block purchase() uses, so whichever of
+   *      the two arrives second finds an active enrolment and returns it.
+   *   4. Catch a unique violation anyway and re-read. Steps 1 and 2 race each
+   *      other under concurrency; the database is the only real arbiter.
+   */
+  async recordPurchase(tenantId: number, courseId: number, userId: string, input: {
+    gateway: string; reference: string; providerRef?: string; amountMinor?: number;
+  }) {
+    const course = await this.course(tenantId, courseId);
+
+    // 1. Already recorded under this transaction id?
+    const seen = await this.#purchaseByReference(tenantId, input.gateway, input.reference);
+    if (seen && String(seen.status) === 'captured') {
+      const enrolment = await this.enrollment(tenantId, courseId, userId);
+      return { replayed: true, purchase: seen, enrollment: enrolment };
+    }
+
+    const row = {
+      tenant_id: tenantId,
+      course_id: courseId,
+      user_id: userId,
+      amount_minor: input.amountMinor ?? Number(course.price_minor),
+      currency: String(course.currency ?? 'INR'),
+      gateway: input.gateway,
+      reference: input.reference,
+      provider_ref: input.providerRef ?? null,
+      status: 'captured',
+      updated_at: new Date().toISOString(),
+    };
+
+    // 2. One row per learner per course, so this is an upsert on that key --
+    //    and a captured row is never written back to anything lesser.
+    const existing = await this.#purchaseFor(tenantId, courseId, userId);
+    let error;
+    if (existing) {
+      if (String(existing.status) === 'captured') {
+        const enrolment = await this.enrollment(tenantId, courseId, userId);
+        return { replayed: true, purchase: existing, enrollment: enrolment };
+      }
+      ({ error } = await this.#db.from('onyx_course_purchases')
+        .update(row).eq('tenant_id', tenantId).eq('id', existing.id));
+    } else {
+      ({ error } = await this.#db.from('onyx_course_purchases').insert(row));
+    }
+
+    // 4. The database had the last word after all.
+    if (error && /duplicate key|unique/i.test(String(error.message))) {
+      const original = await this.#purchaseByReference(tenantId, input.gateway, input.reference);
+      const enrolment = await this.enrollment(tenantId, courseId, userId);
+      return { replayed: true, purchase: original, enrollment: enrolment };
+    }
+    if (error) throw new HttpError(500, 'The payment could not be recorded: ' + error.message);
+
+    // 3. Theirs now.
+    const already = await this.enrollment(tenantId, courseId, userId);
+    const enrollment = already && already.status === 1
+      ? already
+      : await this.enroll(tenantId, courseId, userId, { enrolledBy: userId });
+    return { replayed: false, purchase: { ...row }, enrollment };
+  }
+
+  async #purchaseByReference(tenantId: number, gateway: string, reference: string) {
+    const { data } = await this.#db.from('onyx_course_purchases')
+      .select('id, tenant_id, course_id, user_id, amount_minor, currency, gateway, reference, status')
+      .eq('tenant_id', tenantId).eq('gateway', gateway).eq('reference', reference).maybeSingle();
+    return data as Record<string, unknown> | null;
+  }
+
+  async #purchaseFor(tenantId: number, courseId: number, userId: string) {
+    const { data } = await this.#db.from('onyx_course_purchases')
+      .select('id, status')
+      .eq('tenant_id', tenantId).eq('course_id', courseId).eq('user_id', userId).maybeSingle();
+    return data as { id: number; status: string } | null;
+  }
+
+  /**
    * Bulk enrolment by batch -- the everyday case. An institution enrols a
    * cohort, not a person, and doing it one at a time is where mistakes live.
    */

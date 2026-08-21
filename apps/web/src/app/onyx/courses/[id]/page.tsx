@@ -19,6 +19,7 @@ import {
   BackLink, Banner, Card, Empty, Hero, Icon, ListRow, Meter, Pill, RowList, SectionHead, relativeDue, type IconName,
 } from '@/components/onyx-ui';
 import { ShareLink } from '@/components/onyx-share';
+import { ConfirmPayment } from '@/components/onyx-pay-return';
 
 export const metadata: Metadata = { title: 'Course' };
 
@@ -29,9 +30,20 @@ export const metadata: Metadata = { title: 'Course' };
  * page: the outline, what is due, and when the next session is, together rather
  * than in three places.
  */
-export default async function OnyxCoursePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function OnyxCoursePage(
+  { params, searchParams }: {
+    params: Promise<{ id: string }>;
+    // Where a gateway sends a course buyer back to. A provider that redirects
+    // rather than opening a widget lands here, and without this the payment
+    // was made and nothing on our side ever asked the provider whether it had
+    // been -- the enrolment would wait for a webhook that some providers never
+    // send at all.
+    searchParams?: Promise<{ ref?: string; cancelled?: string }>;
+  },
+) {
   await requireOnyxSession();
   const { id } = await params;
+  const { ref: paymentRef, cancelled } = (await searchParams) ?? {};
 
   const [me, outline, members] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
@@ -126,6 +138,19 @@ export default async function OnyxCoursePage({ params }: { params: Promise<{ id:
         <BackLink href="/onyx/courses" label="All courses" />
         <ShareLink label="Copy public link" path={'/onyx/c/' + outline.course.id} />
       </div>
+
+      {/* What the query string says happened is not evidence. The banner
+          reports where the buyer has been; the provider is asked what is
+          true, and the enrolment below is what answers it. */}
+      {paymentRef ? <ConfirmPayment reference={paymentRef} /> : null}
+      {!paymentRef && cancelled ? (
+        <div className="mb-4">
+          <Banner tone="info" icon="x">
+            That payment was cancelled. Nothing has been charged, and the course is still
+            here when you want it.
+          </Banner>
+        </div>
+      ) : null}
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
         <div className="min-w-0 space-y-6">
           {outline.enrolled ? (
