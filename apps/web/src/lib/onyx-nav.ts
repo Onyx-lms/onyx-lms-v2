@@ -40,6 +40,10 @@ export const ROLE_LABELS: Record<Role, string> = {
 const I = {
   dashboard: { href: '/onyx/dashboard', label: 'Dashboard', icon: 'home' },
   courses:   { href: '/onyx/courses', label: 'Courses', icon: 'book' },
+  // The route is named for what the page lists, the label for what the product
+  // calls it. A label is one character to change; a URL is a redirect, a
+  // sitemap entry and every stale link somebody saved.
+  domains:   { href: '/onyx/domains', label: 'Live Classes', icon: 'video' },
   practice:  { href: '/onyx/practice', label: 'Practice', icon: 'code' },
   spaces:    { href: '/onyx/workspaces', label: 'Workspaces', icon: 'layers' },
   assess:    { href: '/onyx/assessments', label: 'Assessments', icon: 'edit' },
@@ -71,14 +75,14 @@ const I = {
 
 const NAV: Record<Role, OnyxNavGroup[]> = {
   student: [
-    { items: [I.dashboard, I.courses, I.practice, I.spaces] },
+    { items: [I.dashboard, I.courses, I.domains, I.practice, I.spaces] },
     { label: 'Assessment', items: [I.assess, I.exams, I.results, I.contests] },
     { label: 'Campus', items: [I.timetable, I.fees, I.support] },
     { label: 'Career', items: [I.jobs, I.interviews, I.profile] },
     { items: [I.inbox] },
   ],
   faculty: [
-    { items: [I.dashboard, I.courses, I.practice, I.spaces] },
+    { items: [I.dashboard, I.courses, I.domains, I.practice, I.spaces] },
     { label: 'Assessment', items: [I.assess, I.exams, I.invigilate] },
     { label: 'Teaching', items: [I.programs, I.timetable, I.allocate, I.people] },
     { label: 'Support', items: [I.mentor, I.inbox, I.profile] },
@@ -114,7 +118,7 @@ const NAV: Record<Role, OnyxNavGroup[]> = {
     // a job an administrator does, unlike Workspaces, which stays -- an
     // admin monitors every learner's projects there, rather than keeping
     // their own.
-    { items: [I.dashboard, I.courses, I.spaces] },
+    { items: [I.dashboard, I.courses, I.domains, I.spaces] },
     // Invigilation and placement are the administrator's too: ASS-03 lets them
     // watch a sitting and CAR-04 makes them keeper of the employer records.
     // Both were reachable only by typing the URL until this line existed.

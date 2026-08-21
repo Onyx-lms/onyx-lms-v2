@@ -16,13 +16,38 @@ import { test, expect, type Page } from '@playwright/test';
 
 const PW = 'Demo#2026!';
 
+/**
+ * Hydration has finished on this page.
+ *
+ * `networkidle` says the requests stopped, not that React finished attaching --
+ * and navigating away mid-hydration makes React tear down the tree it was
+ * working on and log a mismatch (#418) against a page that is perfectly fine.
+ * A sweep that walks twenty pages in a row hits that window constantly, and the
+ * error lands on whichever page happens to be next, which is how it reads as a
+ * bug in the wrong place. It cost a long afternoon to work that out.
+ *
+ * The marker is the product's own: ThemeToggle renders a blank placeholder
+ * until its effect runs, then swaps in a sun or a moon. An `svg` inside that
+ * button means the client has taken over.
+ */
+async function hydrated(page: Page) {
+  await page.locator('button[aria-label*="theme" i] svg').first()
+    .waitFor({ state: 'attached', timeout: 20_000 })
+    .catch(() => { /* a page without the toggle: the settle below still applies */ });
+  await page.waitForTimeout(250);
+}
+
 /** A screen is healthy when it renders its own heading and shouts about nothing. */
 async function healthy(page: Page, path: string, expectHeading?: RegExp) {
   const errors: string[] = [];
-  page.on('pageerror', (e) => errors.push(String(e.message)));
+  // Removed again at the end: a listener per call, left attached, means one
+  // page's error is collected by every later page's array as well.
+  const collect = (e: Error) => errors.push(String(e.message));
+  page.on('pageerror', collect);
 
   const res = await page.goto(path, { waitUntil: 'networkidle' });
   expect(res?.status(), path + ' responded ' + res?.status()).toBeLessThan(400);
+  await hydrated(page);
 
   // Next's own error surfaces, which render a page rather than a bad status.
   const body = await page.locator('body').innerText();
@@ -33,6 +58,7 @@ async function healthy(page: Page, path: string, expectHeading?: RegExp) {
   await expect(h1, path + ' has a heading').toBeVisible();
   if (expectHeading) await expect(h1, path).toHaveText(expectHeading);
 
+  page.off('pageerror', collect);
   expect(errors, path + ' threw in the browser').toEqual([]);
 }
 
@@ -65,7 +91,7 @@ test.describe('the deployment, role by role', () => {
     test.setTimeout(300_000);
     await signIn(page, 'student@demo.onyx');
     for (const [path, heading] of [
-      ['/onyx/dashboard', /./], ['/onyx/courses', /courses/i],
+      ['/onyx/dashboard', /./], ['/onyx/courses', /courses/i], ['/onyx/domains', /live classes/i],
       ['/onyx/practice', /practice/i], ['/onyx/workspaces', /workspaces/i],
       ['/onyx/assessments', /assessments/i], ['/onyx/exams', /examinations/i],
       ['/onyx/results', /results/i], ['/onyx/contests', /contests/i],
@@ -84,7 +110,7 @@ test.describe('the deployment, role by role', () => {
     test.setTimeout(300_000);
     await signIn(page, 'faculty@demo.onyx');
     for (const [path, heading] of [
-      ['/onyx/dashboard', /./], ['/onyx/courses', /courses/i],
+      ['/onyx/dashboard', /./], ['/onyx/courses', /courses/i], ['/onyx/domains', /live classes/i],
       ['/onyx/assessments', /assessments/i], ['/onyx/exams', /examinations/i],
       ['/onyx/invigilate', /invigilat/i], ['/onyx/programs', /programme/i],
       ['/onyx/timetable', /timetable/i], ['/onyx/allocations', /teaching allocation/i],
@@ -97,7 +123,7 @@ test.describe('the deployment, role by role', () => {
     test.setTimeout(300_000);
     await signIn(page, 'admin@demo.onyx');
     for (const [path, heading] of [
-      ['/onyx/dashboard', /./], ['/onyx/courses', /courses/i],
+      ['/onyx/dashboard', /./], ['/onyx/courses', /courses/i], ['/onyx/domains', /live classes/i],
       ['/onyx/workspaces', /workspaces/i], ['/onyx/assessments', /assessments/i],
       ['/onyx/invigilate', /invigilat/i], ['/onyx/exams', /examinations/i],
       ['/onyx/contests', /contests/i], ['/onyx/certificates', /certificates/i],

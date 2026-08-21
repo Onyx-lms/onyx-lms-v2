@@ -29,7 +29,7 @@ async function signIn(page: Page) {
 /** Every screen an administrator has a nav link to, plus the roster filters. */
 const SCREENS = [
   '/onyx/dashboard', '/onyx/people', '/onyx/people?role=student', '/onyx/people?role=faculty',
-  '/onyx/courses', '/onyx/assessments', '/onyx/exams', '/onyx/programs', '/onyx/timetable',
+  '/onyx/courses', '/onyx/domains', '/onyx/assessments', '/onyx/exams', '/onyx/programs', '/onyx/timetable',
   '/onyx/finance', '/onyx/placement', '/onyx/jobs', '/onyx/settings', '/onyx/profile',
   '/onyx/contests', '/onyx/certificates', '/onyx/invigilate', '/onyx/workspaces', '/onyx/audit',
 ];
