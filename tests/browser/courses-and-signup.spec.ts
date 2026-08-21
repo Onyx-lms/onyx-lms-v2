@@ -57,18 +57,22 @@ async function lockedCourse(admin: string) {
     .find((c) => c.access === 'locked');
 }
 
-test.afterAll(async () => {
-  /*
-   * Buying leaves the demo student owning the course, and there is no
-   * "un-buy" in the product -- correctly, since refunds are not a thing this
-   * builds. So the fixture is reset the same way every other suite resets what
-   * it wrote: straight in the database, scoped to the one learner and the one
-   * course this file touches.
-   *
-   * Without it the second run finds the course already owned and fails on the
-   * assertion that it is not -- which is what happened the first time this ran
-   * against production.
-   */
+/*
+ * Buying leaves the demo student owning the course, and there is no "un-buy"
+ * in the product -- correctly, since refunds are not a thing this builds. So
+ * the fixture is reset the same way every other suite resets what it wrote:
+ * straight in the database, scoped to the one learner and the one course this
+ * file touches.
+ *
+ * Run BEFORE as well as after. Cleaning up afterwards only guarantees the
+ * fixture against this file's own writes, and the product now lets anyone buy
+ * a course -- a purchase made by hand, by a demo, or by another suite leaves
+ * the learner already owning it, and the precondition ("starting it without
+ * paying is refused") then fails with 422 "already enrolled" rather than the
+ * 402 it is asserting. A test that depends on global state has to establish
+ * that state, not hope for it.
+ */
+async function resetPurchase() {
   await withDb(async (c) => {
     await c.query(
       `DELETE FROM public."onyx_course_purchases" p
@@ -81,6 +85,12 @@ test.afterAll(async () => {
         WHERE e.course_id = co.id AND e.user_id = u.id
           AND co.code = 'ABC301' AND u.email = $1`, [STUDENT.email]);
   });
+}
+
+test.beforeAll(resetPurchase);
+
+test.afterAll(async () => {
+  await resetPurchase();
 
   // The account the signup test made, and the purchase the buying test made.
   const admin = await token(ADMIN.email, ADMIN.password);
