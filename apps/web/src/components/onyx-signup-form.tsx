@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
 const field = 'mt-1.5 block min-h-[46px] w-full rounded-xl border border-line bg-white px-3.5 '
@@ -24,9 +24,19 @@ const label = 'block text-[13.5px] font-semibold text-slate-700';
  * is the one answer worth giving before somebody types a password and a phone
  * number they are about to lose.
  */
+
+/** True once this component has hydrated. See OnyxLoginForm's copy for why a
+ *  credential form stays disabled until then. */
+function useHydrated(): boolean {
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
+  return ready;
+}
+
 export function OnyxSignUpForm({ next }: { next?: string } = {}) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const ready = useHydrated();
   const [error, setError] = useState<string | null>(null);
   const [institution, setInstitution] = useState<{ name: string } | null | 'unknown'>('unknown');
 
@@ -42,6 +52,9 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
 
   return (
     <form
+      // POST so a submit landing before hydration cannot put the password
+      // in the URL. See OnyxLoginForm for the full reasoning.
+      method="post"
       className="space-y-3.5"
       onSubmit={(e) => {
         e.preventDefault();
@@ -123,7 +136,7 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
         <p className="mt-1.5 text-[12.5px] text-muted">At least 8 characters.</p>
       </div>
 
-      <button type="submit" disabled={pending}
+      <button type="submit" disabled={pending || !ready}
         className="min-h-[46px] w-full rounded-xl bg-brand-600 px-4 text-[15px] font-bold
                    text-white hover:bg-brand-700 disabled:opacity-50">
         {pending ? 'Creating your account…' : 'Create my account'}

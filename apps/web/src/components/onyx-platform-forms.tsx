@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useId, useState, useTransition } from 'react';
+import { useEffect, useId, useState, useTransition } from 'react';
 import { Modal } from '@/components/onyx-modal';
 import { ROLE_LABELS } from '@/lib/onyx-nav';
 import { DangerPanel } from '@/components/onyx-danger';
@@ -59,13 +59,26 @@ async function post(path: string, body?: unknown, method = 'POST') {
   return res.json().catch(() => ({ ok: false, message: 'Something went wrong.' }));
 }
 
+
+/** True once this component has hydrated. See OnyxLoginForm's copy for why a
+ *  credential form stays disabled until then. */
+function useHydrated(): boolean {
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
+  return ready;
+}
+
 export function PlatformLoginForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const ready = useHydrated();
 
   return (
     <form
+      // POST so a submit landing before hydration cannot put the password
+      // in the URL. See OnyxLoginForm for the full reasoning.
+      method="post"
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
@@ -97,7 +110,7 @@ export function PlatformLoginForm() {
         <input id="password" name="password" type="password" required
           autoComplete="current-password" className={field} />
       </div>
-      <button type="submit" disabled={pending} className={button + ' w-full'}>
+      <button type="submit" disabled={pending || !ready} className={button + ' w-full'}>
         {pending ? 'Signing in…' : 'Sign in'}
       </button>
     </form>

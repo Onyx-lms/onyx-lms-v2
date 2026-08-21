@@ -68,10 +68,23 @@ const GROUPS: TenantNavGroup[] = [
  */
 const LABEL_OF = new Map(GROUPS.flatMap((g) => g.items).map((i) => [i.seg, i.label]));
 
+/**
+ * Sections that are real routes but deliberately not menu entries.
+ *
+ * Assignments is the case: it is course-scoped, reached from a link on the
+ * Courses page rather than from the sidebar (see the comment in GROUPS), so it
+ * has no `seg` above -- and reading labels off GROUPS alone left it falling
+ * through to "Overview". An institution's assignment list was headed
+ * "Overview", with a breadcrumb to match, on a page you can only get to by
+ * clicking something called "All assignments".
+ */
+const OFF_MENU: Record<string, string> = { assignments: 'Assignments' };
+
 export function sectionOf(pathname: string, tenantId: number): { seg: string; label: string } {
   const after = pathname.split('/tenants/' + tenantId + '/')[1];
   const seg = after ? (after.split('/')[0] ?? '') : '';
-  return { seg: LABEL_OF.has(seg) ? seg : '', label: LABEL_OF.get(seg) ?? 'Overview' };
+  const label = LABEL_OF.get(seg) ?? OFF_MENU[seg];
+  return { seg: label ? seg : '', label: label ?? 'Overview' };
 }
 
 /**

@@ -2393,6 +2393,8 @@ export function CourseSettingsForm({ courseId, course }: {
   course: {
     title: string; code: string; credits: number; description: string | null;
     self_enroll: number;
+    access?: 'batch' | 'open' | 'locked';
+    price_minor?: number;
   };
 }) {
   const router = useRouter();
@@ -2417,12 +2419,20 @@ export function CourseSettingsForm({ courseId, course }: {
         const data = new FormData(e.currentTarget);
         start(async () => {
           setError(null);
+          const access = String(data.get('access') ?? 'batch');
           const res = await send('courses/' + courseId, {
             title: String(data.get('title') ?? ''),
             code: String(data.get('code') ?? ''),
             credits: Number(data.get('credits') || 0),
             description: String(data.get('description') ?? '') || null,
-            self_enroll: data.get('self_enroll') === 'on',
+            // `access`, not `self_enroll`. The two are derived from one another
+            // on the server, and sending the old checkbox alone set one without
+            // the other -- which is how a course came to say "open" in the
+            // catalogue and refuse the learner who clicked it.
+            access,
+            ...(access === 'locked'
+              ? { price_minor: Number(data.get('price_minor') || 0) }
+              : {}),
           }, 'PATCH');
           if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
           setOpen(false);
@@ -2457,10 +2467,40 @@ export function CourseSettingsForm({ courseId, course }: {
         <textarea id="cs-description" name="description" rows={3}
           defaultValue={course.description ?? ''} className={input + ' mt-1 w-full'} />
       </div>
-      <label className="flex items-center gap-2 text-sm text-slate-700">
-        <input type="checkbox" name="self_enroll" defaultChecked={course.self_enroll === 1} />
-        Students can enrol themselves
-      </label>
+      {/*
+        * How learners get on, and what it costs -- the same question the create
+        * form asks, in the same words.
+        *
+        * This was a lone "Students can enrol themselves" checkbox: the create
+        * form had already moved to open/locked/price and the edit form was left
+        * behind, so a course could be given a price when it was made and never
+        * afterwards. That is the whole reason the public catalogue was almost
+        * empty -- every course made since is `batch`, and nothing in the product
+        * could change one.
+        */}
+      <div className="grid gap-2.5 sm:grid-cols-2">
+        <div>
+          <label className="block text-xs font-semibold text-slate-700" htmlFor="cs-access">
+            How learners get on
+          </label>
+          <select id="cs-access" name="access" defaultValue={course.access ?? 'batch'}
+            className={input + ' mt-1 w-full'}>
+            <option value="batch">The institution enrols them</option>
+            <option value="open">Open — anyone here may start it, free</option>
+            <option value="locked">Locked — they buy it first</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-700" htmlFor="cs-price">
+            Price in paise
+          </label>
+          <input id="cs-price" name="price_minor" type="number" min={0}
+            defaultValue={course.price_minor ?? 0} className={input + ' mt-1 w-full'} />
+          <p className="mt-1 text-[11px] text-muted">
+            149900 is ₹1,499.00. Only used for a locked course.
+          </p>
+        </div>
+      </div>
       <div className="flex gap-2 pt-1">
         <button type="submit" disabled={pending} className={btn}>
           {pending ? 'Saving…' : 'Save'}

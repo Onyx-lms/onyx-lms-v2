@@ -165,7 +165,15 @@ export function ReceiptsReport({ data, showLearner = true, emptyNote }: {
       >
         {shown.map((r) => (
           <tr key={r.id}>
-            <td className="whitespace-nowrap text-muted">
+            {/* `undefined` locale means "whatever this runtime defaults to",
+                and the two runtimes disagree: Node renders this in the
+                server's locale and timezone, the browser in the reader's. The
+                dates differ, React tears the subtree down and logs a
+                hydration failure (#418) on every load of the fees page.
+                Suppressed rather than pinned, so a reader still gets their own
+                format -- the same call this file's siblings already make
+                (onyx-workspace's `since`, onyx-marking's consent line). */}
+            <td className="whitespace-nowrap text-muted" suppressHydrationWarning>
               {new Date(r.at).toLocaleDateString(undefined,
                 { day: 'numeric', month: 'short', year: 'numeric' })}
             </td>

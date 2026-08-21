@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 /**
  * F-06 -- signing in, and standing up a new institution.
@@ -60,13 +60,48 @@ async function post(action: string, body: unknown) {
  * email that registration actually needs. Two signup forms that could drift
  * apart, one of which could never render, deleted down to the one that does.
  */
+
+/**
+ * True once this component has hydrated.
+ *
+ * Between the server's HTML arriving and React attaching, a form is inert
+ * markup: pressing Enter submits it the browser's way, not the app's. For a
+ * form carrying credentials that is worth blocking outright -- the request
+ * would reach a route that does not handle it, and the person would be left
+ * looking at a 405 wondering what they did. Disabled until ready is the honest
+ * state, and it lasts milliseconds.
+ */
+function useHydrated(): boolean {
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
+  return ready;
+}
+
 export function OnyxLoginForm({ next }: { next?: string } = {}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const ready = useHydrated();
 
   return (
     <form
+      /*
+       * `method="post"`, on a form that is submitted by JavaScript and never
+       * by the browser.
+       *
+       * It matters for the window before hydration. A form with no method is a
+       * GET form, so a submit that lands in that window -- a fast typist
+       * pressing Enter, a slow connection, a cold serverless start -- is
+       * handled natively by the browser, which appends every field to the URL.
+       * The password ends up in the address bar, in browser history, in the
+       * referrer of the next request, and in the access log of anything in
+       * front of this app. It reproduces: `/onyx/login?email=…&password=…`.
+       *
+       * As a POST the same accidental submit carries the fields in a body that
+       * goes nowhere (Next answers 405) and the credentials stay out of the
+       * URL entirely. The onSubmit below still does the real work.
+       */
+      method="post"
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
@@ -97,7 +132,7 @@ export function OnyxLoginForm({ next }: { next?: string } = {}) {
         <input id="password" name="password" type="password" required
           autoComplete="current-password" className={field} />
       </div>
-      <button type="submit" disabled={pending} className={button}>
+      <button type="submit" disabled={pending || !ready} className={button}>
         {pending ? 'Signing in…' : 'Sign in'}
       </button>
     </form>
