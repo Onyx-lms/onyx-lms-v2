@@ -59,6 +59,79 @@ const GROUPS: TenantNavGroup[] = [
   { items: [{ seg: 'settings', label: 'Settings', icon: 'settings' }] },
 ];
 
+/**
+ * Which section the URL is on, and what it is called.
+ *
+ * Read off GROUPS above rather than kept as a second list, so the nav and the
+ * page heading cannot drift apart: a section renamed in the menu is renamed in
+ * the title by the same edit.
+ */
+const LABEL_OF = new Map(GROUPS.flatMap((g) => g.items).map((i) => [i.seg, i.label]));
+
+export function sectionOf(pathname: string, tenantId: number): { seg: string; label: string } {
+  const after = pathname.split('/tenants/' + tenantId + '/')[1];
+  const seg = after ? (after.split('/')[0] ?? '') : '';
+  return { seg: LABEL_OF.has(seg) ? seg : '', label: LABEL_OF.get(seg) ?? 'Overview' };
+}
+
+/**
+ * The breadcrumb and heading for whichever section is open.
+ *
+ * A CLIENT component, and that is the whole point of it. This was computed in
+ * the tenant layout from the `x-pathname` header, which is correct exactly
+ * once: Next does not re-render a shared layout when you navigate between its
+ * sibling pages, so the header read on first paint stuck for the rest of the
+ * session. Clicking Students, Faculty, Fees and Settings in turn left the
+ * heading reading "Overview" on all four -- the precise defect the breadcrumb
+ * was added to fix, reintroduced by where it was calculated.
+ *
+ * It went unnoticed because every test drove the console with `page.goto()`,
+ * which is a fresh document each time and re-runs the layout. Nobody uses a
+ * console that way; they click. `usePathname()` re-renders on every
+ * navigation, soft or hard, which is the only guarantee that holds here.
+ */
+export function TenantHeader({ tenantId, tenantName, subtitle, badge }: {
+  tenantId: number; tenantName: string;
+  /** Shown on the overview only -- elsewhere each section counts its own rows. */
+  subtitle?: string;
+  badge?: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const base = '/onyx/platform/tenants/' + tenantId;
+  const { seg, label } = sectionOf(pathname, tenantId);
+
+  const crumbs: { href?: string; label: string }[] = [
+    { href: '/onyx/platform', label: 'Institutions' },
+    // The institution links to its own overview -- except while you are on it,
+    // where a link to the page you are reading is noise.
+    seg ? { href: base, label: tenantName } : { label: tenantName },
+    ...(seg ? [{ label }] : []),
+  ];
+
+  return (
+    <div className="mb-5">
+      <nav aria-label="Breadcrumb" className="mb-1.5">
+        <ol className="flex flex-wrap items-center gap-1 text-[12px] font-semibold uppercase
+                       tracking-[.07em] text-muted">
+          {crumbs.map((c, i) => (
+            <li key={c.label} className="flex items-center gap-1">
+              {i > 0 ? <span aria-hidden="true" className="text-faint">/</span> : null}
+              {c.href
+                ? <Link href={c.href} className="hover:text-brand-700 hover:underline">{c.label}</Link>
+                : <span>{c.label}</span>}
+            </li>
+          ))}
+        </ol>
+      </nav>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <h1 className="text-2xl font-extrabold tracking-tight sm:text-[28px]">{label}</h1>
+        {badge}
+      </div>
+      {!seg && subtitle ? <p className="mt-1 text-sm text-muted">{subtitle}</p> : null}
+    </div>
+  );
+}
+
 export function TenantSidebarNav({ tenantId, tenantName }: { tenantId: number; tenantName: string }) {
   const pathname = usePathname();
   const base = '/onyx/platform/tenants/' + tenantId;

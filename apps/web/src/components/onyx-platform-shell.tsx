@@ -40,7 +40,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 export interface Crumb { href?: string; label: string }
 
 export function OnyxPlatformShell({
-  email, title, subtitle, children, action, sidebarNav, breadcrumb, badge,
+  email, title, subtitle, children, action, sidebarNav, breadcrumb, badge, header,
 }: {
   email: string;
   title: string;
@@ -62,6 +62,17 @@ export function OnyxPlatformShell({
   breadcrumb?: Crumb[];
   /** A status chip beside the title -- suspended institutions, mostly. */
   badge?: React.ReactNode;
+  /**
+   * A caller-supplied heading block, replacing the breadcrumb/title above.
+   *
+   * Needed because a shared LAYOUT cannot compute a per-section title: Next
+   * does not re-render a layout when you move between its sibling pages, so
+   * anything it derives from the URL is frozen at first paint. The tenant
+   * layout passes a client component (TenantHeader) that reads usePathname()
+   * and therefore keeps up. Everywhere else, `title` is a constant of the page
+   * and the default block above is right.
+   */
+  header?: React.ReactNode;
   /**
    * Institution-scoped navigation, rendered below the platform-wide links
    * rather than instead of them -- Institutions and Platform admins stay one
@@ -146,6 +157,12 @@ export function OnyxPlatformShell({
         {/* A div, for the same reason as onyx-shell.tsx: the root layout owns
             the one `<main id="main">` and the skip link targets it. */}
         <div className="min-w-0">
+          {header ? (
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 [&>div]:mb-0">{header}</div>
+              {action}
+            </div>
+          ) : (
           <div className="mb-5">
             {breadcrumb?.length ? (
               <nav aria-label="Breadcrumb" className="mb-1.5">
@@ -175,6 +192,7 @@ export function OnyxPlatformShell({
               {action}
             </div>
           </div>
+          )}
           {children}
         </div>
       </div>

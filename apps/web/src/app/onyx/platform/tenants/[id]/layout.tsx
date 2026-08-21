@@ -1,7 +1,6 @@
-import { headers } from 'next/headers';
 import Link from 'next/link';
 import { OnyxPlatformShell } from '@/components/onyx-platform-shell';
-import { TenantSidebarNav } from '@/components/onyx-platform-tenant-nav';
+import { TenantSidebarNav, TenantHeader } from '@/components/onyx-platform-tenant-nav';
 import { requirePlatformSession, platformApi } from '@/lib/onyx-platform-session';
 import type { TenantDetail } from '@/lib/onyx-platform-tenant';
 import { plural } from '@/lib/onyx-platform-tenant';
@@ -24,9 +23,15 @@ import { Icon, Pill } from '@/components/onyx-ui';
  * three times above the fold (h1, identity card, sidebar) while the one word
  * that would have told you where you were appeared nowhere. The section is now
  * the h1, with the path above it -- the shape Dialpad, Salesforce Setup and
- * Etsy's seller console all use. It is derived from `x-pathname`, which the
- * middleware sets on every request, because a Next layout is not told which
- * child route it is wrapping.
+ * Etsy's seller console all use.
+ *
+ * That heading is rendered by a CLIENT component (TenantHeader), not computed
+ * here, and the reason is the sharp edge in this file: a layout is not
+ * re-rendered when you navigate between its sibling pages. The first version
+ * read the section from the `x-pathname` header, which was right on the first
+ * paint and frozen after it -- click Students, then Faculty, then Fees, and
+ * all three were still headed "Overview". Anything in a layout that depends on
+ * WHICH child is showing has to be derived on the client.
  *
  * **Nothing destructive renders here any more.** Suspend and delete sat in the
  * top card first, then in a "Danger zone" below the content -- but this is a
@@ -44,63 +49,33 @@ import { Icon, Pill } from '@/components/onyx-ui';
  * shared fetch would not preserve).
  */
 
-/** Section label and one-line summary, keyed by the segment after the id. */
-const SECTIONS: Record<string, string> = {
-  '': 'Overview',
-  students: 'Students',
-  faculty: 'Faculty',
-  staff: 'Other roles',
-  courses: 'Courses',
-  assignments: 'Assignments',
-  timetable: 'Timetable',
-  examinations: 'Examinations',
-  assessments: 'Assessments',
-  permissions: 'Permissions',
-  grades: 'Grades',
-  fees: 'Fees',
-  settings: 'Settings',
-};
-
-/** The segment after `/tenants/<id>`, '' on the overview itself. */
-function sectionOf(pathname: string, id: string): string {
-  const after = pathname.split('/tenants/' + id + '/')[1];
-  if (!after) return '';
-  const seg = after.split('/')[0] ?? '';
-  return seg in SECTIONS ? seg : '';
-}
-
 export default async function OnyxPlatformTenantLayout(
   { params, children }: { params: Promise<{ id: string }>; children: React.ReactNode },
 ) {
   const session = await requirePlatformSession();
   const { id } = await params;
-  const pathname = (await headers()).get('x-pathname') ?? '';
   const tenant = await platformApi<TenantDetail>(
     '/api/onyx/platform/tenants/' + encodeURIComponent(id));
   const live = tenant.status === 1;
   const base = '/onyx/platform/tenants/' + tenant.id;
 
-  const section = sectionOf(pathname, String(tenant.id));
-  const label = SECTIONS[section] ?? 'Overview';
-
   return (
     <OnyxPlatformShell
       email={session.email}
-      breadcrumb={[
-        { href: '/onyx/platform', label: 'Institutions' },
-        // The institution links to its own overview -- except while you are on
-        // it, where a link to the page you are reading is noise.
-        section ? { href: base, label: tenant.name } : { label: tenant.name },
-        ...(section ? [{ label }] : []),
-      ]}
-      title={label}
-      badge={live ? null : <Pill tone="late">Suspended</Pill>}
-      // Only on the overview. Under "Fees" or "Students", "19 members · 6
-      // courses" describes the institution rather than the page, and each
-      // section already counts its own rows above its own table.
-      subtitle={section ? undefined
-        : plural(tenant.member_count, 'member') + ' · '
-          + plural(tenant.counts.courses, 'course')}
+      // The heading is a client component, not props computed here. See
+      // TenantHeader: this file is a LAYOUT, and a layout does not re-render
+      // when you move between its sibling pages, so a section title derived
+      // here reads correctly once and then lies for the rest of the session.
+      title={tenant.name}
+      header={(
+        <TenantHeader
+          tenantId={tenant.id}
+          tenantName={tenant.name}
+          badge={live ? null : <Pill tone="late">Suspended</Pill>}
+          subtitle={plural(tenant.member_count, 'member') + ' · '
+            + plural(tenant.counts.courses, 'course')}
+        />
+      )}
       sidebarNav={<TenantSidebarNav tenantId={tenant.id} tenantName={tenant.name} />}
     >
       <div className="min-w-0 space-y-5">

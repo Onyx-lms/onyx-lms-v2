@@ -40,29 +40,53 @@ async function openTenant(page: Page): Promise<string> {
 test.describe('the operator console', () => {
   test.beforeEach(async ({ page }) => { await signIn(page); });
 
-  test('every section says which section it is, and how it was reached', async ({ page }) => {
+  /**
+   * Driven by CLICKING the sidebar, not by `page.goto()`, and that is the
+   * whole value of this test.
+   *
+   * The first version loaded each section by URL. Every load is a fresh
+   * document, so the tenant layout re-ran and its section title was right --
+   * and the test passed while the console was broken for anyone using it,
+   * because a layout is NOT re-rendered on soft navigation between its sibling
+   * pages. Clicking Students, then Faculty, then Fees left all three headed
+   * "Overview". A console is used by clicking; the test has to click.
+   */
+  const SECTIONS: [string, string][] = [
+    ['Students', '/students'], ['Faculty', '/faculty'], ['Other roles', '/staff'],
+    ['Courses', '/courses'], ['Timetable', '/timetable'],
+    ['Examinations', '/examinations'], ['Assessments', '/assessments'],
+    ['Permissions', '/permissions'], ['Grades', '/grades'], ['Fees', '/fees'],
+    ['Settings', '/settings'], ['Overview', ''],
+  ];
+
+  test('every section says which section it is, clicked through in one session',
+    async ({ page }) => {
+      test.setTimeout(180_000);
+      const base = await openTenant(page);
+      const nav = page.getByRole('navigation', { name: /institution sections/i });
+      const crumbs = page.getByRole('navigation', { name: 'Breadcrumb' });
+
+      for (const [label, seg] of SECTIONS) {
+        await nav.getByRole('link', { name: label, exact: true }).click();
+        await page.waitForURL(base + seg, { timeout: 15_000 });
+
+        await expect(page.getByRole('heading', { level: 1 }), label).toHaveText(label);
+        await expect(crumbs).toContainText('Institutions');
+        await expect(crumbs).toContainText(TENANT);
+        // The trail ends where you are, and the way out is a link.
+        if (seg) {
+          await expect(crumbs).toContainText(label);
+          await expect(crumbs.getByRole('link', { name: TENANT })).toBeVisible();
+        }
+      }
+    });
+
+  test('a section reached directly by URL says the same thing', async ({ page }) => {
     test.setTimeout(150_000);
     const base = await openTenant(page);
-    const sections: [string, string][] = [
-      ['', 'Overview'], ['/students', 'Students'], ['/faculty', 'Faculty'],
-      ['/staff', 'Other roles'], ['/courses', 'Courses'], ['/timetable', 'Timetable'],
-      ['/examinations', 'Examinations'], ['/assessments', 'Assessments'],
-      ['/permissions', 'Permissions'], ['/grades', 'Grades'], ['/fees', 'Fees'],
-      ['/settings', 'Settings'],
-    ];
-
-    for (const [seg, label] of sections) {
+    for (const [label, seg] of SECTIONS) {
       await page.goto(base + seg);
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText(label);
-
-      const crumbs = page.getByRole('navigation', { name: 'Breadcrumb' });
-      await expect(crumbs).toContainText('Institutions');
-      await expect(crumbs).toContainText(TENANT);
-      // The trail ends where you are, and the way out is a link.
-      if (seg) {
-        await expect(crumbs).toContainText(label);
-        await expect(crumbs.getByRole('link', { name: TENANT })).toBeVisible();
-      }
+      await expect(page.getByRole('heading', { level: 1 }), label).toHaveText(label);
     }
   });
 

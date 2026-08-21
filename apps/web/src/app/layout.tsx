@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
-import { headers } from 'next/headers';
 import { Fraunces, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { apiSafe, type CategoryNode, type SiteSettings } from '@/lib/api';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
+import { StorefrontChrome } from '@/components/storefront-chrome';
 
 
 /*
@@ -51,33 +51,20 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Onyx is a separate product on this deployment (ADR-006). The storefront
-  // header and footer belong to the port alone -- an institutional platform
-  // must not wear another product's branding, so under /onyx neither is
-  // rendered at all rather than rendered and hidden.
-  const onyx = ((await headers()).get('x-pathname') ?? '').startsWith('/onyx');
-  if (onyx) {
-    return (
-      <html lang="en" className={FONTS} suppressHydrationWarning>
-        <head>
-          <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
-        </head>
-        <body className="flex min-h-screen flex-col">
-          {/* WCAG 2.4.1: the Onyx shell repeats the same sidebar on every
-              page, so a keyboard user gets a way past it. tabIndex={-1} is
-              load-bearing: <main> is not natively focusable, so without it
-              following the link only scrolls -- focus stays on the link (or
-              falls back to <body>) and a screen reader never announces the
-              jump. -1 keeps it out of the normal Tab order; it is only ever
-              focused programmatically, by this link. */}
-          <a href="#main" className="skip-link">Skip to the main content</a>
-          <main id="main" tabIndex={-1} className="flex-1">{children}</main>
-        </body>
-      </html>
-    );
-  }
-
-  // Settings and nav are shared by every page, so they are fetched once here.
+  /*
+   * One tree, and StorefrontChrome decides what belongs on it.
+   *
+   * This used to branch here on `x-pathname` and return a different tree under
+   * /onyx -- correct on a fresh load and wrong ever after, because a root
+   * layout is not re-rendered on a client-side navigation. Somebody clicking
+   * "Sign in" from the marketing page reached the Onyx sign-in screen with the
+   * shop's header and footer still wrapped around it, which is the one thing
+   * ADR-006 says must not happen. The decision moved to a client component
+   * that reads usePathname() and therefore keeps up.
+   *
+   * Settings and categories are still fetched here, once, for every page that
+   * does want the chrome.
+   */
   const [settings, categories] = await Promise.all([
     apiSafe<SiteSettings>('/api/settings'),
     apiSafe<CategoryNode[]>('/api/categories'),
@@ -89,10 +76,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="flex min-h-screen flex-col">
+        {/* WCAG 2.4.1: both products repeat the same navigation on every page,
+            so a keyboard user gets a way past it. */}
         <a href="#main" className="skip-link">Skip to the main content</a>
-        <SiteHeader settings={settings} categories={categories ?? []} />
-        <main id="main" tabIndex={-1} className="flex-1">{children}</main>
-        <SiteFooter settings={settings} />
+        {/* Rendered here on the server, shown or not by the client. Both slots
+            are always built, in both directions: render them only for the
+            storefront and a soft navigation OUT of Onyx would arrive with no
+            header at all -- the same bug facing the other way. */}
+        <StorefrontChrome
+          header={<SiteHeader settings={settings} categories={categories ?? []} />}
+          footer={<SiteFooter settings={settings} />}
+        >
+          {children}
+        </StorefrontChrome>
       </body>
     </html>
   );
