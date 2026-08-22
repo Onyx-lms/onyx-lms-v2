@@ -182,6 +182,41 @@ test('setup: an institution with a course, a teacher and two learners', async ({
     `SELECT id FROM public."onyx_courses" WHERE tenant_id=$1 AND code='MA201'`,
     [w.tenantId])).rows[0].id));
 
+  // Somebody has to teach it.
+  //
+  // Every faculty-side test below -- banks, papers, marking -- goes through
+  // `assertCanTeach`, which answers "You do not teach this course" to a
+  // lecturer who is not on it. The fixture never put one there, so the refusal
+  // was correct and the setup was incomplete.
+  //
+  // On the COURSE, not on /onyx/allocations. Those are two different facts and
+  // only one of them is a permission: `assertCanTeach` reads
+  // onyx_course_faculty, while an allocation records teaching load in its own
+  // table and grants nothing. Allocating there and expecting to be let in is
+  // the mistake this comment exists to stop somebody repeating.
+  //
+  // It could not have been noticed until now either way: assigning a teacher
+  // through the product was itself broken, because the panel's `user_id` field
+  // was marked numeric and a uuid through Number() is NaN.
+  // Driven directly rather than through `create`: this panel's form carries no
+  // h3, so `panelOf` -- which finds a panel by its heading -- does not match
+  // it, and every field lookup inside would wait out the whole test budget.
+  await page.goto('/onyx/courses/' + w.courseId);
+  await page.getByRole('button', { name: 'Assign a teacher' }).click();
+  const picker = page.getByLabel('Faculty member to assign to this course');
+  await expect(picker).toBeVisible();
+  await picker.selectOption({ label: 'Faye Teacher' });
+  await page.getByRole('button', { name: 'Assign', exact: true }).click();
+  await expect(picker).toBeHidden({ timeout: 20_000 });
+
+  // Polled: the browser writes over the app's pooled connection and this reads
+  // over a separate direct one, so the row is occasionally not yet visible
+  // here in the instant the panel closes.
+  await expect.poll(async () => withDb(async (c) => Number((await c.query(
+    `SELECT count(*)::int n FROM public."onyx_course_faculty"
+      WHERE tenant_id=$1 AND course_id=$2`, [w.tenantId, w.courseId])).rows[0].n)),
+  { timeout: 20_000, message: 'the teacher was put on the course' }).toBe(1);
+
   // Both learners enrol themselves, because seating and marking work off the
   // roster -- an exam with nobody on the course has nobody to seat.
   for (const who of ['ana', 'ben']) {
@@ -299,7 +334,42 @@ test('CMP-03 a fee structure is built and an invoice raised against it', async (
   await create(page, 'Add a fee head', { code: 'TUITION', name: 'Tuition' });
   await create(page, 'Add a fee head', { code: 'EXAM', name: 'Examination' });
 
+  // Both heads reached the database, checked before anything that depends on
+  // them. This file's rule is that everything is verified twice -- on the
+  // screen and in the database -- and the second check is what tells a
+  // failure in the builder below apart from a failure to create them at all.
+  await withDb(async (c) => {
+    const { rows } = await c.query(
+      `SELECT code FROM public."onyx_fee_heads" WHERE tenant_id=$1 ORDER BY code`,
+      [w.tenantId]);
+    expect(rows.map((r) => String(r.code)), 'both fee heads were created')
+      .toEqual(['EXAM', 'TUITION']);
+  });
+
+  // A fresh server render before the builder is opened.
+  //
+  // The builder's dropdown is filled on the server, so it offers only the
+  // heads that existed when the page was last rendered. `create` closes the
+  // panel and calls router.refresh(), but that lands asynchronously -- and
+  // against a deployment rather than localhost it can land after the next
+  // click. `selectOption` then waits for an option that does not exist yet
+  // with no per-action timeout, swallowing the test's entire five-minute
+  // budget and reporting an unrelated assertion as the failure.
+  //
+  // A reload rather than waiting for the head to appear on the page: it never
+  // does. The finance screen passes the heads straight to the builder and does
+  // not list them anywhere, so there is nothing to wait for except the render
+  // itself.
+  await page.reload();
+
   await manage(page, 'Build a fee structure', async (form) => {
+    // Named in the failure if a head is missing, instead of a silent wait.
+    // Ordered by CODE, which is how the service sorts them -- EXAM before
+    // TUITION, so "Examination" comes before "Tuition" and the labels do not
+    // read alphabetically.
+    await expect(form.locator('#fs-head-0 option'),
+      'the builder was rendered before the fee heads existed')
+      .toContainText(['Choose a fee head', 'Examination', 'Tuition']);
     await form.locator('#fs-name').fill('Term 1 2026 fees');
     await form.locator('#fs-inst').fill('2');
     await form.locator('#fs-head-0').selectOption({ label: 'Tuition' });

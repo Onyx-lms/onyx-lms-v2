@@ -144,7 +144,10 @@ export default async function OnyxAllocationsPage(
                 value: String(c.id), label: c.code + ' — ' + c.title,
               })) },
             { name: 'user_id', label: 'Who teaches it', type: 'select', required: true,
-              numeric: true, wide: true,
+              // A uuid, so NOT numeric: CreatePanel runs Number() over a
+              // numeric field and a uuid becomes NaN, which JSON sends as null and
+              // the route refuses. Left over from when user ids were bigints.
+              wide: true,
               options: teachers.map((m) => ({
                 value: String(m.user_id), label: m.user?.name ?? 'User ' + m.user_id,
               })) },

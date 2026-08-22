@@ -83,8 +83,15 @@ test.describe('the front page lets a learner in', () => {
       if (paid) {
         await expect(page.getByText('INR ' + Math.floor(paid.price_minor / 100)
           .toLocaleString('en-IN')).first()).toBeVisible();
-        await expect(page.getByRole('link', { name: 'View course' }).first())
-          .toHaveAttribute('href', '/onyx/c/' + paid.id);
+        // THIS course's own link, not "the first one on the page".
+        //
+        // The front page and the catalogue endpoint do not promise the same
+        // order, and once more than one institution had opened registration
+        // they stopped agreeing -- so the first card was somebody else's free
+        // course and the assertion failed on a page that was entirely correct.
+        // What the test means is that a paid course links to itself.
+        await expect(page.locator('a[href="/onyx/c/' + paid.id + '"]').first())
+          .toBeVisible();
       }
     });
 });

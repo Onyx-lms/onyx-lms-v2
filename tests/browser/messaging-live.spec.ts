@@ -22,6 +22,27 @@ test.describe.configure({ mode: 'serial' });
 test('a message sent by the other person appears without a reload', async ({ page }) => {
   test.setTimeout(120_000);
 
+  /*
+   * This one needs fixtures, and nothing in the repository creates them.
+   *
+   * It signs in as `mailtest@onyx.test` on the STOREFRONT -- the ported
+   * Laravel `users` table, not `onyx_users` -- and messages them as
+   * `root@onyx.test`. Both are seeded by the e2e runner's own setup, so the
+   * spec works under `npm run e2e` and cannot work against a deployment that
+   * has never had that run against it.
+   *
+   * Skipped, with the reason, rather than left to fail. It used to time out
+   * for thirty seconds on a sign-in that was never going to succeed, which
+   * reads in a report as a broken inbox -- a product failure, and a fairly
+   * alarming one -- when what is actually missing is a row. A suite that shows
+   * red for a reason nobody can act on is a suite people stop reading.
+   */
+  const seeded = await withDb(async (c) => Number((await c.query(
+    'select count(*)::int n from users where email in ($1, $2)',
+    [STUDENT.email, ADMIN.email])).rows[0].n));
+  test.skip(seeded < 2,
+    'the storefront accounts this needs are not in this database -- run `npm run e2e` first');
+
   // Sign in as the learner through the real form, exactly as a reader would.
   await page.goto('/login/store');
   await page.getByLabel(/email/i).first().fill(STUDENT.email);

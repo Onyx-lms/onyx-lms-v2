@@ -79,7 +79,10 @@ export default async function OnyxCertificatesPage() {
           endpoint="certificates"
           fields={[
             { name: 'user_id', label: 'Holder', type: 'select', required: true,
-              numeric: true, wide: true,
+              // A uuid, so NOT numeric: CreatePanel runs Number() over a
+              // numeric field and a uuid becomes NaN, which JSON sends as null and
+              // the route refuses. Left over from when user ids were bigints.
+              wide: true,
               options: learners.map((m) => ({
                 value: String(m.user_id),
                 label: (m.user?.name ?? 'User ' + m.user_id) + (m.user?.email ? ' — ' + m.user.email : ''),

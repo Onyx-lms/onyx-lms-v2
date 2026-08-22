@@ -71,11 +71,17 @@ export default async function OnyxPeoplePage(
             endpoint="guardians"
             fields={[
               { name: 'guardian_user_id', label: 'Guardian', type: 'select', required: true,
-                numeric: true, wide: true,
+                // A uuid, so NOT numeric: CreatePanel runs Number() over a
+                // numeric field and a uuid becomes NaN, which JSON sends as null and
+                // the route refuses. Left over from when user ids were bigints.
+                wide: true,
                 options: members.filter((m) => m.role === 'guardian' && m.user)
                   .map((m) => ({ value: String(m.user!.id), label: m.user!.name })) },
               { name: 'student_user_id', label: 'Student', type: 'select', required: true,
-                numeric: true, wide: true,
+                // A uuid, so NOT numeric: CreatePanel runs Number() over a
+                // numeric field and a uuid becomes NaN, which JSON sends as null and
+                // the route refuses. Left over from when user ids were bigints.
+                wide: true,
                 options: members.filter((m) => m.role === 'student' && m.user)
                   .map((m) => ({ value: String(m.user!.id), label: m.user!.name })) },
               { name: 'relationship', label: 'Relationship', placeholder: 'Parent' },

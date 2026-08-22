@@ -91,7 +91,12 @@ export function ModerateMarks({ examId, maxMarks, unpublished, moderated }: {
 
       {open ? (
         <Modal title="Moderate this paper" onClose={() => setOpen(false)}>
-          <div className="space-y-3.5">
+          {/* A real <form>, not a div with a button on it. Two fields and a
+              submit is a form, so Enter should send it -- and the panel is
+              reachable to anything that looks for named fields inside one,
+              which is how every other create panel in this product behaves. */}
+          <form className="space-y-3.5"
+            onSubmit={(e) => { e.preventDefault(); if (valid) apply(); }}>
             <p className="text-[13.5px] leading-relaxed text-muted">
               This shifts every unpublished mark on the paper by the same amount —{' '}
               <span className="font-bold text-ink">
@@ -151,7 +156,7 @@ export function ModerateMarks({ examId, maxMarks, unpublished, moderated }: {
             ) : null}
 
             <div className="flex gap-2 pt-1">
-              <button type="button" onClick={apply} disabled={pending || !valid}
+              <button type="submit" disabled={pending || !valid}
                 className="min-h-[46px] flex-1 rounded-xl bg-brand-600 px-4 text-sm font-bold
                            text-white hover:bg-brand-700 disabled:opacity-50">
                 {pending ? 'Applying…' : 'Apply to ' + unpublished
@@ -162,7 +167,7 @@ export function ModerateMarks({ examId, maxMarks, unpublished, moderated }: {
                 Cancel
               </button>
             </div>
-          </div>
+          </form>
         </Modal>
       ) : null}
     </>

@@ -12,9 +12,26 @@
  */
 import { test, expect } from '@playwright/test';
 
+/**
+ * The catalogue spans every institution that has opened registration, not one.
+ *
+ * That matters here because these tests used to assert "ABC Institution" and
+ * "1,499" as literals -- true while one institution was seeded, and quietly
+ * wrong from the day a second was. `find(locked)` now returns whichever
+ * institution's course happens to sort first, so the expectations are taken
+ * from the row the test actually picked rather than written down beside it.
+ */
 async function catalogue(request: import('@playwright/test').APIRequestContext) {
   const res = await request.get('/api/onyx/catalogue');
-  return (await res.json()).data as { id: number; access: string; price_minor: number }[];
+  return (await res.json()).data as {
+    id: number; access: string; price_minor: number; currency: string;
+    institution: { name: string; slug: string } | null;
+  }[];
+}
+
+/** The price as the page prints it: rupees, grouped, no paise. */
+function printed(minor: number): string {
+  return Math.floor(minor / 100).toLocaleString('en-IN');
 }
 
 test('a course page opens with no account at all', async ({ page, request }) => {
@@ -28,9 +45,9 @@ test('a course page opens with no account at all', async ({ page, request }) => 
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   // `.first()`: the institution is named at the top and again in the footer,
   // which is right on the page and ambiguous for a locator.
-  await expect(page.getByText('ABC Institution').first()).toBeVisible();
+  await expect(page.getByText(paid!.institution!.name).first()).toBeVisible();
   // The price is on the page, not behind the sign-up.
-  await expect(page.getByText(/1,499/).first()).toBeVisible();
+  await expect(page.getByText(printed(paid!.price_minor)).first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Sign up to buy' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible();
 });
