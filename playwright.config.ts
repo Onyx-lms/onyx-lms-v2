@@ -38,9 +38,25 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  // The suite shares one real Supabase database -- more workers just means
-  // more contention on the same rows, not more throughput.
-  workers: 2,
+  // One worker, and the comment that used to sit above `workers: 2` was
+  // already the argument for it: the suite shares one real Supabase database,
+  // so more workers means more contention on the same rows, not more
+  // throughput. Two was inconsistent with its own reasoning.
+  //
+  // What made it a real fault rather than an inefficiency is that most specs
+  // sign in as the SAME demo accounts -- admin@demo.onyx, student@demo.onyx --
+  // and several mutate what they read: one file creates a domain and asserts a
+  // tile for it while another is deleting its own fixtures alongside. Run
+  // together they failed on sign-in timeouts and missing rows; run alone every
+  // one of them passed. A suite that fails differently depending on how it is
+  // invoked teaches people to re-run it rather than to read it.
+  //
+  // The specs that seed their own institution (helpers.createTenant) are
+  // already isolated and would be safe at two; the demo-tenant ones are not,
+  // and some -- production-sweep especially -- are ABOUT the demo tenant and
+  // cannot be given their own. Isolating those is a real piece of work; this
+  // is the honest fix until somebody does it.
+  workers: 1,
   reporter: [['list']],
   use: {
     baseURL: WEB,

@@ -783,14 +783,14 @@ export function CreateProblem({ courses }: { courses: { id: number; label: strin
           <label className="block text-[13px] font-semibold text-slate-700" htmlFor="pr-title">
             Problem
           </label>
-          <input id="pr-title" required value={title} onChange={(e) => setTitle(e.target.value)}
+          <input id="pr-title" name="title" required value={title} onChange={(e) => setTitle(e.target.value)}
             placeholder="Two Sum" className={input + ' mt-1 w-full'} />
         </div>
         <div className="sm:col-span-2">
           <label className="block text-[13px] font-semibold text-slate-700" htmlFor="pr-stmt">
             Statement
           </label>
-          <textarea id="pr-stmt" required rows={4} value={statement}
+          <textarea id="pr-stmt" name="statement" required rows={4} value={statement}
             onChange={(e) => setStatement(e.target.value)}
             className={input + ' mt-1 w-full'} />
         </div>
@@ -798,7 +798,7 @@ export function CreateProblem({ courses }: { courses: { id: number; label: strin
           <label className="block text-[13px] font-semibold text-slate-700" htmlFor="pr-diff">
             Difficulty
           </label>
-          <select id="pr-diff" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}
+          <select id="pr-diff" name="difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}
             className={input + ' mt-1 w-full'}>
             {['easy', 'medium', 'hard'].map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
@@ -807,14 +807,14 @@ export function CreateProblem({ courses }: { courses: { id: number; label: strin
           <label className="block text-[13px] font-semibold text-slate-700" htmlFor="pr-topic">
             Topic
           </label>
-          <input id="pr-topic" value={topic} onChange={(e) => setTopic(e.target.value)}
+          <input id="pr-topic" name="topic" value={topic} onChange={(e) => setTopic(e.target.value)}
             placeholder="Loops" className={input + ' mt-1 w-full'} />
         </div>
         <div className="sm:col-span-2">
           <label className="block text-[13px] font-semibold text-slate-700" htmlFor="pr-tags">
             Tags
           </label>
-          <input id="pr-tags" value={tags} onChange={(e) => setTags(e.target.value)}
+          <input id="pr-tags" name="tags" value={tags} onChange={(e) => setTags(e.target.value)}
             placeholder="arrays, easy" className={input + ' mt-1 w-full'} />
           <p className="mt-1 text-xs text-muted">Comma-separated.</p>
         </div>
@@ -822,21 +822,21 @@ export function CreateProblem({ courses }: { courses: { id: number; label: strin
           <label className="block text-[13px] font-semibold text-slate-700" htmlFor="pr-time">
             Time per case (s)
           </label>
-          <input id="pr-time" type="number" min={0.1} max={30} step="0.1" value={timeLimit}
+          <input id="pr-time" name="time_limit" type="number" min={0.1} max={30} step="0.1" value={timeLimit}
             onChange={(e) => setTimeLimit(e.target.value)} className={input + ' mt-1 w-full'} />
         </div>
         <div>
           <label className="block text-[13px] font-semibold text-slate-700" htmlFor="pr-mem">
             Memory per case (MB)
           </label>
-          <input id="pr-mem" type="number" min={16} max={1024} value={memoryLimit}
+          <input id="pr-mem" name="memory_limit" type="number" min={16} max={1024} value={memoryLimit}
             onChange={(e) => setMemoryLimit(e.target.value)} className={input + ' mt-1 w-full'} />
         </div>
         <div className="sm:col-span-2">
           <label className="block text-[13px] font-semibold text-slate-700" htmlFor="pr-course">
             Course
           </label>
-          <select id="pr-course" value={courseId} onChange={(e) => setCourseId(e.target.value)}
+          <select id="pr-course" name="course_id" value={courseId} onChange={(e) => setCourseId(e.target.value)}
             className={input + ' mt-1 w-full'}>
             <option value="">Not tied to a course</option>
             {courses.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
@@ -850,13 +850,13 @@ export function CreateProblem({ courses }: { courses: { id: number; label: strin
           <label className="block text-xs font-semibold text-slate-700" htmlFor="pr-sol">
             Solution (optional)
           </label>
-          <textarea id="pr-sol" rows={3} value={solution}
+          <textarea id="pr-sol" name="solution" rows={3} value={solution}
             onChange={(e) => setSolution(e.target.value)}
             className={input + ' mt-1 w-full font-mono text-xs'} />
           <label className="mt-2 block text-xs font-semibold text-slate-700" htmlFor="pr-rule">
             Release it to a learner
           </label>
-          <select id="pr-rule" value={solutionRule}
+          <select id="pr-rule" name="solution_rule" value={solutionRule}
             onChange={(e) => setSolutionRule(e.target.value)} className={input + ' mt-1 w-full'}>
             {Object.entries(SOLUTION_RULE_LABELS).map(([v, l]) => (
               <option key={v} value={v}>{l}</option>
@@ -867,7 +867,7 @@ export function CreateProblem({ courses }: { courses: { id: number; label: strin
               <label className="block text-xs font-semibold text-slate-700" htmlFor="pr-attempts">
                 After this many attempts
               </label>
-              <input id="pr-attempts" type="number" min={1} max={100} value={afterAttempts}
+              <input id="pr-attempts" name="after_attempts" type="number" min={1} max={100} value={afterAttempts}
                 onChange={(e) => setAfterAttempts(e.target.value)}
                 className={input + ' mt-1 w-full'} />
             </div>
@@ -877,7 +877,7 @@ export function CreateProblem({ courses }: { courses: { id: number; label: strin
               <label className="block text-xs font-semibold text-slate-700" htmlFor="pr-after">
                 From
               </label>
-              <input id="pr-after" type="datetime-local" value={afterDate}
+              <input id="pr-after" name="after_date" type="datetime-local" value={afterDate}
                 onChange={(e) => setAfterDate(e.target.value)}
                 className={input + ' mt-1 w-full'} />
             </div>
@@ -889,6 +889,7 @@ export function CreateProblem({ courses }: { courses: { id: number; label: strin
 }
 
 /* ------------------------------------------------- LAB-03: test cases ---- */
+
 
 export function TestCases({ problemId, initial, published }: {
   problemId: number;
