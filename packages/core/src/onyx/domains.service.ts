@@ -16,6 +16,18 @@ import { HttpError } from '../http/errors.ts';
 import type { SignedUrlSource } from './content.service.ts';
 import { onyxAssetKey } from './content.service.ts';
 
+/*
+ * Literals, not concatenations. The database client infers a row shape from
+ * this string and a computed one collapses it to an error type that makes
+ * every field unknown -- the trap GATEWAY_COLUMNS_WITH_KEYS documents in
+ * checkout.service.ts. Over the line length the rest of the file keeps to,
+ * and breaking them would cost the types.
+ */
+/* eslint-disable max-len */
+const REGISTRATION_COLUMNS = 'id, tenant_id, domain_id, user_id, amount_minor, currency, gateway, reference, provider_ref, status, created_at, updated_at';
+const REGISTRATION_LOOKUP_COLUMNS = 'id, tenant_id, domain_id, user_id, amount_minor, currency, gateway, reference, status';
+/* eslint-enable max-len */
+
 const DOMAIN_COLUMNS = 'id, tenant_id, title, summary, curriculum_url, image_path, '
   + 'certificate, duration_label, price_minor, currency, sort, status, created_by, '
   + 'created_at, updated_at';
@@ -246,5 +258,156 @@ export class DomainsService {
       throw new HttpError(500, 'This deployment cannot issue upload tickets.');
     }
     return this.#storage.signedUpload(onyxAssetKey(tenantId, 'domains', filename));
+  }
+
+  // -------------------------------------------------------------------------
+  // Registrations -- who has signed up for a Live Class
+  //
+  // A registration grants NOTHING. There is no outline to unlock and no roster
+  // to join, because a domain is a programme the institution runs off-product.
+  // What it does is put a name on a list somebody in the office reads, which is
+  // why `registrations()` below is as much of this feature as `register()` is.
+  // Migration 0030's header makes the argument at length.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Records a registration, and is safe to call twice for the same payment.
+   *
+   * The order of operations is AcademicsService.recordPurchase's, deliberately
+   * and for the same reasons -- the redirect back from a gateway and the
+   * gateway's webhook race constantly, and whichever arrives second must find
+   * the first one's row rather than charge again.
+   */
+  async register(tenantId: number, domainId: number, userId: string, input: {
+    gateway?: string; reference?: string; providerRef?: string; amountMinor?: number;
+  } = {}) {
+    const domain = await this.domain(tenantId, domainId);
+    if (Number(domain.status) !== 1) {
+      throw new HttpError(403, 'This is not open for registration.');
+    }
+
+    const gateway = input.gateway ?? (Number(domain.price_minor) ? 'mock' : 'free');
+    const reference = input.reference
+      ?? 'MOCK-D' + tenantId + '-' + domainId + '-' + Date.now().toString(36).toUpperCase();
+
+    // 1. Already recorded under this transaction id? Before any write, which is
+    //    what makes the redirect/webhook race harmless.
+    const seen = await this.#registrationByReference(tenantId, gateway, reference);
+    if (seen && String(seen.status) === 'captured') {
+      return { replayed: true, registration: seen };
+    }
+
+    const row = {
+      tenant_id: tenantId,
+      domain_id: domainId,
+      user_id: userId,
+      // What they were charged, captured HERE and never re-read from the
+      // domain -- a price that changes next term must not rewrite what
+      // somebody paid last term.
+      amount_minor: input.amountMinor ?? Number(domain.price_minor),
+      currency: String(domain.currency ?? 'INR'),
+      gateway,
+      reference,
+      provider_ref: input.providerRef ?? null,
+      status: 'captured',
+      updated_at: new Date().toISOString(),
+    };
+
+    // 2. One row per person per domain, guarded so a captured row is never
+    //    written back to anything lesser: a late begin() after a webhook has
+    //    already captured must not reset it to pending.
+    const existing = await this.#registrationFor(tenantId, domainId, userId);
+    let error;
+    if (existing) {
+      if (String(existing.status) === 'captured') {
+        return { replayed: true, registration: existing };
+      }
+      ({ error } = await this.#db.from('onyx_domain_registrations')
+        .update(row).eq('tenant_id', tenantId).eq('id', existing.id));
+    } else {
+      ({ error } = await this.#db.from('onyx_domain_registrations').insert(row));
+    }
+
+    // 3. The database had the last word after all -- two clicks racing, or the
+    //    webhook arriving mid-write.
+    if (error && /duplicate key|unique/i.test(String(error.message))) {
+      const original = await this.#registrationByReference(tenantId, gateway, reference)
+        ?? await this.#registrationFor(tenantId, domainId, userId);
+      return { replayed: true, registration: original };
+    }
+    if (error) {
+      throw new HttpError(500, 'That registration could not be recorded: ' + error.message);
+    }
+    return { replayed: false, registration: { ...row } };
+  }
+
+  /** Whether this person has already signed up. Captured only. */
+  async hasRegistered(tenantId: number, domainId: number, userId: string): Promise<boolean> {
+    const { data } = await this.#db.from('onyx_domain_registrations')
+      .select('id').eq('tenant_id', tenantId).eq('domain_id', domainId)
+      .eq('user_id', userId).eq('status', 'captured').maybeSingle();
+    return Boolean(data);
+  }
+
+  /** Every domain this person has signed up for, for the catalogue to mark. */
+  async registeredDomains(tenantId: number, userId: string): Promise<number[]> {
+    const { data } = await this.#db.from('onyx_domain_registrations')
+      .select('domain_id').eq('tenant_id', tenantId).eq('user_id', userId)
+      .eq('status', 'captured');
+    return (data ?? []).map((r) => Number(r.domain_id));
+  }
+
+  /**
+   * The list an administrator acts on: who registered, when, and for how much.
+   *
+   * Names are joined on rather than left as ids. A list of uuids is a list
+   * nobody can ring up, and this exists precisely so somebody can.
+   *
+   * Pending rows are INCLUDED and labelled. A payment the bank has not
+   * confirmed is exactly the case an office needs to see -- hiding it would
+   * make somebody who has been charged invisible to the only people who could
+   * work out what happened.
+   */
+  async registrations(tenantId: number, domainId: number) {
+    await this.domain(tenantId, domainId);
+    const { data } = await this.#db.from('onyx_domain_registrations')
+      .select(REGISTRATION_COLUMNS)
+      .eq('tenant_id', tenantId).eq('domain_id', domainId)
+      .order('created_at', { ascending: false });
+    const rows = data ?? [];
+    if (!rows.length) return [];
+
+    const ids = [...new Set(rows.map((r) => String(r.user_id)))];
+    const { data: users } = await this.#db.from('onyx_users')
+      .select('id, name, email, phone').in('id', ids);
+    const byId = new Map((users ?? []).map((u) => [String(u.id), u]));
+
+    return rows.map((r) => {
+      const user = byId.get(String(r.user_id));
+      return {
+        ...r,
+        name: user ? String(user.name ?? '') : 'Unknown',
+        email: user ? String(user.email ?? '') : '',
+        // The office rings people. It is on the roster they already read and
+        // this is the same institution reading it.
+        phone: user ? String(user.phone ?? '') : '',
+      };
+    });
+  }
+
+  async #registrationByReference(tenantId: number, gateway: string, reference: string) {
+    const { data } = await this.#db.from('onyx_domain_registrations')
+      .select(REGISTRATION_LOOKUP_COLUMNS)
+      .eq('tenant_id', tenantId).eq('gateway', gateway).eq('reference', reference)
+      .maybeSingle();
+    return data as Record<string, unknown> | null;
+  }
+
+  async #registrationFor(tenantId: number, domainId: number, userId: string) {
+    const { data } = await this.#db.from('onyx_domain_registrations')
+      .select('id, status')
+      .eq('tenant_id', tenantId).eq('domain_id', domainId).eq('user_id', userId)
+      .maybeSingle();
+    return data as { id: number; status: string } | null;
   }
 }

@@ -151,3 +151,72 @@ test.describe('Live Classes', () => {
     expect(String(refusal.body.message)).toMatch(/http or https/i);
   });
 });
+
+test.describe('registering for a Live Class', () => {
+  test('a student registers, and the office can see who did', async ({ page }) => {
+    test.setTimeout(120_000);
+
+    // The domain this file created in its first test. Found by name rather
+    // than by a remembered id, so this survives running on its own.
+    await signIn(page, STUDENT);
+    await page.goto('/onyx/domains');
+    await page.getByRole('link', { name: 'Open ' + NAME }).click();
+    await page.waitForURL(/\/onyx\/domains\/\d+$/, { timeout: 20_000 });
+    const url = page.url();
+
+    // The demo institution has no gateway, so this is the mock -- and it says
+    // so, because pretending otherwise over a real charge is the exact lie the
+    // notice exists to prevent.
+    await page.getByRole('button', { name: /register for/i }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toContainText('test payment');
+    // What it actually buys, said before the money. A domain has no outline to
+    // open, so the wording commits to being contacted, not to being let in.
+    await expect(dialog).toContainText(/office will contact you|reserves your place/i);
+    await dialog.getByRole('button', { name: /^Pay / }).click();
+
+    // What proves it worked is the page saying so, not a toast.
+    await expect(page.getByText(/you are registered/i)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('button', { name: /register for/i })).toHaveCount(0);
+
+    // And the catalogue says it too, which is where somebody looks next.
+    await page.goto('/onyx/domains');
+    await expect(page.locator('main')).toContainText('Registered');
+
+    // The half that makes the other half worth having: an administrator can
+    // see who signed up, with a way to contact them.
+    await signIn(page, ADMIN);
+    await page.goto(url);
+    const table = page.getByRole('table', { name: /registered/i })
+      .or(page.locator('table').last());
+    await expect(page.locator('main')).toContainText('Who has registered');
+    await expect(table).toContainText('student@demo.onyx');
+    await expect(table).toContainText('Paid');
+
+    // Staff do not get a Register button on the thing they administer.
+    await expect(page.getByRole('button', { name: /register for/i })).toHaveCount(0);
+  });
+
+  test('the API refuses a second registration rather than charging again', async ({ page }) => {
+    await signIn(page, STUDENT);
+    await page.goto('/onyx/domains');
+    await page.getByRole('link', { name: 'Open ' + NAME }).click();
+    await page.waitForURL(/\/onyx\/domains\/\d+$/, { timeout: 20_000 });
+    const id = page.url().split('/').pop();
+
+    // Idempotent from the learner's side. A second click is somebody wondering
+    // whether the first one worked, and the answer they need is "you already
+    // are", not an error and certainly not a second charge.
+    const res = await page.request.post('/api/proxy/onyx/domains/' + id + '/register', {
+      data: {},
+    });
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.data.replayed).toBe(true);
+
+    // And a learner cannot read the roster.
+    const roster = await page.request.get(
+      '/api/proxy/onyx/domains/' + id + '/registrations');
+    expect([401, 403]).toContain(roster.status());
+  });
+});

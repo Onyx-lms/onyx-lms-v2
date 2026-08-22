@@ -288,6 +288,10 @@ docs:check` fails the build if it has.
 | `POST` | `/api/onyx/domains` | admin, faculty |
 | `PATCH` | `/api/onyx/domains/:id` | admin, faculty |
 | `DELETE` | `/api/onyx/domains/:id` | admin, faculty |
+| `GET` | `/api/onyx/my/domains` | any member |
+| `POST` | `/api/onyx/domains/:id/register` | any member |
+| `POST` | `/api/onyx/domains/:id/checkout` | any member |
+| `GET` | `/api/onyx/domains/:id/registrations` | admin, faculty |
 | `POST` | `/api/onyx/courses/:id/modules` | admin, faculty |
 | `POST` | `/api/onyx/modules/:id/lessons` | admin, faculty |
 | `GET` | `/api/onyx/courses/:id/outline` | any member |
@@ -411,4 +415,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_325 endpoints across 9 route files._
+_329 endpoints across 9 route files._

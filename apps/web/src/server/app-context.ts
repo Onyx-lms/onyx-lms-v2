@@ -187,6 +187,10 @@ export function createContext(): AppContext {
   const revenue = new RevenueService(db);
   const categories = new CategoriesService(db);
   const storage = new StorageService(db);
+  // Named rather than inlined below: the checkout service settles Live Class
+  // registrations through it, and two instances would be two objects answering
+  // the same question about the same rows.
+  const onyxDomainsService = new DomainsService(onyxDb, storage);
   const enrollment = new EnrollmentService(db);
   const coupons = new CouponService(db);
   const cart = new CartService(db, enrollment, coupons);
@@ -251,7 +255,7 @@ export function createContext(): AppContext {
     // Onyx shares the port's bucket -- storage is per project, not per schema --
     // and namespaces its own files under onyx/<tenant>/.
     onyxContent: new ContentService(onyxDb, onyxAcademics, storage),
-    onyxDomains: new DomainsService(onyxDb, storage),
+    onyxDomains: onyxDomainsService,
     onyxAttendance,
     onyxAssignments: new AssignmentsService(onyxDb, onyxAcademics),
     onyxQueue,
@@ -287,6 +291,9 @@ export function createContext(): AppContext {
       // Needed to settle a course sale, which writes to onyx_course_purchases
       // rather than raising an invoice (see 0024's header).
       academics: onyxAcademics,
+      // And a Live Class registration, which writes to its own table for the
+      // reason 0030's header repeats.
+      domains: onyxDomainsService,
       // WEB_ORIGIN as the fallback, because it is the same fact under a
       // second name: where this deployment is reachable. It is what the
       // verification-email links and the certificate QR codes are built from

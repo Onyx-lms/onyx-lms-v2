@@ -25,13 +25,17 @@ export const metadata: Metadata = { title: 'Live Classes' };
 export default async function OnyxDomainsPage() {
   await requireOnyxSession();
 
-  const [me, domains, perms] = await Promise.all([
+  const [me, domains, perms, mine] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
     // `?all=1` is safe to send always: the route honours it only for the roles
     // that could hide a domain in the first place, the same trick /courses uses.
     onyxApi<OnyxDomainRow[]>('/api/onyx/domains?all=1'),
     onyxApiSafe<{ mine: string[] }>('/api/onyx/permissions'),
+    // What this person has already signed up for, so a tile can say so rather
+    // than quietly offering it to them a second time.
+    onyxApiSafe<number[]>('/api/onyx/my/domains'),
   ]);
+  const registered = new Set((mine ?? []).map(Number));
 
   // Asked of the API rather than worked out here. The permissions endpoint
   // already returns what THIS caller may do, so the screen has no second,
@@ -93,6 +97,12 @@ export default async function OnyxDomainsPage() {
                   {/* Only staff ever see a hidden one -- ?all=1 is a no-op for
                       anyone else -- so the pill has nobody but them to confuse. */}
                   {d.status !== 1 ? <Pill tone="late">Hidden</Pill> : null}
+                  {/* Said on the tile, not only on the page behind it: the
+                      point of a catalogue is deciding what to open, and "you
+                      already did this one" is the most useful thing it can
+                      tell somebody at that moment. */}
+                  {registered.has(Number(d.id))
+                    ? <Pill tone="good">Registered</Pill> : null}
                 </div>
 
                 <h2 className="min-w-0 text-[15.5px] font-bold leading-snug">{d.title}</h2>

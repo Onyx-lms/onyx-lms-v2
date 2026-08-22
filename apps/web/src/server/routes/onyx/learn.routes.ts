@@ -716,6 +716,74 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
     return ok({}, 'Removed.');
   });
 
+  // ---- registering for a Live Class ---------------------------------------
+  //
+  // A registration grants nothing -- there is no outline to unlock, because a
+  // domain is a programme the institution runs off-product. What it does is put
+  // a name on a list somebody in the office reads, which is why the
+  // registrations route below is as much of this feature as the register route
+  // is. Migration 0030's header makes the case.
+
+  /** Which of these this person has already signed up for. */
+  app.get('/api/onyx/my/domains', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxDomains.registeredDomains(claims.tenant_id, claims.user_id));
+  });
+
+  /**
+   * Sign up, without a gateway.
+   *
+   * The twin of POST /api/onyx/courses/:id/purchase and, like it, the path a
+   * deployment with no merchant account takes. It is also the ONLY path for a
+   * free domain, whatever gateways are configured: a zero-rupee order is a
+   * provider error rather than a purchase, and there is nothing to charge.
+   *
+   * No capability check. Somebody signing themselves up is acting on their own
+   * behalf, and the row is written against the id in their own token.
+   */
+  app.post('/api/onyx/domains/:id/register', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const result = await ctx.onyxDomains.register(
+      claims.tenant_id, idOf(req), claims.user_id);
+    await ctx.onyxAudit.record(claims, {
+      action: 'domain.registered', entityType: 'domain', entityId: idOf(req),
+      after: { user_id: claims.user_id, replayed: result.replayed }, ip: ipOf(req),
+    });
+    return ok(result, result.replayed ? 'You are already registered.' : 'You are registered.');
+  });
+
+  /**
+   * Start a real payment for one.
+   *
+   * Mirrors POST /api/onyx/courses/:id/checkout exactly, so a reader who knows
+   * one knows this. The amount is the domain's, never the request's, and which
+   * of the two paths a learner gets is decided on the server from whether the
+   * institution has a gateway configured.
+   */
+  app.post('/api/onyx/domains/:id/checkout', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      gateway: z.string().min(1).max(30),
+    }), req.body);
+    return ok(await ctx.onyxCheckout.beginDomain(
+      claims.tenant_id, idOf(req), { userId: claims.user_id },
+      { gateway: body.gateway, email: claims.email ?? null }));
+  });
+
+  /**
+   * Who has registered. The half of this feature that makes the other half
+   * worth having.
+   *
+   * Behind `domains.manage` -- the same capability that decides what is
+   * advertised decides who can see who answered. It carries names, emails and
+   * phone numbers, which is a roster and not a catalogue.
+   */
+  app.get('/api/onyx/domains/:id/registrations', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'domains.manage');
+    return ok(await ctx.onyxDomains.registrations(claims.tenant_id, idOf(req)));
+  });
+
 
   app.post('/api/onyx/courses/:id/modules', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');

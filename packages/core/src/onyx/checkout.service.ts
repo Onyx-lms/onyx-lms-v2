@@ -38,6 +38,7 @@ import type { OnyxDb } from './db.ts';
 import type { Role } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
 import type { AcademicsService } from './academics.service.ts';
+import type { DomainsService } from './domains.service.ts';
 import { increment } from './metrics.ts';
 import {
   getProvider, hasProvider,
@@ -86,7 +87,7 @@ const MAX_AGE_SECONDS = 60 * 60 * 2;
  * a second reader would also force webhook() to decide which kind it held by
  * trying both and seeing which failed to parse.
  */
-export type OnyxIntentKind = 'invoice' | 'course';
+export type OnyxIntentKind = 'invoice' | 'course' | 'domain';
 
 export interface OnyxPaymentIntent {
   tenantId: number;
@@ -163,6 +164,7 @@ export class OnyxCheckoutService {
   #db: OnyxDb;
   #finance: FinanceService;
   #academics: AcademicsService | null = null;
+  #domains: DomainsService | null = null;
   #secret: string;
   #baseUrl: string;
   #now: () => number;
@@ -175,12 +177,16 @@ export class OnyxCheckoutService {
    */
   constructor(
     db: OnyxDb, finance: FinanceService,
-    opts: { secret: string; baseUrl?: string; academics?: AcademicsService },
+    opts: {
+      secret: string; baseUrl?: string;
+      academics?: AcademicsService; domains?: DomainsService;
+    },
     now: () => number = Date.now,
   ) {
     this.#db = db;
     this.#finance = finance;
     this.#academics = opts.academics ?? null;
+    this.#domains = opts.domains ?? null;
     this.#secret = opts.secret;
     this.#baseUrl = (opts.baseUrl ?? 'http://127.0.0.1:5173').replace(/\/+$/, '');
     this.#now = now;
@@ -417,6 +423,82 @@ export class OnyxCheckoutService {
   }
 
   /**
+   * Starts a payment for a Live Class domain.
+   *
+   * The course twin of this refuses a course that is free, unpublished or
+   * already owned, and the same three apply here for the same reasons. The
+   * amount comes from the domain row and never from the request.
+   *
+   * What is different is what the payment BUYS: nothing, in the sense the rest
+   * of this service means it. A domain has no outline to unlock -- settling
+   * puts a name on a list an administrator reads and acts on off-product.
+   * Migration 0030's header sets out why that is a registration rather than an
+   * entitlement, and why the screen showing that list is half the feature.
+   */
+  async beginDomain(tenantId: number, domainId: number, viewer: { userId: string }, input: {
+    gateway: string; email?: string | null;
+  }) {
+    if (!this.#domains) {
+      throw new HttpError(500, 'This deployment cannot sell a Live Class.');
+    }
+    const domain = await this.#domains.domain(tenantId, domainId);
+    if (Number(domain.status) !== 1) throw new HttpError(403, 'This is not open.');
+
+    const already = await this.#domains.hasRegistered(tenantId, domainId, viewer.userId);
+    if (already) throw new HttpError(409, 'You are already registered for this.');
+
+    const amountMinor = Number(domain.price_minor);
+    // A free domain never reaches a gateway. The route registers it directly,
+    // and a zero-rupee order is a provider error rather than a purchase.
+    if (!amountMinor) throw new HttpError(422, 'This one is free -- just register.');
+
+    const config = await this.#config(tenantId, input.gateway);
+    const provider = getProvider(config.identifier);
+
+    const reference = signIntent({
+      tenantId,
+      kind: 'domain',
+      targetId: domainId,
+      userId: viewer.userId,
+      gateway: config.identifier,
+      amountMinor,
+      currency: String(domain.currency ?? 'INR'),
+    }, this.#secret, this.#now());
+
+    // The same minor-to-major seam begin() and beginCourse() use. Providers
+    // speak major units and convert back themselves; a third convention here
+    // would be one more place for a factor of a hundred to hide.
+    const major = amountMinor / 100;
+    const order: CheckoutOrder = {
+      reference,
+      userId: 0,
+      userEmail: input.email ?? '',
+      // course_id is 0: this is not a course, and the field has meant "not a
+      // course sale" with a zero since the invoice path was the only path.
+      items: [{ course_id: 0, title: String(domain.title), price: major }],
+      subtotal: major,
+      discount: 0,
+      tax: 0,
+      total: major,
+      currency: String(domain.currency ?? 'INR'),
+      successUrl: this.#baseUrl + '/onyx/domains/' + domainId
+        + '?paid=1&ref=' + encodeURIComponent(reference),
+      cancelUrl: this.#baseUrl + '/onyx/domains/' + domainId + '?cancelled=1',
+    };
+
+    const session = await provider.createCheckout(order, config);
+    return {
+      reference,
+      gateway: config.identifier,
+      amount_minor: amountMinor,
+      currency: String(domain.currency ?? 'INR'),
+      redirect_url: session.redirectUrl,
+      provider_ref: session.providerRef,
+      client_payload: session.clientPayload ?? null,
+    };
+  }
+
+  /**
    * The redirect back from the gateway.
    *
    * Asks the provider what actually happened rather than believing the query
@@ -501,6 +583,7 @@ export class OnyxCheckoutService {
     }
 
     if ((intent.kind ?? 'invoice') === 'course') return this.#settleCourse(intent, outcome);
+    if (intent.kind === 'domain') return this.#settleDomain(intent, outcome);
 
     const result = await this.#finance.recordPayment(intent.tenantId, {
       invoice_id: Number(intent.invoiceId ?? intent.targetId),
@@ -562,6 +645,44 @@ export class OnyxCheckoutService {
       status: 'captured' as const,
       replayed: result.replayed,
       purchase: result.purchase,
+      payment: null,
+      invoice: null,
+    };
+  }
+
+  /**
+   * A captured Live Class registration.
+   *
+   * Writes to onyx_domain_registrations and raises no invoice, for the reason
+   * 0024's header gives about courses and 0030's repeats: this is not a debt
+   * anybody was in, and forcing it through the fee ledger would put rows in an
+   * arrears report nobody is in arrears on.
+   */
+  async #settleDomain(intent: OnyxPaymentIntent, outcome: PaymentOutcome) {
+    if (outcome.status !== 'paid') {
+      return { status: 'pending' as const, payment: null, invoice: null };
+    }
+    if (!this.#domains) {
+      throw new HttpError(500, 'This deployment cannot settle a Live Class registration.');
+    }
+
+    const result = await this.#domains.register(
+      intent.tenantId, intent.targetId, intent.userId, {
+        gateway: intent.gateway,
+        // Keyed on the gateway's own transaction id, not on our reference, for
+        // the reason the invoice branch gives: two captures against one
+        // checkout are two payments.
+        reference: outcome.providerRef,
+        providerRef: outcome.providerRef,
+        amountMinor: intent.amountMinor,
+      });
+
+    increment('onyx_payments_total',
+      { gateway: intent.gateway, replayed: String(result.replayed) });
+    return {
+      status: 'captured' as const,
+      replayed: result.replayed,
+      registration: result.registration,
       payment: null,
       invoice: null,
     };
