@@ -276,7 +276,14 @@ export function createContext(): AppContext {
       // Needed to settle a course sale, which writes to onyx_course_purchases
       // rather than raising an invoice (see 0024's header).
       academics: onyxAcademics,
-      baseUrl: process.env.WEB_URL,
+      // WEB_ORIGIN as the fallback, because it is the same fact under a
+      // second name: where this deployment is reachable. It is what the
+      // verification-email links and the certificate QR codes are built from
+      // and it is the one that is actually set in production, while WEB_URL
+      // was read here and set nowhere -- so every gateway return URL pointed
+      // at 127.0.0.1:5173, which is a payer being sent back to a page on
+      // their own machine.
+      baseUrl: process.env.WEB_URL || process.env.WEB_ORIGIN,   // || not ??: blank means unset
     }),
     onyxGuardians: new GuardianService(onyxDb, onyxAudit, onyxExams),
     onyxPlatform: new PlatformService(onyxDb),
