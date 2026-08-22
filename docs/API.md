@@ -142,6 +142,10 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/certificates` | admin, exams, placement |
 | `GET` | `/api/onyx/certificates/:id/document.pdf` | any member |
 | `GET` | `/api/onyx/my/certificates` | any member |
+| `GET` | `/api/onyx/my/resume` | any member |
+| `PATCH` | `/api/onyx/my/resume` | any member |
+| `GET` | `/api/onyx/my/resume/document.pdf` | any member |
+| `GET` | `/api/onyx/my/batches` | any member |
 | `GET` | `/api/onyx/skills` | any member |
 | `POST` | `/api/onyx/skills` | admin, placement, faculty |
 | `POST` | `/api/onyx/skills/award` | admin, placement, faculty |
@@ -407,4 +411,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_321 endpoints across 9 route files._
+_325 endpoints across 9 route files._

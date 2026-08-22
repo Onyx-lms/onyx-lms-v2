@@ -11,7 +11,7 @@ import {
   AcademicsService, ContentService, DomainsService, AttendanceService, AssignmentsService,
   QueueService, CodeLabService, WorkspaceService,
   AssessService, ProctorService, AssessAnalyticsService,
-  CareerService, PlacementService, ContestService,
+  CareerService, PlacementService, ContestService, ResumeService,
   EngageService, SupportService, CampusService, ExaminationsService,
   FinanceService, OnyxCheckoutService, GuardianService, PlatformService,
   NotifyService,
@@ -108,6 +108,7 @@ export interface AppContext {
   onyxProctor: ProctorService;
   onyxAssessAnalytics: AssessAnalyticsService;
   onyxCareer: CareerService;
+  onyxResume: ResumeService;
   onyxPlacement: PlacementService;
   onyxContests: ContestService;
   onyxEngage: EngageService;
@@ -162,6 +163,12 @@ export function createContext(): AppContext {
   // Career reads across everything before it -- attendance, assessment,
   // practice, projects -- which is what makes a readiness score mean anything.
   const onyxCareer = new CareerService(onyxDb, onyxAcademics, onyxAttendance);
+  // Named rather than inlined, because the resume assembles from all four of
+  // these and re-constructing any of them would mean two objects answering the
+  // same question -- which is the shape of bug where a cache on one of them
+  // starts disagreeing with itself.
+  const onyxTenancyService = new TenancyService(onyxDb);
+  const onyxWorkspaceService = new WorkspaceService(onyxDb, onyxAcademics, onyxExecution);
   // CMP-02. Guardians read published marks through this rather than
   // querying onyx_exam_marks themselves, so the 'published only' rule
   // lives in one place.
@@ -238,7 +245,7 @@ export function createContext(): AppContext {
     settingsAdmin: new SettingsAdminService(db, settings),
     platformAdmin: new PlatformAdminService(db),
     campaigns: new CampaignService(db, settings, mail),
-    onyxTenancy: new TenancyService(onyxDb),
+    onyxTenancy: onyxTenancyService,
     onyxAudit,
     onyxAcademics,
     // Onyx shares the port's bucket -- storage is per project, not per schema --
@@ -250,7 +257,7 @@ export function createContext(): AppContext {
     onyxQueue,
     onyxExecution,
     onyxCodeLab,
-    onyxWorkspaces: new WorkspaceService(onyxDb, onyxAcademics, onyxExecution),
+    onyxWorkspaces: onyxWorkspaceService,
     // The Code Lab service doubles as the grader for `code` questions, so a
     // coding question on a paper is marked by exactly the same tests, in the
     // same sandbox, as the practice problem it points at -- rather than by a
@@ -263,6 +270,10 @@ export function createContext(): AppContext {
     onyxProctor: new ProctorService(onyxDb, onyxAudit, Date.now, onyxNotify),
     onyxAssessAnalytics: new AssessAnalyticsService(onyxDb),
     onyxCareer,
+    onyxResume: new ResumeService(onyxDb, {
+      academics: onyxAcademics, career: onyxCareer,
+      tenancy: onyxTenancyService, workspaces: onyxWorkspaceService,
+    }),
     onyxPlacement: new PlacementService(onyxDb, onyxCareer, onyxAttendance),
     onyxContests: new ContestService(onyxDb),
     onyxEngage: new EngageService(onyxDb, onyxAcademics, onyxAudit),

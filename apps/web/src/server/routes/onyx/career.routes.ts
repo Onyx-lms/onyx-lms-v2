@@ -20,7 +20,7 @@ import type { Router, ReqLike } from '../../router.ts';
 import { z } from 'zod';
 import {
   validate, ok, HttpError, requireOnyx, requireOnyxRole,
-  APPLICATION_STATUSES, ROUND_OUTCOMES,
+  APPLICATION_STATUSES, ROUND_OUTCOMES, pdfResume,
 } from '@onyx/core';
 import type { ApplicationStatus, RoundOutcome } from '@onyx/core';
 import type { AppContext } from '../../app-context.ts';
@@ -144,6 +144,100 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
   app.get('/api/onyx/my/certificates', async (req) => {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
     return ok(await ctx.onyxCareer.certificates(claims.tenant_id, claims.user_id));
+  });
+
+  // -------------------------------------------------------------------------
+  // O10 -- the resume
+  //
+  // Everything is under /my/ and everything is scoped to claims.user_id. NO
+  // capability key: a person's own resume is not a delegated act, the same
+  // reasoning PATCH /api/onyx/my/profile-details follows. There is deliberately
+  // no route for staff to read a learner's resume -- CareerService.profile
+  // already answers that, for the roles allowed to ask, and a second projection
+  // of the same records is a second place for the rule to be wrong.
+  // -------------------------------------------------------------------------
+
+  /** The assembled document, and everything an editor needs to change it. */
+  app.get('/api/onyx/my/resume', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxResume.build(claims.tenant_id, claims.user_id,
+      { userId: claims.user_id, role: claims.tenant_role }));
+  });
+
+  /**
+   * The person's own decisions about it.
+   *
+   * Every array is bounded. These are jsonb columns, so nothing in the database
+   * stops a request from storing a megabyte of them, and a resume with four
+   * hundred hidden keys is a request that was never made in good faith.
+   */
+  app.patch('/api/onyx/my/resume', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      title: z.string().max(120).optional(),
+      objective: z.string().max(1200).optional(),
+      // Nullable AND optional, and they mean different things: null is "use my
+      // profile headline", absent is "leave whatever I set before".
+      headline_override: z.string().max(160).nullable().optional(),
+      include_phone: z.boolean().optional(),
+      hidden: z.array(z.string().max(80)).max(500).optional(),
+      section_order: z.array(z.string().max(40)).max(20).optional(),
+      extras: z.array(z.object({
+        section: z.string().max(40).optional(),
+        title: z.string().max(200),
+        detail: z.string().max(1000).optional(),
+        when: z.string().max(40).optional(),
+      })).max(50).optional(),
+    }), req.body);
+    return ok(await ctx.onyxResume.save(claims.tenant_id, claims.user_id, body),
+      'Saved.');
+  });
+
+  /**
+   * The resume as a document.
+   *
+   * Modelled exactly on the certificate route above: application/pdf, an
+   * attachment disposition, and the Buffer returned. Binary transport already
+   * works -- the catch-all wraps a Uint8Array in a ReadableStream.
+   */
+  app.get('/api/onyx/my/resume/document.pdf', async (req, reply) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const doc = await ctx.onyxResume.build(claims.tenant_id, claims.user_id,
+      { userId: claims.user_id, role: claims.tenant_role });
+
+    const file = pdfResume({
+      name: doc.name,
+      headline: doc.headline,
+      contact: [doc.email, doc.phone, doc.website],
+      objective: doc.objective,
+      sections: doc.sections.map((s) => ({
+        label: s.label,
+        items: s.items.map((i) => ({
+          title: i.title, subtitle: i.subtitle, detail: i.detail, when: i.when,
+        })),
+      })),
+    });
+
+    // Their own name on the file, because a folder of "resume.pdf" is a folder
+    // an employer cannot sort. Reduced to the characters a filename header can
+    // carry without quoting rules getting involved.
+    const stem = (doc.name || 'resume').replace(/[^A-Za-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '').slice(0, 60) || 'resume';
+    reply.header('Content-Type', 'application/pdf');
+    reply.header('Content-Disposition', 'attachment; filename="' + stem + '-resume.pdf"');
+    return reply.send(file);
+  });
+
+  /**
+   * The batches this person is in, each with its programme.
+   *
+   * The resume's education section derives from this. Its own endpoint because
+   * it is a genuinely missing read -- there was a way to ask "who is in this
+   * batch" and no way to ask "which batches am I in".
+   */
+  app.get('/api/onyx/my/batches', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxAcademics.batchesFor(claims.tenant_id, claims.user_id));
   });
 
   // -------------------------------------------------------------------------

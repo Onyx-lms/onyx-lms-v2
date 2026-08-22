@@ -423,3 +423,135 @@ function wrap(value: string, available: number, size: number, bold: boolean): st
   if (line) lines.push(line);
   return lines.length ? lines : [''];
 }
+
+/**
+ * A resume, as the document somebody attaches to an application.
+ *
+ * Deliberately not `pdfTable`. A table paginates on fixed-height rows and
+ * repeats column headers at the top of every page, which is right for a mark
+ * sheet and wrong for this: a resume's items are different heights, its
+ * sections carry headings rather than columns, and a repeated header band on
+ * page two would read as a second document. `pdfCertificate` already proved a
+ * second layout can live in this file; this is the third, and it reuses every
+ * private helper -- text, rule, wrap, fit, width, escapeText, serialise --
+ * without exporting any of them or adding a dependency.
+ *
+ * A4 portrait, one column, dates right-aligned. The conventional shape, on
+ * purpose: a resume is scanned in seconds by somebody who has read a hundred
+ * others, and an inventive layout costs the reader time that the content
+ * should be getting.
+ *
+ * **The Latin-1 limitation is real and is not hidden.** The writer is
+ * Helvetica/WinAnsi, so a Devanagari or Han name renders as question marks.
+ * `ResumeService` detects that before it happens and the page says so rather
+ * than handing somebody a document that misspells their own name. Embedding a
+ * font is the eventual fix and is a different piece of work.
+ */
+export interface PdfResumeSection {
+  label: string;
+  items: { title: string; subtitle: string; detail: string; when: string }[];
+}
+
+export interface PdfResume {
+  name: string;
+  headline: string;
+  /** Email, phone, website -- whatever the holder chose to show. Joined for print. */
+  contact: string[];
+  objective: string;
+  sections: PdfResumeSection[];
+}
+
+export function pdfResume(resume: PdfResume): Buffer {
+  const page = A4_PORTRAIT;
+  const left = MARGIN + 12;
+  const right = page.width - MARGIN - 12;
+  const inner = right - left;
+  /** The date column, right-aligned, kept clear of the text that runs into it. */
+  const dateWidth = 62;
+
+  const pages: string[][] = [];
+  let out: string[] = [];
+  let y = 0;
+
+  /**
+   * A new sheet when the current one is full.
+   *
+   * Checked before every write rather than after, so nothing is ever drawn
+   * below the bottom margin -- a line placed at a negative y does not error,
+   * it simply renders off the page, which is how content silently disappears
+   * from a generated document.
+   */
+  const room = (needed: number) => {
+    if (y - needed >= MARGIN + 24) return;
+    pages.push(out);
+    out = [];
+    y = page.height - MARGIN - 12;
+  };
+
+  // ---- the head: who this is ----------------------------------------------
+  y = page.height - MARGIN - 24;
+  out.push(text(left, y, resume.name, 18, true));
+
+  if (resume.headline) {
+    y -= 16;
+    out.push(shaded(0.3, text(left, y, fit(resume.headline, inner, 10.5, false), 10.5, false)));
+  }
+
+  const contact = resume.contact.filter(Boolean).join('   ·   ');
+  if (contact) {
+    y -= 13;
+    out.push(shaded(0.42, text(left, y, fit(contact, inner, 9, false), 9, false)));
+  }
+
+  y -= 10;
+  out.push(rule(left, y, right, 0.8, 0.6));
+
+  // ---- the sections -------------------------------------------------------
+  for (const section of resume.sections) {
+    if (!section.items.length) continue;
+
+    // The heading and its first item stay together. A section title alone at
+    // the foot of a page is the one pagination fault a reader notices.
+    room(46);
+    y -= 22;
+    out.push(text(left, y, section.label.toUpperCase(), 10.5, true));
+    y -= 5;
+    out.push(rule(left, y, right, 0.5, 0.78));
+
+    for (const item of section.items) {
+      // An item with no title is a prose block -- the experience section is
+      // one paragraph, not a list, and forcing it into title/detail would put
+      // an empty bold line above it.
+      if (!item.title) {
+        for (const line of wrap(item.detail, inner, 9.5, false)) {
+          room(13);
+          y -= 13;
+          out.push(text(left, y, line, 9.5, false));
+        }
+        continue;
+      }
+
+      room(15);
+      y -= 15;
+      out.push(text(left, y, fit(item.title, inner - dateWidth - 8, 10, true), 10, true));
+      if (item.when) {
+        // Right-aligned, measured rather than padded: a proportional font
+        // makes a column of spaces a column of different widths.
+        out.push(shaded(0.4,
+          text(right - width(item.when, 9, false), y, item.when, 9, false)));
+      }
+
+      const meta = [item.subtitle, item.detail].filter(Boolean).join('   ·   ');
+      if (meta) {
+        for (const line of wrap(meta, inner - 4, 9, false)) {
+          room(12);
+          y -= 12;
+          out.push(shaded(0.38, text(left, y, line, 9, false)));
+        }
+      }
+    }
+  }
+
+  pages.push(out);
+  return serialise(pages.map((p) => p.join('\n')), page);
+}

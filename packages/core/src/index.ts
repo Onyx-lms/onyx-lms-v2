@@ -98,6 +98,7 @@ export * from './onyx/assess.service.ts';
 export * from './onyx/proctor.service.ts';
 export * from './onyx/assess-analytics.service.ts';
 export * from './onyx/career.service.ts';
+export * from './onyx/resume.service.ts';
 export * from './onyx/placement.service.ts';
 export * from './onyx/contest.service.ts';
 export * from './onyx/engage.service.ts';

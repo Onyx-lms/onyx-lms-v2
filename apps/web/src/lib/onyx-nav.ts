@@ -58,6 +58,7 @@ const I = {
   posts:     { href: '/onyx/jobs', label: 'Your posts', icon: 'briefcase' },
   interviews:{ href: '/onyx/interviews', label: 'Interviews', icon: 'mic' },
   profile:   { href: '/onyx/profile', label: 'Your profile', icon: 'user' },
+  resume:    { href: '/onyx/resume', label: 'Resume', icon: 'file' },
   people:    { href: '/onyx/people', label: 'People', icon: 'users' },
   students:  { href: '/onyx/people?role=student', label: 'Students', icon: 'users' },
   facultyList: { href: '/onyx/people?role=faculty', label: 'Faculty', icon: 'user' },
@@ -78,7 +79,11 @@ const NAV: Record<Role, OnyxNavGroup[]> = {
     { items: [I.dashboard, I.courses, I.domains, I.practice, I.spaces] },
     { label: 'Assessment', items: [I.assess, I.exams, I.results, I.contests] },
     { label: 'Campus', items: [I.timetable, I.fees, I.support] },
-    { label: 'Career', items: [I.jobs, I.interviews, I.profile] },
+    // Students only. A resume is assembled from a learner's OWN record --
+    // batches, courses, awarded skills, certificates -- and staff have
+    // CareerService.profile for the same records where they are entitled to
+    // them, so a nav item pointing at a page that would 403 helps nobody.
+    { label: 'Career', items: [I.jobs, I.interviews, I.resume, I.profile] },
     { items: [I.inbox] },
   ],
   faculty: [

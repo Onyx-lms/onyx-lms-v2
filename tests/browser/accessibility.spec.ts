@@ -58,6 +58,33 @@ test.describe('accessibility', () => {
     expect(results.violations, explain(results.violations)).toEqual([]);
   });
 
+  test('Live Classes and a domain page have no wcag2a/wcag2aa violations', async ({ page }) => {
+    await signInViaForm(page, studentEmail);
+    await page.goto('/onyx/domains');
+    const list = await new AxeBuilder({ page }).withTags(AA_TAGS).analyze();
+    expect(list.violations, explain(list.violations)).toEqual([]);
+
+    // The tile, if there is one -- the detail page carries an anchor that
+    // opens in a new tab, and an unannounced new tab is a 3.2.5 failure.
+    const tile = page.locator('a[href^="/onyx/domains/"]').first();
+    if (await tile.count()) {
+      await tile.click();
+      await page.waitForURL((u) => /^\/onyx\/domains\/\d+/.test(u.pathname), { timeout: 20_000 });
+      const detail = await new AxeBuilder({ page }).withTags(AA_TAGS).analyze();
+      expect(detail.violations, explain(detail.violations)).toEqual([]);
+    }
+  });
+
+  test('the resume, with its checkbox groups, has no wcag2a/wcag2aa violations', async ({ page }) => {
+    // A page made almost entirely of form controls, which is where labelling
+    // faults live -- every checkbox here is generated from somebody's own
+    // record rather than written out by hand.
+    await signInViaForm(page, studentEmail);
+    await page.goto('/onyx/resume');
+    const results = await new AxeBuilder({ page }).withTags(AA_TAGS).analyze();
+    expect(results.violations, explain(results.violations)).toEqual([]);
+  });
+
   test('the roster, with its data table and inline controls, has no violations', async ({ page }) => {
     await signInViaForm(page, adminEmail);
     await page.goto('/onyx/people');

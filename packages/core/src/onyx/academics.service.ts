@@ -167,6 +167,57 @@ export class AcademicsService {
     return { added: fresh.length };
   }
 
+  /**
+   * The batches one person is in, each with the programme it belongs to.
+   *
+   * The inverse of batchMembers, and the reason it exists is a resume. Batch ->
+   * programme is what an education section says -- the qualification being read
+   * for, and the cohort reading for it -- and it is data the institution
+   * already holds. The alternative was a table for learners to type their own
+   * education into, which is a second copy of a fact the registrar already has
+   * and which would disagree with it within a term.
+   *
+   * Two queries rather than a join: the row shapes stay the ones every other
+   * reader of these tables already gets, and a learner is in a handful of
+   * batches, not thousands.
+   */
+  async batchesFor(tenantId: number, userId: string) {
+    const { data: memberships } = await this.#db.from('onyx_batch_members')
+      .select('id, tenant_id, batch_id, user_id, created_at')
+      .eq('tenant_id', tenantId).eq('user_id', userId);
+    const rows = memberships ?? [];
+    if (!rows.length) return [];
+
+    const batches = await this.batches(tenantId);
+    const byId = new Map(batches.map((b) => [Number(b.id), b]));
+    const programs = await this.programs(tenantId);
+    const programById = new Map(programs.map((pr) => [Number(pr.id), pr]));
+
+    return rows
+      .map((m) => {
+        const batch = byId.get(Number(m.batch_id));
+        if (!batch) return null;
+        const program = batch.program_id ? programById.get(Number(batch.program_id)) : null;
+        return {
+          batch_id: Number(batch.id),
+          batch: String(batch.name),
+          code: String(batch.code ?? ''),
+          year: batch.year === null || batch.year === undefined ? null : Number(batch.year),
+          status: Number(batch.status),
+          program_id: program ? Number(program.id) : null,
+          program: program ? String(program.name) : null,
+          program_code: program ? String(program.code ?? '') : null,
+          duration_semesters: program?.duration_semesters === null
+            || program?.duration_semesters === undefined
+            ? null : Number(program.duration_semesters),
+          joined_at: m.created_at ? String(m.created_at) : null,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      // Most recent first, the way anybody reads their own education.
+      .sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || b.batch_id - a.batch_id);
+  }
+
   async batchMembers(tenantId: number, batchId: number) {
     const { data } = await this.#db.from('onyx_batch_members')
       .select('id, tenant_id, batch_id, user_id, created_at')

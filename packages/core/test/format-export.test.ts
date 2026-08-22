@@ -10,7 +10,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { csvCell, csvDocument } from '../src/format/csv.ts';
-import { pdfTable } from '../src/format/pdf.ts';
+import { pdfTable, pdfResume } from '../src/format/pdf.ts';
+import { isLatin1 } from '../src/onyx/resume.service.ts';
 
 // ---------------------------------------------------------------------------
 // CSV
@@ -136,4 +137,82 @@ test('an empty table still produces a readable page rather than nothing', () => 
   const pdf = pdfTable({ title: 'Results', columns: COLUMNS, rows: [] });
   assert.equal((pdf.toString('latin1').match(/\/Type \/Page /g) ?? []).length, 1);
   assert.equal(xrefResolves(pdf).bad, 0);
+});
+
+// ---------------------------------------------------------------------------
+// PDF -- the resume
+// ---------------------------------------------------------------------------
+
+const RESUME = {
+  name: 'Priya Raman',
+  headline: 'Final-year computer science student',
+  contact: ['priya@demo.onyx', 'priya.example.com'],
+  objective: 'A graduate role in backend engineering.',
+  sections: [
+    { label: 'Education', items: [{
+      title: 'BSc Computer Science', subtitle: 'Demo University',
+      detail: 'Batch of 2026 · CS-26', when: '2026',
+    }] },
+    { label: 'Certificates', items: [{
+      title: 'Certificate in Data Structures', subtitle: 'Demo University',
+      detail: 'a1b2c3', when: '2025',
+    }] },
+  ],
+};
+
+test('a resume is a well-formed PDF whose xref resolves', () => {
+  const pdf = pdfResume(RESUME);
+  assert.ok(pdf.subarray(0, 8).toString('latin1').startsWith('%PDF-1.4'));
+  assert.ok(pdf.toString('latin1').endsWith('%%EOF\n'));
+  assert.equal(xrefResolves(pdf).bad, 0,
+    'a cross-reference offset does not land on its object');
+
+  const body = pdf.toString('latin1');
+  assert.match(body, /\(Priya Raman\)/);
+  assert.match(body, /\(EDUCATION\)/);
+  // The same operator-separation fault the table had. It is a property of the
+  // writer, not of one layout, so every builder in this file has to be checked
+  // for it -- a section heading is grey, which is what forces the reset.
+  assert.doesNotMatch(body, /ET\d/, 'a text object ran into the next operator');
+  assert.doesNotMatch(body, /Tj[^\s]/);
+});
+
+test('a long resume paginates instead of writing off the bottom of the page', () => {
+  const pdf = pdfResume({
+    ...RESUME,
+    sections: [{
+      label: 'Courses',
+      items: Array.from({ length: 120 }, (_, i) => ({
+        title: 'Course number ' + i, subtitle: 'CS' + i,
+        detail: '4 credits', when: '2025',
+      })),
+    }],
+  });
+  const body = pdf.toString('latin1');
+  const pages = (body.match(/\/Type \/Page /g) ?? []).length;
+  assert.ok(pages >= 2, 'a hundred and twenty items fitted on ' + pages + ' page(s)');
+  assert.equal(xrefResolves(pdf).bad, 0);
+
+  // Nothing below the bottom margin. A negative or tiny y does not error -- it
+  // renders off the sheet, which is how content disappears from a generated
+  // document without anything saying so.
+  for (const match of body.matchAll(/([\d.]+) ([\d.]+) Td/g)) {
+    assert.ok(Number(match[2]) >= 24, 'text at y=' + match[2] + ' is off the page');
+  }
+});
+
+test('a name the font cannot set does not throw, and is flagged before it is drawn', () => {
+  // Devanagari. The writer is Helvetica/WinAnsi, so this renders as question
+  // marks -- which is why ResumeService detects it and the page says so. What
+  // is asserted here is only that the writer survives it: a generated document
+  // that throws on somebody's name is worse than one that spells it badly.
+  const pdf = pdfResume({ ...RESUME, name: 'प्रिया रमन' });
+  assert.ok(pdf.subarray(0, 8).toString('latin1').startsWith('%PDF-1.4'));
+  assert.equal(xrefResolves(pdf).bad, 0);
+  assert.equal(isLatin1('प्रिया रमन'), false);
+  assert.equal(isLatin1('Priya Raman'), true);
+  // An accented Latin name is inside WinAnsi and must NOT be flagged -- the
+  // warning has to mean something, and flagging every non-ASCII name would
+  // make it noise.
+  assert.equal(isLatin1('José Álvarez'), true);
 });
