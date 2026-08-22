@@ -16,9 +16,20 @@
  * disposition -- because a browser cannot be asked whether a downloaded file
  * parses, and the writer itself is covered by unit tests that can.
  */
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 
 const STUDENT = { email: 'student@demo.onyx', password: 'Demo#2026!' };
+
+/**
+ * Every control here saves through the server and the page re-renders from it,
+ * so a click is followed by a moment where the input is disabled. Waiting for
+ * it to come back is what makes a two-step test (untick, then tick again)
+ * reliable rather than a race against a transition.
+ */
+async function settled(page: Page, box: Locator) {
+  await expect(box).toBeEnabled({ timeout: 15_000 });
+  await page.waitForLoadState('networkidle').catch(() => { /* good enough */ });
+}
 
 async function signIn(page: Page, who: { email: string; password: string }) {
   await page.context().clearCookies();
@@ -38,8 +49,10 @@ test.describe('the resume', () => {
     await page.getByRole('link', { name: 'Resume', exact: true }).first().click();
     await page.waitForURL(/\/onyx\/resume/, { timeout: 20_000 });
 
-    // The header is the person, not a page title -- this is a document.
-    await expect(page.getByRole('heading', { level: 2 })).not.toBeEmpty();
+    // The header is the person, not a page title -- this is a document. The
+    // first h2 on the page, because the panels beside it use h2 for their own
+    // headings and a bare level-2 query matches all of them.
+    await expect(page.getByRole('heading', { level: 2 }).first()).not.toBeEmpty();
     // And something the institution knows, that nobody typed here.
     await expect(page.getByText(/courses|education|certificates|skills/i).first())
       .toBeVisible();
@@ -49,32 +62,35 @@ test.describe('the resume', () => {
     await signIn(page, STUDENT);
     await page.goto('/onyx/resume');
 
-    const boxes = page.locator('fieldset input[type="checkbox"]');
-    const count = await boxes.count();
-    test.skip(count === 0, 'this learner has nothing on their record to include');
+    const box = () => page.locator('fieldset input[type="checkbox"]').first();
+    test.skip(await box().count() === 0, 'this learner has nothing to include');
 
-    const first = boxes.first();
-    const label = (await first.locator('xpath=..').innerText()).trim();
-    await expect(first).toBeChecked();
+    // Whatever an earlier run left behind. This runs against a shared
+    // database, so "the first box starts ticked" is an assumption, not a fact
+    // -- and a test that asserts it is a test that fails for the wrong reason.
+    if (!await box().isChecked()) {
+      await box().check();
+      await settled(page, box());
+    }
+    const label = (await box().locator('xpath=..').innerText()).trim();
 
-    await first.uncheck();
-    // The server is what decides -- the label goes struck-through only once the
-    // page has been re-assembled from it.
-    await expect(page.locator('fieldset input[type="checkbox"]').first())
-      .not.toBeChecked({ timeout: 15_000 });
+    await box().uncheck();
+    // The SERVER is what decides. The tick clears only once the page has been
+    // re-assembled from it -- a client-side-only editor passes every other
+    // assertion in this file and fails this one, which is why it is here.
+    await expect(box()).not.toBeChecked({ timeout: 15_000 });
+    await settled(page, box());
 
     await page.reload();
-    await expect(page.locator('fieldset input[type="checkbox"]').first())
-      .not.toBeChecked({ timeout: 15_000 });
+    await expect(box()).not.toBeChecked({ timeout: 15_000 });
     // And it is gone from the document beside the editor, not merely unticked.
     if (label) {
       await expect(page.locator('section').filter({ hasText: label })).toHaveCount(0);
     }
 
-    // Put it back, because this runs against a shared database.
-    await page.locator('fieldset input[type="checkbox"]').first().check();
-    await expect(page.locator('fieldset input[type="checkbox"]').first())
-      .toBeChecked({ timeout: 15_000 });
+    // Put it back, because the next run reads the same row.
+    await box().check();
+    await expect(box()).toBeChecked({ timeout: 15_000 });
   });
 
   test('the objective is saved, and it is the only thing an LLM would ever write', async ({ page }) => {
@@ -95,23 +111,25 @@ test.describe('the resume', () => {
     await signIn(page, STUDENT);
     await page.goto('/onyx/resume');
 
-    const box = page.getByRole('checkbox', { name: /phone number/i });
-    // Whatever a previous run left it as, the claim is that the two agree:
-    // the switch and what the document shows.
-    const on = await box.isChecked();
-    if (on) {
-      await box.uncheck();
-      await expect(page.getByRole('checkbox', { name: /phone number/i }))
-        .not.toBeChecked({ timeout: 15_000 });
-    }
-    await page.getByRole('checkbox', { name: /phone number/i }).check();
-    await page.reload();
-    await expect(page.getByRole('checkbox', { name: /phone number/i })).toBeChecked();
+    const box = () => page.getByRole('checkbox', { name: /phone number/i });
 
-    // Left off, which is the default the design argues for.
-    await page.getByRole('checkbox', { name: /phone number/i }).uncheck();
-    await expect(page.getByRole('checkbox', { name: /phone number/i }))
-      .not.toBeChecked({ timeout: 15_000 });
+    // Start from off regardless of what an earlier run left, then prove the
+    // switch and what the document shows agree in both directions.
+    if (await box().isChecked()) {
+      await box().uncheck();
+      await expect(box()).not.toBeChecked({ timeout: 15_000 });
+      await settled(page, box());
+    }
+
+    await box().check();
+    await expect(box()).toBeChecked({ timeout: 15_000 });
+    await page.reload();
+    await expect(box()).toBeChecked();
+
+    // Left OFF, which is the default the design argues for: a resume is a
+    // document you email to people you have not met.
+    await box().uncheck();
+    await expect(box()).not.toBeChecked({ timeout: 15_000 });
   });
 
   test('the download is a PDF, and it is an attachment', async ({ page }) => {

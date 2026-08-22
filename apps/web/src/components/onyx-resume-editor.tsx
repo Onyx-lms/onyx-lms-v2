@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useOptimistic, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, Icon, SectionHead } from '@/components/onyx-ui';
 import { RESUME_SECTION_LABELS, type ResumeDoc } from '@/lib/onyx-resume';
@@ -18,6 +18,15 @@ import { RESUME_SECTION_LABELS, type ResumeDoc } from '@/lib/onyx-resume';
  * the document above is re-assembled by the server rather than patched in the
  * browser. That is the whole point of the design -- what is on screen is what
  * the PDF will say, because both come from the same assembly.
+ *
+ * The controls are `useOptimistic` over that, and it is not a nicety. These are
+ * fully controlled checkboxes whose `checked` comes from the server: without
+ * it, clicking one snaps it straight back and holds it there for the whole
+ * round trip -- which on a cold serverless function is long enough to read as
+ * "that did not register", and long enough for somebody to click again and
+ * undo the change they just made. The optimistic value is discarded the moment
+ * the refreshed props arrive, so a save that FAILS also snaps back, which is
+ * the correct behaviour and not a bug in this pattern.
  */
 export function ResumeEditor({ doc }: { doc: ResumeDoc }) {
   const router = useRouter();
@@ -26,26 +35,38 @@ export function ResumeEditor({ doc }: { doc: ResumeDoc }) {
   const [objective, setObjective] = useState(doc.objective);
   const [saved, setSaved] = useState(false);
 
-  const hidden = new Set(doc.hidden);
+  // Two optimistic values rather than one object: they are saved by different
+  // controls and a shared reducer would make an in-flight phone change revert
+  // an in-flight hide.
+  const [hiddenNow, setHiddenNow] = useOptimistic(
+    doc.hidden, (_prev: string[], next: string[]) => next);
+  const [phoneNow, setPhoneNow] = useOptimistic(
+    doc.include_phone, (_prev: boolean, next: boolean) => next);
 
-  const save = (patch: Record<string, unknown>) => start(async () => {
-    setError(null);
-    setSaved(false);
-    const res = await fetch('/api/proxy/onyx/my/resume', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
+  const hidden = new Set(hiddenNow);
+
+  const save = (patch: Record<string, unknown>, optimistic?: () => void) =>
+    start(async () => {
+      // Inside the transition, which is the only place useOptimistic accepts
+      // an update -- outside one it throws rather than being ignored.
+      optimistic?.();
+      setError(null);
+      setSaved(false);
+      const res = await fetch('/api/proxy/onyx/my/resume', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      const body = await res.json().catch(() => ({ ok: false }));
+      if (!body.ok) { setError(body.message ?? 'That did not save.'); return; }
+      setSaved(true);
+      router.refresh();
     });
-    const body = await res.json().catch(() => ({ ok: false }));
-    if (!body.ok) { setError(body.message ?? 'That did not save.'); return; }
-    setSaved(true);
-    router.refresh();
-  });
 
   const toggle = (key: string) => {
     const next = new Set(hidden);
     if (next.has(key)) next.delete(key); else next.add(key);
-    save({ hidden: [...next] });
+    save({ hidden: [...next] }, () => setHiddenNow([...next]));
   };
 
   // Grouped by the section each item belongs to, so the checkboxes read in the
@@ -106,7 +127,6 @@ export function ResumeEditor({ doc }: { doc: ResumeDoc }) {
                         type="checkbox"
                         checked={!hidden.has(item.key)}
                         onChange={() => toggle(item.key)}
-                        disabled={pending}
                         className="mt-0.5 h-4 w-4 shrink-0 rounded border-line
                                    text-brand-600 focus:ring-brand-600"
                       />
@@ -131,9 +151,9 @@ export function ResumeEditor({ doc }: { doc: ResumeDoc }) {
         <label className="mt-2 flex items-start gap-2 text-[13px] leading-snug text-ink">
           <input
             type="checkbox"
-            checked={doc.include_phone}
-            onChange={(e) => save({ include_phone: e.target.checked })}
-            disabled={pending}
+            checked={phoneNow}
+            onChange={(e) => save({ include_phone: e.target.checked },
+              () => setPhoneNow(e.target.checked))}
             className="mt-0.5 h-4 w-4 shrink-0 rounded border-line
                        text-brand-600 focus:ring-brand-600"
           />
@@ -146,7 +166,7 @@ export function ResumeEditor({ doc }: { doc: ResumeDoc }) {
             </span>
             {/* The setting is on and there is nothing to show. Said here
                 rather than left as a box that appears to have done nothing. */}
-            {doc.include_phone && !doc.phone ? (
+            {phoneNow && !doc.phone ? (
               <span className="block text-[12px] text-amber-700">
                 There is no phone number on your profile yet, so nothing is being shown.
               </span>
