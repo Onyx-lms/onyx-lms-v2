@@ -101,6 +101,22 @@ export interface ResumeDocument {
   available: { key: string; label: string; section: ResumeSection }[];
   hidden: string[];
   /**
+   * The entries the person typed, as stored.
+   *
+   * The assembled `sections` above hold these too, already filed into whichever
+   * section each names -- but mixed in with the derived items and with a hidden
+   * one missing entirely. An editor needs the list itself to offer editing and
+   * removal, so it is returned separately rather than reconstructed from a
+   * projection that has already thrown information away.
+   */
+  extras: ResumeExtra[];
+  /**
+   * The EFFECTIVE order -- what the person chose, then everything they did not
+   * name, in the default order. Never the raw stored value, which is usually
+   * empty and would make the reorder controls start from nothing.
+   */
+  section_order: ResumeSection[];
+  /**
    * True when a name or headline contains a character the PDF writer cannot
    * set. Not an error -- the screen version is complete either way, and the
    * page says so rather than handing somebody a PDF that spells their name
@@ -120,6 +136,23 @@ const SECTION_LABELS: Record<ResumeSection, string> = {
   extras: 'Also',
 };
 
+/**
+ * One typed-in entry: a job, a publication, a volunteering stint.
+ *
+ * `id` is assigned on save and never reused. It exists because `hidden` names
+ * items by key, and an extra keyed by its POSITION in the list would move the
+ * moment somebody deleted the one above it -- hiding a job and then removing a
+ * publication would silently hide something else instead. That was survivable
+ * while nothing could delete an extra; the editor can, so the id is the fix.
+ */
+export interface ResumeExtra {
+  id: number;
+  section: string;
+  title: string;
+  detail: string;
+  when: string;
+}
+
 export interface ResumeOverrides {
   title?: string;
   objective?: string;
@@ -127,7 +160,7 @@ export interface ResumeOverrides {
   include_phone?: boolean;
   hidden?: string[];
   section_order?: string[];
-  extras?: { section?: string; title?: string; detail?: string; when?: string }[];
+  extras?: { id?: number; section?: string; title?: string; detail?: string; when?: string }[];
 }
 
 /** The year, which is all a resume ever shows. Empty for anything unparseable. */
@@ -208,12 +241,23 @@ export class ResumeService {
         .filter((s) => (RESUME_SECTIONS as readonly string[]).includes(String(s)));
     }
     if (patch.extras !== undefined) {
+      // Ids are assigned here and never reused within one resume, so a hidden
+      // key keeps pointing at the entry it was written for. `next` starts
+      // above every id the request carries rather than above the list length,
+      // which would collide with a surviving entry after a deletion.
+      let next = patch.extras.reduce(
+        (top, e) => Math.max(top, Number.isInteger(e.id) ? Number(e.id) : 0), 0) + 1;
       row.extras = patch.extras.map((e) => ({
+        id: Number.isInteger(e.id) && Number(e.id) > 0 ? Number(e.id) : next++,
         section: (RESUME_SECTIONS as readonly string[]).includes(String(e.section))
           ? String(e.section) : 'extras',
-        title: String(e.title ?? '').slice(0, 200),
-        detail: String(e.detail ?? '').slice(0, 1000),
-        when: String(e.when ?? '').slice(0, 40),
+        // Trimmed before the length cap and before the emptiness check. A
+        // title of three spaces is truthy, so an untrimmed guard stored it --
+        // and it printed as a blank line with a date beside it, on a page
+        // where there was no control to remove it from.
+        title: String(e.title ?? '').trim().slice(0, 200),
+        detail: String(e.detail ?? '').trim().slice(0, 1000),
+        when: String(e.when ?? '').trim().slice(0, 40),
       })).filter((e) => e.title);
     }
 
@@ -286,9 +330,16 @@ export class ResumeService {
       tenantId, enrollments.map((e) => Number(e.course_id)), { publishedOnly: true });
 
     const hidden = new Set((asArray(saved.hidden)).map(String));
-    const extras = asArray(saved.extras) as {
-      section: string; title: string; detail: string; when: string;
-    }[];
+    const extras = (asArray(saved.extras) as Partial<ResumeExtra>[]).map((e, i) => ({
+      // A row written before ids existed. Numbered by position on the way out
+      // rather than migrated: the next save assigns it a real one, and until
+      // then it behaves exactly as it did before.
+      id: Number.isInteger(e.id) && Number(e.id) > 0 ? Number(e.id) : i + 1,
+      section: String(e.section ?? 'extras'),
+      title: String(e.title ?? ''),
+      detail: String(e.detail ?? ''),
+      when: String(e.when ?? ''),
+    })).filter((e) => e.title);
 
     const derived: Record<ResumeSection, ResumeItem[]> = {
       objective: [],
@@ -372,17 +423,17 @@ export class ResumeService {
     // Added, then subtracted. Extras carry no key of their own, so they are
     // keyed by position -- which is stable for as long as the list is, and
     // hiding one is not something anybody does with an entry they typed.
-    extras.forEach((e, i) => {
+    for (const e of extras) {
       const section = (RESUME_SECTIONS as readonly string[]).includes(e.section)
         ? e.section as ResumeSection : 'extras';
       derived[section].push({
-        key: 'extra:' + i,
-        title: String(e.title ?? ''),
+        key: 'extra:' + e.id,
+        title: e.title,
         subtitle: '',
-        detail: String(e.detail ?? ''),
-        when: String(e.when ?? ''),
+        detail: e.detail,
+        when: e.when,
       });
-    });
+    }
 
     const available = RESUME_SECTIONS.flatMap((key) =>
       derived[key].map((item) => ({
@@ -424,6 +475,8 @@ export class ResumeService {
       objective,
       sections,
       available,
+      extras,
+      section_order: order,
       hidden: [...hidden],
       pdf_will_mangle: !isLatin1(name) || !isLatin1(headline),
     } satisfies ResumeDocument;

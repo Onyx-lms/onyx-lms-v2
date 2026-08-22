@@ -159,3 +159,65 @@ test.describe('the resume', () => {
     expect([404, 405]).toContain(res.status());
   });
 });
+
+test.describe('the resume editor', () => {
+  test('an entry can be typed in, and taken out again', async ({ page }) => {
+    await signIn(page, STUDENT);
+    await page.goto('/onyx/resume');
+
+    const title = 'Summer intern, Acme ' + Date.now();
+    await page.getByLabel('What it was').fill(title);
+    await page.getByLabel('When', { exact: true }).fill('2024');
+    await page.getByLabel('A line about it').fill('Built the internal dispatch tool.');
+    await page.getByLabel('Which section').selectOption('experience');
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+
+    // It is on the DOCUMENT, not only in the list of things typed in -- the
+    // whole claim of this feature is that the two are the same assembly.
+    await expect(page.getByText(title).first()).toBeVisible({ timeout: 15_000 });
+    await page.reload();
+    await expect(page.getByText(title).first()).toBeVisible();
+
+    // The form is cleared, so pressing Add twice does not enter it twice.
+    await expect(page.getByLabel('What it was')).toHaveValue('');
+
+    await page.getByRole('button', { name: 'Remove ' + title }).click();
+    await expect(page.getByText(title)).toHaveCount(0, { timeout: 15_000 });
+    await page.reload();
+    await expect(page.getByText(title)).toHaveCount(0);
+  });
+
+  test('a section can be moved, and the document follows', async ({ page }) => {
+    await signIn(page, STUDENT);
+    await page.goto('/onyx/resume');
+
+    const order = () => page.locator('ol li span.text-ink');
+    const before = await order().allInnerTexts();
+    expect(before.length).toBeGreaterThan(1);
+
+    // Move the second one up. Buttons rather than dragging, so this is the
+    // same path a keyboard user takes.
+    const second = before[1]!;
+    await page.getByRole('button', { name: 'Move ' + second + ' up' }).click();
+    await expect(order().first()).toHaveText(second, { timeout: 15_000 });
+
+    await page.reload();
+    await expect(order().first()).toHaveText(second);
+
+    // Put it back, because this runs against a shared database.
+    await page.getByRole('button', { name: 'Move ' + second + ' down' }).click();
+    await expect(order().nth(1)).toHaveText(second, { timeout: 15_000 });
+  });
+
+  test('the first section cannot be moved up, nor the last down', async ({ page }) => {
+    await signIn(page, STUDENT);
+    await page.goto('/onyx/resume');
+
+    const rows = page.locator('ol li');
+    const count = await rows.count();
+    // Disabled rather than absent: a control that vanishes at the end of a
+    // list makes the buttons beside it jump as you move things.
+    await expect(rows.first().getByRole('button', { name: /up$/ })).toBeDisabled();
+    await expect(rows.nth(count - 1).getByRole('button', { name: /down$/ })).toBeDisabled();
+  });
+});

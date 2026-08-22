@@ -295,3 +295,84 @@ test('two institutions hold two separate sets of decisions', async () => {
   assert.equal((await resume.build(2, ME, VIEWER)).objective, 'Something else entirely.');
   assert.equal(db.tables.onyx_resumes.length, 2);
 });
+
+// ---------------------------------------------------------- extras and order
+
+test('an extra keeps its identity when another is deleted', async () => {
+  // The bug this exists to stop. Extras were keyed by POSITION, which was fine
+  // while nothing could delete one -- the editor can, so hiding the second
+  // entry and then removing the first would silently hide something else.
+  const db = seed();
+  const resume = service(db);
+  await resume.save(T, ME, { extras: [
+    { section: 'experience', title: 'First job', detail: '', when: '2023' },
+    { section: 'experience', title: 'Second job', detail: '', when: '2024' },
+    { section: 'extras', title: 'A paper', detail: '', when: '2025' },
+  ] });
+
+  const before = await resume.build(T, ME, VIEWER);
+  const second = before.extras.find((e) => e.title === 'Second job')!;
+  assert.ok(second.id > 0, 'an extra was stored with no id');
+
+  await resume.save(T, ME, { hidden: ['extra:' + second.id] });
+  // Remove the FIRST one, sending the survivors back with their ids.
+  const survivors = before.extras.filter((e) => e.title !== 'First job');
+  await resume.save(T, ME, { extras: survivors });
+
+  const after = await resume.build(T, ME, VIEWER);
+  const titles = after.sections.flatMap((s) => s.items.map((i) => i.title));
+  assert.ok(!titles.includes('Second job'), 'the hidden entry came back');
+  assert.ok(titles.includes('A paper'), 'a different entry was hidden instead');
+  assert.equal(after.extras.length, 2);
+});
+
+test('a new extra is numbered above every id already in the list', async () => {
+  const db = seed();
+  const resume = service(db);
+  await resume.save(T, ME, { extras: [{ title: 'One' }, { title: 'Two' }] });
+  const first = await resume.build(T, ME, VIEWER);
+
+  // Delete the lower-numbered one and add a new one in the same breath, which
+  // is what the editor does. Numbering from the list LENGTH rather than from
+  // the highest id would hand the newcomer an id the survivor already holds.
+  const kept = first.extras.filter((e) => e.title === 'Two');
+  await resume.save(T, ME, { extras: [...kept, { title: 'Three' }] });
+
+  const after = await resume.build(T, ME, VIEWER);
+  const ids = after.extras.map((e) => e.id);
+  assert.equal(new Set(ids).size, ids.length, 'two extras share an id: ' + ids.join(', '));
+});
+
+test('the document reports the effective order, not the raw stored one', async () => {
+  const db = seed();
+  const resume = service(db);
+
+  // Nobody has reordered anything: the controls still need a full list to
+  // render, and an empty one would give them nothing to move.
+  const untouched = await resume.build(T, ME, VIEWER);
+  assert.deepEqual(untouched.section_order, [...RESUME_SECTIONS]);
+
+  await resume.save(T, ME, { section_order: ['certificates', 'skills'] });
+  const reordered = await resume.build(T, ME, VIEWER);
+  assert.equal(reordered.section_order[0], 'certificates');
+  assert.equal(reordered.section_order[1], 'skills');
+  assert.equal(reordered.section_order.length, RESUME_SECTIONS.length);
+
+  // And the assembled document follows it -- an order nothing reads is not an
+  // order, it is a stored preference with no effect.
+  const keys = reordered.sections.map((s) => s.key);
+  assert.ok(keys.indexOf('certificates') < keys.indexOf('skills')
+    || !keys.includes('certificates'));
+});
+
+test('an extra with no title is not stored', async () => {
+  // The add form is disabled on an empty title, so this is the API's own
+  // guard: a blank entry would print as an empty bullet nobody could remove
+  // from the screen it never appears on.
+  const db = seed();
+  const resume = service(db);
+  await resume.save(T, ME, { extras: [{ title: '   ' }, { title: 'Real one' }] });
+  const doc = await resume.build(T, ME, VIEWER);
+  assert.equal(doc.extras.length, 1);
+  assert.equal(doc.extras[0]?.title, 'Real one');
+});

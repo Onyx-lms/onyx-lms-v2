@@ -183,6 +183,9 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
       hidden: z.array(z.string().max(80)).max(500).optional(),
       section_order: z.array(z.string().max(40)).max(20).optional(),
       extras: z.array(z.object({
+        // Sent back by the editor so an entry keeps its identity across a
+        // save. Absent for a newly typed one, which the service numbers.
+        id: z.number().int().positive().optional(),
         section: z.string().max(40).optional(),
         title: z.string().max(200),
         detail: z.string().max(1000).optional(),

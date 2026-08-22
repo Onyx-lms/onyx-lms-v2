@@ -15,6 +15,15 @@ export interface ResumeItem {
   when: string;
 }
 
+/** One typed-in entry. `id` is the server's and is what `hidden` names. */
+export interface ResumeExtra {
+  id: number;
+  section: string;
+  title: string;
+  detail: string;
+  when: string;
+}
+
 export interface ResumeSectionView {
   key: string;
   label: string;
@@ -35,6 +44,10 @@ export interface ResumeDoc {
   sections: ResumeSectionView[];
   /** Everything the resume COULD show, hidden entries included. */
   available: { key: string; label: string; section: string }[];
+  /** The entries this person typed, as stored -- editable and removable. */
+  extras: ResumeExtra[];
+  /** The effective order: their choices, then the rest in the default order. */
+  section_order: string[];
   hidden: string[];
   /** True when the PDF's font cannot set this person's name. */
   pdf_will_mangle: boolean;

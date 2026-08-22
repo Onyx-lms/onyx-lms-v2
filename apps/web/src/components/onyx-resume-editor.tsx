@@ -3,7 +3,7 @@
 import { useOptimistic, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, Icon, SectionHead } from '@/components/onyx-ui';
-import { RESUME_SECTION_LABELS, type ResumeDoc } from '@/lib/onyx-resume';
+import { RESUME_SECTION_LABELS, type ResumeDoc, type ResumeExtra } from '@/lib/onyx-resume';
 
 /**
  * O10 -- the decisions somebody makes about their own resume.
@@ -34,6 +34,7 @@ export function ResumeEditor({ doc }: { doc: ResumeDoc }) {
   const [error, setError] = useState<string | null>(null);
   const [objective, setObjective] = useState(doc.objective);
   const [saved, setSaved] = useState(false);
+  const [draft, setDraft] = useState({ section: 'experience', title: '', detail: '', when: '' });
 
   // Two optimistic values rather than one object: they are saved by different
   // controls and a shared reducer would make an in-flight phone change revert
@@ -62,6 +63,33 @@ export function ResumeEditor({ doc }: { doc: ResumeDoc }) {
       setSaved(true);
       router.refresh();
     });
+
+  /**
+   * Extras are saved as the WHOLE list, because that is what the column is.
+   * Each entry carries its id back so the server can tell an edit from an
+   * insertion -- a list without ids would renumber on every save, and the
+   * `hidden` keys pointing into it would start naming the wrong entries.
+   */
+  const addExtra = () => {
+    if (!draft.title.trim()) return;
+    save({ extras: [...doc.extras, { ...draft, title: draft.title.trim() }] });
+    // The section is kept: somebody adding two jobs is adding them to the same
+    // place, and re-picking it each time is the sort of small friction that
+    // stops people entering the second one.
+    setDraft({ section: draft.section, title: '', detail: '', when: '' });
+  };
+
+  const removeExtra = (id: number) =>
+    save({ extras: doc.extras.filter((e: ResumeExtra) => e.id !== id) });
+
+  /** One step up or down. Out of range is a no-op rather than a wrap. */
+  const move = (index: number, by: number) => {
+    const next = [...doc.section_order];
+    const to = index + by;
+    if (to < 0 || to >= next.length) return;
+    [next[index], next[to]] = [next[to]!, next[index]!];
+    save({ section_order: next });
+  };
 
   const toggle = (key: string) => {
     const next = new Set(hidden);
@@ -144,6 +172,149 @@ export function ResumeEditor({ doc }: { doc: ResumeDoc }) {
             Nothing to choose from yet. This fills in as your record here does.
           </p>
         )}
+      </Card>
+
+      <Card>
+        <SectionHead title="Anything else" />
+        <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
+          A job, a publication, something you volunteered for &mdash; whatever your
+          institution does not already know about. It goes into whichever section you pick.
+        </p>
+
+        {doc.extras.length ? (
+          <ul className="mt-3 space-y-2">
+            {doc.extras.map((entry: ResumeExtra) => (
+              <li key={entry.id}
+                className="flex items-start justify-between gap-2 rounded-xl border
+                           border-line px-3 py-2">
+                <div className="min-w-0 text-[13px] leading-snug">
+                  <p className="font-semibold text-ink">{entry.title}</p>
+                  <p className="text-[12px] text-muted">
+                    {[RESUME_SECTION_LABELS[entry.section] ?? entry.section,
+                      entry.when, entry.detail].filter(Boolean).join('  \u00b7  ')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeExtra(entry.id)}
+                  disabled={pending}
+                  aria-label={'Remove ' + entry.title}
+                  className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-red-50
+                             hover:text-red-700 disabled:opacity-50"
+                >
+                  <Icon name="trash" className="h-4 w-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {/* A form rather than a row of loose inputs, so it submits on Enter --
+            which is what somebody typing a one-line entry will do. */}
+        <form className="mt-3 space-y-2"
+          onSubmit={(e) => { e.preventDefault(); addExtra(); }}>
+          <div className="flex gap-2">
+            <div className="min-w-0 flex-1">
+              <label htmlFor="extra-title" className="sr-only">What it was</label>
+              <input
+                id="extra-title" name="extra-title" value={draft.title}
+                onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                placeholder="Summer intern, Acme Logistics"
+                maxLength={200}
+                className="w-full rounded-xl border border-line bg-surface px-3 py-2
+                           text-[13px] focus:border-brand-600 focus:outline-none"
+              />
+            </div>
+            <div className="w-24 shrink-0">
+              <label htmlFor="extra-when" className="sr-only">When</label>
+              <input
+                id="extra-when" name="extra-when" value={draft.when}
+                onChange={(e) => setDraft({ ...draft, when: e.target.value })}
+                placeholder="2024"
+                maxLength={40}
+                className="w-full rounded-xl border border-line bg-surface px-3 py-2
+                           text-[13px] focus:border-brand-600 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <label htmlFor="extra-detail" className="sr-only">A line about it</label>
+          <input
+            id="extra-detail" name="extra-detail" value={draft.detail}
+            onChange={(e) => setDraft({ ...draft, detail: e.target.value })}
+            placeholder="Built the internal dispatch tool."
+            maxLength={1000}
+            className="w-full rounded-xl border border-line bg-surface px-3 py-2
+                       text-[13px] focus:border-brand-600 focus:outline-none"
+          />
+
+          <div className="flex gap-2">
+            <label htmlFor="extra-section" className="sr-only">Which section</label>
+            <select
+              id="extra-section" name="extra-section" value={draft.section}
+              onChange={(e) => setDraft({ ...draft, section: e.target.value })}
+              className="min-w-0 flex-1 rounded-xl border border-line bg-surface px-3 py-2
+                         text-[13px] focus:border-brand-600 focus:outline-none"
+            >
+              {/* Not "Objective" -- that section is one field, written above,
+                  and an extra filed into it would be a second objective. */}
+              {doc.section_order.filter((k: string) => k !== 'objective').map((key: string) => (
+                <option key={key} value={key}>{RESUME_SECTION_LABELS[key] ?? key}</option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              disabled={pending || !draft.title.trim()}
+              className="shrink-0 rounded-xl bg-brand-600 px-3.5 text-[13px] font-bold
+                         text-white hover:bg-brand-700 disabled:opacity-50"
+            >
+              Add
+            </button>
+          </div>
+        </form>
+      </Card>
+
+      <Card>
+        <SectionHead title="Order" />
+        <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
+          What a reader sees first. A section with nothing in it is not printed, so moving an
+          empty one changes nothing until it fills.
+        </p>
+        {/*
+          * Buttons, not drag-and-drop. Dragging needs a library and is a
+          * keyboard-accessibility problem in its own right; two buttons with
+          * real labels work with a mouse, a keyboard and a screen reader on the
+          * first day, and this is a list of eight.
+          */}
+        <ol className="mt-3 space-y-1.5">
+          {doc.section_order.map((key: string, i: number) => (
+            <li key={key}
+              className="flex items-center justify-between gap-2 rounded-xl border
+                         border-line px-3 py-1.5 text-[13px]">
+              <span className="text-ink">{RESUME_SECTION_LABELS[key] ?? key}</span>
+              <span className="flex shrink-0 gap-1">
+                <button
+                  type="button" onClick={() => move(i, -1)}
+                  disabled={pending || i === 0}
+                  aria-label={'Move ' + (RESUME_SECTION_LABELS[key] ?? key) + ' up'}
+                  className="rounded-lg p-1.5 text-muted hover:bg-brand-50 hover:text-ink
+                             disabled:opacity-30"
+                >
+                  <Icon name="chevron" className="h-4 w-4 -rotate-90" />
+                </button>
+                <button
+                  type="button" onClick={() => move(i, 1)}
+                  disabled={pending || i === doc.section_order.length - 1}
+                  aria-label={'Move ' + (RESUME_SECTION_LABELS[key] ?? key) + ' down'}
+                  className="rounded-lg p-1.5 text-muted hover:bg-brand-50 hover:text-ink
+                             disabled:opacity-30"
+                >
+                  <Icon name="chevron" className="h-4 w-4 rotate-90" />
+                </button>
+              </span>
+            </li>
+          ))}
+        </ol>
       </Card>
 
       <Card>
