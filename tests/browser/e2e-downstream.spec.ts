@@ -88,8 +88,20 @@ async function submit(page: Page) {
     const alerted = await form.getByRole('alert').isVisible().catch(() => false);
     if (!alerted && !/Saving/.test(label)) await button.click().catch(() => {});
   }
+  // Counted, not `toBeHidden`.
+  //
+  // `panelOf` is strict, and during a router.refresh() the page can briefly
+  // hold two matching forms -- the one closing and the one React is rendering
+  // in its place. `toBeHidden` cannot answer for two elements, so it reported
+  // `Received: undefined` and went on reporting it until the test ran out of
+  // its five minutes, on a panel that had saved perfectly well.
+  //
+  // `toHaveCount(0)` is the same claim without the ambiguity: no panel is
+  // open. It is safe here in a way it would not be on a locator filtered by a
+  // submit button's label -- that is the vacuous-pass trap the note above
+  // describes -- because an h3 does not change while a panel saves.
   await expect(form, 'the panel closes on success; an error keeps it open')
-    .toBeHidden({ timeout: 30_000 });
+    .toHaveCount(0, { timeout: 30_000 });
 }
 
 /** Open a panel by its button, fill the named fields, submit. */
