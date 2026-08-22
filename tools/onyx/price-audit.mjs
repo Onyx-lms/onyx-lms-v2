@@ -21,7 +21,33 @@
  * the only number in the output worth acting on.
  *
  * READ ONLY. It never writes. Changing a price goes through the product's own
- * API so the audit log records who did it -- see the plan's Phase 4c.
+ * API so the audit log records who did it.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT IT FOUND, 22 August 2026
+ * ---------------------------------------------------------------------------
+ *
+ * Nothing. There is no "Advance Learn" and nothing charges ten thousand
+ * rupees. Written down here so the next person asked to make that change does
+ * not repeat the search.
+ *
+ * Three independent sweeps, all empty:
+ *
+ *   1. This tool, --name advance and --amount 10000, across all six price
+ *      tables. No hits. The only priced items in the database are 2,499,
+ *      1,499 and 999, and the ported `courses` and `bootcamps` tables have
+ *      zero rows.
+ *   2. `find-text.mjs advance` beside this file -- every text column of all
+ *      134 tables. Three hits, none of them it: a seeded course called
+ *      "Advanced Database Systems" (price 0, access batch), its lesson bodies,
+ *      and the UI translation phrase "Advanced".
+ *   3. A literal grep for "advance learn" across all four repositories. The
+ *      only match is this file.
+ *
+ * So the request could not be carried out, and nothing was changed. Either the
+ * programme is named something else in the data, or it lives in a system this
+ * codebase does not reach. The tool stays because the question recurs and the
+ * answer should be reproducible rather than remembered.
  *
  *   node tools/onyx/price-audit.mjs --name advance
  *   node tools/onyx/price-audit.mjs --amount 10000
