@@ -290,6 +290,150 @@ test('CMP-02 an exam and a hall are scheduled', async ({ page }) => {
   });
 });
 
+test('CMP-02c marks are entered, moderated and only then published', async ({ page }) => {
+  // The longest flow in this file: create a candidate, enrol them, mark them,
+  // moderate the paper and publish it, with a database check after each. The
+  // default thirty seconds is not enough for six page loads against a
+  // deployment.
+  test.setTimeout(180_000);
+  // The step that had an API and no way to reach it. Without it a board that
+  // agreed a paper was marked two points harsh had to publish it anyway or
+  // edit scripts one at a time.
+  await signIn(page, mail('admin'));
+  await page.goto('/onyx/exams');
+  await page.getByRole('link', { name: /CS101 Final/ }).first().click();
+  await page.waitForURL((u) => /\/onyx\/exams\/\d+$/.test(u.pathname), { timeout: 20_000 });
+  const examUrl = page.url();
+
+  // Marks first: there is nothing to moderate until somebody has been marked,
+  // and the panel says so rather than offering an action that can only fail.
+  await expect(page.getByText(/nothing left to moderate/i)).toBeVisible();
+
+  // Somebody has to be sitting the paper, and it must not be Stu Student.
+  //
+  // The last test in this file is about a learner enrolling THEMSELVES, so
+  // enrolling Stu here left it with no "Join this course" button to press and
+  // broke it. A candidate of this test's own keeps both meaningful, and is
+  // truer anyway: a cohort is not one person.
+  await page.goto('/onyx/people');
+  await page.getByRole('button', { name: 'Add someone' }).click();
+  await page.locator('input[name="name"]').fill('Ex Examinee');
+  await page.locator('input[name="email"]').fill(mail('examinee'));
+  await page.locator('select[name="role"]').selectOption('student');
+  await page.locator('input[name="password"]').fill(PW);
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Added.', { timeout: 15_000 });
+
+  // On the course, through the roster manager -- a screen worth exercising.
+  await page.goto('/onyx/courses/' + w.courseId);
+  // Asserted, not attempted. An `if (await ...count())` around this swallowed
+  // the real failure and surfaced it six lines later as "the roster is empty",
+  // which named a symptom and not the step that went wrong.
+  const enrol = page.getByRole('button', { name: 'Enrol a student' });
+  await expect(enrol, 'the roster manager is not on the course page').toBeVisible();
+  await enrol.click();
+
+  // The form is open before anything is typed into it. `toHaveCount(0)` on the
+  // submit button was the previous check and it passes vacuously when the form
+  // never opened at all, which is how a failure here read as an empty roster
+  // two steps later.
+  const picker = page.getByLabel('Student to enrol on this course');
+  await expect(picker).toBeVisible();
+  await picker.selectOption({ label: 'Ex Examinee' });
+  await page.getByRole('button', { name: 'Enrol', exact: true }).click();
+
+  // The panel reports its own failures in an alert. Read it, so a refusal
+  // arrives as the message the product gave rather than as a missing row.
+  const refusal = page.getByRole('alert');
+  if (await refusal.count()) {
+    expect(await refusal.first().innerText(), 'the roster manager refused').toBe('');
+  }
+  await expect(picker).toBeHidden({ timeout: 20_000 });
+
+  // It really landed, and it landed on the right person. The last test in this
+  // file is about Stu enrolling themselves, so this one putting Stu on the
+  // course would quietly break it -- asserted here, where the cause is, rather
+  // than discovered there as a missing button.
+  await withDb(async (c) => {
+    const { rows } = await c.query(
+      `SELECT u.email FROM public."onyx_enrollments" e
+         JOIN public."onyx_users" u ON u.id = e.user_id
+        WHERE e.tenant_id = $1 AND e.course_id = $2 AND e.status = 1`,
+      [w.tenantId, w.courseId]);
+    const emails = rows.map((r) => String(r.email));
+    expect(emails, 'the exam candidate was not enrolled').toContain(mail('examinee'));
+    expect(emails, 'this test enrolled the learner the last test is about')
+      .not.toContain(mail('student'));
+  });
+
+  await page.goto(examUrl);
+  await page.getByRole('button', { name: 'Enter marks', exact: true }).first().click();
+
+  // Marks entry expands IN PLACE rather than opening a Modal -- this file's own
+  // `create` helper already knows both shapes exist. `getByRole('dialog')`
+  // matched nothing here and every locator scoped to it counted zero, which
+  // read as an empty roster rather than as the wrong container.
+  const boxes = page.getByLabel(/^Marks for /);
+  const n = await boxes.count();
+  expect(n, 'nobody is on the roster, so nothing can be marked').toBeGreaterThan(0);
+  for (let i = 0; i < n; i++) await boxes.nth(i).fill('50');
+  await page.getByRole('button', { name: 'Enter marks', exact: true }).last().click();
+  await expect(page.getByLabel(/^Marks for /)).toHaveCount(0, { timeout: 20_000 });
+
+  // Now moderate. The reason is required -- a grade change nobody can account
+  // for later is the thing this exists to prevent -- so the button stays
+  // disabled until there is one.
+  await page.getByRole('button', { name: 'Moderate', exact: true }).click();
+  const mod = page.getByRole('dialog');
+  await mod.getByLabel('Adjustment').fill('5');
+  await expect(mod.getByRole('button', { name: /^Apply to/ })).toBeDisabled();
+  await mod.getByLabel('Why').fill('Question 4 was ambiguous; the board agreed five marks back.');
+  await mod.getByRole('button', { name: /^Apply to/ }).click();
+  await expect(mod).toBeHidden({ timeout: 20_000 });
+
+  // The raw mark is KEPT and the delta stored beside it, so the board's
+  // decision and the marker's judgement stay separable afterwards.
+  await withDb(async (c) => {
+    const { rows } = await c.query(
+      // Every column qualified: onyx_exams has a `status` of its own, so an
+      // unqualified one is ambiguous rather than merely unclear.
+      `SELECT m.raw_marks, m.moderation_delta, m.final_marks, m.status
+         FROM public."onyx_exam_marks" m
+         JOIN public."onyx_exams" e ON e.id = m.exam_id
+        WHERE m.tenant_id = $1 AND e.title = 'CS101 Final' LIMIT 1`, [w.tenantId]);
+    expect(rows.length).toBe(1);
+    expect(Number(rows[0].raw_marks)).toBe(50);
+    expect(Number(rows[0].moderation_delta)).toBe(5);
+    expect(Number(rows[0].final_marks)).toBe(55);
+    expect(rows[0].status).toBe('moderated');
+  });
+
+  // And it is in the audit log with the reason, against a name.
+  await withDb(async (c) => {
+    const { rows } = await c.query(
+      `SELECT after FROM public."onyx_audit_logs"
+        WHERE tenant_id = $1 AND action = 'marks.moderated'
+        ORDER BY id DESC LIMIT 1`, [w.tenantId]);
+    expect(rows.length).toBe(1);
+    expect(String(JSON.stringify(rows[0].after))).toContain('ambiguous');
+  });
+
+  await page.goto(examUrl);
+  await page.screenshot({ path: OUT + 'feat-CMP02c-moderation.png', fullPage: true });
+
+  // Published marks are left alone by the service, so the control goes once
+  // results are out.
+  //
+  // ActionButton asks with a native window.confirm, and Playwright DISMISSES
+  // native dialogs unless something says otherwise -- so the previous version
+  // of this clicked Publish, had the confirmation silently cancelled, and then
+  // waited twenty seconds for a banner that was never going to appear.
+  page.once('dialog', (d) => { void d.accept(); });
+  await page.getByRole('button', { name: /publish results/i }).click();
+  await expect(page.getByText(/results published/i)).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'Moderate', exact: true })).toHaveCount(0);
+});
+
 test('CMP-03 a fee head is configured', async ({ page }) => {
   await signIn(page, mail('admin'));
   await page.goto('/onyx/finance');
@@ -349,15 +493,33 @@ test('the learner sees what was authored, and the dashboard adds up', async ({ p
 
   // LRN-01 "enroll themselves" -- through the button, not the API.
   await page.goto('/onyx/courses/' + w.courseId);
+  // Asserted first, so "this learner is already enrolled" fails as itself
+  // rather than as a button that never appeared.
+  await expect(page.getByText('You are not enrolled in this course')).toBeVisible();
   await page.getByRole('button', { name: 'Join this course' }).click();
   await expect(page.getByRole('button', { name: 'Join this course' }))
     .toBeHidden({ timeout: 15_000 });
-  await withDb(async (c) => {
+  // THIS learner, not "the course has exactly one enrolment". CMP-02c puts a
+  // candidate of its own on the course so it has somebody to mark without
+  // stealing this test's Join button, and a bare count would measure that
+  // candidate as much as this one.
+  //
+  // Polled rather than read once. The browser wrote through the app's pooled
+  // connection and this reads over a separate direct one, so the row is
+  // occasionally not visible here in the instant after the button disappears.
+  // A single read made this test fail about one run in three, which is the
+  // most expensive kind of test there is: the code was right every time.
+  await expect.poll(async () => withDb(async (c) => {
     const { rows } = await c.query(
-      `SELECT count(*)::int n FROM public."onyx_enrollments"
-       WHERE tenant_id=$1 AND course_id=$2`, [w.tenantId, w.courseId]);
-    expect(Number(rows[0].n), 'the learner enrolled themselves').toBe(1);
-  });
+      `SELECT u.email, e.status FROM public."onyx_enrollments" e
+         JOIN public."onyx_users" u ON u.id = e.user_id
+        WHERE e.tenant_id=$1 AND e.course_id=$2`,
+      [w.tenantId, w.courseId]);
+    // Listed rather than counted, so a failure says who is actually on the
+    // course instead of only that the number was wrong.
+    return rows.map((r) => String(r.email) + ':' + r.status);
+  }), { timeout: 20_000, message: 'the learner enrolled themselves' })
+    .toContain(mail('student') + ':1');
 
   await page.goto('/onyx/dashboard');
   await page.waitForLoadState('networkidle');

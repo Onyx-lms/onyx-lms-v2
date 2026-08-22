@@ -9,6 +9,7 @@ import {
 } from '@/components/onyx-manage';
 import type { Assessment, MarkingQueueRow } from '@/lib/onyx-assess';
 import { ActionButton } from '@/components/onyx-create';
+import { ModerateMarks } from '@/components/onyx-moderate';
 import {
   BackLink, Card, DataTable, Empty, EmptyRow, Icon, Meter, Pill, Score, SectionHead, StatTile, State, Stepper,
 } from '@/components/onyx-ui';
@@ -83,6 +84,20 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
   const teachesThisCourse = (myCourses ?? []).some((c) => Number(c.id) === Number(exam.course_id));
   const canMark = staff || (me.role === 'faculty' && teachesThisCourse);
 
+  // `canMark` is not the whole answer for moderating and publishing.
+  //
+  // Both routes sit behind `assertCan(... 'exams.moderate' | 'exams.publish')`,
+  // and both capabilities default to admin and the examinations office and are
+  // grantable to nobody else -- faculty cannot hold either, however many of
+  // this exam's courses they teach. So `canMark` alone put a Publish button in
+  // front of every course's faculty that could only ever answer 403. Asked of
+  // the API rather than reproduced here, so the screen has no second, drifting
+  // copy of the rules.
+  const perms = await onyxApiSafe<{ mine: string[] }>('/api/onyx/permissions');
+  const held = new Set(perms?.mine ?? []);
+  const mayModerate = canMark && held.has('exams.moderate');
+  const mayPublish = canMark && held.has('exams.publish');
+
   const [seat, plan, halls, marks, roster, members, myMarks] = await Promise.all([
     canMark ? null : onyxApiSafe<Seat>('/api/onyx/exams/' + id + '/seat'),
     // The seating plan itself stays staff-only on the API (every candidate's
@@ -120,6 +135,12 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
   }));
   const published = (marks ?? []).some((m) => m.status === 'published');
   const myMark = (myMarks ?? [])[0] ?? null;
+
+  // What a moderation pass would actually move. The service refuses when there
+  // is nothing unpublished, so the panel is told the number rather than being
+  // let to offer an action that can only be refused.
+  const unpublished = (marks ?? []).filter((m) => m.status !== 'published').length;
+  const alreadyModerated = (marks ?? []).filter((m) => Number(m.moderation_delta) !== 0).length;
 
   // The exam's own online paper, if it has one -- syncExamAssessmentWindow()
   // is what keeps its open/close window locked to exactly this exam's slot,
@@ -244,15 +265,34 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
                 automatically, then publishes -- one action instead of two,
                 and there is nothing left to do here between finishing the
                 marking queue and releasing results. */}
+            {/* The step between marking and publishing, which had an API and
+                no way to reach it. Without it a board that agreed a paper was
+                marked two points harsh had to publish it anyway or edit
+                scripts one at a time. Hidden once results are out: the service
+                leaves published marks alone, so offering it there would be a
+                button that can only refuse. */}
+            {mayModerate && !published ? (
+              <ModerateMarks examId={Number(id)} maxMarks={Number(exam.max_marks)}
+                unpublished={unpublished} moderated={alreadyModerated} />
+            ) : null}
             {published ? (
               <span className="inline-flex min-h-[38px] items-center gap-1.5 rounded-2xl
                                bg-green-50 px-3.5 text-[13px] font-bold text-green-700">
                 <Icon name="check" className="h-4 w-4" />
                 Results published
               </span>
-            ) : (
+            ) : mayPublish ? (
               <ActionButton endpoint={'exams/' + id + '/publish'} label="Publish results"
                 confirm="Publish results to every candidate?" />
+            ) : (
+              /* Said, rather than left as an absence. A faculty member who has
+                 finished marking needs to know the paper is waiting on
+                 somebody else, not to wonder where the button went. */
+              <span className="inline-flex min-h-[38px] items-center gap-1.5 rounded-2xl
+                               border border-line px-3.5 text-[13px] font-semibold text-muted">
+                <Icon name="clock" className="h-4 w-4" />
+                The examinations office releases results
+              </span>
             )}
           </div>
         ) : null}
