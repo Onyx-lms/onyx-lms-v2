@@ -250,7 +250,12 @@ export default async function OnyxTimetablePage(
               { name: 'room_id', label: 'Room', type: 'select', required: true,
                 numeric: true, options: idOptions(rooms, (r) => r.code + ' — ' + r.name) },
               { name: 'faculty_id', label: 'Teacher', type: 'select', required: true,
-                numeric: true, wide: true,
+                // A uuid, so NOT numeric: CreatePanel runs Number() over a
+                // numeric field and a uuid becomes NaN, which JSON sends as
+                // null and the route refuses. `day_of_week` below IS a number
+                // and keeps the flag -- the two sit next to each other, which
+                // is how this one survived.
+                wide: true,
                 options: teachers.map((m) => ({ value: String(m.user_id),
                   label: m.user?.name ?? 'User ' + m.user_id })) },
               { name: 'day_of_week', label: 'Day', type: 'select', required: true,

@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxPageRole, onyxApi, type Me } from '@/lib/onyx-session';
+import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
 import type { Batch, Program, Semester } from '@/lib/onyx-learn';
 import { CreatePanel } from '@/components/onyx-create';
+import { BatchMembers } from '@/components/onyx-batch-members';
 import {
   Card, Empty, Icon, Meter, Pill, SectionHead, StatTile, State,
 } from '@/components/onyx-ui';
@@ -43,12 +44,29 @@ const on = (iso: string | null) => (iso
  */
 export default async function OnyxProgramsPage() {
   await requireOnyxPageRole('admin', 'faculty');
-  const [me, programs, semesters, batches] = await Promise.all([
+  const [me, programs, semesters, batches, members] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
     onyxApi<Program[]>('/api/onyx/programs'),
     onyxApi<Semester[]>('/api/onyx/semesters'),
     onyxApi<Batch[]>('/api/onyx/batches'),
+    // Who could be put in a cohort. Safe rather than fatal: the page is about
+    // programmes and should not disappear because the roster could not be read.
+    onyxApiSafe<{ user_id: string; role: string;
+      user: { name: string; email: string } | null }[]>('/api/onyx/members'),
   ]);
+
+  const students = (members ?? [])
+    .filter((m) => m.role === 'student' && m.user)
+    .map((m) => ({ id: m.user_id, name: m.user!.name, email: m.user!.email }));
+
+  // Who is in each batch. One request per cohort, which is bounded by how many
+  // an institution runs -- and the alternative, an endpoint returning every
+  // membership at once, does not exist and is not worth inventing for a page
+  // that shows a count.
+  const rosters = await Promise.all(batches.map((b) =>
+    onyxApiSafe<{ user_id: string }[]>('/api/onyx/batches/' + b.id + '/members')));
+  const inBatch = new Map(batches.map((b, i) =>
+    [Number(b.id), (rosters[i] ?? []).map((r) => String(r.user_id))]));
 
   // `status` is the only lifecycle the API carries for a programme: anything
   // else on this page ("places filled", "admissions close") would be invented.
@@ -222,7 +240,20 @@ export default async function OnyxProgramsPage() {
                       </h4>
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {cohorts.map((b) => (
-                          <Chip key={b.id} count={b.year ?? undefined}>{b.name}</Chip>
+                          <span key={b.id} className="inline-flex items-center gap-1.5">
+                            <Chip count={b.year ?? undefined}>{b.name}</Chip>
+                            {/* The one thing a batch is FOR. Until this
+                                existed a cohort could be created and never
+                                filled, which left bulk enrolment, timetable
+                                scheduling and the education section of every
+                                resume with nothing to work from. */}
+                            <BatchMembers
+                              batchId={Number(b.id)}
+                              batchName={b.name}
+                              members={inBatch.get(Number(b.id)) ?? []}
+                              candidates={students}
+                            />
+                          </span>
                         ))}
                         {cohorts.length === 0
                           ? <span className="text-[13px] text-muted">None yet.</span> : null}

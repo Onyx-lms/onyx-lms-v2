@@ -72,6 +72,16 @@ export function PaperBuilder({ banks, courses, existing, label: cta }: {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [stepAt, setStepAt] = useState(0);
+  /**
+   * The paper this composer has already created, if it has.
+   *
+   * Previewing has to SAVE first -- the preview is drawn by the server from a
+   * real paper -- so by the time anybody reaches the last step there is a
+   * draft with an id. Without remembering it, "Publish to candidates" posted a
+   * second paper and published that one, leaving the preview's draft behind as
+   * an orphan. Every paper composed through here littered one.
+   */
+  const [createdId, setCreatedId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [preview, setPreview] = useState<{
@@ -105,7 +115,12 @@ export function PaperBuilder({ banks, courses, existing, label: cta }: {
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
-  function close() { setOpen(false); setStepAt(0); setError(null); setPreview(null); }
+  function close() {
+    setOpen(false); setStepAt(0); setError(null); setPreview(null);
+    // Forgotten on the way out, or the next paper composed without a reload
+    // would overwrite the last one instead of being its own.
+    setCreatedId(null);
+  }
 
   const addSection = () => setSections((s) => [...s, {
     // Ids must be unique and stable; the index is not enough once a middle
@@ -161,8 +176,12 @@ export function PaperBuilder({ banks, courses, existing, label: cta }: {
   async function save(publish: boolean): Promise<number | null> {
     setError(null);
     const body = payload();
-    const saved = existing
-      ? await send('assessments/' + existing.id, body, 'PATCH')
+    // Editing an existing paper, or re-saving the one this composer already
+    // created a moment ago on the way to the preview. Either way it is a
+    // PATCH; only the first save of a brand-new paper is a POST.
+    const targetId = existing ? existing.id : createdId;
+    const saved = targetId
+      ? await send('assessments/' + targetId, body, 'PATCH')
       : await send('assessments', body);
     if (!saved.ok) {
       const detail = saved.errors
@@ -172,7 +191,10 @@ export function PaperBuilder({ banks, courses, existing, label: cta }: {
       setError([saved.message, detail].filter(Boolean).join(' — '));
       return null;
     }
-    const id = existing ? existing.id : Number(saved.data.id);
+    const id = targetId ?? Number(saved.data.id);
+    // Remembered before publishing, so a failed publish followed by a retry
+    // updates this paper rather than creating another.
+    if (targetId === null) setCreatedId(id);
     if (publish) {
       const done = await send('assessments/' + id + '/publish');
       if (!done.ok) { setError(done.message ?? 'Saved as a draft, but not published.'); return null; }

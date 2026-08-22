@@ -393,6 +393,16 @@ test('CMP-03 a fee structure is built and an invoice raised against it', async (
     expect(Number(rows[0].total), 'rupees were converted to paise').toBe(4_750_000);
   });
 
+  // A clean page before the next panel.
+  //
+  // `panelOf` finds a panel by its heading, and it is strict: two open at once
+  // resolve to two elements and every assertion against it reports `undefined`
+  // rather than a state. That happened here about one run in two -- the
+  // structure builder had not finished closing when the invoice panel opened.
+  // A reload guarantees exactly one, and also picks up the structure that was
+  // just built, which this panel has to offer in its dropdown anyway.
+  await page.reload();
+
   await create(page, 'Raise an invoice', {
     user_id: 'Ana Learner', structure_id: 'Term 1 2026 fees', due_at: soon(30),
   });
@@ -450,14 +460,58 @@ test('ASS-01 a bank is filled and a paper is drawn from it', async ({ page }) =>
     expect(rows[1].type).toBe('truefalse');
   });
 
+  /*
+   * The four-step composer, not the one-shot form this used to drive.
+   *
+   * "Set a paper" was replaced by PaperBuilder, whose trigger reads "Create a
+   * paper" -- so this test had been looking for a button that no longer
+   * existed, and had been doing so unnoticed because it sits behind three
+   * other failures in a serial file. `BuildAssessment` in onyx-manage.tsx is
+   * what it used to drive; nothing imports it any more.
+   *
+   * The steps are: what it is, where the questions come from, how it is sat,
+   * then a preview. Publishing is deliberately only reachable from the last
+   * one -- "Save as draft" is the primary exit everywhere else -- which is the
+   * behaviour this test depends on when it asserts the paper is sittable.
+   */
   await page.goto('/onyx/assessments');
-  await manage(page, 'Set a paper', async (form) => {
-    await form.locator('#as-title').fill('Discrete maths quiz');
-    await form.locator('#as-course').selectOption({ label: 'Discrete Mathematics' });
-    await form.locator('#as-dur').fill('30');
-    await form.getByLabel('Bank for section 1').selectOption({ label: 'Discrete maths — term 1' });
-    await form.getByLabel('Questions drawn for section 1').fill('2');
-  });
+  await page.getByRole('button', { name: 'Create a paper' }).click();
+
+  await page.locator('#p-title').fill('Discrete maths quiz');
+  await page.locator('#p-course').selectOption({ label: 'Discrete Mathematics' });
+  await page.locator('#p-duration').fill('30');
+  await page.getByRole('button', { name: 'Next' }).click();
+
+  // One section, so `.first()` is unambiguous: the fields are numbered by the
+  // section's own id rather than its position.
+  await page.getByLabel('Draw from').first()
+    .selectOption({ label: 'Discrete maths — term 1' });
+  await page.getByLabel('Questions', { exact: true }).first().fill('2');
+  await page.getByRole('button', { name: 'Next' }).click();
+
+  // Step three is how it is sat; the defaults are what this test wants.
+  await page.getByRole('button', { name: 'Preview the paper' }).click();
+
+  // Publishing is the one action that puts a paper in front of candidates, so
+  // it appears only once somebody has looked at a real dealt paper.
+  const publish = page.getByRole('button', { name: 'Publish to candidates' });
+  await expect(publish).toBeVisible({ timeout: 30_000 });
+  await publish.click();
+
+  // Waited on the composer, and on a part of it that is there at EVERY step.
+  //
+  // Two ways to get this wrong, and this test found both. The Publish button
+  // relabels to "Publishing…" while the request is in flight, so a locator
+  // naming it resolves to nothing mid-save and an empty locator satisfies
+  // toBeHidden() at once. And `#p-title` belongs to step one, so by the time
+  // Publish is reachable it is already gone -- the assertion passed instantly
+  // and the database was read while the publish was still going, finding the
+  // draft the preview step had saved. `submit()` at the top of this file
+  // documents the first trap; the composer is not a CreatePanel and does not
+  // go through it. "Save as draft" is the one control on every step whose
+  // label does not change while it works.
+  await expect(page.getByRole('button', { name: 'Save as draft' }))
+    .toBeHidden({ timeout: 30_000 });
   await page.screenshot({ path: OUT + 'feat-ASS01-paper.png', fullPage: true });
 
   await withDb(async (c) => {
@@ -687,8 +741,14 @@ test('CMP-04 a guardian is created, linked, and sees nothing until they accept',
       .toBeHidden({ timeout: 20_000 });
     // A click, not `check()`: the box is controlled by what the server says,
     // so it ticks only once the consent has actually been recorded.
-    await page.getByLabel('Results').click();
-    await expect(page.getByLabel('Results')).toBeChecked({ timeout: 20_000 });
+    //
+    // Named 'Courses, marks & assessments', not 'Results'. The category was
+    // renamed to say what it actually opens -- a guardian shown "Results" does
+    // not know whether that includes coursework -- and this test kept clicking
+    // the old name, which matched a section heading rather than a checkbox.
+    const consent = page.getByLabel('Courses, marks & assessments');
+    await consent.click();
+    await expect(consent).toBeChecked({ timeout: 20_000 });
     await page.screenshot({ path: OUT + 'feat-CMP04-consent.png', fullPage: true });
 
     await withDb(async (c) => {
@@ -715,19 +775,60 @@ test('CMP-01b a room, a class and a published timetable', async ({ page }) => {
     code: 'LT1', name: 'Lecture Theatre 1', capacity: '80', kind: 'lecture',
     building: 'Main block',
   });
+  // A cohort has to have somebody in it.
+  //
+  // The timetable refuses a slot for an empty batch, in as many words -- and
+  // until now there was no way anywhere in the product to act on what it
+  // asked for: `POST /api/onyx/batches/:id/members` existed and nothing ever
+  // called it. That is what this step exercises.
+  await page.goto('/onyx/programs');
+  await page.getByRole('button', { name: 'Add members' }).first().click();
+  const roster = page.getByRole('dialog');
+  await roster.getByRole('checkbox').first().check();
+  await roster.getByRole('button', { name: /^Add / }).click();
+  await expect(roster).toBeHidden({ timeout: 20_000 });
+  await expect.poll(async () => withDb(async (c) => Number((await c.query(
+    `SELECT count(*)::int n FROM public."onyx_batch_members" WHERE tenant_id=$1`,
+    [w.tenantId])).rows[0].n)),
+  { timeout: 20_000, message: 'somebody was put in the batch' }).toBeGreaterThan(0);
+
+  await page.goto('/onyx/timetable');
   await create(page, 'Schedule a class', {
     semester_id: 'Term 1 2026', course_id: 'MA201 — Discrete Mathematics',
     batch_id: 'Batch A 2026', room_id: 'LT1 — Lecture Theatre 1',
     faculty_id: 'Faye Teacher', day_of_week: 'Monday',
     starts_at: '09:00', ends_at: '10:00',
   });
-  // Scheduled, but a draft: a learner turning up to an unpublished room is
-  // exactly what the draft state is for.
-  await expect(page.getByText('draft').first()).toBeVisible();
+  /*
+   * Scheduled, but a draft: a learner turning up to an unpublished room is
+   * exactly what the draft state is for.
+   *
+   * Read off the Drafts tile rather than off the slot, and both assertions in
+   * this test used to be wrong about that. The per-slot badge only renders on
+   * a box at least 76px tall, so a one-hour class never shows one -- the
+   * `getByText('draft')` here was passing by matching the word inside the
+   * "Drafts" tile, and the `getByText('published')` after publishing had
+   * nothing to match at all and failed on a timetable that was correctly
+   * published. The tile carries a data-testid put there for exactly this.
+   */
+  const drafts = page.getByTestId('stat-drafts').locator('xpath=following-sibling::div[1]');
+  await expect(drafts).toHaveText('1');
   await page.screenshot({ path: OUT + 'feat-CMP01-timetable-draft.png', fullPage: true });
 
-  await create(page, 'Publish a semester', { semester_id: 'Term 1 2026' });
-  await expect(page.getByText('published').first()).toBeVisible();
+  // The trigger carries the count: "Publish 1 session" with one draft waiting,
+  // and "Publish a semester" only when there are none. Asserting the Drafts
+  // tile above is what makes that label predictable rather than a race -- this
+  // test used to name the empty-state label and find it only when the page had
+  // not counted the draft yet.
+  //
+  // It asks before it publishes, with a native window.confirm -- and Playwright
+  // DISMISSES native dialogs unless something says otherwise, so the submit was
+  // being cancelled and the panel sat open with no error to read.
+  page.once('dialog', (d) => { void d.accept(); });
+  await create(page, 'Publish 1 session', { semester_id: 'Term 1 2026' });
+  // Nothing is a draft any more, which is what "published" means to a learner:
+  // the class is on their phone.
+  await expect(drafts).toHaveText('0', { timeout: 20_000 });
   await page.screenshot({ path: OUT + 'feat-CMP01-timetable.png', fullPage: true });
 
   await withDb(async (c) => {
