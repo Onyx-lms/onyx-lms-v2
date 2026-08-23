@@ -1,4 +1,7 @@
-import { HttpError, can, capability, type CapabilityKey, type PermissionOverrides } from '@onyx/core';
+import {
+  HttpError, can, capability,
+  type CapabilityKey, type PermissionOverrides, type PersonalPermissions,
+} from '@onyx/core';
 import type { Role } from '@/lib/onyx-session';
 import type { AppContext } from '@/server/app-context';
 
@@ -26,10 +29,28 @@ import type { AppContext } from '@/server/app-context';
  */
 export async function assertCan(
   ctx: AppContext, tenantId: number, role: Role, key: CapabilityKey,
+  /**
+   * Who is asking, so a decision made about THIS PERSON is honoured.
+   *
+   * Optional only so that the two internal helpers which have a role but no
+   * caller to hand still compile; every route passes it. Without it a personal
+   * grant would exist in the settings screen and nowhere else, which is worse
+   * than not having the feature.
+   */
+  userId?: string,
 ): Promise<void> {
   const tenant = await ctx.onyxTenancy.tenant(tenantId);
   const overrides = (tenant?.permissions ?? {}) as PermissionOverrides;
-  if (can(role, key, overrides)) return;
+
+  // One extra read, and only for a guarded route. The membership is where a
+  // person's own grants live (0036) -- see permissions.ts's `can` for the
+  // order: the person beats the role, the role beats the default, and no
+  // personal grant reaches past what the capability itself allows.
+  const personal = userId
+    ? ((await ctx.onyxTenancy.membership(tenantId, userId))?.permissions ?? {})
+    : {};
+
+  if (can(role, key, overrides, personal as PersonalPermissions)) return;
 
   // Named, not "Forbidden": an administrator who has just switched something
   // off should be able to tell from the message what to switch back on, and a
@@ -37,6 +58,6 @@ export async function assertCan(
   // a bug.
   const what = capability(key);
   throw new HttpError(403, what
-    ? '“' + what.label + '” is not something your institution allows your role to do.'
-    : 'Your institution does not allow your role to do that.');
+    ? '“' + what.label + '” is not something your institution allows you to do.'
+    : 'Your institution does not allow you to do that.');
 }

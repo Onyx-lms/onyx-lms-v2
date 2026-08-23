@@ -123,8 +123,12 @@ export default async function OnyxCoursesPage() {
                 { value: 'locked', label: 'Locked — they buy it first' },
               ],
               help: 'A locked course needs a price below.' },
-            { name: 'price_minor', label: 'Price in paise', type: 'number', min: 0,
-              help: '149900 is ₹1,499.00. Only used for a locked course.' },
+            // Rupees, not paise. The database still stores minor units -- the
+            // field converts -- but nobody setting a price should have to
+            // multiply by a hundred, and a slip of two zeroes here is the
+            // difference between ₹1,499 and ₹149,900.
+            { name: 'price_minor', label: 'Price', type: 'money', min: 0,
+              help: 'What a learner pays to unlock it. Only used for a locked course.' },
           ]}
           // Created as a draft, then opened -- a course nobody can see is not
           // much use, and publishing is a separate right the API checks.

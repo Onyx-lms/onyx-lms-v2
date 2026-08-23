@@ -102,7 +102,8 @@ export function DomainComposer() {
                   curriculum_url: String(data.get('curriculum_url') ?? ''),
                   certificate: String(data.get('certificate') ?? ''),
                   duration_label: String(data.get('duration_label') ?? ''),
-                  price_minor: Number(data.get('price_minor') || 0),
+                  // Typed in rupees, stored in paise.
+                  price_minor: Math.round(Number(data.get('price_rupees') || 0) * 100),
                   ...(image_path ? { image_path } : {}),
                 }),
               });
@@ -184,10 +185,21 @@ export function DomainComposer() {
         </div>
 
         <div>
-          <label className={label} htmlFor="dm-price">Price in paise</label>
-          <input id="dm-price" name="price_minor" type="number" min={0} defaultValue={0}
-            className={field} />
-          <p className="mt-1 text-[12px] text-muted">149900 is ₹1,499.00. Use 0 for free.</p>
+          <label className={label} htmlFor="dm-price">Price</label>
+          {/* Rupees, with the symbol in the field. This asked for paise and
+              explained the conversion underneath, which is a form asking
+              somebody to do arithmetic it could do itself -- and getting it
+              wrong by two zeroes is the difference between ₹1,499 and
+              ₹149,900. The value is still sent as minor units. */}
+          <div className="relative">
+            <span aria-hidden className="pointer-events-none absolute left-3 top-1/2
+                                         -translate-y-1/2 text-[15px] font-semibold text-muted">
+              ₹
+            </span>
+            <input id="dm-price" name="price_rupees" type="number" inputMode="decimal"
+              step="0.01" min={0} defaultValue={0} className={field + ' pl-7'} />
+          </div>
+          <p className="mt-1 text-[12px] text-muted">Leave it at 0 for a free class.</p>
         </div>
 
         <div className="flex items-center gap-2 sm:col-span-2">

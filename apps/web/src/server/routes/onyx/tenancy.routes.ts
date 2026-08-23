@@ -13,8 +13,8 @@ import { z } from 'zod';
 import {
   validate, ok, HttpError,
   requireOnyx, requireOnyxRole, requirePlatformAdmin, ROLES,
-  CAPABILITIES, CAPABILITY_AREAS, holdersOf, can, normaliseOverrides,
-  type PermissionOverrides,
+  CAPABILITIES, CAPABILITY_AREAS, holdersOf, can, normaliseOverrides, normalisePersonal,
+  type PermissionOverrides, type PersonalPermissions,
 } from '@onyx/core';
 import type { Role } from '@onyx/types';
 import type { AppContext } from '../../app-context.ts';
@@ -171,8 +171,12 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
    */
   app.get('/api/onyx/permissions', async (req) => {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
-    const tenant = await ctx.onyxTenancy.tenant(claims.tenant_id);
+    const [tenant, mineRow] = await Promise.all([
+      ctx.onyxTenancy.tenant(claims.tenant_id),
+      ctx.onyxTenancy.membership(claims.tenant_id, claims.user_id),
+    ]);
     const overrides = (tenant?.permissions ?? {}) as PermissionOverrides;
+    const personal = (mineRow?.permissions ?? {}) as PersonalPermissions;
     return ok({
       capabilities: CAPABILITIES.map((cap) => ({
         ...cap,
@@ -180,10 +184,123 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
         changed: Object.prototype.hasOwnProperty.call(overrides, cap.key),
       })),
       areas: CAPABILITY_AREAS,
-      /** What THIS caller may do, so a screen can hide what it must. */
-      mine: CAPABILITIES.filter((cap) => can(claims.tenant_role, cap.key, overrides))
-        .map((cap) => cap.key),
+      /**
+       * What THIS caller may do, so a screen can hide what it must.
+       *
+       * Their own personal grants included (0036). Without them a lecturer
+       * given one capability by name would be refused by every screen and
+       * accepted by every route -- the two would disagree, and the screen
+       * would be the one that was wrong.
+       */
+      mine: CAPABILITIES.filter((cap) =>
+        can(claims.tenant_role, cap.key, overrides, personal)).map((cap) => cap.key),
     });
+  });
+
+  /**
+   * One person's permissions -- what their role gives them, and what has been
+   * decided about them by name.
+   *
+   * The role matrix answers "what may faculty do". This answers "what may THIS
+   * lecturer do", which is the question institutions actually ask: the one who
+   * also runs the timetable, the one exams officer trusted with fee
+   * structures. Answering it through the matrix means promoting everybody who
+   * shares their role.
+   */
+  /**
+   * The community an institution runs, and where its learners can join it.
+   *
+   * Set by an administrator, read by anybody here -- a link meant to be shared
+   * with every student is not a secret, and hiding it behind a role would mean
+   * the one screen it exists for could not show it.
+   */
+  app.put('/api/onyx/tenant/community', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'settings.manage',
+      claims.user_id);
+    const body = validate(z.object({
+      // Nullable rather than optional: clearing the link is a thing an
+      // institution does, and `undefined` would read as "leave it alone".
+      community_url: z.string().max(500).nullable(),
+      community_label: z.string().max(120).nullish(),
+    }), req.body);
+    const tenant = await ctx.onyxTenancy.setCommunity(claims.tenant_id, {
+      url: body.community_url, label: body.community_label ?? null,
+    });
+    await ctx.onyxAudit.record(claims, {
+      action: 'tenant.updated', entityType: 'tenant', entityId: claims.tenant_id,
+      after: { community_url: tenant.community_url }, ip: ipOf(req),
+    });
+    return ok(tenant, 'Community link saved.');
+  });
+
+  app.get('/api/onyx/members/:id/permissions', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'settings.manage',
+      claims.user_id);
+
+    const member = await ctx.onyxTenancy.memberById(claims.tenant_id, idOf(req));
+    const tenant = await ctx.onyxTenancy.tenant(claims.tenant_id);
+    const overrides = (tenant?.permissions ?? {}) as PermissionOverrides;
+    const personal = (member.permissions ?? {}) as PersonalPermissions;
+    const role = String(member.role) as Role;
+
+    return ok({
+      member: {
+        id: member.id, user_id: member.user_id, role,
+        name: member.user?.name ?? null, email: member.user?.email ?? null,
+        roll_number: member.roll_number ?? null,
+      },
+      capabilities: CAPABILITIES.map((cap) => ({
+        key: cap.key, area: cap.area, label: cap.label, detail: cap.detail,
+        /** Would their ROLE give them this, before anything personal? */
+        by_role: holdersOf(cap.key, overrides).includes(role),
+        /** What has been decided about them by name: true, false, or nothing. */
+        personal: Object.prototype.hasOwnProperty.call(personal, cap.key)
+          ? personal[cap.key] : null,
+        /** The answer that actually applies. */
+        effective: can(role, cap.key, overrides, personal),
+        /**
+         * Whether this may be granted to them at all. Several capabilities are
+         * deliberately never delegable -- naming a person is not a way round
+         * that, and a screen should not offer a switch the API will drop.
+         */
+        grantable: role === 'admin' || cap.holders.includes(role),
+      })),
+      areas: CAPABILITY_AREAS,
+    });
+  });
+
+  /**
+   * Decide one person's permissions.
+   *
+   * The whole personal set is sent, not a delta, for the same reason the
+   * matrix is: a screen that saves one switch at a time can half-apply.
+   * `normalisePersonal` drops any GRANT the capability may never carry for
+   * that role, so a hand-written request cannot give a student the fee ledger.
+   */
+  app.put('/api/onyx/members/:id/permissions', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'settings.manage',
+      claims.user_id);
+    const body = validate(z.object({
+      permissions: z.record(z.boolean()),
+    }), req.body);
+
+    const before = await ctx.onyxTenancy.memberById(claims.tenant_id, idOf(req));
+    const cleaned = normalisePersonal(body.permissions, String(before.role) as Role);
+    const member = await ctx.onyxTenancy.setMemberPermissions(
+      claims.tenant_id, idOf(req), cleaned);
+
+    // Auditable, because "who gave them that" is the first question asked
+    // after somebody does something nobody expected them to be able to do.
+    await ctx.onyxAudit.record(claims, {
+      action: 'member.permissions', entityType: 'membership', entityId: idOf(req),
+      before: { permissions: before.permissions ?? {} },
+      after: { permissions: cleaned },
+      ip: ipOf(req),
+    });
+    return ok(member, 'Permissions saved.');
   });
 
   /**
@@ -199,7 +316,7 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
    */
   app.put('/api/onyx/permissions', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'settings.manage');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'settings.manage', claims.user_id);
     const body = validate(z.object({
       permissions: z.record(z.string(), z.array(z.string())),
     }), req.body);
@@ -442,7 +559,7 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/members', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'exams', 'placement');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'people.invite');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'people.invite', claims.user_id);
     const body = validate(z.object({
       name: z.string().min(1).max(255),
       email: z.string().email(),
@@ -506,7 +623,7 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
     const onlyRollNumber = Object.keys(body).length === 1
       && Object.prototype.hasOwnProperty.call(body, 'roll_number');
     await assertCan(ctx, claims.tenant_id, claims.tenant_role,
-      onlyRollNumber ? 'people.roll_numbers' : 'people.edit');
+      onlyRollNumber ? 'people.roll_numbers' : 'people.edit', claims.user_id);
 
     const result = await ctx.onyxTenancy.updateMember(claims.tenant_id, idOf(req), body);
     if (result.userChange) {
@@ -537,7 +654,7 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
     // so the outer bound and the capability agree rather than the guard being
     // looser than anything that could ever pass it.
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'people.remove');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'people.remove', claims.user_id);
     const removed = await ctx.onyxTenancy.removeMember(claims.tenant_id, idOf(req));
     await ctx.onyxAudit.record(claims, {
       action: 'membership.removed', entityType: 'membership', entityId: idOf(req),
@@ -550,7 +667,7 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
 
   app.get('/api/onyx/audit', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'exams');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'audit.read');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'audit.read', claims.user_id);
     const q = req.query as { action?: string; entity_type?: string; limit?: string };
     // Always this tenant's log. audit_logs has RLS with no select policy, so
     // this service-role path is the only way to read it at all.

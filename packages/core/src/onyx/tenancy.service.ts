@@ -22,7 +22,7 @@ import { onyxAssetKey } from './content.service.ts';
 import { slugify } from '../authoring/slug.ts';
 import type { PermissionOverrides } from './permissions.ts';
 
-const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, student_signup, signup_domains, signup_mode, created_at, updated_at';
+const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, student_signup, signup_domains, signup_mode, community_url, community_label, created_at, updated_at';
 /**
  * The slice of StorageService a profile picture needs.
  *
@@ -38,7 +38,7 @@ export interface AvatarStorage {
 
 const USER_COLUMNS = 'id, email, name, phone, photo, status, email_verified_at, created_at';
 const PROFILE_COLUMNS = 'id, email, name, phone, photo, status, created_at, username, headline, bio, skills_text, interests, experience, website, profile_public';
-const MEMBERSHIP_COLUMNS = 'id, tenant_id, user_id, role, status, roll_number, created_at';
+const MEMBERSHIP_COLUMNS = 'id, tenant_id, user_id, role, status, roll_number, permissions, created_at';
 
 /**
  * Mailboxes anyone can open in thirty seconds, under any name.
@@ -1082,6 +1082,88 @@ export class TenancyService {
    * same rule the settings screen needs to render the matrix, and two copies of
    * "which roles may hold this" is how they come to disagree.
    */
+  /**
+   * One membership, with the person on it -- for the screen that decides what
+   * that person may do.
+   *
+   * By membership id rather than by user id, because that is what a roster row
+   * carries and what the URL therefore has. Tenant-scoped like everything
+   * else: a membership id from another institution is a 404, not somebody
+   * else's record.
+   */
+  async memberById(tenantId: number, membershipId: number) {
+    const { data } = await this.#db.from('onyx_memberships')
+      .select(MEMBERSHIP_COLUMNS)
+      .eq('tenant_id', tenantId).eq('id', membershipId).maybeSingle();
+    if (!data) throw new HttpError(404, 'No such member here.');
+    const { data: user } = await this.#db.from('onyx_users')
+      .select(USER_COLUMNS).eq('id', String(data.user_id)).maybeSingle();
+    return { ...data, user: user ?? null };
+  }
+
+  /**
+   * Store what has been decided about one person.
+   *
+   * Whatever is passed replaces what was there -- the caller has already run
+   * it through `normalisePersonal`, which is where a grant the capability may
+   * never carry is dropped. Doing that here as well would put the rule in two
+   * places and eventually in disagreement with itself.
+   */
+  async setMemberPermissions(
+    tenantId: number, membershipId: number, personal: Record<string, boolean>,
+  ) {
+    const { data, error } = await this.#db.from('onyx_memberships')
+      .update({ permissions: personal as never })
+      .eq('tenant_id', tenantId).eq('id', membershipId)
+      .select(MEMBERSHIP_COLUMNS).maybeSingle();
+    if (error) throw new HttpError(500, 'Could not save those permissions: ' + error.message);
+    if (!data) throw new HttpError(404, 'No such member here.');
+    return data;
+  }
+
+  /**
+   * The community an institution actually runs, shown beside its jobs.
+   *
+   * **The protocol check is the load-bearing part.** This is rendered as an
+   * anchor to a third party, and `javascript:` in an href is stored XSS with
+   * extra steps -- so the scheme is checked by NAME and anything else is
+   * refused out loud rather than quietly dropped. The host is deliberately not
+   * restricted to WhatsApp: an institution that runs its community on Telegram
+   * or Discord is not doing anything wrong, and a host allow-list breaks the
+   * first time somebody uses a chat.whatsapp.com short link.
+   */
+  async setCommunity(tenantId: number, input: { url?: string | null; label?: string | null }) {
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+    if (input.url !== undefined) {
+      const raw = String(input.url ?? '').trim();
+      if (!raw) {
+        patch.community_url = null;
+      } else {
+        // A person pastes "chat.whatsapp.com/ABC" as often as the full thing.
+        const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : 'https://' + raw;
+        let parsed: URL;
+        try { parsed = new URL(withScheme); } catch { throw new HttpError(422, 'That is not a link.'); }
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          throw new HttpError(422,
+            'A community link has to be an http or https address. "' + parsed.protocol
+            + '" is not one.');
+        }
+        patch.community_url = parsed.toString();
+      }
+    }
+    if (input.label !== undefined) {
+      const label = String(input.label ?? '').trim();
+      patch.community_label = label || null;
+    }
+
+    const { data, error } = await this.#db.from('onyx_tenants')
+      .update(patch).eq('id', tenantId).select(TENANT_COLUMNS).maybeSingle();
+    if (error) throw new HttpError(500, 'Could not save that link: ' + error.message);
+    if (!data) throw new HttpError(404, 'Institution not found.');
+    return data;
+  }
+
   async setPermissions(tenantId: number, overrides: PermissionOverrides) {
     const { data, error } = await this.#db.from('onyx_tenants')
       .update({ permissions: overrides as never, updated_at: new Date().toISOString() })

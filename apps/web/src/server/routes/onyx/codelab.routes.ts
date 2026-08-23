@@ -54,7 +54,7 @@ export function registerOnyxCodeLabRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/problems', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'lab.problems');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'lab.problems', claims.user_id);
     const body = validate(z.object({
       title: z.string().min(1).max(255),
       slug: z.string().max(255).optional(),
@@ -130,7 +130,7 @@ export function registerOnyxCodeLabRoutes(app: Router, ctx: AppContext): void {
    */
   app.put('/api/onyx/problems/:id/tests', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'lab.problems');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'lab.problems', claims.user_id);
     const body = validate(z.object({
       tests: z.array(z.object({
         name: z.string().max(255).optional(),
@@ -158,7 +158,7 @@ export function registerOnyxCodeLabRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/problems/:id/publish', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'lab.problems');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'lab.problems', claims.user_id);
     return ok(await ctx.onyxCodeLab.publishProblem(claims.tenant_id, idOf(req)), 'Published.');
   });
 

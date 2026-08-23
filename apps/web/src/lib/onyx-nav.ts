@@ -72,6 +72,9 @@ const I = {
   certs:     { href: '/onyx/certificates', label: 'Certificates', icon: 'award' },
   allocate:  { href: '/onyx/allocations', label: 'Teaching load', icon: 'chart' },
   settings:  { href: '/onyx/settings', label: 'Settings', icon: 'settings' },
+  // Its own entry, not a section inside Settings: a settings page is about the
+  // site, and who is allowed to run the institution is not a setting.
+  roles:     { href: '/onyx/permissions', label: 'Roles and permissions', icon: 'shield' },
 } satisfies Record<string, OnyxNavItem>;
 
 const NAV: Record<Role, OnyxNavGroup[]> = {
@@ -180,7 +183,7 @@ const NAV: Record<Role, OnyxNavGroup[]> = {
     // forensic screen, opened when something specific is being chased rather
     // than as somewhere to go, and the dashboard's "Full log" links still
     // reach it from where the question actually starts.
-    { label: 'Operations', items: [I.settings, I.profile] },
+    { label: 'Operations', items: [I.roles, I.settings, I.profile] },
   ],
 };
 

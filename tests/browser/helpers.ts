@@ -89,6 +89,17 @@ export async function addMember(
  * signed-in page goes through here rather than setting a cookie directly.
  */
 export async function signInViaForm(page: Page, email: string, password = PASSWORD): Promise<void> {
+  /*
+   * Whoever was signed in before is signed out first.
+   *
+   * Without this, signing in as a SECOND person in one test hangs in a way
+   * that reads as a broken login page: `/onyx/login` redirects a caller who
+   * already has a session to their dashboard, so "Email address" never
+   * appears and the fill times out thirty seconds later pointing at the wrong
+   * thing entirely. Several specs already did this by hand before calling
+   * here; doing it here means the rest cannot forget.
+   */
+  await page.context().clearCookies();
   await page.goto('/onyx/login');
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('Password').fill(password);

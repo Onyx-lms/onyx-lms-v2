@@ -72,7 +72,7 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/certificates', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'exams', 'placement', 'faculty');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.certificates');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.certificates', claims.user_id);
     const body = validate(z.object({
       user_id: z.string().uuid(),
       title: z.string().min(1).max(255),
@@ -254,7 +254,7 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/skills', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'placement', 'faculty');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.skills');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.skills', claims.user_id);
     const body = validate(z.object({
       name: z.string().min(1).max(255),
       category: z.string().max(100).nullish(),
@@ -264,7 +264,7 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/skills/award', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'placement', 'faculty');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.skills');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.skills', claims.user_id);
     const body = validate(z.object({
       user_id: z.string().uuid(),
       skill_id: z.number().int().positive(),
@@ -331,7 +331,7 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/employers', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...PLACEMENT);
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.employers');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.employers', claims.user_id);
     const body = validate(z.object({
       name: z.string().min(1).max(255),
       website: z.string().max(255).nullish(),
@@ -418,7 +418,7 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/jobs/:id/publish', async (req) => {
     const { claims, viewer } = await viewerOf(req);
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.jobs');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.jobs', claims.user_id);
     return ok(await ctx.onyxPlacement.publishJob(claims.tenant_id, idOf(req), viewer), 'Published.');
   });
 
@@ -484,7 +484,7 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/drives', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...PLACEMENT);
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.drives');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.drives', claims.user_id);
     const body = validate(z.object({
       employer_id: z.number().int().positive(),
       title: z.string().min(1).max(255),
@@ -530,7 +530,7 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/contests', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty', 'placement');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'lab.contests');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'lab.contests', claims.user_id);
     const body = validate(z.object({
       title: z.string().min(1).max(255),
       description: z.string().max(50_000).nullish(),
@@ -611,7 +611,7 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/interviews', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'placement', 'faculty');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.interviews');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.interviews', claims.user_id);
     const body = validate(z.object({
       user_id: z.string().uuid(),
       interviewer_id: z.string().uuid().nullish(),

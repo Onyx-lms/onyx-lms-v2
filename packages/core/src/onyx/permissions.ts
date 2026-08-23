@@ -277,14 +277,72 @@ export function holdersOf(key: CapabilityKey, overrides?: PermissionOverrides | 
   return roles.includes('admin') ? roles : ['admin', ...roles];
 }
 
-/** Whether this role may attempt this act at this institution. */
+/**
+ * What ONE PERSON has been granted or refused, over and above their role.
+ *
+ * `true` gives somebody a capability their role does not carry; `false` takes
+ * one away from somebody whose role does. Both are real needs -- the lecturer
+ * who also runs the timetable, and the one who should no longer publish
+ * results -- and answering either with the role matrix means changing what the
+ * role means for everybody who shares it.
+ */
+export type PersonalPermissions = Partial<Record<CapabilityKey, boolean>>;
+
+/**
+ * Whether this person may attempt this act at this institution.
+ *
+ * Order matters and is the whole design: a personal decision beats the role,
+ * and the role beats the default. What a personal grant CANNOT do is exceed
+ * the capability itself -- `holders` is the list of roles an institution may
+ * ever delegate this to, several capabilities have an empty one on purpose,
+ * and naming a person is not a way round that. `normalisePersonal` drops such
+ * a grant on write; this drops it on read as well, so a row written before a
+ * capability was locked down cannot outlive the decision.
+ *
+ * A REVOCATION is honoured whatever the holders list says. Taking something
+ * away is always allowed -- except from an administrator, who cannot be locked
+ * out of their own institution for the same reason `holdersOf` puts them back.
+ */
 export function can(
   role: Role | null | undefined,
   key: CapabilityKey,
   overrides?: PermissionOverrides | null,
+  personal?: PersonalPermissions | null,
 ): boolean {
   if (!role) return false;
+  const mine = personal?.[key];
+  if (mine === false) return role === 'admin';
+  if (mine === true) {
+    const cap = BY_KEY.get(key);
+    // Grantable to this role at all? If not, the personal grant is void.
+    return Boolean(cap && (role === 'admin' || cap.holders.includes(role)));
+  }
   return holdersOf(key, overrides).includes(role);
+}
+
+/**
+ * Sanitises one person's overrides before they are stored.
+ *
+ * Same shape of rule as `normaliseOverrides` next door: anything not in the
+ * catalogue is dropped, and a GRANT to a role the capability may never be
+ * delegated to is dropped. A revocation survives regardless -- an institution
+ * may always take something away.
+ */
+export function normalisePersonal(
+  input: Record<string, unknown>,
+  role: Role,
+): PersonalPermissions {
+  const out: PersonalPermissions = {};
+  for (const cap of CAPABILITIES) {
+    const asked = input[cap.key];
+    if (typeof asked !== 'boolean') continue;
+    if (asked && role !== 'admin' && !cap.holders.includes(role)) continue;
+    // Storing "granted" for something the role already has by default is
+    // noise that goes stale the moment the matrix changes -- but storing it
+    // is harmless and honest about what somebody clicked, so it is kept.
+    out[cap.key] = asked;
+  }
+  return out;
 }
 
 /**

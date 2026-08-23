@@ -51,6 +51,9 @@ export interface Tenant {
    * here approves). Only meaningful while `student_signup` is on.
    */
   signup_mode?: string;
+  /** The community an institution runs, shown on Jobs. See 0036. */
+  community_url?: string | null;
+  community_label?: string | null;
 }
 
 export interface Me {

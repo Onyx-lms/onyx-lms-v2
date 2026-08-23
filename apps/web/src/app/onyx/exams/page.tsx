@@ -7,7 +7,7 @@ import type { Exam } from '@/lib/onyx-campus';
 import { CreatePanel } from '@/components/onyx-create';
 import { CreatePaper } from '@/components/onyx-manage';
 import { onyxApiSafe } from '@/lib/onyx-session';
-import type { Course, Semester } from '@/lib/onyx-learn';
+import type { Course } from '@/lib/onyx-learn';
 import {
   DataTable, EmptyRow, Icon, Pill, Banner, Segmented, State, StatTile,
 } from '@/components/onyx-ui';
@@ -113,11 +113,12 @@ const STATE: Record<Exam['status'], { tone: 'neutral' | 'brand' | 'good' | 'late
 /** CMP-02a -- the calendar. */
 export default async function OnyxExamsPage() {
   await requireOnyxSession();
-  const [me, exams, courses, semesters] = await Promise.all([
+  // No semesters fetched any more: the scheduling form stopped asking for
+  // one, and the API takes it from the course.
+  const [me, exams, courses] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
     onyxApi<Exam[]>('/api/onyx/exams'),
     onyxApiSafe<Course[]>('/api/onyx/courses'),
-    onyxApiSafe<Semester[]>('/api/onyx/semesters'),
   ]);
   // Scheduling an exam is the examinations office institution-wide, or this
   // specific course's own faculty -- assertCanRunExam on the API side draws
@@ -211,9 +212,11 @@ export default async function OnyxExamsPage() {
                 { name: 'course_id', label: 'Course', type: 'select', required: true, numeric: true,
                   options: schedulableCourses.map((c) => ({ value: String(c.id),
                     label: c.code + ' — ' + c.title })) },
-                { name: 'semester_id', label: 'Semester', type: 'select', required: true, numeric: true,
-                  options: (semesters ?? []).map((sm) => ({ value: String(sm.id),
-                    label: sm.name })) },
+                /* No Semester field. It was a row on this form asking somebody
+                   scheduling "CS101 Final" which semester row it belongs to,
+                   when the course already knows -- the API takes it from
+                   there. One less thing to get wrong, and nothing about the
+                   record changed. */
                 { name: 'starts_at', label: 'Starts', type: 'datetime', required: true },
                 { name: 'duration_minutes', label: 'Minutes', type: 'number', min: 5,
                   max: 600, fallback: 180 },

@@ -103,6 +103,34 @@ export default async function OnyxJobsPage() {
         ? 'Your posts at ' + me.tenant.name + '.'
         : 'Openings shared with this institution.'}
     >
+      {/*
+        * The community this institution actually runs.
+        *
+        * Every one of them has a WhatsApp group and none of them had anywhere
+        * in the product to put the link, so it lived in a pinned message and
+        * reached whoever was already in the group. Here, because Jobs is where
+        * somebody goes looking for it -- and shown to everybody, because a
+        * link meant for every student is not a secret.
+        *
+        * `noopener` because `target="_blank"` otherwise hands the destination
+        * a live `window.opener`, and the sr-only suffix because an
+        * unannounced new tab is a WCAG 3.2.5 failure -- axe runs over this
+        * page in the accessibility sweep.
+        */}
+      {me.tenant.community_url ? (
+        <a
+          href={me.tenant.community_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-6 inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5
+                     text-[14px] font-bold text-white hover:bg-green-700"
+        >
+          <Icon name="users" className="h-4 w-4" />
+          {me.tenant.community_label || 'Join our WhatsApp community'}
+          <span className="sr-only"> (opens in a new tab)</span>
+        </a>
+      ) : null}
+
       {/* CAR-04: "employers must post jobs". The placement office keeps the
           employer records, so both can open a post -- but only the office
           adds a company in the first place. */}

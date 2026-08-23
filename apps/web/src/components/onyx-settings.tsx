@@ -216,3 +216,93 @@ export function StudentSignupSettings({ enabled, domains, mode }: {
     </Card>
   );
 }
+
+/**
+ * The community an institution runs, and where its learners can join it.
+ *
+ * Every institution here already has a WhatsApp group; what it did not have
+ * was anywhere in the product to put the link, so it lived in somebody's
+ * pinned message and reached whoever happened to be in the group already. It
+ * belongs beside the jobs, which is where people go looking for it.
+ *
+ * Not WhatsApp-only. An institution running its community on Telegram or
+ * Discord is not doing anything wrong, and a host allow-list would break the
+ * first time somebody pasted a `chat.whatsapp.com` short link anyway. What IS
+ * checked, on the server, is the scheme: this becomes an anchor to a third
+ * party, and `javascript:` in an href is stored XSS with extra steps.
+ */
+export function CommunityLinkForm({ url, label }: { url: string; label: string }) {
+  const [value, setValue] = useState(url);
+  const [name, setName] = useState(label);
+  const [pending, start] = useTransition();
+  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError(null);
+        setNote(null);
+        start(async () => {
+          const res = await fetch('/api/proxy/onyx/tenant/community', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              community_url: value.trim(),
+              community_label: name.trim() || null,
+            }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!body.ok) { setError(body.message ?? 'That did not save.'); return; }
+          setNote(value.trim() ? 'Saved. Learners will see it on Jobs.' : 'Link removed.');
+          router.refresh();
+        });
+      }}
+    >
+      <div>
+        <label className="block text-[13px] font-semibold text-slate-700" htmlFor="cm-url">
+          Community invite link
+        </label>
+        <input id="cm-url" type="url" value={value} onChange={(e) => setValue(e.target.value)}
+          placeholder="https://chat.whatsapp.com/…"
+          className="mt-1.5 block min-h-[42px] w-full rounded-xl border border-line bg-white
+                     px-3.5 text-[14px] focus:border-brand-500 focus:outline-none
+                     focus:ring-2 focus:ring-brand-600/20" />
+        <p className="mt-1 text-[12.5px] text-muted">
+          Shown to everybody here on the Jobs page. Leave it empty to take it down.
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-[13px] font-semibold text-slate-700" htmlFor="cm-label">
+          Button text
+        </label>
+        <input id="cm-label" value={name} onChange={(e) => setName(e.target.value)}
+          maxLength={120} placeholder="Join our WhatsApp community"
+          className="mt-1.5 block min-h-[42px] w-full rounded-xl border border-line bg-white
+                     px-3.5 text-[14px] focus:border-brand-500 focus:outline-none
+                     focus:ring-2 focus:ring-brand-600/20" />
+      </div>
+
+      {error ? (
+        <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
+          {error}
+        </p>
+      ) : null}
+      {note ? (
+        <p role="status" className="rounded-xl bg-green-50 px-3 py-2 text-[13px] text-green-800">
+          {note}
+        </p>
+      ) : null}
+
+      <button type="submit" disabled={pending}
+        className="min-h-[40px] rounded-xl bg-brand-600 px-4 text-[14px] font-bold text-white
+                   hover:bg-brand-700 disabled:opacity-50">
+        {pending ? 'Saving…' : 'Save'}
+      </button>
+    </form>
+  );
+}

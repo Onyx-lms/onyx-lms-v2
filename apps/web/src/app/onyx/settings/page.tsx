@@ -2,17 +2,12 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxPageRole, onyxApi, type Me } from '@/lib/onyx-session';
-import { FacultyExamPermissionToggle, StudentSignupSettings } from '@/components/onyx-settings';
-import { PermissionMatrix, type CapabilityRow } from '@/components/onyx-permissions';
+import {
+  CommunityLinkForm, FacultyExamPermissionToggle, StudentSignupSettings,
+} from '@/components/onyx-settings';
 import { SectionHead } from '@/components/onyx-ui';
 
 export const metadata: Metadata = { title: 'Settings' };
-
-interface PermissionsPayload {
-  capabilities: CapabilityRow[];
-  areas: string[];
-  mine: string[];
-}
 
 /**
  * F-07 -- how this institution runs, rather than what is in it.
@@ -31,10 +26,7 @@ interface PermissionsPayload {
  */
 export default async function OnyxSettingsPage() {
   await requireOnyxPageRole('admin');
-  const [me, permissions] = await Promise.all([
-    onyxApi<Me>('/api/onyx/me'),
-    onyxApi<PermissionsPayload>('/api/onyx/permissions'),
-  ]);
+  const me = await onyxApi<Me>('/api/onyx/me');
 
   return (
     <OnyxShell
@@ -44,13 +36,19 @@ export default async function OnyxSettingsPage() {
       subtitle={'How ' + me.tenant.name + ' runs, not what is in it.'}
     >
       <div className="space-y-7">
+        {/*
+          * Permissions moved to their own screen ("Roles and permissions").
+          *
+          * This page had both, which put "how this institution runs" and "who
+          * is allowed to run it" under one heading. They are different
+          * questions, asked by different people at different times -- a
+          * settings page is about the site, and authority is not a setting.
+          */}
         <section>
-          <SectionHead title="Permissions" />
-          <PermissionMatrix
-            capabilities={permissions.capabilities}
-            areas={permissions.areas}
-            canEdit={permissions.mine.includes('settings.manage')}
-            scope={{ endpoint: '/api/proxy/onyx/permissions' }}
+          <SectionHead title="Community" />
+          <CommunityLinkForm
+            url={me.tenant.community_url ?? ''}
+            label={me.tenant.community_label ?? ''}
           />
         </section>
 

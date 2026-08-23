@@ -21,7 +21,21 @@ import { Modal } from '@/components/onyx-modal';
  */
 
 export type FieldType =
-  | 'text' | 'textarea' | 'number' | 'date' | 'datetime' | 'time' | 'select' | 'checkbox';
+  | 'text' | 'textarea' | 'number' | 'date' | 'datetime' | 'time' | 'select' | 'checkbox'
+  /**
+   * An amount of money, typed the way money is written.
+   *
+   * The database stores integer minor units and always will -- floating-point
+   * rupees is how a ledger ends up a paisa out. What was wrong was asking a
+   * PERSON for them: the field said "Price in paise" with "149900 is ₹1,499.00"
+   * underneath, so setting a price meant doing arithmetic, and a slip of two
+   * zeroes is the difference between ₹1,499 and ₹149,900.
+   *
+   * So the field takes rupees and converts on the way out. The conversion is
+   * one line in `toBody`; the alternative was every author multiplying by a
+   * hundred in their head, for ever.
+   */
+  | 'money';
 
 export interface Field {
   name: string;
@@ -111,6 +125,12 @@ function toBody(fields: Field[], data: FormData): Record<string, unknown> {
       // rejects with "Expected number, received string".
       const empty = f.fallback;
       if (empty !== undefined && empty !== '') body[f.name] = empty;
+      continue;
+    }
+    if (f.type === 'money') {
+      // Rounded, not truncated: 12.005 typed into a rupee field is a person
+      // meaning 12.01, and `Math.trunc` would quietly take the paisa off.
+      body[f.name] = Math.round(Number(raw) * 100);
       continue;
     }
     if (f.type === 'number' || f.numeric) { body[f.name] = Number(raw); continue; }
@@ -301,6 +321,25 @@ export function CreatePanel({
                               <option key={o.value} value={o.value}>{o.label}</option>
                             ))}
                           </select>
+                        ) : f.type === 'money' ? (
+                          /* The currency symbol sits IN the field, so the
+                             number beside it needs no explaining. `step` of a
+                             hundredth is what makes a keyboard's up-arrow move
+                             by a paisa rather than by a rupee. */
+                          <div className="relative">
+                            <span aria-hidden
+                              className="pointer-events-none absolute left-3 top-1/2
+                                         -translate-y-1/2 text-[15px] font-semibold text-muted">
+                              ₹
+                            </span>
+                            <input
+                              {...common}
+                              type="number" inputMode="decimal" step="0.01"
+                              min={f.min ?? 0} max={f.max}
+                              placeholder={f.placeholder ?? '0.00'}
+                              className={(common.className ?? '') + ' pl-7'}
+                            />
+                          </div>
                         ) : (
                           <input
                             {...common}

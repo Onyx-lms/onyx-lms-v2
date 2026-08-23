@@ -17,6 +17,10 @@ const COLUMNS = 'id, tenant_id, actor_id, action, entity_type, entity_id, before
 /** The actions worth recording. A closed list, so the log stays searchable. */
 export type AuditAction =
   | 'tenant.created' | 'tenant.updated'
+  // Who gave somebody a capability their role does not carry. The first
+  // question asked after a person does something nobody expected them to be
+  // able to do (0036).
+  | 'member.permissions'
   | 'membership.created' | 'membership.role_changed' | 'membership.removed' | 'membership.updated'
   | 'user.updated'
   | 'enrolment.created' | 'enrolment.removed'

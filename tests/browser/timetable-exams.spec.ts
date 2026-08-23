@@ -343,7 +343,7 @@ test('an examination owns its time, and the class it displaces says so', async (
   await expect(page.getByText('CD101')).toHaveCount(0);
 });
 
-test('a learner is not offered Interviews', async ({ page }) => {
+test('a learner is offered neither Interviews nor Fees', async ({ page }) => {
   // An interview is scheduled BY the placement office or an employer; a
   // learner's part is being told when to turn up, which reaches them through
   // their inbox. The route keeps its own page guard -- this hides an entrance,
@@ -351,4 +351,12 @@ test('a learner is not offered Interviews', async ({ page }) => {
   await signInViaForm(page, learnerEmail);
   await expect(page.getByRole('link', { name: 'Jobs' })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('link', { name: 'Interviews' })).toHaveCount(0);
+
+  // Fees goes for a related reason: what a learner pays for here is a course,
+  // and that has its own screen on the catalogue. Institution fee invoices are
+  // the office's ledger. Asserted beside Timetable, which is in the same nav
+  // group -- so a group that had quietly stopped rendering would fail here
+  // rather than pass by absence.
+  await expect(page.getByRole('link', { name: 'Timetable' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Fees' })).toHaveCount(0);
 });
