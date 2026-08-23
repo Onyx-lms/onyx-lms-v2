@@ -159,6 +159,23 @@ test('a lookalike domain is refused', async () => {
   expect(found.data ?? null, 'a lookalike domain picked an institution').toBeNull();
 });
 
+test('the profile shows each editor exactly once', async ({ page }) => {
+  // A regression guard for a duplicated component, not a style rule. The
+  // script that first mounted the identity editor crashed partway and was
+  // re-run, so the page rendered two identical 'Your details' cards -- each
+  // with its own name field, its own picture control and its own Save. Two
+  // forms writing the same record is worse than it looks: whichever was
+  // touched last wins, and neither shows what the other did.
+  await signInViaForm(page, 'priya@' + DOMAIN, SIGNUP_PASSWORD);
+  await page.goto('/onyx/profile');
+
+  await expect(page.getByText('Your details', { exact: true }))
+    .toHaveCount(1, { timeout: 20_000 });
+  await expect(page.getByLabel('Your name')).toHaveCount(1);
+  await expect(page.getByLabel('Phone')).toHaveCount(1);
+  await expect(page.getByText('Your public profile', { exact: true })).toHaveCount(1);
+});
+
 test('a student edits their own name, and it is their name everywhere', async ({ page }) => {
   await signInViaForm(page, 'priya@' + DOMAIN, SIGNUP_PASSWORD);
   await page.goto('/onyx/profile');

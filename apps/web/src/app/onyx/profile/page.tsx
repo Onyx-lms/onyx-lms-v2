@@ -121,26 +121,6 @@ export default async function OnyxProfilePage() {
         </section>
       ) : null}
 
-      {/* Name, number and picture come FIRST, above the public profile.
-          They are the things every other screen shows about this person -- a
-          register, a results sheet, a certificate -- and until now they were
-          the only parts of a profile its owner could not change. Somebody
-          arriving to fix a misspelled name should not have to scroll past a
-          bio to find where. */}
-      {details ? (
-        <section className="mb-6">
-          <IdentityEditor
-            identity={{
-              name: me.name ?? '',
-              email: me.email,
-              phone: details.phone ?? '',
-              photo_url: me.photo_url ?? null,
-            }}
-            institution={me.tenant.name}
-          />
-        </section>
-      ) : null}
-
       {details ? (
         <section className="mb-6">
           <SectionHead title="Your public profile" />
