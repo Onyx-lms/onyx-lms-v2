@@ -262,28 +262,34 @@ test('signing out from that menu really signs you out', async ({ page }) => {
  * Plenty of colleges never issue email addresses at all, and their students
  * are on personal accounts through no fault of theirs. Identifying an
  * institution from the domain cannot help those people, so an institution can
- * instead let somebody CHOOSE it from a list.
+ * instead let somebody CHOOSE it from a list and be admitted at once.
  *
- * The whole design turns on one thing: a name picked from a dropdown is a
- * claim, not evidence. If picking were enough, anybody on the internet could
- * select a real college and be inside it -- reading its catalogue, joining its
- * open courses, appearing on its rosters. So the membership is created PENDING
- * and somebody at the institution decides, and these tests are mostly about
- * proving that a pending account really is not an account yet.
+ * That is the whole behaviour and it is worth being blunt about what it costs:
+ * an institution in `open` mode can be joined by anybody who picks it, with no
+ * check at all. An earlier version queued those registrations for an
+ * administrator; that was overruled deliberately, on the grounds that a queue
+ * between a learner and their first lesson is a queue nobody empties. The
+ * institution decides, it is off by default, and `domain` is the mode for
+ * anyone who wants the address to prove the claim -- which is what these tests
+ * hold, by proving a domain-only institution cannot be picked.
  */
 test.describe('choosing an institution instead', () => {
   const T2 = { name: 'Choose College ' + RUN, slug: 'choose-' + RUN };
   const chooseAdmin = mail('choose', 'admin');
   const applicant = 'applicant.' + RUN + '@personal.test';
+  const w2 = { tenantId: 0 };
 
   test.beforeAll(async () => {
     await createTenant(T2.name, T2.slug, 'Choose Admin', chooseAdmin);
+    w2.tenantId = await withDb(async (c) => Number((await c.query(
+      'SELECT id FROM public."onyx_tenants" WHERE slug=$1', [T2.slug])).rows[0].id));
+
+    // Open to anyone, and with no domains at all -- the situation this mode
+    // exists for.
     const token = await adminToken(chooseAdmin);
-    // Open, but by request rather than by domain -- and with no domains at
-    // all, which is the situation this mode exists for.
     const saved = await api('/api/onyx/tenant/settings', {
       method: 'PATCH', token,
-      body: { student_signup: true, signup_domains: '', signup_mode: 'request' },
+      body: { student_signup: true, signup_domains: '', signup_mode: 'open' },
     });
     expect(saved.status).toBe(200);
   });
@@ -302,88 +308,67 @@ test.describe('choosing an institution instead', () => {
     expect(list.data.map((t) => t.name)).toContain(T2.name);
 
     // The domain-only institution from the tests above must NOT be offered:
-    // it registers people by their address and has not asked to be chosen.
+    // it registers people by their address and has not opened itself up.
     expect(list.data.map((t) => t.name), 'a domain-only institution was offered as a choice')
       .not.toContain(T.name);
   });
 
-  test('a personal address registers by choosing, and waits', async () => {
-    const made = await api<{ pending?: boolean }>('/api/onyx/auth/signup', {
-      method: 'POST',
-      body: {
-        name: 'Chosen Applicant', email: applicant, password: SIGNUP_PASSWORD,
-        phone: '9000000009', roll_number: 'CH-1',
-        tenant_id: await withDb(async (c) => Number((await c.query(
-          'SELECT id FROM public."onyx_tenants" WHERE slug=$1', [T2.slug])).rows[0].id)),
-      },
+  test('a personal address registers by choosing, and is in straight away',
+    async ({ page }) => {
+      await page.context().clearCookies();
+      await page.goto('/onyx/signup');
+
+      await page.getByLabel('Full name').fill('Chosen Applicant');
+      await page.getByLabel('Organisation email').fill(applicant);
+      await page.getByLabel('Organisation email').blur();
+
+      // The picker appears only once the address has failed to name one.
+      const picker = page.getByLabel('Your institution');
+      await expect(picker).toBeVisible({ timeout: 20_000 });
+      await picker.selectOption({ label: T2.name });
+
+      await page.getByLabel('Mobile number').fill('9000000009');
+      await page.getByLabel('Roll number').fill('CH-1');
+      await page.getByLabel('Password').fill(SIGNUP_PASSWORD);
+      await page.getByRole('button', { name: /create|sign up|register/i }).first().click();
+
+      // Signed in, not queued: no waiting room, no second visit.
+      await page.waitForURL((u) => !u.pathname.includes('/signup'), { timeout: 30_000 });
+      await page.getByRole('button', { name: /^Account:/ }).click();
+      await expect(page.getByRole('menu', { name: 'Account' }))
+        .toContainText(T2.name, { timeout: 20_000 });
+
+      await withDb(async (c) => {
+        const { rows } = await c.query(
+          `SELECT m.status, m.role, m.tenant_id FROM public."onyx_memberships" m
+             JOIN public."onyx_users" u ON u.id = m.user_id
+            WHERE u.email = $1`, [applicant]);
+        expect(rows.length).toBe(1);
+        expect(Number(rows[0].status), 'the membership should be active at once').toBe(1);
+        expect(String(rows[0].role)).toBe('student');
+        expect(Number(rows[0].tenant_id)).toBe(w2.tenantId);
+      });
     });
-    expect(made.status, 'a chosen institution refused a registration').toBe(200);
-    expect(made.data.pending, 'a picked institution let somebody straight in').toBe(true);
 
-    // Created, but not a member yet.
-    await withDb(async (c) => {
-      const { rows } = await c.query(
-        `SELECT m.status FROM public."onyx_memberships" m
-           JOIN public."onyx_users" u ON u.id = m.user_id
-          WHERE u.email = $1`, [applicant]);
-      expect(rows.length).toBe(1);
-      expect(Number(rows[0].status), 'the membership should be pending').toBe(0);
-    });
-  });
-
-  test('and cannot sign in until somebody says so', async () => {
-    // The claim the whole design rests on. A pending membership is not a way
-    // in, and it needs no special enforcement: membershipsFor selects
-    // status = 1 and signIn refuses an account with no active membership.
-    const refused = await api('/api/onyx/auth/login', {
-      body: { email: applicant, password: SIGNUP_PASSWORD },
-    });
-    expect(refused.status, 'somebody nobody approved was able to sign in')
-      .toBeGreaterThanOrEqual(400);
-  });
-
-  test('an administrator sees the request and lets them in', async ({ page }) => {
-    await signInViaForm(page, chooseAdmin);
-    await page.goto('/onyx/people');
-
-    // Above the roster, because it is the only thing on that page somebody is
-    // waiting on.
-    await expect(page.getByText('Waiting to join · 1')).toBeVisible({ timeout: 20_000 });
-    // Scoped to the requests table: a pending person is deliberately NOT in
-    // the roster below, and once approved they appear there in two
-    // responsive variants, so an unscoped locator is ambiguous either way.
-    const queue = page.getByRole('table', { name: /waiting to be admitted/i });
-    await expect(queue).toContainText(applicant);
-
-    await page.getByRole('button', { name: /let them in/i }).click();
-    await expect(page.getByText('Waiting to join · 1')).toHaveCount(0, { timeout: 20_000 });
-
-    await expect.poll(async () => withDb(async (c) => {
-      const { rows } = await c.query(
-        `SELECT m.status FROM public."onyx_memberships" m
-           JOIN public."onyx_users" u ON u.id = m.user_id
-          WHERE u.email = $1`, [applicant]);
-      return Number(rows[0]?.status ?? -1);
-    }), { timeout: 20_000, message: 'the approval did not land' }).toBe(1);
-  });
-
-  test('now they can sign in', async () => {
+  test('and can sign in again afterwards', async () => {
+    // The complaint that produced this design: register, then come back
+    // tomorrow and sign in like anybody else.
     const ok = await api('/api/onyx/auth/login', {
       body: { email: applicant, password: SIGNUP_PASSWORD },
     });
-    expect(ok.status, 'an approved member still could not sign in').toBe(200);
+    expect(ok.status, 'somebody who registered could not sign back in').toBe(200);
   });
 
-  test('a domain-only institution cannot be picked', async () => {
+  test('a domain-only institution still cannot be picked', async () => {
     // The other institution in this file registers people by their address.
-    // Naming it in `tenant_id` must not be a way around that.
-    const tenantId = w.tenantId;
+    // Naming it in `tenant_id` must not be a way around that -- otherwise the
+    // picker would let anybody into every institution on the platform.
     const refused = await api('/api/onyx/auth/signup', {
       method: 'POST',
       body: {
         name: 'Chancer', email: 'chancer.' + RUN + '@personal.test',
         password: SIGNUP_PASSWORD, phone: '9000000010', roll_number: 'X-1',
-        tenant_id: tenantId,
+        tenant_id: w.tenantId,
       },
     });
     expect(refused.status, 'a domain-only institution accepted a picked registration')

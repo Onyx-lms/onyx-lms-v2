@@ -82,8 +82,8 @@ export function FacultyExamPermissionToggle({ enabled }: { enabled: boolean }) {
  */
 export function StudentSignupSettings({ enabled, domains, mode }: {
   enabled: boolean; domains: string;
-  /** 'domain' -- the address decides. 'request' -- they pick, you approve. */
-  mode: 'domain' | 'request';
+  /** 'domain' -- only your own addresses. 'open' -- anyone may pick you. */
+  mode: 'domain' | 'open';
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -91,7 +91,7 @@ export function StudentSignupSettings({ enabled, domains, mode }: {
   const [saved, setSaved] = useState(false);
   const [on, setOn] = useState(enabled);
   const [list, setList] = useState(domains);
-  const [how, setHow] = useState<'domain' | 'request'>(mode);
+  const [how, setHow] = useState<'domain' | 'open'>(mode);
 
   const save = () => start(async () => {
     setError(null);
@@ -136,17 +136,15 @@ export function StudentSignupSettings({ enabled, domains, mode }: {
       </div>
 
       {/*
-        * How somebody proves they belong here, which is a real choice rather
-        * than a preference.
+        * Who may join, which is a real decision rather than a preference.
         *
-        * An address at a domain you own IS evidence, so that mode admits
-        * people instantly and nobody has to do anything. A name picked from a
-        * list is a claim, so that mode queues it for somebody to look at --
-        * without that, anybody on the internet could choose your institution
-        * and be inside it.
-        *
-        * Institutions that issue addresses to some students and not others
-        * want the second: a matching address still skips the queue.
+        * An address at a domain you own is evidence of belonging here, and
+        * that mode accepts nothing else. The second mode accepts anybody who
+        * picks this institution from a list -- there is no check behind it at
+        * all, so the copy says so in those words rather than dressing it as
+        * convenience. An institution that does not issue addresses has no
+        * other way to let its own students in; one that does should leave this
+        * alone.
         */}
       {on ? (
         <fieldset className="mt-4">
@@ -158,9 +156,10 @@ export function StudentSignupSettings({ enabled, domains, mode }: {
               ['domain', 'By their email address',
                 'Only addresses at the domains below. They are in straight away, and '
                 + 'nobody here has to approve anything.'],
-              ['request', 'They choose this institution',
-                'Anyone may pick you from a list, and somebody here approves them before '
-                + 'they can sign in. An address at your domains still goes straight in.'],
+              ['open', 'Anyone may choose this institution',
+                'You appear in a list on the sign-up page, and anybody who picks you is in '
+                + 'straight away — nobody here checks. Switch this on only if that is what '
+                + 'you want.'],
             ] as const).map(([value, title, detail]) => (
               <label key={value}
                 className={'flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 '
@@ -199,8 +198,8 @@ export function StudentSignupSettings({ enabled, domains, mode }: {
         also accepts <code>cse.example.edu</code>. Write
         <code className="mx-1">*.example.edu</code>
         for subdomains only.
-        {how === 'request'
-          ? ' Anyone at these addresses skips the approval queue.'
+        {how === 'open'
+          ? ' People at these addresses find you without picking from the list.'
           : ' Anything else is told that no institution accepts it, without naming any.'}
       </p>
 

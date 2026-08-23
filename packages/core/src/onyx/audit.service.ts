@@ -44,8 +44,7 @@ export type AuditAction =
   // Live Classes. A domain carries a price and a link that leaves the product,
   // so who changed one, and to what, is worth keeping.
   | 'domain.created' | 'domain.updated' | 'domain.deleted'
-  | 'domain.registered'
-  | 'member.approved' | 'member.declined';
+  | 'domain.registered';
 
 export interface AuditEntry {
   action: AuditAction;

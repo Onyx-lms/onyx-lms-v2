@@ -129,9 +129,9 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
       faculty_can_schedule_exams: z.boolean().optional(),
       student_signup: z.boolean().optional(),
       signup_domains: z.string().max(500).optional(),
-      // How, not whether. 'domain' is the address deciding; 'request' is the
-      // student picking this institution and an administrator approving.
-      signup_mode: z.enum(['domain', 'request']).optional(),
+      // How, not whether. 'domain' is the address deciding; 'open' is anyone
+      // being able to pick this institution and join it at once.
+      signup_mode: z.enum(['domain', 'open']).optional(),
     }), req.body);
     const before = await ctx.onyxTenancy.tenant(claims.tenant_id);
     let tenant = before;
@@ -235,29 +235,11 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
       password: z.string().min(8).max(255),
       phone: z.string().min(6).max(30).nullish(),
       roll_number: z.string().max(40).nullish(),
-      // The institution they picked, for an address whose domain names none.
+      // The institution they picked, when their address names none.
       tenant_id: z.number().int().positive().nullish(),
     }), req.body);
 
     const result = await ctx.onyxTenancy.signUpStudent(body);
-
-    /*
-     * A request is not an account you can use yet.
-     *
-     * Signing in here would throw -- membershipsFor() selects status = 1 and
-     * signIn refuses an account with no active membership -- so somebody who
-     * had just filled in six fields would be told their details do not belong
-     * to an institution. Answering plainly is the whole difference between a
-     * queue and a broken form.
-     */
-    if (!result.approved) {
-      return ok({
-        pending: true,
-        user: result.user,
-        tenant: result.tenant,
-      }, 'Your request has gone to ' + result.tenant.name
-        + '. You will be able to sign in once they approve it.');
-    }
 
     // Signed in immediately. Asking somebody to register and then to sign in
     // with what they just typed is a form they fill in twice.
@@ -293,33 +275,17 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
     return ok(await ctx.onyxTenancy.openInstitutions());
   });
 
-  /** Who has asked to join, for the administrator who decides. */
-  app.get('/api/onyx/members/pending', async (req) => {
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'people.invite');
-    return ok(await ctx.onyxTenancy.pendingMembers(claims.tenant_id));
-  });
-
   /**
-   * Letting somebody in, or turning them away.
+   * The institutions a student may pick from.
    *
-   * Behind `people.invite`, the same capability that adds a member by hand:
-   * approving a request is the same act with the paperwork already filled in.
-   * Audited either way -- who is inside an institution is exactly the kind of
-   * decision somebody asks about six months later.
+   * Unauthenticated, like the lookup beside it: somebody choosing where they
+   * study does not have an account yet. It names only institutions that have
+   * said anyone may join, and only their name -- and the catalogue already
+   * names the institution behind every public course, so this discloses
+   * nothing a visitor could not already read.
    */
-  app.post('/api/onyx/members/:id/decide', async (req) => {
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'people.invite');
-    const body = validate(z.object({ approve: z.boolean() }), req.body);
-    const result = await ctx.onyxTenancy.decideMembership(
-      claims.tenant_id, idOf(req), body.approve);
-    await ctx.onyxAudit.record(claims, {
-      action: body.approve ? 'member.approved' : 'member.declined',
-      entityType: 'membership', entityId: idOf(req),
-      after: { approved: body.approve }, ip: ipOf(req),
-    });
-    return ok(result, body.approve ? 'They are in.' : 'Request declined.');
+  app.get('/api/onyx/auth/signup/institutions', async () => {
+    return ok(await ctx.onyxTenancy.openInstitutions());
   });
 
   app.get('/api/onyx/auth/signup/institution', async (req) => {

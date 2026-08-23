@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxPeople, type Member } from '@/components/onyx-people';
-import { JoinRequests, type JoinRequest } from '@/components/onyx-join-requests';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { requireOnyxPageRole, onyxApi, type Me } from '@/lib/onyx-session';
 import { CreatePanel } from '@/components/onyx-create';
 import { SectionHead, StatTile } from '@/components/onyx-ui';
 
@@ -22,15 +21,9 @@ export default async function OnyxPeoplePage(
 ) {
   const claims = await requireOnyxPageRole('admin', 'faculty');
   const { role } = await searchParams;
-  const [me, members, requests] = await Promise.all([
+  const [me, members] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
     onyxApi<Member[]>('/api/onyx/members'),
-    // Admin only, and safe rather than fatal: faculty reach this page too, and
-    // the roster should not disappear for them because a queue they cannot see
-    // answered 403.
-    claims.tenant_role === 'admin'
-      ? onyxApiSafe<JoinRequest[]>('/api/onyx/members/pending')
-      : Promise.resolve(null),
   ]);
   const initialRole = role as Member['role'] | undefined;
 
@@ -53,10 +46,6 @@ export default async function OnyxPeoplePage(
       title={initialRole && ROLE_TITLE[initialRole] ? ROLE_TITLE[initialRole] : 'People'}
       subtitle={'Everyone at ' + me.tenant.name + '. Nobody from anywhere else.'}
     >
-      {/* Above the headcount, because it is the only thing on this page that
-          somebody is waiting on. It renders nothing when the queue is empty. */}
-      <JoinRequests requests={requests ?? []} />
-
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile label="Students" value={count('student')} note="enrolled at this institution" />
         <StatTile label="Teaching" value={count('faculty')} note="faculty accounts" />

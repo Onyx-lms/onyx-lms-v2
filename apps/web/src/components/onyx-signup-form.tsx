@@ -48,9 +48,6 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
    */
   const [choices, setChoices] = useState<{ id: number; name: string }[]>([]);
   const [picked, setPicked] = useState('');
-  /** Set when the answer was "we have passed this to them", not "you are in". */
-  const [requested, setRequested] = useState<string | null>(null);
-
   useEffect(() => {
     void (async () => {
       const res = await fetch('/api/web/onyx/signup-institutions').catch(() => null);
@@ -68,27 +65,6 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
     const body = await res.json().catch(() => ({}));
     setInstitution(body.ok ? (body.data ?? null) : null);
   };
-
-  // Nothing to fill in any more, and nowhere to go: the account exists and
-  // cannot be used until somebody at the institution says so. A form still
-  // sitting there invites a second attempt that will only be refused as a
-  // duplicate address.
-  if (requested) {
-    return (
-      <div className="rounded-2xl border border-line bg-canvas p-5">
-        <h2 className="text-[16px] font-bold text-ink">Request sent</h2>
-        <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">{requested}</p>
-        <p className="mt-3 text-[13px] text-muted">
-          You can close this page. Try signing in once they have let you know.
-        </p>
-        <a href="/onyx/login"
-          className="mt-4 inline-flex min-h-[42px] items-center rounded-xl bg-brand-600 px-4
-                     text-sm font-bold text-white hover:bg-brand-700">
-          Go to sign in
-        </a>
-      </div>
-    );
-  }
 
   return (
     <form
@@ -119,13 +95,6 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
           const body = await res.json().catch(() => ({}));
           if (!body.ok) { setError(body.message ?? 'That did not work.'); return; }
 
-          // Requested rather than joined: there is no session to use yet, so
-          // pushing them at the dashboard would bounce them to a login they
-          // cannot pass. Say what happened and leave them here.
-          if (body.data?.pending) {
-            setRequested(body.message ?? 'Your request has been sent.');
-            return;
-          }
           // Straight in, and straight to whatever they were sent: somebody who
           // followed a link to a paper and had no account yet should land on
           // the paper, not on a dashboard that says nothing about why they came.
@@ -162,14 +131,15 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
            * of institutions never issue addresses at all, and their students
            * are on personal accounts through no fault of theirs.
            *
-           * So a list, where there is one -- and it is a REQUEST rather than a
-           * way in. A dropdown is a claim, and admitting somebody on a claim
-           * would let anybody who can read a name join a real institution.
+           * So a list, where there is one. An institution appears on it only
+           * by choosing to, and choosing to means accepting that anybody who
+           * picks it is in -- there is no check behind this, which is why the
+           * setting is off by default and says so.
            */
           <div className="mt-1.5">
             <p className="text-[12.5px] text-muted">
               That address does not name an institution.
-              {choices.length ? ' Choose yours below and they will be asked to confirm you.'
+              {choices.length ? ' Choose yours below.'
                 : ' Ask your institution to invite you, or check the address.'}
             </p>
             {choices.length ? (
@@ -184,7 +154,7 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
                   ))}
                 </select>
                 <p className="mt-1.5 text-[12.5px] text-muted">
-                  Someone there approves your account before you can sign in.
+                  You will be signed in straight away.
                 </p>
               </div>
             ) : null}
