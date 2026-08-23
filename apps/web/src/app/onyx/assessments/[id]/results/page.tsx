@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxPageRole, onyxApi, type Me } from '@/lib/onyx-session';
+import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
 import type { Assessment, ItemStat, ResultsReport } from '@/lib/onyx-assess';
 import {
   ActionLink, Banner, Buckets, Card, CardGrid, DataTable, EmptyRow, Icon, Meter, Pill,
@@ -34,6 +34,16 @@ const bandOf = (p: number) =>
  * because a discrimination index from six papers is a number rather than a
  * finding, and hiding that is how a good item gets thrown away.
  */
+/** One paper on the course, as `benchmark` reports it. */
+interface BenchmarkRow {
+  assessment_id: number;
+  title: string;
+  sat: number;
+  mean_percent: number;
+  median_percent: number;
+  stdev_percent: number;
+}
+
 export default async function OnyxResultsPage({ params }: { params: Promise<{ id: string }> }) {
   await requireOnyxPageRole('admin', 'faculty', 'exams');
   const { id } = await params;
@@ -43,6 +53,27 @@ export default async function OnyxResultsPage({ params }: { params: Promise<{ id
     onyxApi<ResultsReport>('/api/onyx/assessments/' + id + '/results'),
     onyxApi<{ sat: number; items: ItemStat[] }>('/api/onyx/assessments/' + id + '/items'),
   ]);
+
+  /*
+   * How this paper compares with the others on its course.
+   *
+   * `GET /api/onyx/courses/:id/benchmark` has existed since assessment
+   * analytics did and no screen ever called it, so the one question a marking
+   * meeting asks that this page could not answer -- "was this paper harder
+   * than the last one, or was it the cohort?" -- had a service behind it and
+   * nowhere to appear.
+   *
+   * Safe rather than fatal, and skipped for a paper on no course: the rest of
+   * this page is about THIS paper and should not vanish because a comparison
+   * could not be drawn.
+   */
+  const benchmark = assessment.course_id
+    ? await onyxApiSafe<BenchmarkRow[]>(
+      '/api/onyx/courses/' + assessment.course_id + '/benchmark')
+    : null;
+  // One paper is not a comparison; it is this paper twice.
+  const peers = (benchmark ?? []).length > 1 ? benchmark! : null;
+  const mine = peers?.find((b) => b.assessment_id === Number(id)) ?? null;
 
   // The distribution is counted off the candidate rows already returned. Bars
   // rather than a curve, because the questions a marking meeting asks -- how
@@ -364,6 +395,72 @@ export default async function OnyxResultsPage({ params }: { params: Promise<{ id
               </dl>
             </Card>
           </section>
+
+          {peers ? (
+            <section>
+              <SectionHead title="Against the other papers" />
+              <Card className="p-0">
+                {/*
+                  * The question a marking meeting asks that the numbers above
+                  * cannot answer: was THIS paper hard, or was it the cohort?
+                  * A mean of 54 means one thing beside a course that usually
+                  * averages 52 and quite another beside one that averages 71.
+                  *
+                  * Only the papers with attempts appear -- the service leaves
+                  * out anything nobody has sat, because a row of zeroes for an
+                  * unattempted paper reads as a catastrophe.
+                  */}
+                <ul className="divide-y divide-line">
+                  {peers.map((b) => {
+                    const here = b.assessment_id === Number(id);
+                    return (
+                      <li key={b.assessment_id}
+                        className={'flex items-baseline justify-between gap-3 px-4 py-2.5 '
+                          + (here ? 'bg-brand-50' : '')}>
+                        <span className="min-w-0 text-[13.5px]">
+                          <span className={here ? 'font-bold text-ink' : 'text-ink'}>
+                            {b.title}
+                          </span>
+                          {here ? (
+                            <span className="ml-1.5 text-[12px] font-semibold text-brand-700">
+                              this paper
+                            </span>
+                          ) : null}
+                          <span className="block text-[12px] text-muted">
+                            {b.sat} sat · spread σ {b.stdev_percent}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-right">
+                          <span className="block text-[15px] font-bold tabular-nums">
+                            {b.mean_percent}%
+                          </span>
+                          <span className="block text-[12px] text-muted tabular-nums">
+                            median {b.median_percent}%
+                          </span>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {mine ? (
+                  <p className="border-t border-line px-4 py-2.5 text-[12.5px] text-muted">
+                    {(() => {
+                      const others = peers.filter((b) => b.assessment_id !== Number(id));
+                      const avg = others.reduce((t, b) => t + b.mean_percent, 0) / others.length;
+                      const gap = Math.round((mine.mean_percent - avg) * 10) / 10;
+                      if (Math.abs(gap) < 3) {
+                        return 'In line with the rest of the course.';
+                      }
+                      return gap < 0
+                        ? Math.abs(gap) + ' points below the course average — harder than '
+                          + 'the others, or a cohort that struggled.'
+                        : gap + ' points above the course average.';
+                    })()}
+                  </p>
+                ) : null}
+              </Card>
+            </section>
+          ) : null}
 
           {suspect.length || flat.length || best.length ? (
             <section>

@@ -271,6 +271,18 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
                 scripts one at a time. Hidden once results are out: the service
                 leaves published marks alone, so offering it there would be a
                 button that can only refuse. */}
+            {/* Pulling the online paper's marks in WITHOUT publishing.
+                Publishing does this on the way past, which is right for the
+                ordinary case and leaves one workflow impossible: an exam with
+                an online paper has no marks until publish time, so there was
+                nothing to moderate beforehand and moderating it at all meant
+                publishing first -- which is the one order a moderation is
+                supposed to prevent. The route has always existed; this is the
+                only thing that calls it. */}
+            {exam.assessment_id && !published && mayModerate && unpublished === 0 ? (
+              <ActionButton endpoint={'exams/' + id + '/marks/sync-from-paper'}
+                label="Pull marks from the paper" tone="quiet" />
+            ) : null}
             {mayModerate && !published ? (
               <ModerateMarks examId={Number(id)} maxMarks={Number(exam.max_marks)}
                 unpublished={unpublished} moderated={alreadyModerated} />
