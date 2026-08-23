@@ -344,11 +344,52 @@ export function OnyxRosterMarking({ session, roster }: {
         >
           {pending ? 'Saving…' : 'Save attendance'}
         </button>
-        {session.status !== 'open'
-          ? <span className="text-sm text-muted">This session is closed.</span>
-          : <span className="text-sm text-muted">
-            Anyone still unmarked is recorded absent when the register closes.
-          </span>}
+        {session.status !== 'open' ? (
+          <span className="text-sm text-muted">This session is closed.</span>
+        ) : (
+          <>
+            {/*
+              * Ending the register.
+              *
+              * `POST /api/onyx/attendance/:id/close` has existed as long as
+              * sessions have and nothing ever called it, so this component
+              * rendered "This session is closed" for a state the product could
+              * not reach. Self check-in does lapse on its own once the window
+              * passes, so nothing stayed open for ever -- but a lecturer who
+              * finishes early had no way to stop a code still on the projector
+              * from being used by somebody who had already left.
+              *
+              * It asks first. Closing cannot be undone from here, and the
+              * people still unmarked are about to be counted absent.
+              */}
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                if (!window.confirm(
+                  'Close this register? Anyone still unmarked is counted absent, '
+                  + 'and check-in stops immediately.')) return;
+                start(async () => {
+                  const res = await fetch(
+                    '/api/proxy/onyx/attendance/' + session.id + '/close',
+                    { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({}) });
+                  const body = await res.json().catch(() => ({}));
+                  setNotice(body.ok ? 'Register closed.' : (body.message ?? 'That did not work.'));
+                  if (body.ok) router.refresh();
+                });
+              }}
+              className="inline-flex min-h-[42px] items-center rounded-2xl border border-line
+                         px-4 text-sm font-semibold text-slate-700 hover:bg-brand-50
+                         disabled:opacity-50"
+            >
+              Close the register
+            </button>
+            <span className="text-sm text-muted">
+              Anyone still unmarked is recorded absent when the register closes.
+            </span>
+          </>
+        )}
         {notice ? <span role="status" className="text-sm font-semibold">{notice}</span> : null}
       </div>
     </div>
