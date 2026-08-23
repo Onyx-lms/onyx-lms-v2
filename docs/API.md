@@ -402,6 +402,9 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/permissions` | any member |
 | `PUT` | `/api/onyx/permissions` | admin |
 | `POST` | `/api/onyx/auth/signup` | **no token** — public by design |
+| `GET` | `/api/onyx/auth/signup/institutions` | **no token** — public by design |
+| `GET` | `/api/onyx/members/pending` | admin |
+| `POST` | `/api/onyx/members/:id/decide` | admin |
 | `GET` | `/api/onyx/auth/signup/institution` | **no token** — public by design |
 | `GET` | `/api/onyx/my/profile-details` | any member |
 | `PATCH` | `/api/onyx/my/profile-details` | any member |
@@ -416,4 +419,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_330 endpoints across 9 route files._
+_333 endpoints across 9 route files._

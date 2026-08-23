@@ -45,6 +45,12 @@ export interface Tenant {
   /** Whether learners may register themselves, and from which email domains. */
   student_signup?: boolean;
   signup_domains?: string;
+  /**
+   * How a student may self-register: 'domain' (their address decides, and
+   * admits them at once) or 'request' (they pick this institution and somebody
+   * here approves). Only meaningful while `student_signup` is on.
+   */
+  signup_mode?: string;
 }
 
 export interface Me {

@@ -64,6 +64,7 @@ export default async function OnyxSettingsPage() {
           <StudentSignupSettings
             enabled={me.tenant.student_signup === true}
             domains={me.tenant.signup_domains ?? ''}
+            mode={me.tenant.signup_mode === 'request' ? 'request' : 'domain'}
           />
         </section>
 

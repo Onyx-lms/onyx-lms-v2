@@ -90,6 +90,17 @@ export async function POST(request: Request, ctx: { params: Promise<{ action: st
  */
 export async function GET(request: Request, ctx: { params: Promise<{ action: string }> }) {
   const { action } = await ctx.params;
+
+  // The list somebody picks from when their address names no institution.
+  // Public for the same reason as the lookup below -- a person choosing where
+  // they study does not have an account yet -- and it names only institutions
+  // that accept requests, which the public catalogue already names anyway.
+  if (action === 'signup-institutions') {
+    const res = await fetch(API + '/api/onyx/auth/signup/institutions');
+    const payload = await res.json().catch(() => ({ ok: false, message: 'Bad response' }));
+    return NextResponse.json(payload, { status: res.status });
+  }
+
   if (action !== 'signup-institution') {
     return NextResponse.json({ ok: false, message: 'Unknown action.' }, { status: 404 });
   }

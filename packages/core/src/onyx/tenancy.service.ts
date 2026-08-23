@@ -22,7 +22,7 @@ import { onyxAssetKey } from './content.service.ts';
 import { slugify } from '../authoring/slug.ts';
 import type { PermissionOverrides } from './permissions.ts';
 
-const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, student_signup, signup_domains, created_at, updated_at';
+const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, student_signup, signup_domains, signup_mode, created_at, updated_at';
 /**
  * The slice of StorageService a profile picture needs.
  *
@@ -261,7 +261,19 @@ export class TenancyService {
     return value;
   }
 
-  async addMember(tenantId: number, userId: string, role: Role, roll?: string | null) {
+  /**
+   * `opts.status` is 0 for a membership somebody has REQUESTED rather than
+   * been given -- a student who picked this institution from a list, whose
+   * claim nobody has checked yet. It defaults to 1, so every existing caller
+   * (an administrator adding a colleague, an invite, a tenant's first admin)
+   * keeps creating people who are simply in.
+   *
+   * A pending membership is not a way in and needs no extra enforcement to
+   * stay that way: membershipsFor() selects status = 1, and signIn refuses an
+   * account with no active membership.
+   */
+  async addMember(tenantId: number, userId: string, role: Role, roll?: string | null,
+    opts: { status?: 0 | 1 } = {}) {
     if (!ROLES.includes(role)) throw new HttpError(422, 'That is not a role.');
     const existing = await this.membership(tenantId, userId);
     if (existing) throw new HttpError(422, 'They are already a member of this institution.');
@@ -269,7 +281,7 @@ export class TenancyService {
     const rollNumber = await this.#cleanRoll(tenantId, roll);
     const { data, error } = await this.#db.from('onyx_memberships')
       .insert({
-        tenant_id: tenantId, user_id: userId, role, status: 1,
+        tenant_id: tenantId, user_id: userId, role, status: opts.status ?? 1,
         roll_number: rollNumber ?? null,
       })
       .select(MEMBERSHIP_COLUMNS).maybeSingle();
@@ -390,28 +402,72 @@ export class TenancyService {
     return best;
   }
 
+  /**
+   * A learner registering themselves.
+   *
+   * Two ways in, and which one applies is the INSTITUTION's decision rather
+   * than the applicant's:
+   *
+   *   * They typed an address whose domain a listed institution claims. That
+   *     address is the evidence, so they are admitted at once.
+   *   * They picked an institution that accepts requests. A dropdown is a
+   *     claim and not evidence, so the membership is created PENDING and an
+   *     administrator approves it. A pending membership cannot sign in --
+   *     membershipsFor() selects status = 1 and signIn refuses an account with
+   *     no active membership.
+   *
+   * A picked institution whose domain ALSO matches skips the queue, which is
+   * the case a college with some domain addresses and some personal ones
+   * needs: one setting, both behaviours.
+   */
   async signUpStudent(input: {
     name: string; email: string; password: string;
     phone?: string | null; roll_number?: string | null;
+    /** The institution they picked, when they picked one. */
+    tenant_id?: number | null;
   }) {
     const domain = TenancyService.domainOf(input.email);
     if (!domain) throw new HttpError(422, 'That does not look like an email address.');
 
     const { data: tenants } = await this.#db.from('onyx_tenants')
       .select(TENANT_COLUMNS).eq('student_signup', true).eq('status', 1);
+    const open = tenants ?? [];
 
-    // The most specific match, not the first one the database happened to
-    // return -- see domainSpecificity.
-    const tenant = (tenants ?? [])
+    // The most specific domain match, not the first one the database happened
+    // to return -- see domainSpecificity.
+    const byDomain = open
       .map((t) => ({ t, score: TenancyService.domainSpecificity(domain, String(t.signup_domains ?? '')) }))
       .filter((x) => x.score > 0)
       .sort((a, b) => b.score - a.score)[0]?.t;
 
+    let tenant = byDomain;
+    // Admitted at once when the address proves it, pending when it does not.
+    let approved = Boolean(byDomain);
+
+    if (input.tenant_id) {
+      const picked = open.find((t) => Number(t.id) === Number(input.tenant_id));
+      // Not "no such institution": one that exists but does not accept
+      // registrations is a different fact, and saying so stops somebody
+      // hunting for a typo in a name that was right.
+      if (!picked) {
+        throw new HttpError(422, 'That institution is not accepting registrations.');
+      }
+      if (String(picked.signup_mode ?? 'domain') !== 'request'
+        && Number(picked.id) !== Number(byDomain?.id)) {
+        throw new HttpError(422,
+          'That institution only registers people with its own email address.');
+      }
+      tenant = picked;
+      // Picking the institution whose domain you already matched is still
+      // instant; picking a different one is a request whatever your address.
+      approved = Number(picked.id) === Number(byDomain?.id);
+    }
+
     if (!tenant) {
       throw new HttpError(422,
         'No institution here accepts registrations from ' + domain + '. '
-        + 'Use the email your institution gave you — if that IS the address they '
-        + 'gave you, ask them to add ' + domain + ' on their settings page.');
+        + 'Choose your institution from the list, or use the email address it '
+        + 'gave you.');
     }
 
     // An address that already belongs to somebody is not told apart from one
@@ -431,12 +487,17 @@ export class TenancyService {
       phone: input.phone ?? null,
     });
     const membership = await this.addMember(
-      Number(tenant.id), user.id, 'student', input.roll_number ?? null);
+      Number(tenant.id), user.id, 'student', input.roll_number ?? null,
+      { status: approved ? 1 : 0 });
 
     return {
       user: { id: user.id, email: user.email, name: user.name },
       membership,
       tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug },
+      // The form needs to know which of the two things just happened: signed
+      // in, or waiting. Telling somebody "welcome" and then refusing their
+      // sign-in is the worst version of this.
+      approved,
     };
   }
 
@@ -485,8 +546,71 @@ export class TenancyService {
     return tenant ? { id: tenant.id, name: tenant.name } : null;
   }
 
+  /**
+   * The institutions a student may pick from.
+   *
+   * Name and id only, and only those actually accepting requests. It discloses
+   * which institutions exist, which is worth being deliberate about -- and
+   * they are already public: the catalogue at /api/onyx/catalogue names the
+   * institution behind every course it lists. This adds no fact that a visitor
+   * could not already read.
+   */
+  async openInstitutions() {
+    const { data } = await this.#db.from('onyx_tenants')
+      .select(TENANT_COLUMNS)
+      .eq('student_signup', true).eq('status', 1).order('name');
+    return (data ?? [])
+      .filter((t) => String(t.signup_mode ?? 'domain') === 'request')
+      .map((t) => ({ id: Number(t.id), name: String(t.name), slug: String(t.slug) }));
+  }
+
+  /** Who is waiting to be let in. */
+  async pendingMembers(tenantId: number) {
+    const { data } = await this.#db.from('onyx_memberships')
+      .select(MEMBERSHIP_COLUMNS)
+      .eq('tenant_id', tenantId).eq('status', 0).order('id', { ascending: false });
+    const rows = data ?? [];
+    if (!rows.length) return [];
+
+    const ids = [...new Set(rows.map((r) => String(r.user_id)))];
+    const { data: users } = await this.#db.from('onyx_users').select(USER_COLUMNS).in('id', ids);
+    const byId = new Map((users ?? []).map((u) => [String(u.id), u]));
+    return rows.map((r) => ({ ...r, user: byId.get(String(r.user_id)) ?? null }));
+  }
+
+  /**
+   * Let somebody in, or turn them away.
+   *
+   * Declining DELETES the membership rather than parking it in a third state.
+   * A refused request that lingers is a row somebody has to interpret every
+   * time they read the list, and the person can apply again -- which is the
+   * right outcome when a request was refused because a roll number was wrong
+   * rather than because the applicant was a stranger.
+   */
+  async decideMembership(tenantId: number, membershipId: number, approve: boolean) {
+    const { data: membership } = await this.#db.from('onyx_memberships')
+      .select(MEMBERSHIP_COLUMNS)
+      .eq('tenant_id', tenantId).eq('id', membershipId).maybeSingle();
+    if (!membership) throw new HttpError(404, 'No such request.');
+    if (Number(membership.status) !== 0) {
+      throw new HttpError(422, 'That request has already been decided.');
+    }
+
+    if (!approve) {
+      await this.#db.from('onyx_memberships')
+        .delete().eq('tenant_id', tenantId).eq('id', membershipId);
+      return { id: membershipId, approved: false };
+    }
+
+    const { error } = await this.#db.from('onyx_memberships')
+      .update({ status: 1 }).eq('tenant_id', tenantId).eq('id', membershipId);
+    if (error) throw new HttpError(500, 'Could not approve that: ' + error.message);
+    return { id: membershipId, approved: true, user_id: String(membership.user_id) };
+  }
+
   /** Whether this institution takes registrations, and from which domains. */
-  async setSignupPolicy(tenantId: number, open: boolean, domains: string) {
+  async setSignupPolicy(tenantId: number, open: boolean, domains: string,
+    mode?: 'domain' | 'request') {
     // Split on commas OR whitespace: somebody pasting a list from a document
     // separates it however that document did, and "meridian.edu ashcroft.ac"
     // silently becoming one nonsense entry is a configuration that looks
@@ -498,7 +622,14 @@ export class TenancyService {
       .filter((d, i, all) => all.indexOf(d) === i)
       .join(',');
     const { data, error } = await this.#db.from('onyx_tenants')
-      .update({ student_signup: open, signup_domains: clean, updated_at: new Date().toISOString() })
+      .update({
+        student_signup: open,
+        signup_domains: clean,
+        // Left alone when not supplied, so a settings form that only toggles
+        // registration on and off does not silently reset HOW it works.
+        ...(mode ? { signup_mode: mode } : {}),
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', tenantId).select(TENANT_COLUMNS).maybeSingle();
     if (error) throw new HttpError(500, 'Could not save that: ' + error.message);
     if (!data) throw new HttpError(404, 'Institution not found.');
@@ -737,8 +868,21 @@ export class TenancyService {
   async members(tenantId: number, filters: {
     role?: Role; search?: string; onlyStudentsOn?: number[];
   } = {}) {
+    /*
+     * Members, not applicants.
+     *
+     * `status = 0` is somebody who has ASKED to join and whom nobody has
+     * approved -- see signUpStudent. They are not part of this institution
+     * yet, and this list is not only a roster: it fills the "enrol a student"
+     * picker, the name lookups behind registers and marks, and the member
+     * directory. Somebody nobody has admitted turning up in a course enrolment
+     * dropdown is the kind of thing that is noticed after the fact.
+     *
+     * pendingMembers() is where they are, and the People screen shows that
+     * list above this one.
+     */
     let query = this.#db.from('onyx_memberships')
-      .select(MEMBERSHIP_COLUMNS).eq('tenant_id', tenantId);
+      .select(MEMBERSHIP_COLUMNS).eq('tenant_id', tenantId).eq('status', 1);
     if (filters.role) query = query.eq('role', filters.role);
     const { data } = await query.order('id');
     const rows = data ?? [];

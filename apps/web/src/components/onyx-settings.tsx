@@ -80,8 +80,10 @@ export function FacultyExamPermissionToggle({ enabled }: { enabled: boolean }) {
  * institution FROM it, so this list is the only thing that connects a stranger
  * with an email address to this institution rather than another one.
  */
-export function StudentSignupSettings({ enabled, domains }: {
+export function StudentSignupSettings({ enabled, domains, mode }: {
   enabled: boolean; domains: string;
+  /** 'domain' -- the address decides. 'request' -- they pick, you approve. */
+  mode: 'domain' | 'request';
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -89,6 +91,7 @@ export function StudentSignupSettings({ enabled, domains }: {
   const [saved, setSaved] = useState(false);
   const [on, setOn] = useState(enabled);
   const [list, setList] = useState(domains);
+  const [how, setHow] = useState<'domain' | 'request'>(mode);
 
   const save = () => start(async () => {
     setError(null);
@@ -96,7 +99,7 @@ export function StudentSignupSettings({ enabled, domains }: {
     const res = await fetch('/api/proxy/onyx/tenant/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ student_signup: on, signup_domains: list }),
+      body: JSON.stringify({ student_signup: on, signup_domains: list, signup_mode: how }),
     });
     const body = await res.json().catch(() => ({}));
     if (!body.ok) { setError(body.message ?? 'Could not save that.'); return; }
@@ -132,6 +135,52 @@ export function StudentSignupSettings({ enabled, domains }: {
         <span className="text-[13px] font-semibold">{on ? 'Open' : 'Closed'}</span>
       </div>
 
+      {/*
+        * How somebody proves they belong here, which is a real choice rather
+        * than a preference.
+        *
+        * An address at a domain you own IS evidence, so that mode admits
+        * people instantly and nobody has to do anything. A name picked from a
+        * list is a claim, so that mode queues it for somebody to look at --
+        * without that, anybody on the internet could choose your institution
+        * and be inside it.
+        *
+        * Institutions that issue addresses to some students and not others
+        * want the second: a matching address still skips the queue.
+        */}
+      {on ? (
+        <fieldset className="mt-4">
+          <legend className="text-[13.5px] font-semibold text-slate-700">
+            How somebody joins
+          </legend>
+          <div className="mt-2 space-y-2">
+            {([
+              ['domain', 'By their email address',
+                'Only addresses at the domains below. They are in straight away, and '
+                + 'nobody here has to approve anything.'],
+              ['request', 'They choose this institution',
+                'Anyone may pick you from a list, and somebody here approves them before '
+                + 'they can sign in. An address at your domains still goes straight in.'],
+            ] as const).map(([value, title, detail]) => (
+              <label key={value}
+                className={'flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 '
+                  + (how === value ? 'border-brand-500 bg-brand-50' : 'border-line')}>
+                <input
+                  type="radio" name="signup_mode" value={value}
+                  checked={how === value}
+                  onChange={() => setHow(value)}
+                  className="mt-0.5 h-4 w-4 shrink-0 text-brand-600 focus:ring-brand-600"
+                />
+                <span className="min-w-0">
+                  <span className="block text-[13.5px] font-semibold text-ink">{title}</span>
+                  <span className="block text-[12.5px] leading-relaxed text-muted">{detail}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+
       <label className="mt-4 block text-[13.5px] font-semibold text-slate-700"
         htmlFor="signup-domains">
         Email domains that register here
@@ -145,8 +194,14 @@ export function StudentSignupSettings({ enabled, domains }: {
                    text-[14px] focus:border-brand-500 focus:outline-none"
       />
       <p className="mt-1.5 text-[12.5px] text-muted">
-        Comma separated, no @. An address at any of these resolves to this institution;
-        anything else is told that no institution accepts it, without naming any.
+        Separated by commas or spaces, no @. Subdomains count: listing
+        <code className="mx-1">example.edu</code>
+        also accepts <code>cse.example.edu</code>. Write
+        <code className="mx-1">*.example.edu</code>
+        for subdomains only.
+        {how === 'request'
+          ? ' Anyone at these addresses skips the approval queue.'
+          : ' Anything else is told that no institution accepts it, without naming any.'}
       </p>
 
       {error ? <p role="alert" className="mt-3 text-[13px] text-red-700">{error}</p> : null}
