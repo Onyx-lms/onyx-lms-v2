@@ -48,6 +48,13 @@ export interface Tenant {
 }
 
 export interface Me {
+  /**
+   * Their profile picture, already resolved to a URL, or null.
+   *
+   * On /me because every screen fetches it, so the header can draw an avatar
+   * without a second request on every page in the product.
+   */
+  photo_url?: string | null;
   user_id: string;
   /** Null for an account somehow missing a name row -- email is the fallback. */
   name: string | null;

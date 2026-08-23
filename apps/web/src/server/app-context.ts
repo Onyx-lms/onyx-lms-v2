@@ -167,7 +167,6 @@ export function createContext(): AppContext {
   // these and re-constructing any of them would mean two objects answering the
   // same question -- which is the shape of bug where a cache on one of them
   // starts disagreeing with itself.
-  const onyxTenancyService = new TenancyService(onyxDb);
   const onyxWorkspaceService = new WorkspaceService(onyxDb, onyxAcademics, onyxExecution);
   // CMP-02. Guardians read published marks through this rather than
   // querying onyx_exam_marks themselves, so the 'published only' rule
@@ -191,6 +190,10 @@ export function createContext(): AppContext {
   // registrations through it, and two instances would be two objects answering
   // the same question about the same rows.
   const onyxDomainsService = new DomainsService(onyxDb, storage);
+  // Storage, because a person can now upload their own profile picture. Built
+  // here rather than earlier for the same reason DomainsService is: `storage`
+  // does not exist further up.
+  const onyxTenancyService = new TenancyService(onyxDb, undefined, undefined, storage);
   const enrollment = new EnrollmentService(db);
   const coupons = new CouponService(db);
   const cart = new CartService(db, enrollment, coupons);

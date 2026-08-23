@@ -90,14 +90,19 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
 
   app.get('/api/onyx/me', async (req) => {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
-    const [memberships, name, tenant] = await Promise.all([
+    const [memberships, name, tenant, profile] = await Promise.all([
       ctx.onyxTenancy.membershipsFor(claims.user_id),
       ctx.onyxTenancy.userName(claims.user_id),
       ctx.onyxTenancy.tenant(claims.tenant_id),
+      // For the avatar in the header. Every screen in the product already
+      // fetches /me, so carrying the picture here means no page has to ask a
+      // second question to draw one.
+      ctx.onyxTenancy.profileFor(claims.user_id),
     ]);
     return ok({
       user_id: claims.user_id,
       name,
+      photo_url: ctx.onyxTenancy.photoUrl(profile?.photo as string | null | undefined),
       email: claims.email,
       role: claims.tenant_role,
       // This institution's own number for them, so a learner can read their
@@ -265,6 +270,14 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
   app.patch('/api/onyx/my/profile-details', async (req) => {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
     const body = validate(z.object({
+      // Their own name and number, which they could not change until now: an
+      // administrator typed them when the account was made, and people are
+      // married, transition, or simply had it spelled wrong on day one.
+      name: z.string().min(1).max(120).optional(),
+      phone: z.string().max(40).nullish(),
+      // A storage KEY from the sign route below, never a URL -- the service
+      // refuses anything with a scheme, because this ends up in an <img src>.
+      photo: z.string().max(500).nullish(),
       username: z.string().max(40).nullish(),
       headline: z.string().max(160).optional(),
       bio: z.string().max(2000).optional(),
@@ -275,6 +288,23 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
       profile_public: z.boolean().optional(),
     }), req.body);
     return ok(await ctx.onyxTenancy.updateProfile(claims.user_id, body), 'Profile saved.');
+  });
+
+  /**
+   * A ticket to upload a profile picture.
+   *
+   * The browser PUTs straight to storage: Vercel rejects request bodies over
+   * about 4.5 MB and a photograph off a phone is routinely larger. The key is
+   * minted server-side from the caller's own tenant and user id, so a ticket
+   * cannot be aimed at somebody else's picture -- see signAvatarUpload.
+   */
+  app.post('/api/onyx/my/avatar/sign', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      filename: z.string().min(1).max(200),
+    }), req.body);
+    return ok(await ctx.onyxTenancy.signAvatarUpload(
+      claims.tenant_id, claims.user_id, body.filename));
   });
 
   /**

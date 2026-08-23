@@ -6,6 +6,7 @@ import { navFor, ROLE_LABELS } from '@/lib/onyx-nav';
 import { headers } from 'next/headers';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
 import { ProfileEditor, type ProfileDetails } from '@/components/onyx-profile-editor';
+import { IdentityEditor } from '@/components/onyx-identity-editor';
 import type { Profile } from '@/lib/onyx-career';
 import type { GuardianLink } from '@/lib/onyx-campus';
 import type { ExamMark } from '@/lib/onyx-campus';
@@ -100,6 +101,46 @@ export default async function OnyxProfilePage() {
           Everything below this is derived -- courses, marks, awarded skills --
           and none of it was ever a profile: it is a record. This is the part a
           person writes, and the part worth sending somebody a link to. */}
+      {/* Name, number and picture come FIRST, above the public profile.
+          They are the things every other screen shows about this person -- a
+          register, a results sheet, a certificate -- and until now they were
+          the only parts of a profile its owner could not change. Somebody
+          arriving to fix a misspelled name should not have to scroll past a
+          bio to find where. */}
+      {details ? (
+        <section className="mb-6">
+          <IdentityEditor
+            identity={{
+              name: me.name ?? '',
+              email: me.email,
+              phone: details.phone ?? '',
+              photo_url: me.photo_url ?? null,
+            }}
+            institution={me.tenant.name}
+          />
+        </section>
+      ) : null}
+
+      {/* Name, number and picture come FIRST, above the public profile.
+          They are the things every other screen shows about this person -- a
+          register, a results sheet, a certificate -- and until now they were
+          the only parts of a profile its owner could not change. Somebody
+          arriving to fix a misspelled name should not have to scroll past a
+          bio to find where. */}
+      {details ? (
+        <section className="mb-6">
+          <IdentityEditor
+            identity={{
+              name: me.name ?? '',
+              email: me.email,
+              phone: details.phone ?? '',
+              photo_url: me.photo_url ?? null,
+            }}
+            institution={me.tenant.name}
+          />
+        </section>
+      ) : null}
+
       {details ? (
         <section className="mb-6">
           <SectionHead title="Your public profile" />

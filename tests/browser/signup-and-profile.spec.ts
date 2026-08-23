@@ -1,0 +1,257 @@
+/**
+ * A student registering themselves, and then owning their own profile.
+ *
+ * Three complaints in one: the sign-up form "not working" for students, no way
+ * to edit your own name or add a picture, and an avatar in the corner that
+ * does nothing when you click it.
+ *
+ * The sign-up half turned out not to be broken so much as narrow. An
+ * institution is identified from the DOMAIN of the address a student types --
+ * that part worked -- but only for an exact match against the list an
+ * administrator had typed. Universities issue addresses on department
+ * subdomains, so `priya@cse.meridian.edu` found nothing while
+ * `priya@meridian.edu` worked, which from the outside is a form that refuses
+ * real students for no visible reason.
+ *
+ * The matching rule and its refusals are unit-tested next door in
+ * o01-signup-domains.test.ts, including the ones that matter -- a domain that
+ * merely ends with or contains a listed one is NOT a match, or anybody who can
+ * buy `meridian.edu.attacker.com` picks their own institution. What this file
+ * proves is the other half: that the rule is wired to a form somebody can use,
+ * and that the account it creates lands in the right institution.
+ */
+import { test, expect } from '@playwright/test';
+import {
+  withDb, RUN, api, PASSWORD, mail, createTenant, adminToken, signInViaForm, cleanupTenants,
+} from './helpers.ts';
+
+const T = { name: 'Enrol College ' + RUN, slug: 'enrol-' + RUN };
+const adminEmail = mail('enrol', 'admin');
+
+/** The institution's own domain, unique per run so two runs cannot collide. */
+const DOMAIN = 'enrol-' + RUN + '.test';
+const SIGNUP_PASSWORD = 'Registered#2026';
+
+const w = { tenantId: 0 };
+
+test.describe.configure({ mode: 'serial' });
+
+test.beforeAll(async () => {
+  await createTenant(T.name, T.slug, 'Enrol Admin', adminEmail);
+  w.tenantId = await withDb(async (c) => Number((await c.query(
+    'SELECT id FROM public."onyx_tenants" WHERE slug=$1', [T.slug])).rows[0].id));
+
+  // Registration opened, for this institution's domain. Exactly what an
+  // administrator does on Settings.
+  const token = await adminToken(adminEmail);
+  const saved = await api('/api/onyx/tenant/settings', {
+    method: 'PATCH', token,
+    body: { student_signup: true, signup_domains: DOMAIN },
+  });
+  expect(saved.status, 'registration could not be opened').toBe(200);
+});
+
+test.afterAll(async () => {
+  await withDb(async (c) => {
+    await c.query('DELETE FROM public."onyx_users" WHERE email LIKE $1', ['%@' + DOMAIN]);
+    await c.query("DELETE FROM public.\"onyx_users\" WHERE email LIKE $1",
+      ['%@sub.' + DOMAIN]);
+  });
+  await cleanupTenants([T.slug], 'enrol.%.' + RUN + '@onyx.test');
+});
+
+test('the form names the institution as soon as it recognises the address', async ({ page }) => {
+  await page.context().clearCookies();
+  await page.goto('/onyx/signup');
+
+  // Before an address, it cannot know -- and says nothing rather than guessing.
+  await expect(page.getByRole('heading', { name: /create your account/i })).toBeVisible();
+
+  await page.getByLabel(/email/i).first().fill('priya@' + DOMAIN);
+  // Blurred, because the lookup fires on blur rather than on every keystroke --
+  // which is the right trade for a request per character, and means a test
+  // that only types is asserting against a form that was never asked.
+  await page.getByLabel(/email/i).first().blur();
+  // Naming the institution back is what tells somebody they typed the right
+  // address, before they have filled in anything else.
+  await expect(page.getByText(T.name).first()).toBeVisible({ timeout: 20_000 });
+});
+
+test('a student registers with their institution address and lands inside it',
+  async ({ page }) => {
+    const email = 'priya@' + DOMAIN;
+    await page.context().clearCookies();
+    await page.goto('/onyx/signup');
+
+    // Every field the form marks required. A mobile number and a roll number
+    // are among them -- the roll number is how marks, seating and registers
+    // find this person later -- so filling only name, email and password left
+    // the browser blocking submit on a field the test never mentioned.
+    await page.getByLabel('Full name').fill('Priya Raman');
+    await page.getByLabel('Organisation email').fill(email);
+    await page.getByLabel('Organisation email').blur();
+    await page.getByLabel('Mobile number').fill('9000000001');
+    await page.getByLabel('Roll number').fill('EN-001');
+    await page.getByLabel('Password').fill(SIGNUP_PASSWORD);
+    await page.getByRole('button', { name: /create|sign up|register/i }).first().click();
+
+    // Straight in, signed in, at their own institution -- not back to a login
+    // form to type the same details again.
+    await page.waitForURL((u) => !u.pathname.includes('/signup'), { timeout: 30_000 });
+
+    // Asked of the account menu rather than of the page, because the header
+    // also prints the institution in a span that is hidden at most widths --
+    // a locator that finds it there resolves to something nobody can see.
+    await page.getByRole('button', { name: /^Account:/ }).click();
+    await expect(page.getByRole('menu', { name: 'Account' }))
+      .toContainText(T.name, { timeout: 20_000 });
+
+    // And the account is a student OF that institution, which is the part a
+    // screen cannot show convincingly.
+    await withDb(async (c) => {
+      const { rows } = await c.query(
+        `SELECT m.role, m.tenant_id FROM public."onyx_memberships" m
+           JOIN public."onyx_users" u ON u.id = m.user_id
+          WHERE u.email = $1`, [email]);
+      expect(rows.length, 'the new account belongs to exactly one institution').toBe(1);
+      expect(String(rows[0].role)).toBe('student');
+      expect(Number(rows[0].tenant_id)).toBe(w.tenantId);
+    });
+  });
+
+test('a department subdomain finds the same institution', async () => {
+  // The case the complaint was really about: an institution lists its domain,
+  // and its students are issued addresses under a department subdomain.
+  const email = 'arun@sub.' + DOMAIN;
+  const found = await api<{ id: number; name: string } | null>(
+    '/api/onyx/auth/signup/institution?email=' + encodeURIComponent(email));
+  expect(found.status).toBe(200);
+  expect(found.data?.id, 'a subdomain address found no institution').toBe(w.tenantId);
+
+  const made = await api('/api/onyx/auth/signup', {
+    method: 'POST',
+    body: { name: 'Arun Kumar', email, password: SIGNUP_PASSWORD },
+  });
+  expect(made.status, 'a subdomain address could not register').toBe(200);
+});
+
+test('a personal address finds nothing, and is told what to do', async () => {
+  const found = await api<{ id: number } | null>(
+    '/api/onyx/auth/signup/institution?email=' + encodeURIComponent('someone@gmail.com'));
+  expect(found.data ?? null, 'a personal address matched an institution').toBeNull();
+
+  const refused = await api('/api/onyx/auth/signup', {
+    method: 'POST',
+    body: { name: 'Nobody', email: 'someone@gmail.com', password: SIGNUP_PASSWORD },
+  });
+  expect(refused.status).toBeGreaterThanOrEqual(400);
+  // The message names the domain and says who can fix it. "No institution
+  // accepts that" leaves somebody staring at a form with nothing to try.
+  expect(String(refused.message)).toContain('gmail.com');
+});
+
+test('a lookalike domain is refused', async () => {
+  // The unit tests cover the rule exhaustively; this is the one that must be
+  // true through the real route as well, because it is the one that matters.
+  const found = await api<{ id: number } | null>(
+    '/api/onyx/auth/signup/institution?email='
+    + encodeURIComponent('attacker@' + DOMAIN + '.attacker.com'));
+  expect(found.data ?? null, 'a lookalike domain picked an institution').toBeNull();
+});
+
+test('a student edits their own name, and it is their name everywhere', async ({ page }) => {
+  await signInViaForm(page, 'priya@' + DOMAIN, SIGNUP_PASSWORD);
+  await page.goto('/onyx/profile');
+
+  const name = page.getByLabel('Your name');
+  await expect(name).toHaveValue('Priya Raman');
+  await name.fill('Priya Raman-Iyer');
+  await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+  await expect(page.getByText('Saved.').first()).toBeVisible({ timeout: 20_000 });
+
+  await page.reload();
+  await expect(page.getByLabel('Your name')).toHaveValue('Priya Raman-Iyer');
+
+  await withDb(async (c) => {
+    const { rows } = await c.query(
+      'SELECT name FROM public."onyx_users" WHERE email=$1', ['priya@' + DOMAIN]);
+    expect(String(rows[0].name)).toBe('Priya Raman-Iyer');
+  });
+});
+
+test('a blank name is refused rather than saved', async ({ page }) => {
+  // A name is on every register, results sheet and certificate. Blank would
+  // show an email address in all of them.
+  await signInViaForm(page, 'priya@' + DOMAIN, SIGNUP_PASSWORD);
+  await page.goto('/onyx/profile');
+
+  await page.getByLabel('Your name').fill('   ');
+  // The button refuses before the request does -- the API refuses too, and
+  // both saying no is the point rather than a duplication.
+  await expect(page.getByRole('button', { name: 'Save', exact: true }).first())
+    .toBeDisabled();
+
+  const refused = await page.request.patch('/api/proxy/onyx/my/profile-details', {
+    data: { name: '   ' },
+  });
+  expect(refused.status()).toBeGreaterThanOrEqual(400);
+});
+
+test('a profile picture is an upload, never a link', async ({ page }) => {
+  await signInViaForm(page, 'priya@' + DOMAIN, SIGNUP_PASSWORD);
+  await page.goto('/onyx/profile');
+  await expect(page.getByLabel(/add a picture|change picture/i)).toBeVisible();
+
+  // The field ends up in an <img src>, so an off-site address is refused: it
+  // would turn every page showing this person into a request to somebody
+  // else's server.
+  for (const evil of ['https://attacker.example/pixel.png', '//attacker.example/p.png',
+    'javascript:alert(1)', 'etc/passwd']) {
+    const res = await page.request.patch('/api/proxy/onyx/my/profile-details', {
+      data: { photo: evil },
+    });
+    expect(res.status(), 'accepted a photo of ' + evil).toBeGreaterThanOrEqual(400);
+  }
+});
+
+test('the avatar in the corner opens an account menu', async ({ page }) => {
+  await signInViaForm(page, 'priya@' + DOMAIN, SIGNUP_PASSWORD);
+  await page.goto('/onyx/dashboard');
+
+  // It used to be a span with aria-hidden: not a button, not reachable by
+  // keyboard, and it did nothing when clicked.
+  const avatar = page.getByRole('button', { name: /^Account:/ });
+  await expect(avatar).toBeVisible();
+  await expect(avatar).toHaveAttribute('aria-expanded', 'false');
+
+  await avatar.click();
+  await expect(avatar).toHaveAttribute('aria-expanded', 'true');
+  const menu = page.getByRole('menu', { name: 'Account' });
+  await expect(menu).toBeVisible();
+  // Who you are signed in as, which on a shared machine is worth saying before
+  // either of the two things you can do.
+  await expect(menu).toContainText('priya@' + DOMAIN);
+
+  // Escape closes it, because that is what a keyboard user tries first.
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+
+  await avatar.click();
+  await menu.getByRole('menuitem', { name: /your profile/i }).click();
+  await page.waitForURL((u) => u.pathname === '/onyx/profile', { timeout: 20_000 });
+});
+
+test('signing out from that menu really signs you out', async ({ page }) => {
+  await signInViaForm(page, 'priya@' + DOMAIN, SIGNUP_PASSWORD);
+  await page.goto('/onyx/dashboard');
+
+  await page.getByRole('button', { name: /^Account:/ }).click();
+  await page.getByRole('menu', { name: 'Account' })
+    .getByRole('menuitem', { name: /sign out/i }).click();
+  await page.waitForURL(/\/onyx\/login/, { timeout: 20_000 });
+
+  // Not just redirected -- the session is gone, so the dashboard is unreachable
+  // in the browser that was signed in a moment ago.
+  await page.goto('/onyx/dashboard');
+  await expect(page).toHaveURL(/\/onyx\/login/);
+});

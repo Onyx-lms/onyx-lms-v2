@@ -405,6 +405,7 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/auth/signup/institution` | **no token** — public by design |
 | `GET` | `/api/onyx/my/profile-details` | any member |
 | `PATCH` | `/api/onyx/my/profile-details` | any member |
+| `POST` | `/api/onyx/my/avatar/sign` | any member |
 | `GET` | `/api/onyx/p/:username` | **no token** — public by design |
 | `POST` | `/api/onyx/tenants` | platform admin |
 | `GET` | `/api/onyx/members` | admin, faculty, exams |
@@ -415,4 +416,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_329 endpoints across 9 route files._
+_330 endpoints across 9 route files._

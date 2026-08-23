@@ -18,10 +18,24 @@ import type { OnyxDb } from './db.ts';
 import { onyxAuthAdmin, onyxAuthClientFresh } from './db.ts';
 import type { Role } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
+import { onyxAssetKey } from './content.service.ts';
 import { slugify } from '../authoring/slug.ts';
 import type { PermissionOverrides } from './permissions.ts';
 
 const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, student_signup, signup_domains, created_at, updated_at';
+/**
+ * The slice of StorageService a profile picture needs.
+ *
+ * Named structurally rather than imported, the same way ContentService names
+ * its own: this file has no business knowing which storage implementation is
+ * behind it, and a test can hand it three functions.
+ */
+export interface AvatarStorage {
+  signedUpload?(key: string): Promise<{ path: string; token: string; signedUrl: string }>;
+  publicUrl?(path: string): string | null;
+  remove?(path: string): Promise<void>;
+}
+
 const USER_COLUMNS = 'id, email, name, phone, photo, status, email_verified_at, created_at';
 const PROFILE_COLUMNS = 'id, email, name, phone, photo, status, created_at, username, headline, bio, skills_text, interests, experience, website, profile_public';
 const MEMBERSHIP_COLUMNS = 'id, tenant_id, user_id, role, status, roll_number, created_at';
@@ -42,21 +56,28 @@ export class TenancyService {
   #db: OnyxDb;
   #authAdminOverride: SupabaseClient | undefined;
   #authClientOverride: SupabaseClient | undefined;
+  #storage: AvatarStorage | undefined;
 
   /**
    * `authAdmin`/`authClient` exist as constructor parameters only so a test
    * can inject a fake -- FakeDb can simulate Postgrest, but there is no
-   * in-memory GoTrue to fall back to for these. Left unset, the real
-   * Supabase Auth clients are resolved lazily (module-level singletons, see
-   * db.ts) the first time a method actually needs one, rather than eagerly
-   * in the constructor -- eager resolution would require SUPABASE_URL/
-   * SUPABASE_SERVICE_ROLE_KEY to exist even for a unit test that never
-   * touches auth and constructs this with a FakeDb.
+   * in-memory GoTrue to fall back to for these. Left unset, a real Supabase
+   * Auth client is built when a method actually needs one, rather than
+   * eagerly in the constructor -- eager construction would require
+   * SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY to exist even for a unit test that
+   * never touches auth and constructs this with a FakeDb.
+   *
+   * `storage` is optional for the same reason: every existing caller and test
+   * that builds this with a database alone keeps working, and without it a
+   * profile picture cannot be uploaded and the route says so plainly rather
+   * than failing somewhere further down.
    */
-  constructor(db: OnyxDb, authAdmin?: SupabaseClient, authClient?: SupabaseClient) {
+  constructor(db: OnyxDb, authAdmin?: SupabaseClient, authClient?: SupabaseClient,
+    storage?: AvatarStorage) {
     this.#db = db;
     this.#authAdminOverride = authAdmin;
     this.#authClientOverride = authClient;
+    this.#storage = storage;
   }
 
   get #authAdmin(): SupabaseClient { return this.#authAdminOverride ?? onyxAuthAdmin(); }
@@ -280,24 +301,117 @@ export class TenancyService {
    * Only ever creates a `student`. Every other role is somebody being given
    * authority, and authority is granted, not requested.
    */
+  /**
+   * The domain half of an address, lower-cased, or '' if there is not one.
+   *
+   * Takes the LAST @ rather than splitting on the first: a local part may
+   * legally contain one inside quotes, and `a@b@example.com` split on the
+   * first @ yields "b@example.com", which is not a domain and would never
+   * match anything -- a silent refusal rather than a wrong match, but still
+   * the wrong answer.
+   */
+  static domainOf(email: string): string {
+    const raw = String(email ?? '');
+    const at = raw.lastIndexOf('@');
+    // No @, or nothing in front of it. "@meridian.edu" names no person, and
+    // resolving a domain for it would say an institution accepts an address
+    // that is not one. The route's own `z.string().email()` refuses it too;
+    // this does not depend on that.
+    if (at < 1 || !raw.slice(0, at).trim()) return '';
+    return raw.slice(at + 1).trim().toLowerCase().replace(/\.$/, '');
+  }
+
+  /**
+   * Does an address's domain belong to this institution's list?
+   *
+   * The list is what an administrator typed on Settings, comma separated. Two
+   * shapes are understood and nothing else:
+   *
+   *   meridian.edu     the domain itself, AND any subdomain of it
+   *   *.meridian.edu   subdomains only -- staff on the apex are excluded
+   *
+   * **Subdomains match by default, and that is the point.** Universities issue
+   * addresses on department subdomains -- cse.meridian.edu, students.meridian.edu
+   * -- and an administrator who lists their institution's domain means those
+   * people. Requiring every subdomain to be listed is how a working
+   * configuration turns into a support queue on results day.
+   *
+   * **The dot is load-bearing.** The test is `domain === listed` or
+   * `domain.endsWith('.' + listed)`, never `includes` or `endsWith(listed)`:
+   * without the dot, `notmeridian.edu` matches `meridian.edu`, and
+   * `meridian.edu.attacker.com` matches too. Either would let a stranger pick
+   * an institution to join by registering a domain.
+   *
+   * **No user-supplied regular expressions**, deliberately, though the shape of
+   * the ask invites them. A pattern typed into a settings box is a pattern
+   * nobody tests: it is one stray `.` from matching every domain on the
+   * internet, one nested quantifier from hanging the request that evaluates it,
+   * and unreadable to the next administrator who inherits it. Domain and
+   * subdomain matching is what the question actually needs, and it cannot be
+   * written wrongly in a way that is dangerous rather than merely ineffective.
+   */
+  static domainMatches(domain: string, list: string): boolean {
+    if (!domain) return false;
+    return TenancyService.#patternsOf(list).some((pattern) => {
+      if (pattern.startsWith('*.')) {
+        const base = pattern.slice(2);
+        return Boolean(base) && domain.endsWith('.' + base);
+      }
+      return domain === pattern || domain.endsWith('.' + pattern);
+    });
+  }
+
+  /** The list as an administrator typed it, cleaned. Commas or whitespace. */
+  static #patternsOf(list: string): string[] {
+    return String(list ?? '')
+      .split(/[,\s]+/)
+      .map((d) => d.trim().toLowerCase().replace(/^@/, '').replace(/\.$/, ''))
+      .filter(Boolean);
+  }
+
+  /**
+   * How specifically a list matches a domain, or 0 for not at all.
+   *
+   * Used to break a tie. Two institutions can both accept an address -- a
+   * university listing `example.edu` and one of its colleges listing
+   * `cs.example.edu` -- and picking whichever the database returned first
+   * would put people in the wrong place depending on row order. The longer
+   * pattern is the more specific one and wins.
+   */
+  static domainSpecificity(domain: string, list: string): number {
+    let best = 0;
+    for (const pattern of TenancyService.#patternsOf(list)) {
+      const base = pattern.startsWith('*.') ? pattern.slice(2) : pattern;
+      const hit = pattern.startsWith('*.')
+        ? Boolean(base) && domain.endsWith('.' + base)
+        : domain === base || domain.endsWith('.' + base);
+      if (hit) best = Math.max(best, base.length);
+    }
+    return best;
+  }
+
   async signUpStudent(input: {
     name: string; email: string; password: string;
     phone?: string | null; roll_number?: string | null;
   }) {
-    const domain = input.email.split('@')[1]?.toLowerCase().trim() ?? '';
+    const domain = TenancyService.domainOf(input.email);
     if (!domain) throw new HttpError(422, 'That does not look like an email address.');
 
     const { data: tenants } = await this.#db.from('onyx_tenants')
       .select(TENANT_COLUMNS).eq('student_signup', true).eq('status', 1);
 
-    const tenant = (tenants ?? []).find((t) => String(t.signup_domains ?? '')
-      .split(',').map((d) => d.trim().toLowerCase()).filter(Boolean)
-      .includes(domain));
+    // The most specific match, not the first one the database happened to
+    // return -- see domainSpecificity.
+    const tenant = (tenants ?? [])
+      .map((t) => ({ t, score: TenancyService.domainSpecificity(domain, String(t.signup_domains ?? '')) }))
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)[0]?.t;
 
     if (!tenant) {
       throw new HttpError(422,
-        'No institution here accepts registrations from that address. '
-        + 'Use the email your institution gave you, or ask them to invite you.');
+        'No institution here accepts registrations from ' + domain + '. '
+        + 'Use the email your institution gave you — if that IS the address they '
+        + 'gave you, ask them to add ' + domain + ' on their settings page.');
     }
 
     // An address that already belongs to somebody is not told apart from one
@@ -326,22 +440,63 @@ export class TenancyService {
     };
   }
 
+  /**
+   * A ticket to upload a profile picture straight to storage.
+   *
+   * The browser PUTs to the bucket rather than through this app, because
+   * Vercel rejects request bodies over about 4.5 MB and a photograph off a
+   * phone is routinely larger than that.
+   *
+   * The key is minted HERE, from the tenant and the person's own id, never
+   * from anything the request supplies -- so a caller cannot write into
+   * another institution's prefix or over somebody else's face. The filename is
+   * reduced to something safe by `onyxAssetKey` and is only ever decoration on
+   * the end of a key that is already unique.
+   */
+  async signAvatarUpload(tenantId: number, userId: string, filename: string) {
+    if (!this.#storage?.signedUpload) {
+      throw new HttpError(500, 'This deployment cannot store pictures.');
+    }
+    const key = onyxAssetKey(tenantId, 'avatars/' + userId, filename);
+    return this.#storage.signedUpload(key);
+  }
+
+  /** A stored key as something an <img> can use, or null. */
+  photoUrl(photo: string | null | undefined): string | null {
+    const key = String(photo ?? '').trim();
+    if (!key) return null;
+    return this.#storage?.publicUrl?.(key) ?? null;
+  }
+
   /** Whether an address could register, and where -- for the signup form. */
   async signupInstitutionFor(email: string) {
-    const domain = email.split('@')[1]?.toLowerCase().trim() ?? '';
+    // The SAME rule the sign-up itself applies. Two implementations of "does
+    // this address belong here" is a form that says yes and a submit that says
+    // no, which is the worst version of this to debug.
+    const domain = TenancyService.domainOf(email);
     if (!domain) return null;
     const { data: tenants } = await this.#db.from('onyx_tenants')
       .select('id, name, slug, signup_domains')
       .eq('student_signup', true).eq('status', 1);
-    const tenant = (tenants ?? []).find((t) => String(t.signup_domains ?? '')
-      .split(',').map((d) => d.trim().toLowerCase()).filter(Boolean).includes(domain));
+    const tenant = (tenants ?? [])
+      .map((t) => ({ t, score: TenancyService.domainSpecificity(domain, String(t.signup_domains ?? '')) }))
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)[0]?.t;
     return tenant ? { id: tenant.id, name: tenant.name } : null;
   }
 
   /** Whether this institution takes registrations, and from which domains. */
   async setSignupPolicy(tenantId: number, open: boolean, domains: string) {
-    const clean = domains.split(',').map((d) => d.trim().toLowerCase().replace(/^@/, ''))
-      .filter(Boolean).join(',');
+    // Split on commas OR whitespace: somebody pasting a list from a document
+    // separates it however that document did, and "meridian.edu ashcroft.ac"
+    // silently becoming one nonsense entry is a configuration that looks
+    // saved and matches nothing. A leading @ is dropped, a trailing dot is
+    // dropped, and a leading *. is KEPT -- it means "subdomains only".
+    const clean = domains.split(/[,\s]+/)
+      .map((d) => d.trim().toLowerCase().replace(/^@/, '').replace(/\.$/, ''))
+      .filter(Boolean)
+      .filter((d, i, all) => all.indexOf(d) === i)
+      .join(',');
     const { data, error } = await this.#db.from('onyx_tenants')
       .update({ student_signup: open, signup_domains: clean, updated_at: new Date().toISOString() })
       .eq('id', tenantId).select(TENANT_COLUMNS).maybeSingle();
@@ -358,10 +513,61 @@ export class TenancyService {
    * is the half only the person can supply, and the half worth sharing.
    */
   async updateProfile(userId: string, input: {
+    name?: string; phone?: string | null; photo?: string | null;
     username?: string | null; headline?: string; bio?: string; skills_text?: string;
     interests?: string; experience?: string; website?: string; profile_public?: boolean;
   }) {
     const patch: Record<string, unknown> = {};
+
+    /*
+     * Their own name, which they could not change until now.
+     *
+     * An administrator typed it when the account was created, and people are
+     * married, transition, correct a misspelling, or simply go by something
+     * else. Refusing to let somebody fix their own name is a small cruelty
+     * that a product this size should not be committing.
+     *
+     * Trimmed and required: a blank name leaves every roster, register and
+     * certificate showing an email address instead of a person.
+     */
+    if (input.name !== undefined) {
+      const name = String(input.name ?? '').trim();
+      if (!name) throw new HttpError(422, 'A name cannot be blank.');
+      if (name.length > 120) throw new HttpError(422, 'That name is too long.');
+      patch.name = name;
+    }
+
+    // Cleared with an empty string rather than left unclearable -- a number
+    // somebody no longer uses is worse than none.
+    if (input.phone !== undefined) {
+      const phone = String(input.phone ?? '').trim();
+      if (phone.length > 40) throw new HttpError(422, 'That phone number is too long.');
+      patch.phone = phone || null;
+    }
+
+    /*
+     * A storage KEY, never a URL.
+     *
+     * The bucket can move, be renamed or grow a CDN in front of it; the key
+     * does not change, and `#photoUrl` resolves one at read time. Refusing a
+     * URL here also refuses the obvious attack on a field that ends up in an
+     * <img src>: an off-site address that turns every page showing this person
+     * into a request to somebody else's server.
+     */
+    if (input.photo !== undefined) {
+      const photo = String(input.photo ?? '').trim();
+      if (!photo) {
+        patch.photo = null;
+      } else {
+        if (/^[a-z][a-z0-9+.-]*:/i.test(photo) || photo.startsWith('//')) {
+          throw new HttpError(422, 'A profile picture is uploaded, not linked.');
+        }
+        if (!photo.startsWith('onyx/')) {
+          throw new HttpError(422, 'That is not a picture this product uploaded.');
+        }
+        patch.photo = photo.slice(0, 500);
+      }
+    }
 
     if (input.username !== undefined) {
       const handle = (input.username ?? '').trim().toLowerCase();

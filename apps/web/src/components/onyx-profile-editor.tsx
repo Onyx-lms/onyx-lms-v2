@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Card, Icon } from '@/components/onyx-ui';
 
 export interface ProfileDetails {
+  /** Read here, edited by IdentityEditor -- see its docblock for the split. */
+  phone: string | null;
   username: string | null;
   headline: string;
   bio: string;

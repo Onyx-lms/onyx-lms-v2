@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import type { Me, Role, Tenant } from '@/lib/onyx-session';
 import { ROLE_LABELS, navFor, tabsFor, type OnyxNavGroup } from '@/lib/onyx-nav';
 import { Icon } from '@/components/onyx-ui';
@@ -142,11 +142,7 @@ function Header({ me, onMenu }: { me: Me; onMenu: () => void }) {
       {/* Beside the avatar, which is where every product this audience already
           uses puts it. The count is what makes it worth having. */}
       <NotificationBell />
-      <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full
-                       bg-gradient-to-br from-brand-500 to-brand-700 text-[13px]
-                       font-bold text-white" aria-hidden="true">
-        {initials}
-      </span>
+      <AccountMenu me={me} initials={initials} />
     </header>
   );
 }
@@ -321,19 +317,110 @@ function TenantCard({ tenant, role, memberships }: {
   );
 }
 
-function SignOutButton() {
+/**
+ * The avatar, and what happens when somebody clicks it.
+ *
+ * It used to be a `<span aria-hidden="true">`: not a button, not a link, not
+ * reachable by keyboard, and it did nothing. Every product this audience uses
+ * puts an account menu there, so people click it and nothing happens -- and
+ * signing out was only ever reachable from the bottom of a navigation panel
+ * that is collapsed on a phone.
+ *
+ * A menu rather than a straight link to the profile, because there are two
+ * things somebody wants from that corner and one of them is leaving. It is a
+ * real `<button aria-expanded>` with a labelled menu, closes on Escape and on
+ * a click outside, and shows the person's own picture once they have set one.
+ */
+function AccountMenu({ me, initials }: { me: Me; initials: string }) {
+  const [open, setOpen] = useState(false);
+
+  // Escape closes it, which is what a keyboard user will try first.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  return (
+    <div className="relative shrink-0">
+      {/* The backdrop is what closes it on a click anywhere else. Rendered
+          behind the menu and in front of everything else, so one tap outside
+          dismisses rather than activating whatever was underneath. */}
+      {open ? (
+        <button type="button" aria-hidden="true" tabIndex={-1}
+          className="fixed inset-0 z-30 cursor-default"
+          onClick={() => setOpen(false)} />
+      ) : null}
+
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={'Account: ' + (me.name ?? me.email)}
+        className="relative z-40 grid h-[38px] w-[38px] shrink-0 place-items-center
+                   overflow-hidden rounded-full bg-gradient-to-br from-brand-500
+                   to-brand-700 text-[13px] font-bold text-white
+                   focus:outline-none focus:ring-2 focus:ring-brand-600/40"
+      >
+        {me.photo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={me.photo_url} alt="" className="h-full w-full object-cover" />
+        ) : initials}
+      </button>
+
+      {open ? (
+        <div role="menu" aria-label="Account"
+          className="absolute right-0 top-[46px] z-40 w-60 overflow-hidden rounded-2xl
+                     border border-line bg-surface shadow-lift">
+          {/* Who you are signed in AS. On a shared machine this is the one
+              thing worth saying before either action below it. */}
+          <div className="border-b border-line px-3.5 py-3">
+            <p className="truncate text-[13.5px] font-bold text-ink">{me.name ?? me.email}</p>
+            <p className="truncate text-[12px] text-muted">{me.email}</p>
+            <p className="mt-0.5 truncate text-[12px] text-muted">
+              {ROLE_LABELS[me.role]} · {me.tenant.name}
+            </p>
+          </div>
+
+          <Link href="/onyx/profile" role="menuitem" onClick={() => setOpen(false)}
+            className="flex min-h-[42px] items-center gap-2.5 px-3.5 text-[13.5px]
+                       font-semibold text-ink hover:bg-brand-50">
+            <Icon name="user" className="h-4 w-4 text-muted" />
+            Your profile
+          </Link>
+
+          <div className="border-t border-line p-2">
+            <SignOutButton compact />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * `compact` is the account menu's copy of this: same action, no top margin and
+ * no full-width block, because in a menu it sits under two other rows rather
+ * than at the foot of a panel.
+ */
+function SignOutButton({ compact }: { compact?: boolean } = {}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
     <button
-      type="button" disabled={pending}
+      type="button" disabled={pending} role={compact ? 'menuitem' : undefined}
       onClick={() => start(async () => {
         await fetch('/api/web/onyx/login', { method: 'DELETE' });
         router.push('/onyx/login');
         router.refresh();
       })}
-      className="mt-2 min-h-[38px] w-full rounded-2xl border border-line px-3 py-1.5 text-xs
-                 font-medium text-slate-700 hover:bg-brand-50 disabled:opacity-50"
+      className={'min-h-[38px] w-full rounded-2xl px-3 py-1.5 font-medium '
+        + 'text-slate-700 hover:bg-brand-50 disabled:opacity-50 '
+        + (compact
+          ? 'text-left text-[13.5px] font-semibold'
+          : 'mt-2 border border-line text-xs')}
     >
       {pending ? 'Signing out…' : 'Sign out'}
     </button>
