@@ -351,6 +351,101 @@ export class CampusService {
   }
 
   /**
+   * CMP-01c -- what a person actually has to turn up for, in one week.
+   *
+   * The timetable was a grid of recurring classes and nothing else. An
+   * examination lived on its own page and an assessment window lived on
+   * another, so the one screen a learner opens to answer "what have I got
+   * this week" was the one screen that did not know about the two things they
+   * most need to be ready for. This is that read.
+   *
+   * **Two coordinate systems meet here, and the join is the hard part.**
+   * `onyx_timetable_slots` is weekly recurrence -- a day number and two
+   * wall-clock times, no date and no zone (see 0008's own header). Exams and
+   * assessments are absolute `timestamptz`. So this method takes a real week
+   * and returns dated events; the caller supplies the anchor the grid never
+   * used to need.
+   *
+   * **Draft exams are visible to every member at the database level.**
+   * Timetable drafts are hidden by an RLS policy; exam drafts are not -- the
+   * exams table has a plain tenant-read policy. Putting the two on one screen
+   * without filtering here would have published every unannounced examination
+   * to the students it had not been announced to. `publishedOnly` is the same
+   * flag the timetable read uses, and it is not optional for a learner.
+   */
+  async calendar(tenantId: number, range: { from: string; to: string }, filters: {
+    /** The learner's own courses. Undefined means "no restriction" (staff). */
+    course_ids?: number[];
+    /** Faculty see the exams and papers of the courses they teach. */
+    publishedOnly?: boolean;
+  } = {}) {
+    const [exams, assessments] = await Promise.all([
+      this.#examsIn(tenantId, range, filters),
+      this.#assessmentsIn(tenantId, range, filters),
+    ]);
+    return { exams, assessments };
+  }
+
+  async #examsIn(tenantId: number, range: { from: string; to: string }, filters: {
+    course_ids?: number[]; publishedOnly?: boolean;
+  }) {
+    let q = this.#db.from('onyx_exams')
+      .select('id, tenant_id, course_id, semester_id, assessment_id, title, starts_at, '
+        + 'duration_minutes, max_marks, pass_marks, status')
+      .eq('tenant_id', tenantId)
+      .gte('starts_at', range.from)
+      .lte('starts_at', range.to);
+
+    // A cancelled sitting still belongs on the week -- somebody who saw it
+    // there last week needs to see that it is off, not find it silently gone.
+    // A DRAFT one does not: it has not been announced.
+    if (filters.publishedOnly) q = q.neq('status', 'draft');
+    if (filters.course_ids) {
+      // An exam with no course is an institution-wide sitting and belongs to
+      // everybody; `.in()` alone would drop it.
+      if (!filters.course_ids.length) return [];
+      q = q.in('course_id', filters.course_ids);
+    }
+    const { data } = await q.order('starts_at', { ascending: true });
+    return data ?? [];
+  }
+
+  /**
+   * Assessments overlapping the week.
+   *
+   * A paper is a WINDOW, not a block: `opens_at` and `closes_at` can be days
+   * apart while `duration_minutes` is how long one sitting takes. Drawing a
+   * 60-minute box at `opens_at` would tell a learner the paper happens at nine
+   * on Monday when in truth they have until Friday. So the row is returned as
+   * it is -- both ends and the duration -- and the screen decides how to draw
+   * a window, which is a different shape from a lecture.
+   *
+   * Anything with no `closes_at` has no place on a week at all and is left to
+   * the caller to list separately rather than pinned to an invented date.
+   */
+  async #assessmentsIn(tenantId: number, range: { from: string; to: string }, filters: {
+    course_ids?: number[]; publishedOnly?: boolean;
+  }) {
+    let q = this.#db.from('onyx_assessments')
+      .select('id, tenant_id, course_id, title, opens_at, closes_at, duration_minutes, '
+        + 'attempts_allowed, pass_mark, status')
+      .eq('tenant_id', tenantId)
+      // Closing inside the week is what makes a paper this week's problem. A
+      // window that opened a month ago and closes on Wednesday is due
+      // Wednesday, and that is the day it should appear on.
+      .gte('closes_at', range.from)
+      .lte('closes_at', range.to);
+
+    if (filters.publishedOnly) q = q.eq('status', 'published');
+    if (filters.course_ids) {
+      if (!filters.course_ids.length) return [];
+      q = q.in('course_id', filters.course_ids);
+    }
+    const { data } = await q.order('closes_at', { ascending: true });
+    return data ?? [];
+  }
+
+  /**
    * Publish a term's timetable.
    *
    * Re-checks every slot against every other before publishing. A draft can be

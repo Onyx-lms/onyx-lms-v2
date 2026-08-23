@@ -277,6 +277,49 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
    * either can still ask for the full grid with `?scope=all`, or narrow with
    * an explicit filter, same as before.
    */
+  /**
+   * CMP-01c -- the week, as examinations and papers rather than as lectures.
+   *
+   * Scoped exactly like the timetable read beside it, and for the same reason:
+   * a learner sees the courses they are enrolled on, staff see the estate.
+   * `publishedOnly` is doing more work here than it does there -- exam drafts
+   * are readable by any member at the database level, so this is the only
+   * thing standing between an unannounced sitting and the students it has not
+   * been announced to.
+   */
+  app.get('/api/onyx/calendar', async (req) => {
+    const { claims, viewer } = await viewerOf(req);
+    const query = req.query as { from?: string; to?: string; scope?: string };
+
+    const staff = viewer.role === 'admin' || viewer.role === 'faculty'
+      || viewer.role === 'exams';
+    const registry = viewer.role === 'admin' || viewer.role === 'exams';
+    const wantsAll = registry || (staff && query.scope === 'all');
+
+    // A week either side of today when nothing is asked for, so a bare call is
+    // useful rather than empty.
+    const from = query.from ?? new Date(Date.now() - 7 * 86_400_000).toISOString();
+    const to = query.to ?? new Date(Date.now() + 21 * 86_400_000).toISOString();
+    if (Number.isNaN(Date.parse(from)) || Number.isNaN(Date.parse(to))) {
+      throw new HttpError(422, 'That is not a date range.');
+    }
+
+    let courseIds: number[] | undefined;
+    if (!wantsAll) {
+      if (viewer.role === 'faculty') {
+        courseIds = await ctx.onyxAcademics.teachingFor(claims.tenant_id, claims.user_id);
+      } else {
+        const mine = await ctx.onyxAcademics.enrollmentsFor(claims.tenant_id, claims.user_id);
+        courseIds = mine.map((e) => Number(e.course_id));
+      }
+    }
+
+    return ok(await ctx.onyxCampus.calendar(claims.tenant_id, { from, to }, {
+      course_ids: courseIds,
+      publishedOnly: !staff,
+    }));
+  });
+
   app.get('/api/onyx/timetable', async (req) => {
     const { claims, viewer } = await viewerOf(req);
     const query = req.query as {

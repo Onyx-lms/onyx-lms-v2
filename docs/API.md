@@ -78,6 +78,7 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/rooms` | any member |
 | `POST` | `/api/onyx/timetable/check` | admin, exams, faculty |
 | `POST` | `/api/onyx/timetable` | admin, exams, faculty |
+| `GET` | `/api/onyx/calendar` | any member |
 | `GET` | `/api/onyx/timetable` | any member |
 | `POST` | `/api/onyx/timetable/publish` | admin, exams, faculty |
 | `DELETE` | `/api/onyx/timetable/:id` | admin, exams, faculty |
@@ -422,4 +423,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_336 endpoints across 9 route files._
+_337 endpoints across 9 route files._

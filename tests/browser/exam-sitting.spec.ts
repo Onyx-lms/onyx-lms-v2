@@ -342,13 +342,24 @@ test('each of them answers and submits, and gets their own mark', async () => {
 
   for (const s of scores) {
     expect(s.data.max_score, 'two questions at five points each').toBe(10);
-    // Submitting does NOT hand back a mark, and that is the design rather than
-    // an omission: a candidate learns nothing about their score until the
-    // office releases results. Asserted so that a change which started
-    // returning it early would fail here rather than in front of a cohort.
+    /*
+     * Submitting DOES hand back a mark now, and this assertion is the reverse
+     * of what it used to be.
+     *
+     * It used to require `score` to be null -- "a candidate learns nothing
+     * about their score until the office releases results" -- which was the
+     * behaviour until migration 0035 made instant results the default. This
+     * paper is entirely objective, so the mark at submit is the final mark and
+     * withholding it protected nothing.
+     *
+     * What the test is really for survives unchanged and is asserted below:
+     * four people sitting the same paper at the same time each get THEIR OWN
+     * mark. Two answered correctly and two did not, and the numbers have to
+     * follow the person rather than the order they finished in.
+     */
     expect(s.data.score,
-      'candidate ' + (s.i + 1) + ' was shown a mark before results were released')
-      .toBeNull();
+      'candidate ' + (s.i + 1) + ' was not given their mark at submit')
+      .toBe(s.i < 2 ? 10 : 0);
   }
 
   // The office sees the real marks straight away -- that is the whole point of
@@ -362,7 +373,9 @@ test('each of them answers and submits, and gets their own mark', async () => {
   expect(candidates.filter((c) => c.percent === 0).length,
     'the two who did not').toBe(2);
 
-  // Released, and only now does each candidate see their own.
+  // Releasing the paper is still a real action -- it closes marking for good
+  // for everybody -- and it must remain harmless on attempts that are already
+  // out. A second release of an already-visible mark should not disturb it.
   const released = await api('/api/onyx/assessments/' + w.eveningPaper + '/results/publish',
     { method: 'POST', token, body: {} });
   expect(released.status, 'results could not be released').toBe(200);
@@ -379,7 +392,10 @@ test('each of them answers and submits, and gets their own mark', async () => {
     return { i: s.i, score: mine.data.score };
   }));
   for (const s of seen) {
-    expect(s.score, 'candidate ' + (s.i + 1) + ' still cannot see a released mark')
+    // The mark that follows the person, read back through their own attempt.
+    // This is the assertion the test exists for: a room of people sitting one
+    // paper together must not be handed each other's results.
+    expect(s.score, 'candidate ' + (s.i + 1) + ' is seeing the wrong mark')
       .toBe(s.i < 2 ? 10 : 0);
   }
 });

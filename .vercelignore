@@ -1,0 +1,34 @@
+# What never belongs in a deployment archive.
+#
+# `vercel --archive=tgz` tars the working directory, and it does not read
+# .gitignore -- so anything a local tool happens to be writing at that moment
+# goes up with the source. Playwright's trace directory is the one that bites:
+# a deploy run while the browser suite is running fails outright with
+#
+#   Error: ENOENT: no such file or directory, lstat
+#   'test-results/.playwright-artifacts-0/traces/resources/<hash>.htc'
+#
+# because Playwright deletes those files between tests, in the window between
+# the archiver listing the directory and reading it. Nothing here is needed to
+# build the app, so the fix is to leave it all behind rather than to avoid
+# deploying and testing at the same time.
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# Local QA output. Large, regenerated per run, and of no use to the build.
+qa-*.json
+qa-report-print.html
+Onyx-LMS-QA-Certification.pdf
+
+# Build and dependency caches. Vercel installs and builds from source.
+node_modules/
+.next/
+apps/web/.next/
+packages/*/dist/
+
+# Local environment and database dumps.
+.env
+.env.*
+backups/

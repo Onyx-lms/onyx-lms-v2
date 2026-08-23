@@ -83,7 +83,19 @@ const NAV: Record<Role, OnyxNavGroup[]> = {
     // batches, courses, awarded skills, certificates -- and staff have
     // CareerService.profile for the same records where they are entitled to
     // them, so a nav item pointing at a page that would 403 helps nobody.
-    { label: 'Career', items: [I.jobs, I.interviews, I.resume, I.profile] },
+    /*
+     * No Interviews for a learner.
+     *
+     * Asked for directly, and it matches what the page is: an interview is
+     * scheduled BY the placement office or an employer, and a learner's
+     * involvement is being told when to turn up -- which reaches them through
+     * their inbox and, now, through the timetable. A nav item for a screen you
+     * cannot act on is a door into somebody else's workflow.
+     *
+     * The route itself is unchanged and still guarded by its own page role:
+     * this hides an entrance, it does not pretend to be a permission.
+     */
+    { label: 'Career', items: [I.jobs, I.resume, I.profile] },
     { items: [I.inbox] },
   ],
   faculty: [

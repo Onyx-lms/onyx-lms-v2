@@ -1277,6 +1277,26 @@ export function AddQuestion({ bankId, problems = [] }: {
           const accepted = answer.split('\n').map((a) => a.trim()).filter(Boolean);
           if (!accepted.length) { setError('Give at least one accepted answer.'); return; }
           body.answer = accepted;
+        } else if (type === 'code') {
+          /*
+           * The branch that was missing.
+           *
+           * The picker below has always been rendered, and always been filled
+           * in, and its value never left this component -- there was a case
+           * here for every question type except this one. So a code question
+           * posted `{ type, prompt, points }` with no problem attached, and the
+           * service refused it: "A code question needs a problem." From the
+           * outside that reads as coding questions simply not working, which is
+           * exactly how it was reported.
+           */
+          if (!problemId) {
+            setError(problems.length
+              ? 'Choose the problem this question is answered against.'
+              : 'There are no published problems to ask yet. Author one in Practice, '
+                + 'give it test cases and publish it first.');
+            return;
+          }
+          body.problem_id = Number(problemId);
         }
         const res = await send('banks/' + bankId + '/questions', body);
         if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
@@ -1284,6 +1304,7 @@ export function AddQuestion({ bankId, problems = [] }: {
         setOptions([{ id: 'a', text: '' }, { id: 'b', text: '' }]);
         setCorrect([]);
         setAnswer('false');
+        setProblemId('');
         setOpen(false);
         router.refresh();
       })}>
