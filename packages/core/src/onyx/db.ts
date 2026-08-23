@@ -74,21 +74,36 @@ export function onyxAuthAdmin(): SupabaseClient {
   return _authAdmin;
 }
 
-let _authClient: SupabaseClient | null = null;
-
 /**
- * A plain (anon-key) Supabase Auth client for password sign-in/refresh.
+ * A plain (anon-key) Supabase Auth client for password sign-in and refresh.
  *
- * The API server is a trusted intermediary here, not a privileged one --
- * this authenticates exactly the way a browser calling Supabase directly
- * would, which is why it is the anon key rather than the service-role key
+ * The API server is a trusted intermediary here, not a privileged one -- this
+ * authenticates exactly the way a browser calling Supabase directly would,
+ * which is why it is the anon key rather than the service-role key
  * `onyxAuthAdmin()` above uses for account provisioning.
+ *
+ * A fresh client every call, never shared, and there is deliberately no
+ * memoised version -- there was one until the bug below. Do not add it back.
+ *
+ * `persistSession: false` stops the client writing a session to storage; it
+ * does NOT stop it holding one in memory. GoTrueClient keeps the session it
+ * last minted on the instance and serialises auth calls through a lock on it,
+ * so two sign-ins racing through ONE client leave that client holding one
+ * session -- and a refreshSession() that follows can be answered with the
+ * other person's.
+ *
+ * That is not a theoretical race. Three concurrent logins against production
+ * returned two distinct tokens: a learner was handed an administrator's
+ * session, with that administrator's identity and every one of their
+ * permissions. Under a room full of candidates all pressing Sign in at the
+ * start of an exam, it is not even unlikely.
+ *
+ * So every stateful auth exchange -- signing in, refreshing to re-scope a
+ * session -- takes a fresh client and drops it. A client is a thin wrapper
+ * around fetch with nothing to pool, so this costs one object per sign-in.
  */
-export function onyxAuthClient(): SupabaseClient {
-  if (!_authClient) {
-    _authClient = createClient(required('SUPABASE_URL'), required('SUPABASE_ANON_KEY'), {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-  }
-  return _authClient;
+export function onyxAuthClientFresh(): SupabaseClient {
+  return createClient(required('SUPABASE_URL'), required('SUPABASE_ANON_KEY'), {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
 }

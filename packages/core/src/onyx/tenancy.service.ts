@@ -15,7 +15,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { OnyxDb } from './db.ts';
-import { onyxAuthAdmin, onyxAuthClient } from './db.ts';
+import { onyxAuthAdmin, onyxAuthClientFresh } from './db.ts';
 import type { Role } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
 import { slugify } from '../authoring/slug.ts';
@@ -60,7 +60,20 @@ export class TenancyService {
   }
 
   get #authAdmin(): SupabaseClient { return this.#authAdminOverride ?? onyxAuthAdmin(); }
-  get #authClient(): SupabaseClient { return this.#authClientOverride ?? onyxAuthClient(); }
+  /**
+   * A client for one auth exchange, then thrown away.
+   *
+   * NOT a shared one: GoTrueClient holds the session it last minted on the
+   * instance, so concurrent sign-ins through a single client hand each other's
+   * sessions out. See onyxAuthClientFresh in db.ts -- this was reproducible
+   * against production with three logins.
+   *
+   * The override is still honoured, because a test supplying a fake wants that
+   * fake used rather than a real client built beside it.
+   */
+  get #authClient(): SupabaseClient {
+    return this.#authClientOverride ?? onyxAuthClientFresh();
+  }
 
   // ---- tenants ----
 
@@ -690,7 +703,12 @@ export class TenancyService {
    * still read identically -- which emails exist is not public.
    */
   async signIn(email: string, password: string, tenantId?: number) {
-    const { data: signed, error: signError } = await this.#authClient.auth.signInWithPassword({
+    // One client for BOTH halves of this exchange, and nobody else's. The
+    // refresh below trades this sign-in's refresh token for a tenant-scoped
+    // session, and reading `#authClient` twice would build two clients -- which
+    // works, but says something untrue about how they relate.
+    const auth = this.#authClient;
+    const { data: signed, error: signError } = await auth.auth.signInWithPassword({
       email: email.trim().toLowerCase(), password,
     });
     if (signError || !signed.session || !signed.user) {
@@ -713,7 +731,7 @@ export class TenancyService {
     if (!chosen) throw new HttpError(403, 'You do not belong to that institution.');
 
     await this.setActiveTenant(signed.user.id, Number(chosen.tenant_id));
-    const { data: refreshed, error: refreshError } = await this.#authClient.auth.refreshSession({
+    const { data: refreshed, error: refreshError } = await auth.auth.refreshSession({
       refresh_token: signed.session.refresh_token,
     });
     if (refreshError || !refreshed.session) {

@@ -15,7 +15,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Role } from '@onyx/types';
 import type { OnyxDb } from './db.ts';
-import { onyxAuthAdmin, onyxAuthClient } from './db.ts';
+import { onyxAuthAdmin, onyxAuthClientFresh } from './db.ts';
 import { HttpError } from '../http/errors.ts';
 import { slugify } from '../authoring/slug.ts';
 import { ROLES } from './tenancy.service.ts';
@@ -62,7 +62,11 @@ export class PlatformService {
     this.#db = db;
     this.#authClientOverride = authClient;
   }
-  get #authClient(): SupabaseClient { return this.#authClientOverride ?? onyxAuthClient(); }
+  /** Fresh per exchange -- see onyxAuthClientFresh in db.ts. A shared client
+   *  hands concurrent sign-ins each other's sessions. */
+  get #authClient(): SupabaseClient {
+    return this.#authClientOverride ?? onyxAuthClientFresh();
+  }
 
   // -------------------------------------------------------------------------
   // Who gets in

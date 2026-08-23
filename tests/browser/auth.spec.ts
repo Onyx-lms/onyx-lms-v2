@@ -10,7 +10,8 @@
  */
 import { test, expect } from '@playwright/test';
 import {
-  RUN, mail, PASSWORD, createTenant, signInViaForm, cleanupTenants,
+  RUN, mail, PASSWORD, api, adminToken, addMember, createTenant, signInViaForm,
+  cleanupTenants,
 } from './helpers.ts';
 
 const T = { name: 'Browser Auth College ' + RUN, slug: 'browser-auth-' + RUN };
@@ -76,5 +77,69 @@ test.describe('signing in and out', () => {
     // which is what makes a shared link to a paper survive the login wall.
     await page.goto('/onyx/dashboard');
     await expect(page).toHaveURL(/\/onyx\/login\?next=%2Fonyx%2Fdashboard$/);
+  });
+});
+
+/**
+ * Several people signing in at the same moment stay several people.
+ *
+ * This is a regression test for a live authentication bug, and it is worth
+ * saying plainly what it was: three concurrent logins against the deployment
+ * returned two distinct tokens. A learner was handed an administrator's
+ * session -- that administrator's identity, institution and every one of their
+ * permissions -- because the server signed everybody in through one memoised
+ * Supabase Auth client, and GoTrueClient keeps the session it last minted on
+ * the instance.
+ *
+ * It needed concurrency to appear, which is why nothing caught it: every test
+ * in this suite, and every person clicking through the product by hand, signs
+ * in one at a time. A room full of candidates at the start of an exam does
+ * not.
+ *
+ * Run repeatedly on purpose. The race is real but not certain -- it showed up
+ * in roughly one round of three -- so a single round would have been a test
+ * that passed while the bug was still there.
+ */
+test.describe('many people at once', () => {
+  const T2 = { name: 'Crowd College ' + RUN, slug: 'crowd-' + RUN };
+  const crowdAdmin = mail('crowd', 'admin');
+  const people = ['one', 'two', 'three', 'four', 'five'].map((n) => mail('crowd', n));
+
+  test.beforeAll(async () => {
+    await createTenant(T2.name, T2.slug, 'Crowd Admin', crowdAdmin);
+    const token = await adminToken(crowdAdmin);
+    for (const [i, email] of people.entries()) {
+      await addMember(token, 'Person ' + (i + 1), email, 'student');
+    }
+  });
+
+  test.afterAll(async () => {
+    await cleanupTenants([T2.slug], 'crowd.%.' + RUN + '@onyx.test');
+  });
+
+  test('a token issued to one person is never another person\'s', async () => {
+    for (let round = 1; round <= 5; round++) {
+      // Together, not in turn. Awaiting each login before starting the next is
+      // what the rest of this suite does and is exactly what hid the fault.
+      const tokens = await Promise.all(people.map(async (email) => {
+        const res = await api<{ token: string }>('/api/onyx/auth/login',
+          { body: { email, password: PASSWORD } });
+        expect(res.status, 'a login failed outright in round ' + round).toBe(200);
+        return res.data.token;
+      }));
+
+      expect(new Set(tokens).size,
+        'round ' + round + ': two people were issued the SAME token').toBe(people.length);
+
+      // And each one answers as the person it was issued to. Distinct tokens
+      // are necessary and not sufficient -- two valid tokens for the same
+      // account would also be distinct.
+      const identities = await Promise.all(tokens.map(async (token) => {
+        const me = await api<{ email: string }>('/api/onyx/me', { token });
+        return me.data?.email;
+      }));
+      expect(identities, 'round ' + round + ': a session belongs to the wrong person')
+        .toEqual(people);
+    }
   });
 });
