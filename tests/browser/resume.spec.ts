@@ -101,6 +101,10 @@ test.describe('the resume', () => {
     await page.getByLabel(/your objective/i).fill(text);
     await page.getByRole('button', { name: /^Save$/ }).click();
 
+    // Waited on the save, not on the click. Reloading straight after racing
+    // the write is how this failed under a full-suite run while passing on
+    // its own -- the same trap as the phone toggle below.
+    await expect(page.getByText('Saved.')).toBeVisible({ timeout: 20_000 });
     await page.reload();
     await expect(page.getByLabel(/your objective/i)).toHaveValue(text);
     // It appears on the document itself, not only in the box it was typed in.
@@ -122,7 +126,12 @@ test.describe('the resume', () => {
     }
 
     await box().check();
-    await expect(box()).toBeChecked({ timeout: 15_000 });
+    // The tick is OPTIMISTIC -- it flips before the server has answered, which
+    // is deliberate and is what stops the box snapping back mid-save. So it
+    // proves nothing about persistence, and reloading on the strength of it
+    // raced the write: this passed alone and failed about one full-suite run
+    // in three. 'Saved.' is the editor's own word for the round trip finishing.
+    await expect(page.getByText('Saved.')).toBeVisible({ timeout: 20_000 });
     await page.reload();
     await expect(box()).toBeChecked();
 

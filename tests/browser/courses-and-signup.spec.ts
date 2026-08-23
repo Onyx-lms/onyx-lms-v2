@@ -194,9 +194,16 @@ test.describe('a learner opens their own account', () => {
 
     // And says so plainly when an address matches nothing -- without naming
     // any institution that does.
+    //
+    // The wording moved on: it used to be a flat refusal, and an address that
+    // matches nothing is no longer the end of the road, because an institution
+    // can let people pick it from a list instead. What must NOT change is that
+    // the message names no institution that would have accepted the address --
+    // a refusal that says "try ABC instead" is a directory of who registers
+    // where, handed to anybody who types an address.
     await page.locator('#su-email').fill('someone@gmail.com');
     await page.locator('#su-name').click();
-    const refusal = page.getByText(/No institution here accepts/);
+    const refusal = page.getByText(/does not name an institution/);
     await expect(refusal).toBeVisible({ timeout: 10_000 });
     await expect(refusal).not.toContainText('ABC');
   });
