@@ -6,6 +6,7 @@ import {
   formatClock, type Assessment, type CandidateAttempt, type PaperQuestion,
 } from '@/lib/onyx-assess';
 import { ProctorMedia, ProctorPreflight, type DeviceState } from '@/components/onyx-proctor';
+import { CandidateCamera } from '@/components/onyx-proctor-live';
 
 /**
  * ASS-01b/c + ASS-02a -- sitting a paper.
@@ -67,10 +68,14 @@ export function OnyxSitPaper({ assessment, attempt }: {
         setError(body.message ?? 'Could not hand that in.');
         return;
       }
-      router.push('/onyx/assessments/' + assessment.id);
+      // The attempt, not the paper's front page. This is where the result is,
+      // and on a paper that marks itself it is there the moment they arrive --
+      // the front page shows no score and never did, so handing in used to
+      // land a candidate somewhere that could not tell them anything.
+      router.push('/onyx/attempts/' + attempt.id);
       router.refresh();
     });
-  }, [assessment.id, attempt.id, router]);
+  }, [attempt.id, router]);
 
   useEffect(() => {
     const tick = setInterval(() => {
@@ -200,6 +205,16 @@ export function OnyxSitPaper({ assessment, attempt }: {
           requireCamera={Boolean(assessment.require_camera)}
           requireScreen={Boolean(assessment.require_screen)}
           onState={setMedia}
+        />
+      ) : null}
+
+      {/* ASS-02b. Renders nothing until an invigilator actually opens this
+          candidate, and then says so where they cannot miss it. The camera is
+          not held open in the meantime. */}
+      {assessment.proctoring ? (
+        <CandidateCamera
+          attemptId={attempt.id}
+          enabled={Boolean(assessment.watch_camera)}
         />
       ) : null}
 
@@ -493,10 +508,27 @@ export function OnyxStartAssessment({ assessment }: { assessment: Assessment }) 
             <li>Leaving the tab, pasting and copying are recorded.</li>
             {assessment.require_camera ? <li>Your camera must stay on.</li> : null}
             {assessment.require_screen ? <li>Your screen is shared with the invigilator.</li> : null}
-            {assessment.require_camera || assessment.require_screen ? (
+            {/*
+              * This said "no video is recorded or uploaded" for every paper,
+              * and live invigilation makes that false for the papers that use
+              * it. Consent has to be informed and specific, so the sentence
+              * now depends on what this particular paper actually does rather
+              * than on what was true before the feature existed.
+              *
+              * Nothing is recorded either way -- that half was and remains
+              * true, and is worth keeping because it is the thing people are
+              * most afraid of.
+              */}
+            {assessment.watch_camera ? (
               <li>
-                No video is recorded or uploaded — only when your camera and screen
-                started and stopped.
+                <strong>An invigilator may watch your camera live during this attempt.</strong>{' '}
+                You will be told on this screen whenever somebody is watching. Nothing is
+                recorded or kept.
+              </li>
+            ) : assessment.require_camera || assessment.require_screen ? (
+              <li>
+                No video is recorded, uploaded or watched — only when your camera and
+                screen started and stopped.
               </li>
             ) : null}
             <li>An invigilator reviews anything flagged. A flag is not an accusation.</li>

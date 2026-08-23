@@ -30,7 +30,7 @@ import type { AcademicsService } from './academics.service.ts';
 const BANK_COLUMNS = 'id, tenant_id, course_id, name, description, created_by, created_at';
 const QUESTION_COLUMNS = 'id, tenant_id, bank_id, type, prompt, options, answer, explanation, points, difficulty, tags, version, status, problem_id, created_at';
 const VERSION_COLUMNS = 'id, tenant_id, question_id, version, type, prompt, options, answer, explanation, points, problem_id';
-const ASSESSMENT_COLUMNS = 'id, tenant_id, course_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, sections, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, anonymous_marking, moderation_required, pass_mark, status, results_published_at, created_by, created_at';
+const ASSESSMENT_COLUMNS = 'id, tenant_id, course_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, sections, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, watch_camera, instant_results, anonymous_marking, moderation_required, pass_mark, status, results_published_at, created_by, created_at';
 const ATTEMPT_COLUMNS = 'id, tenant_id, assessment_id, user_id, attempt, paper, status, started_at, expires_at, submitted_at, auto_score, manual_score, score, max_score, consented_at, integrity_flags, integrity_status, updated_at';
 const ANSWER_COLUMNS = 'id, tenant_id, attempt_id, question_id, version, response, auto_points, manual_points, marker_comment, flagged_for_review, submission_id, updated_at';
 const GRADE_COLUMNS = 'id, tenant_id, attempt_id, role, marker_id, manual_score, comment, created_at';
@@ -376,6 +376,8 @@ export class AssessService {
     sections?: { id: string; title: string; bank_id: number; take: number }[];
     shuffle_questions?: boolean; shuffle_options?: boolean;
     proctoring?: boolean; require_camera?: boolean; require_screen?: boolean;
+    watch_camera?: boolean;
+    instant_results?: boolean;
     anonymous_marking?: boolean; moderation_required?: boolean;
     pass_mark?: number | null;
   }) {
@@ -404,6 +406,13 @@ export class AssessService {
       shuffle_options: input.shuffle_options === false ? 0 : 1,
       proctoring: input.proctoring ? 1 : 0,
       require_camera: input.require_camera ? 1 : 0,
+      // ASS-02b. A paper is not watchable unless somebody said so.
+      watch_camera: Boolean(input.watch_camera),
+      // On unless a paper-setter deliberately turns it off (0035). A paper
+      // that says nothing gets its marks back at submit.
+      instant_results: input.instant_results === undefined
+        ? true
+        : Boolean(input.instant_results),
       require_screen: input.require_screen ? 1 : 0,
       anonymous_marking: input.anonymous_marking === false ? 0 : 1,
       moderation_required: input.moderation_required ? 1 : 0,
@@ -480,6 +489,8 @@ export class AssessService {
     sections?: { id: string; title: string; bank_id: number; take: number }[];
     shuffle_questions?: boolean; shuffle_options?: boolean;
     proctoring?: boolean; require_camera?: boolean; require_screen?: boolean;
+    watch_camera?: boolean;
+    instant_results?: boolean;
     anonymous_marking?: boolean; moderation_required?: boolean;
   }) {
     const current = await this.assessment(tenantId, id);
@@ -516,9 +527,21 @@ export class AssessService {
     }
 
     // What may change once candidates can reach it, and what may not.
+    /*
+     * `instant_results` sits here with the rest of the settings a published
+     * paper freezes.
+     *
+     * It was briefly kept off this list so it could be switched on after
+     * publication -- which mattered only while it was off by default and every
+     * existing paper needed turning on by hand. Migration 0035 turned them all
+     * on instead, so the reason is gone and the general rule applies again:
+     * what candidates are promised when they sit a paper does not change
+     * underneath the ones who have already sat it.
+     */
     const COMPOSITION = ['sections', 'attempts_allowed', 'instructions',
       'shuffle_questions', 'shuffle_options', 'proctoring', 'require_camera',
-      'require_screen', 'anonymous_marking', 'moderation_required'] as const;
+      'require_screen', 'watch_camera', 'instant_results',
+      'anonymous_marking', 'moderation_required'] as const;
     const editingComposition = COMPOSITION.some((k) => patch[k] !== undefined);
     if (editingComposition && current.status !== 'draft') {
       throw new HttpError(422,
@@ -530,7 +553,9 @@ export class AssessService {
     const before: Record<string, unknown> = {};
     const after: Record<string, unknown> = {};
     const BOOLS = ['shuffle_questions', 'shuffle_options', 'proctoring',
-      'require_camera', 'require_screen', 'anonymous_marking', 'moderation_required'] as const;
+      'require_camera', 'require_screen', 'watch_camera', 'instant_results',
+      'anonymous_marking',
+      'moderation_required'] as const;
     for (const key of
       ['title', 'opens_at', 'closes_at', 'pass_mark', 'duration_minutes', 'status',
         'instructions', 'attempts_allowed', 'sections', ...BOOLS] as const) {
@@ -720,7 +745,32 @@ export class AssessService {
     const byQuestion = new Map(answers.map((a) => [Number(a.question_id), a]));
     const paper = (attempt.paper ?? []) as unknown as PaperEntry[];
     const assessment = await this.assessment(tenantId, Number(attempt.assessment_id));
-    const released = Boolean(assessment.results_published_at) && attempt.status === 'published';
+    const released = AssessService.releasedToCandidate(attempt, assessment);
+
+    // The keys this paper was sat against, for marking each answer right or
+    // wrong on the review screen. Read only once the result is out -- before
+    // that this method must not so much as load them.
+    const keys = released
+      ? await this.#versionsFor(tenantId, paper)
+      : new Map<string, Record<string, unknown>>();
+
+    /*
+     * Whether the candidate may see the CORRECT answers, as opposed to their
+     * own and what they scored.
+     *
+     * Only once they have no sittings left. A paper that allows two attempts
+     * and hands over the answer key after the first is a paper whose second
+     * attempt means nothing -- and question banks are shared between papers,
+     * so a key given away early leaks into other papers drawn from the same
+     * bank. Every LMS that shows answers makes this conditional; this is the
+     * condition, and it needs no setting because the paper already states how
+     * many attempts it allows.
+     */
+    const { data: sat } = await this.#db.from('onyx_assessment_attempts')
+      .select('id').eq('tenant_id', tenantId)
+      .eq('assessment_id', Number(attempt.assessment_id)).eq('user_id', userId);
+    const used = (sat ?? []).length;
+    const showKey = released && used >= Number(assessment.attempts_allowed ?? 1);
 
     return {
       id: attempt.id,
@@ -749,6 +799,23 @@ export class AssessService {
         // tests and no solution -- see #dealPaper.
         problem: q.problem,
         response: byQuestion.get(q.question_id)?.response ?? null,
+        /*
+         * Right or wrong, where that is a fact rather than an opinion.
+         *
+         * Only for a question a machine actually marked -- an essay has no
+         * "correct", and an MCQ-shaped question authored without a key was
+         * never scored against one either (see #finalise). Both come back
+         * null, so the screen says "marked" rather than inventing a verdict.
+         */
+        correct: released && isObjective(q.type)
+          && hasKey(keys.get(q.question_id + ':' + q.version)?.answer)
+          ? Number(byQuestion.get(q.question_id)?.auto_points ?? 0) >= Number(q.points)
+          : null,
+        // The key itself, and only when there is no sitting left to spoil.
+        expected: showKey
+          ? keys.get(q.question_id + ':' + q.version)?.answer ?? null : null,
+        explanation: showKey
+          ? keys.get(q.question_id + ':' + q.version)?.explanation ?? null : null,
         // Per-question marks are part of the result, so they wait too.
         awarded: released
           ? Number(byQuestion.get(q.question_id)?.auto_points ?? 0)
@@ -1053,10 +1120,24 @@ export class AssessService {
   }) {
     const attempt = await this.#attempt(tenantId, attemptId);
     if (attempt.status === 'in_progress') throw new HttpError(422, 'That attempt is still running.');
-    if (attempt.status === 'published') {
-      // Changing a mark after release is an appeal, not an edit.
-      throw new HttpError(422, 'These results are published and cannot be re-marked.');
-    }
+    /*
+     * A released mark can still be corrected, and after 0035 it has to be.
+     *
+     * This used to refuse outright -- "changing a mark after release is an
+     * appeal, not an edit" -- and that held while `published` meant a person
+     * had decided to release. It no longer does: an auto-marked attempt is
+     * published the moment it is handed in, so refusing here would mean that
+     * every machine-marked paper in the product became permanently
+     * uncorrectable at the instant of submission. A marker who spots a bad key,
+     * or awards marks on a question the sandbox misjudged, would have no way
+     * in at all.
+     *
+     * So marking a released attempt is allowed, `#recompute` runs as usual, and
+     * the candidate sees the corrected figure rather than the old one. It stays
+     * an amendment rather than a quiet edit: the route that calls this records
+     * an audit entry either way, and the attempt keeps its published status
+     * rather than being pulled back out of sight.
+     */
     const role: MarkRole = input.role ?? 'first';
     const paper = (attempt.paper ?? []) as unknown as PaperEntry[];
     const byId = new Map(paper.map((q) => [q.question_id, q]));
@@ -1134,7 +1215,7 @@ export class AssessService {
 
     return attempts.map((a) => {
       const assessment = byId.get(Number(a.assessment_id));
-      const released = a.status === 'published' && Boolean(assessment?.results_published_at);
+      const released = AssessService.releasedToCandidate(a, assessment);
       return {
         attempt_id: Number(a.id),
         assessment_id: Number(a.assessment_id),
@@ -1372,8 +1453,34 @@ export class AssessService {
   }
 
   /** Auto-marks and closes an attempt, however it ended. */
+  /**
+   * May the candidate see this attempt's mark yet?
+   *
+   * The one definition, because there were three identical copies of it --
+   * `myAttempts`, `attemptForCandidate` and GuardianService -- and a release
+   * rule that is written down three times is a release rule that will
+   * eventually disagree with itself about whose marks are visible.
+   *
+   * The attempt must be at `published` either way. What the paper adds is WHY:
+   * `results_published_at` is somebody having released it for everyone, and
+   * `instant_results` is the paper having said in advance that an
+   * auto-marked attempt may be handed straight back. Requiring the attempt
+   * status in both cases keeps the two from drifting apart -- nothing is
+   * visible that was not deliberately published, whichever route it took.
+   */
+  static releasedToCandidate(
+    attempt: { status?: unknown },
+    assessment: { results_published_at?: unknown; instant_results?: unknown } | null | undefined,
+  ): boolean {
+    if (String(attempt?.status) !== 'published') return false;
+    return Boolean(assessment?.results_published_at) || Boolean(assessment?.instant_results);
+  }
+
   async #finalise(tenantId: number, attemptId: number, status: 'submitted' | 'expired') {
     const attempt = await this.#attempt(tenantId, attemptId);
+    // Needed for the release decision at the end of this method, and read here
+    // rather than there so there is one read whichever branch is taken.
+    const assessment = await this.assessment(tenantId, Number(attempt.assessment_id));
     const paper = (attempt.paper ?? []) as unknown as PaperEntry[];
     const answers = await this.#answers(tenantId, attemptId);
     const byQuestion = new Map(answers.map((a) => [Number(a.question_id), a]));
@@ -1382,6 +1489,8 @@ export class AssessService {
     const at = new Date(this.#now()).toISOString();
     let auto = 0;
     let needsMarking = false;
+    /** Does anything on this paper need a person, whoever sat it? See below. */
+    let humanMarkable = false;
 
     for (const q of paper) {
       const answer = byQuestion.get(q.question_id);
@@ -1397,6 +1506,7 @@ export class AssessService {
         if (!submissionId || !this.#code) {
           // Answered but ungradable -- no sandbox configured, or no code
           // written. Either way a person decides, exactly as for an essay.
+          if (!this.#code) humanMarkable = true;   // no sandbox: never machine-markable
           if (answer?.response) needsMarking = true;
           continue;
         }
@@ -1408,7 +1518,10 @@ export class AssessService {
         }
         const result = await this.#code.scoreOf(tenantId, submissionId);
         if (!result || result.status !== 'done' || result.max_score <= 0) {
+          // The sandbox could not judge it, so a person must -- and a mark
+          // that is waiting for a person is not one to hand back at submit.
           needsMarking = true;
+          humanMarkable = true;
           continue;
         }
         // Proportional to the tests that passed, scaled to what the question
@@ -1428,6 +1541,13 @@ export class AssessService {
       // a blank key would mark every response wrong by default, which is not
       // "objective", it's just silent.
       if (!isObjective(q.type) || !hasKey(key?.answer)) {
+        // Whether a MARKER is needed for THIS attempt depends on whether the
+        // candidate wrote anything. Whether the PAPER can be marked by machine
+        // does not -- and that is the question the instant release turns on.
+        // A candidate who skips the essay must not get a different experience
+        // from one who attempts it: both are sitting a paper with an essay on
+        // it, and it is the paper that decides.
+        humanMarkable = true;
         if (answer?.response) needsMarking = true;
         continue;
       }
@@ -1445,8 +1565,33 @@ export class AssessService {
       }
     }
 
+    /*
+     * Hand the score back now, when there is genuinely nothing left to decide.
+     *
+     * Three conditions, and every one of them has to hold:
+     *
+     *   * the paper says so (`instant_results`) -- releasing a mark the moment
+     *     it is earned tells the first candidate to finish which answers were
+     *     right, and on a paper with an open window that is a leak. Whether
+     *     that trade is worth making belongs to the institution;
+     *   * nothing awaits a human (`!needsMarking`) -- an essay, an unkeyed
+     *     short answer or a code question the sandbox could not judge all
+     *     leave `score` null, and there is no number to show;
+     *   * the paper does not require moderation -- a mark that must be
+     *     moderated before release is by definition not final at submission.
+     *
+     * Only the ATTEMPT is published, never the assessment: `results_published_at`
+     * releases a paper for everybody at once and closes marking for good, which
+     * is a decision for a person and not a side effect of one candidate
+     * finishing early.
+     */
+    const instant = Boolean(assessment.instant_results)
+      && !needsMarking
+      && !humanMarkable
+      && !assessment.moderation_required;
+
     await this.#db.from('onyx_assessment_attempts').update({
-      status,
+      status: instant ? 'published' : status,
       submitted_at: at,
       auto_score: auto,
       // A paper with nothing subjective on it is finished; one with an essay is
@@ -1483,11 +1628,25 @@ export class AssessService {
       ?? grades.find((g) => g.role === 'first');
     const manual = authoritative ? Number(authoritative.manual_score) : 0;
 
+    /*
+     * An attempt that is already released stays released.
+     *
+     * This used to set 'graded' unconditionally, which was harmless while
+     * nothing was published until a person published it. After 0035 an
+     * auto-marked attempt is published at submit, so a marker correcting one
+     * would have moved it from 'published' back to 'graded' -- and
+     * `releasedToCandidate` requires 'published', so the candidate's result
+     * would have silently DISAPPEARED at the exact moment somebody improved
+     * it. A correction has to change the number, not withdraw it.
+     */
+    const current = await this.#attempt(tenantId, attemptId);
+    const status = String(current.status) === 'published' ? 'published' : 'graded';
+
     await this.#db.from('onyx_assessment_attempts').update({
       auto_score: auto,
       manual_score: authoritative ? manual : null,
       score: auto + manual,
-      status: 'graded',
+      status,
       updated_at: new Date(this.#now()).toISOString(),
     }).eq('id', attemptId);
   }

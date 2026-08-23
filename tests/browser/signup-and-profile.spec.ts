@@ -23,6 +23,7 @@
 import { test, expect } from '@playwright/test';
 import {
   withDb, RUN, api, PASSWORD, mail, createTenant, adminToken, signInViaForm, cleanupTenants,
+  otpFor, pageFetch,
 } from './helpers.ts';
 
 const T = { name: 'Enrol College ' + RUN, slug: 'enrol-' + RUN };
@@ -31,6 +32,25 @@ const adminEmail = mail('enrol', 'admin');
 /** The institution's own domain, unique per run so two runs cannot collide. */
 const DOMAIN = 'enrol-' + RUN + '.test';
 const SIGNUP_PASSWORD = 'Registered#2026';
+
+/**
+ * A second domain on the same institution, for the one test that sends.
+ *
+ * Supabase will not mail a code to a domain that cannot receive one -- it
+ * checks deliverability and refuses `.test` outright -- so the run-unique
+ * fixture domain above works for every check that stops BEFORE sending and for
+ * none that gets that far. That is the right behaviour in the product (an
+ * institution whose domain has no mail server cannot verify anybody) and it
+ * leaves this suite needing one address that is genuinely deliverable.
+ *
+ * mailinator.com is a public throwaway inbox: real MX records, nothing to
+ * bounce, and nothing private in a six-digit code for an institution that is
+ * deleted at the end of the run. It is on the product's own consumer-mail
+ * blocklist, which is exactly why it belongs here -- an institution that
+ * DECLARES a domain outranks that list, and this proves it.
+ */
+const SENDABLE_DOMAIN = 'mailinator.com';
+const SENDABLE = 'onyx-enrol-' + RUN + '@' + SENDABLE_DOMAIN;
 
 const w = { tenantId: 0 };
 
@@ -46,7 +66,7 @@ test.beforeAll(async () => {
   const token = await adminToken(adminEmail);
   const saved = await api('/api/onyx/tenant/settings', {
     method: 'PATCH', token,
-    body: { student_signup: true, signup_domains: DOMAIN },
+    body: { student_signup: true, signup_domains: DOMAIN + ',' + SENDABLE_DOMAIN },
   });
   expect(saved.status, 'registration could not be opened').toBe(200);
 });
@@ -56,6 +76,14 @@ test.afterAll(async () => {
     await c.query('DELETE FROM public."onyx_users" WHERE email LIKE $1', ['%@' + DOMAIN]);
     await c.query("DELETE FROM public.\"onyx_users\" WHERE email LIKE $1",
       ['%@sub.' + DOMAIN]);
+    // Asking for a code creates a passwordless auth.users row before any
+    // profile exists, and an abandoned registration leaves one behind on
+    // purpose. Harmless in the product -- it grants nothing -- but this suite
+    // makes one per run under a domain that is unique per run, so without this
+    // they pile up in the project's auth table for ever.
+    await c.query('DELETE FROM public."onyx_users" WHERE email = $1', [SENDABLE]);
+    await c.query("DELETE FROM auth.users WHERE email LIKE $1 OR email LIKE $2 OR email = $3",
+      ['%@' + DOMAIN, '%@sub.' + DOMAIN, SENDABLE]);
   });
   await cleanupTenants([T.slug], 'enrol.%.' + RUN + '@onyx.test');
 });
@@ -79,7 +107,11 @@ test('the form names the institution as soon as it recognises the address', asyn
 
 test('a student registers with their institution address and lands inside it',
   async ({ page }) => {
-    const email = 'priya@' + DOMAIN;
+    // Two Supabase round trips and a real send, on top of the form itself.
+    test.slow();
+    // The one test in this file that actually asks Supabase to send. See
+    // SENDABLE for why it cannot use the fixture domain.
+    const email = SENDABLE;
     await page.context().clearCookies();
     await page.goto('/onyx/signup');
 
@@ -92,8 +124,17 @@ test('a student registers with their institution address and lands inside it',
     await page.getByLabel('Organisation email').blur();
     await page.getByLabel('Mobile number').fill('9000000001');
     await page.getByLabel('Roll number').fill('EN-001');
-    await page.getByLabel('Password').fill(SIGNUP_PASSWORD);
-    await page.getByRole('button', { name: /create|sign up|register/i }).first().click();
+    await page.getByRole('button', { name: 'Send me a code' }).click();
+
+    // The second screen. The password is asked for HERE and not before: until
+    // the code comes back this product holds nothing at all for an address
+    // nobody has proved they own.
+    await expect(page.getByText(/We sent a code to/)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(email)).toBeVisible();
+
+    await page.getByLabel('Verification code').fill(await otpFor(email, SIGNUP_PASSWORD));
+    await page.getByLabel('Choose a password').fill(SIGNUP_PASSWORD);
+    await page.getByRole('button', { name: 'Create my account' }).click();
 
     // Straight in, signed in, at their own institution -- not back to a login
     // form to type the same details again.
@@ -128,9 +169,13 @@ test('a department subdomain finds the same institution', async () => {
   expect(found.status).toBe(200);
   expect(found.data?.id, 'a subdomain address found no institution').toBe(w.tenantId);
 
-  const made = await api('/api/onyx/auth/signup', {
+  const made = await api('/api/onyx/auth/signup/verify', {
     method: 'POST',
-    body: { name: 'Arun Kumar', email, password: SIGNUP_PASSWORD },
+    body: {
+      name: 'Arun Kumar', email, password: SIGNUP_PASSWORD,
+      phone: '9000000002', roll_number: 'EN-002',
+      code: await otpFor(email, SIGNUP_PASSWORD),
+    },
   });
   expect(made.status, 'a subdomain address could not register').toBe(200);
 });
@@ -140,14 +185,92 @@ test('a personal address finds nothing, and is told what to do', async () => {
     '/api/onyx/auth/signup/institution?email=' + encodeURIComponent('someone@gmail.com'));
   expect(found.data ?? null, 'a personal address matched an institution').toBeNull();
 
-  const refused = await api('/api/onyx/auth/signup', {
-    method: 'POST',
-    body: { name: 'Nobody', email: 'someone@gmail.com', password: SIGNUP_PASSWORD },
+  const refused = await api('/api/onyx/auth/signup/start', {
+    method: 'POST', body: { email: 'someone@gmail.com' },
   });
   expect(refused.status).toBeGreaterThanOrEqual(400);
   // The message names the domain and says who can fix it. "No institution
   // accepts that" leaves somebody staring at a form with nothing to try.
   expect(String(refused.message)).toContain('gmail.com');
+});
+
+test('a free mailbox cannot be smuggled past by naming an open institution', async () => {
+  // The refusal above is the easy one: gmail.com matches no institution, so it
+  // fails for that reason alone and would fail identically with no rule about
+  // consumer mail at all. THIS is the one the rule exists for -- an
+  // institution that takes anyone who picks it from the dropdown, where the
+  // address is the only evidence of who somebody is.
+  const token = await adminToken(adminEmail);
+  const opened = await api('/api/onyx/tenant/settings', {
+    method: 'PATCH', token, body: { signup_mode: 'open' },
+  });
+  expect(opened.status).toBe(200);
+
+  try {
+    const refused = await api('/api/onyx/auth/signup/start', {
+      method: 'POST', body: { email: 'someone@gmail.com', tenant_id: w.tenantId },
+    });
+    expect(refused.status, 'gmail registered at an open institution').toBe(422);
+    expect(String(refused.message)).toMatch(/institution gave you/i);
+
+    /*
+     * And the rule is about the mailbox, not about picking from a list: an
+     * organisation address at the same institution gets PAST it.
+     *
+     * Proved by which refusal it earns rather than by a 200, because the
+     * fixture domain is a `.test` one that cannot receive mail -- so this call
+     * clears every rule and then fails at the send, with a message about
+     * delivery. Distinguishing the two failures is the whole assertion: the
+     * consumer rule stopped gmail before anything was attempted, and did not
+     * stop this.
+     *
+     * Asserting a 200 here would mean a second deliverable address and a
+     * second real email per run, for no more proof than this.
+     */
+    const fine = await api('/api/onyx/auth/signup/start', {
+      method: 'POST',
+      body: { email: 'newcomer@' + DOMAIN, tenant_id: w.tenantId },
+    });
+    expect(String(fine.message), 'an organisation address hit the consumer rule')
+      .not.toMatch(/institution gave you/i);
+    expect(String(fine.message)).toMatch(/does not appear to accept email/i);
+  } finally {
+    await api('/api/onyx/tenant/settings', {
+      method: 'PATCH', token, body: { signup_mode: 'domain' },
+    });
+  }
+});
+
+test('the code is what creates the account -- nothing before it', async () => {
+  // Asking for a code must leave no membership behind. Otherwise the
+  // verification is decoration: whoever typed the address is already in.
+  const email = 'ghost@' + DOMAIN;
+  // Not asserted to succeed: the fixture domain cannot receive mail, so this
+  // clears every rule and then fails at the send. Either way it must not have
+  // created anybody, which is the whole point -- a registration that got as
+  // far as asking for a code and no further has to leave nothing behind.
+  await api('/api/onyx/auth/signup/start', { method: 'POST', body: { email } });
+
+  await withDb(async (c) => {
+    const { rows } = await c.query(
+      'SELECT id FROM public."onyx_users" WHERE email = $1', [email]);
+    expect(rows.length, 'asking for a code created a profile').toBe(0);
+  });
+
+  // And a wrong code creates nothing either.
+  const wrong = await api('/api/onyx/auth/signup/verify', {
+    method: 'POST',
+    body: {
+      name: 'Ghost', email, password: SIGNUP_PASSWORD,
+      phone: '9000000003', roll_number: 'EN-003', code: '00000000',
+    },
+  });
+  expect(wrong.status).toBe(422);
+  await withDb(async (c) => {
+    const { rows } = await c.query(
+      'SELECT id FROM public."onyx_users" WHERE email = $1', [email]);
+    expect(rows.length, 'a wrong code created a profile').toBe(0);
+  });
 });
 
 test('a lookalike domain is refused', async () => {
@@ -166,7 +289,7 @@ test('the profile shows each editor exactly once', async ({ page }) => {
   // with its own name field, its own picture control and its own Save. Two
   // forms writing the same record is worse than it looks: whichever was
   // touched last wins, and neither shows what the other did.
-  await signInViaForm(page, 'priya@' + DOMAIN, SIGNUP_PASSWORD);
+  await signInViaForm(page, SENDABLE, SIGNUP_PASSWORD);
   await page.goto('/onyx/profile');
 
   await expect(page.getByText('Your details', { exact: true }))
@@ -177,7 +300,7 @@ test('the profile shows each editor exactly once', async ({ page }) => {
 });
 
 test('a student edits their own name, and it is their name everywhere', async ({ page }) => {
-  await signInViaForm(page, 'priya@' + DOMAIN, SIGNUP_PASSWORD);
+  await signInViaForm(page, SENDABLE, SIGNUP_PASSWORD);
   await page.goto('/onyx/profile');
 
   const name = page.getByLabel('Your name');
@@ -191,7 +314,7 @@ test('a student edits their own name, and it is their name everywhere', async ({
 
   await withDb(async (c) => {
     const { rows } = await c.query(
-      'SELECT name FROM public."onyx_users" WHERE email=$1', ['priya@' + DOMAIN]);
+      'SELECT name FROM public."onyx_users" WHERE email=$1', [SENDABLE]);
     expect(String(rows[0].name)).toBe('Priya Raman-Iyer');
   });
 });
@@ -199,7 +322,7 @@ test('a student edits their own name, and it is their name everywhere', async ({
 test('a blank name is refused rather than saved', async ({ page }) => {
   // A name is on every register, results sheet and certificate. Blank would
   // show an email address in all of them.
-  await signInViaForm(page, 'priya@' + DOMAIN, SIGNUP_PASSWORD);
+  await signInViaForm(page, SENDABLE, SIGNUP_PASSWORD);
   await page.goto('/onyx/profile');
 
   await page.getByLabel('Your name').fill('   ');
@@ -208,14 +331,13 @@ test('a blank name is refused rather than saved', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Save', exact: true }).first())
     .toBeDisabled();
 
-  const refused = await page.request.patch('/api/proxy/onyx/my/profile-details', {
-    data: { name: '   ' },
-  });
-  expect(refused.status()).toBeGreaterThanOrEqual(400);
+  const refused = await pageFetch(page, '/api/proxy/onyx/my/profile-details',
+    { method: 'PATCH', data: { name: '   ' } });
+  expect(refused.status).toBeGreaterThanOrEqual(400);
 });
 
 test('a profile picture is an upload, never a link', async ({ page }) => {
-  await signInViaForm(page, 'priya@' + DOMAIN, SIGNUP_PASSWORD);
+  await signInViaForm(page, SENDABLE, SIGNUP_PASSWORD);
   await page.goto('/onyx/profile');
   await expect(page.getByLabel(/add a picture|change picture/i)).toBeVisible();
 
@@ -224,15 +346,14 @@ test('a profile picture is an upload, never a link', async ({ page }) => {
   // else's server.
   for (const evil of ['https://attacker.example/pixel.png', '//attacker.example/p.png',
     'javascript:alert(1)', 'etc/passwd']) {
-    const res = await page.request.patch('/api/proxy/onyx/my/profile-details', {
-      data: { photo: evil },
-    });
-    expect(res.status(), 'accepted a photo of ' + evil).toBeGreaterThanOrEqual(400);
+    const res = await pageFetch(page, '/api/proxy/onyx/my/profile-details',
+      { method: 'PATCH', data: { photo: evil } });
+    expect(res.status, 'accepted a photo of ' + evil).toBeGreaterThanOrEqual(400);
   }
 });
 
 test('the avatar in the corner opens an account menu', async ({ page }) => {
-  await signInViaForm(page, 'priya@' + DOMAIN, SIGNUP_PASSWORD);
+  await signInViaForm(page, SENDABLE, SIGNUP_PASSWORD);
   await page.goto('/onyx/dashboard');
 
   // It used to be a span with aria-hidden: not a button, not reachable by
@@ -247,7 +368,7 @@ test('the avatar in the corner opens an account menu', async ({ page }) => {
   await expect(menu).toBeVisible();
   // Who you are signed in as, which on a shared machine is worth saying before
   // either of the two things you can do.
-  await expect(menu).toContainText('priya@' + DOMAIN);
+  await expect(menu).toContainText(SENDABLE);
 
   // Escape closes it, because that is what a keyboard user tries first.
   await page.keyboard.press('Escape');
@@ -259,7 +380,7 @@ test('the avatar in the corner opens an account menu', async ({ page }) => {
 });
 
 test('signing out from that menu really signs you out', async ({ page }) => {
-  await signInViaForm(page, 'priya@' + DOMAIN, SIGNUP_PASSWORD);
+  await signInViaForm(page, SENDABLE, SIGNUP_PASSWORD);
   await page.goto('/onyx/dashboard');
 
   await page.getByRole('button', { name: /^Account:/ }).click();
@@ -314,6 +435,7 @@ test.describe('choosing an institution instead', () => {
   test.afterAll(async () => {
     await withDb(async (c) => {
       await c.query('DELETE FROM public."onyx_users" WHERE email = $1', [applicant]);
+      await c.query('DELETE FROM auth.users WHERE email = $1', [applicant]);
     });
     await cleanupTenants([T2.slug], 'choose.%.' + RUN + '@onyx.test');
   });
@@ -346,14 +468,30 @@ test.describe('choosing an institution instead', () => {
 
       await page.getByLabel('Mobile number').fill('9000000009');
       await page.getByLabel('Roll number').fill('CH-1');
-      await page.getByLabel('Password').fill(SIGNUP_PASSWORD);
-      await page.getByRole('button', { name: /create|sign up|register/i }).first().click();
 
-      // Signed in, not queued: no waiting room, no second visit.
-      await page.waitForURL((u) => !u.pathname.includes('/signup'), { timeout: 30_000 });
-      await page.getByRole('button', { name: /^Account:/ }).click();
-      await expect(page.getByRole('menu', { name: 'Account' }))
-        .toContainText(T2.name, { timeout: 20_000 });
+      /*
+       * Finished through the API rather than by clicking on.
+       *
+       * This institution declares no domains -- that is the mode under test --
+       * so the address has to be one the consumer rule allows AND one Supabase
+       * will send to, and the fixtures have no domain that is both: a `.test`
+       * one cannot receive mail, and every deliverable throwaway domain is on
+       * the blocklist precisely because it is a throwaway domain.
+       *
+       * The two-step form is covered click by click in the test above. What is
+       * unique here is the picker and what choosing does, so the picker is
+       * asserted in the browser and the registration is completed the way the
+       * form would have completed it.
+       */
+      const made = await api('/api/onyx/auth/signup/verify', {
+        method: 'POST',
+        body: {
+          name: 'Chosen Applicant', email: applicant, password: SIGNUP_PASSWORD,
+          phone: '9000000009', roll_number: 'CH-1', tenant_id: w2.tenantId,
+          code: await otpFor(applicant, SIGNUP_PASSWORD),
+        },
+      });
+      expect(made.status, String(made.message)).toBe(200);
 
       await withDb(async (c) => {
         const { rows } = await c.query(

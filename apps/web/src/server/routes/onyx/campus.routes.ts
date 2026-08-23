@@ -179,8 +179,18 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
     return ok(await ctx.onyxCampus.allocate(claims.tenant_id, body));
   });
 
+  /*
+   * QA F5. This required only a session, so every role in the institution --
+   * students, guardians and external employers included -- could read the
+   * whole tenant's teaching load. Looser than both of its neighbours: the POST
+   * beside it is REGISTRY, and the page in front of it is admin/faculty only.
+   *
+   * It read empty in both demo institutions, which is precisely why it went
+   * unnoticed: an institution that actually schedules teaching load would have
+   * been publishing staff workload to its students.
+   */
   app.get('/api/onyx/allocations', async (req) => {
-    const { claims } = await viewerOf(req);
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...REGISTRY);
     const query = req.query as { semester_id?: string; user_id?: string };
     return ok(await ctx.onyxCampus.allocations(claims.tenant_id, {
       semester_id: query.semester_id ? Number(query.semester_id) : undefined,
@@ -729,13 +739,26 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
     return ok(await ctx.onyxFinance.createStructure(claims.tenant_id, viewer, body));
   });
 
+  /*
+   * QA F3. These two read what the POST above writes, and the POST asserts
+   * `fees.structures` -- a capability declared with an EMPTY holders list,
+   * meaning no institution may ever grant it to anyone but an administrator.
+   * Guarding the reads with REGISTRY handed the same rows to faculty and to
+   * the exams office, which is the opposite of what the capability says.
+   *
+   * `assertCan` as well as the role, not instead of it: the role guard rules
+   * out what could never hold the capability, and `assertCan` answers what
+   * THIS institution has decided. That is the house order everywhere else.
+   */
   app.get('/api/onyx/fee-structures', async (req) => {
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...REGISTRY);
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'fees.structures');
     return ok(await ctx.onyxFinance.structures(claims.tenant_id));
   });
 
   app.get('/api/onyx/fee-structures/:id', async (req) => {
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...REGISTRY);
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'fees.structures');
     return ok(await ctx.onyxFinance.structure(claims.tenant_id, idOf(req)));
   });
 
@@ -846,8 +869,17 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
   });
 
   /** The institution's own merchant configuration. Administrators only. */
+  /*
+   * QA F4. The docstring on this route already said "Administrators only" and
+   * the guard said otherwise. No credential value is exposed -- gateways()
+   * returns the NAMES of the slots that are filled -- but which provider an
+   * institution banks with, and whether it is still in test mode, is not the
+   * exams office's business, and `fees.gateways` is another capability with an
+   * empty holders list.
+   */
   app.get('/api/onyx/admin/gateways', async (req) => {
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...REGISTRY);
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'fees.gateways');
     return ok(await ctx.onyxCheckout.gateways(claims.tenant_id));
   });
 

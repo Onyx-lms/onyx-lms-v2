@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxSitPaper } from '@/components/onyx-sit';
+import { OnyxAttemptResult } from '@/components/onyx-attempt-result';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, type Me } from '@/lib/onyx-session';
 import type { Assessment, CandidateAttempt } from '@/lib/onyx-assess';
@@ -18,14 +19,22 @@ export default async function OnyxAttemptPage({ params }: { params: Promise<{ id
   const assessment = await onyxApi<Assessment>('/api/onyx/assessments/' + attempt.assessment_id);
 
   if (attempt.status !== 'in_progress') {
+    /*
+     * The result, where the candidate actually ends up.
+     *
+     * This used to be one sentence, on a page nothing navigated to -- handing
+     * in redirected to the paper's front page, which shows no score. Now
+     * submitting lands here, and every "your result" link in the product
+     * points at it.
+     */
     return (
-      <OnyxShell me={me} nav={navFor(me.role)} title={assessment.title}>
-        <p className="text-sm text-slate-700">
-          This attempt is finished.
-          {attempt.score !== null
-            ? ' You scored ' + attempt.score + ' out of ' + attempt.max_score + '.'
-            : ' Results will appear once they are published.'}
-        </p>
+      <OnyxShell
+        me={me}
+        nav={navFor(me.role)}
+        title={assessment.title}
+        subtitle={'Attempt ' + attempt.attempt + ' — your result'}
+      >
+        <OnyxAttemptResult assessment={assessment} attempt={attempt} />
       </OnyxShell>
     );
   }

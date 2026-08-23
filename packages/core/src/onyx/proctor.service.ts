@@ -22,6 +22,7 @@
  * a deserved bad name.
  */
 import type { OnyxDb } from './db.ts';
+import { randomUUID } from 'node:crypto';
 import { HttpError } from '../http/errors.ts';
 import { peopleFor } from './directory.ts';
 import { increment } from './metrics.ts';
@@ -213,12 +214,16 @@ export class ProctorService {
     // an invigilator reading "not required" about a paper that requires one is
     // worse informed than if the column were blank.
     const { data: papers } = await this.#db.from('onyx_assessments')
-      .select('id, require_camera, require_screen, proctoring')
+      .select('id, require_camera, require_screen, proctoring, watch_camera')
       .eq('tenant_id', tenantId)
       .in('id', [...new Set(attempts.map((a) => Number(a.assessment_id)))]);
     const needs = new Map((papers ?? []).map((p) => [Number(p.id), {
       camera: Boolean(p.proctoring) && Boolean(p.require_camera),
       screen: Boolean(p.proctoring) && Boolean(p.require_screen),
+      // Whether the queue may offer a live view at all. Off unless the paper
+      // says so, because the candidates sitting it consented to what THIS
+      // paper described -- see 0033's header.
+      watch: Boolean(p.proctoring) && Boolean(p.watch_camera),
     }]));
 
     const { data: events } = await this.#db.from('onyx_proctor_events')
@@ -245,7 +250,8 @@ export class ProctorService {
     const people = await peopleFor(this.#db, tenantId, attempts.map((a) => a.user_id));
 
     return attempts.map((a) => {
-      const need = needs.get(Number(a.assessment_id)) ?? { camera: false, screen: false };
+      const need = needs.get(Number(a.assessment_id))
+        ?? { camera: false, screen: false, watch: false };
       return {
         attempt_id: Number(a.id),
         assessment_id: Number(a.assessment_id),
@@ -267,6 +273,7 @@ export class ProctorService {
         open_events: open.get(Number(a.id)) ?? 0,
         requires_camera: need.camera,
         requires_screen: need.screen,
+        watch_camera: need.watch,
         // null means "never reported either way". Paired with requires_*, that
         // reads as "required and silent" -- a paper being sat with no camera
         // event at all -- rather than being mistaken for "not required".
@@ -401,6 +408,172 @@ export class ProctorService {
         });
       }
     } catch { /* the flag is recorded; the message is best effort */ }
+  }
+
+  // -------------------------------------------------------------------------
+  // ASS-02b -- an invigilator watching a candidate's camera, live
+  //
+  // The video never comes near this service. What is here is the handful of
+  // messages two browsers need in order to find each other -- an SDP offer, an
+  // answer, some ICE candidates -- and they are deleted as soon as the other
+  // side has read them. Migration 0033's header sets out why this goes through
+  // the API rather than a Realtime channel, and what the arrangement cannot do.
+  // -------------------------------------------------------------------------
+
+  /**
+   * How long a negotiation may take before its messages are stale.
+   *
+   * Generous for an exchange that normally completes in under two seconds, and
+   * short enough that a candidate who closed their laptop mid-offer does not
+   * leave an invigilator watching a spinner. Also the sweep window: anything
+   * older than this is somebody's abandoned attempt at connecting.
+   */
+  static readonly SIGNAL_TTL_MS = 90_000;
+
+  /**
+   * An invigilator asks to watch. Returns the session both sides will use.
+   *
+   * A session id per watch rather than per attempt: two invigilators opening
+   * the same candidate are two independent negotiations, and one reading the
+   * other's answer would leave both with a half-built connection.
+   *
+   * Refused unless the paper actually says it may be watched. `watch_camera`
+   * is off by default and the consent a candidate gave is the consent shown
+   * for THIS paper -- an invigilator cannot decide at run time to watch
+   * somebody who agreed to something narrower.
+   */
+  async startWatch(tenantId: number, attemptId: number, watcher: { userId: string }) {
+    const attempt = await this.#attempt(tenantId, attemptId);
+    const assessment = await this.#assessment(tenantId, Number(attempt.assessment_id));
+
+    if (!assessment.watch_camera) {
+      throw new HttpError(422,
+        'This paper is not set up for live invigilation. Its candidates agreed to '
+        + 'monitoring that does not include being watched.');
+    }
+    if (String(attempt.status) !== 'in_progress') {
+      throw new HttpError(422, 'That attempt has finished. There is nothing live to watch.');
+    }
+    if (!attempt.consented_at) {
+      throw new HttpError(422, 'That candidate has not consented to monitoring.');
+    }
+
+    await this.#sweep();
+    const sessionId = randomUUID();
+    // Recorded, because watching somebody is an act somebody should be able to
+    // account for afterwards. The candidate is told on their own screen too.
+    await this.#audit.record(
+      { tenant_id: tenantId, user_id: watcher.userId },
+      { action: 'proctor.watched', entityType: 'attempt', entityId: attemptId,
+        after: { session_id: sessionId } });
+    return { session_id: sessionId, ttl_ms: ProctorService.SIGNAL_TTL_MS };
+  }
+
+  /**
+   * Is anybody watching this attempt right now, and under which session?
+   *
+   * The candidate's own screen asks this. It is what turns the camera on --
+   * nothing streams until somebody is actually looking -- and what puts a
+   * visible indicator in front of the person being watched. A live feed of
+   * somebody's room with no sign on their own screen is not something this
+   * product is going to do.
+   */
+  async watchState(tenantId: number, attemptId: number) {
+    await this.#sweep();
+    const since = new Date(this.#now() - ProctorService.SIGNAL_TTL_MS).toISOString();
+    const { data } = await this.#db.from('onyx_proctor_signals')
+      .select('session_id, created_at')
+      .eq('tenant_id', tenantId).eq('attempt_id', attemptId)
+      .eq('sender', 'watcher').eq('kind', 'offer')
+      .gte('created_at', since)
+      .order('id', { ascending: false }).limit(1).maybeSingle();
+    return { watched: Boolean(data), session_id: data ? String(data.session_id) : null };
+  }
+
+  /**
+   * One message from one side of the negotiation.
+   *
+   * The payload is opaque here on purpose: it is SDP or an ICE candidate, both
+   * of which are the browsers' business rather than this service's. What is
+   * checked is who may put it there, which the routes do, and that it is
+   * bounded -- an unbounded jsonb column reachable by a candidate is a place to
+   * put a megabyte.
+   */
+  async postSignal(tenantId: number, attemptId: number, input: {
+    sessionId: string; sender: 'watcher' | 'candidate';
+    kind: 'offer' | 'answer' | 'ice' | 'bye'; payload: unknown;
+  }) {
+    const size = JSON.stringify(input.payload ?? null).length;
+    if (size > 16_000) throw new HttpError(422, 'That signalling message is too large.');
+
+    const { error } = await this.#db.from('onyx_proctor_signals').insert({
+      tenant_id: tenantId,
+      attempt_id: attemptId,
+      session_id: input.sessionId,
+      sender: input.sender,
+      kind: input.kind,
+      payload: (input.payload ?? {}) as never,
+      // Stamped from THIS service's clock rather than left to the column
+      // default. watchState and the sweep both compare created_at against
+      // , and a row timestamped by the database is being measured
+      // against a different clock -- which is invisible in production and
+      // makes the staleness rules untestable.
+      created_at: new Date(this.#now()).toISOString(),
+    });
+    if (error) throw new HttpError(500, 'Could not pass that on: ' + error.message);
+    return { ok: true };
+  }
+
+  /**
+   * Everything the OTHER side has sent on this session since `after`.
+   *
+   * Each side reads only what the other wrote, which is what stops a poll
+   * seeing its own offer and answering itself. Ordering is by id rather than
+   * timestamp: two ICE candidates written in the same millisecond still have
+   * an order, and applying them out of order is how a connection fails
+   * intermittently on a fast network.
+   */
+  async pollSignals(tenantId: number, attemptId: number, input: {
+    sessionId: string; sender: 'watcher' | 'candidate'; after?: number;
+  }) {
+    const from = input.sender === 'watcher' ? 'candidate' : 'watcher';
+    const { data } = await this.#db.from('onyx_proctor_signals')
+      .select('id, sender, kind, payload, created_at')
+      .eq('tenant_id', tenantId).eq('attempt_id', attemptId)
+      .eq('session_id', input.sessionId).eq('sender', from)
+      .gt('id', input.after ?? 0)
+      .order('id', { ascending: true }).limit(50);
+    return data ?? [];
+  }
+
+  /**
+   * Is this person the candidate sitting the attempt?
+   *
+   * Which end of a negotiation somebody is has to be derived from who they
+   * are, never taken from a request body -- a candidate able to name
+   * themselves the watcher could read an invigilator's half of the exchange,
+   * and post an offer that makes their own screen believe somebody with
+   * authority is watching.
+   */
+  async isCandidate(tenantId: number, attemptId: number, userId: string): Promise<boolean> {
+    const attempt = await this.#attempt(tenantId, attemptId);
+    return String(attempt.user_id) === userId;
+  }
+
+  /** Deletes signalling nobody is going to read. Cheap, and called on the way in. */
+  async #sweep() {
+    const cutoff = new Date(this.#now() - ProctorService.SIGNAL_TTL_MS).toISOString();
+    try {
+      await this.#db.from('onyx_proctor_signals').delete().lt('created_at', cutoff);
+    } catch { /* housekeeping; never the reason a watch fails to start */ }
+  }
+
+  async #assessment(tenantId: number, id: number) {
+    const { data } = await this.#db.from('onyx_assessments')
+      .select('id, tenant_id, course_id, title, proctoring, require_camera, watch_camera')
+      .eq('tenant_id', tenantId).eq('id', id).maybeSingle();
+    if (!data) throw new HttpError(404, 'Assessment not found.');
+    return data;
   }
 
   async #attempt(tenantId: number, id: number) {

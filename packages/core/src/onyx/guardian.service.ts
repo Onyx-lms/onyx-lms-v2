@@ -29,6 +29,8 @@ import type { Role } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
 import type { AuditService } from './audit.service.ts';
 import type { ExaminationsService } from './examinations.service.ts';
+// Imported for its release rule alone -- see the filter below.
+import { AssessService } from './assess.service.ts';
 
 const GUARDIAN_COLUMNS = 'id, tenant_id, guardian_user_id, student_user_id, relationship, can_view_attendance, can_view_results, can_view_fees, verified_at, created_at, updated_at';
 
@@ -297,13 +299,17 @@ export class GuardianService {
     const assessmentIds = [...new Set(attempts.map((a) => Number(a.assessment_id)))];
     const { data: assessmentRows } = assessmentIds.length
       ? await this.#db.from('onyx_assessments')
-        .select('id, title, pass_mark, results_published_at')
+        .select('id, title, pass_mark, results_published_at, instant_results')
         .eq('tenant_id', tenantId).in('id', assessmentIds)
       : { data: [] };
     const assessmentById = new Map((assessmentRows ?? []).map((a) => [Number(a.id), a]));
     const assessments = attempts
-      .filter((a) => a.status === 'published'
-        && Boolean(assessmentById.get(Number(a.assessment_id))?.results_published_at))
+      // The same rule as the learner's own screens, from the same place. A
+      // guardian seeing a mark the learner cannot -- or missing one the
+      // learner can -- is what a third copy of this condition would eventually
+      // produce.
+      .filter((a) => AssessService.releasedToCandidate(
+        a, assessmentById.get(Number(a.assessment_id))))
       .map((a) => {
         const assessment = assessmentById.get(Number(a.assessment_id))!;
         const passMark = assessment.pass_mark;

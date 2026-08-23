@@ -239,7 +239,7 @@ export default async function OnyxProfilePage() {
                     key={m.id}
                     icon="award"
                     tone="brand"
-                    title={'Exam #' + m.exam_id}
+                    title={m.exam?.title ?? 'Exam #' + m.exam_id}
                     meta={m.grade ? 'Grade ' + m.grade : 'No grade band was applied'}
                     trailing={<Score value={m.final_marks} band={bandFor(m.grade)} />}
                   />

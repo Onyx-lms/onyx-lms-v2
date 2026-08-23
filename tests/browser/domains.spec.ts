@@ -13,6 +13,7 @@
  * API if they post anyway -- the button is a courtesy, the route is the control.
  */
 import { test, expect, type Page } from '@playwright/test';
+import { pageFetch } from './helpers.ts';
 
 const ADMIN = { email: 'admin@demo.onyx', password: 'Demo#2026!' };
 const FACULTY = { email: 'faculty@demo.onyx', password: 'Demo#2026!' };
@@ -207,16 +208,14 @@ test.describe('registering for a Live Class', () => {
     // Idempotent from the learner's side. A second click is somebody wondering
     // whether the first one worked, and the answer they need is "you already
     // are", not an error and certainly not a second charge.
-    const res = await page.request.post('/api/proxy/onyx/domains/' + id + '/register', {
-      data: {},
-    });
-    expect(res.status()).toBe(200);
-    const body = await res.json();
-    expect(body.data.replayed).toBe(true);
+    const res = await pageFetch(page, '/api/proxy/onyx/domains/' + id + '/register',
+      { method: 'POST', data: {} });
+    expect(res.status).toBe(200);
+    expect(res.body.data.replayed).toBe(true);
 
     // And a learner cannot read the roster.
-    const roster = await page.request.get(
+    const roster = await pageFetch(page,
       '/api/proxy/onyx/domains/' + id + '/registrations');
-    expect([401, 403]).toContain(roster.status());
+    expect([401, 403]).toContain(roster.status);
   });
 });

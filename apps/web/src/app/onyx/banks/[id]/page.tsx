@@ -6,7 +6,7 @@ import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-se
 import { isExamsStaff } from '@/lib/onyx-assess';
 import { AddQuestion, EditQuestionForm, RetireQuestionButton } from '@/components/onyx-manage';
 import {
-  BackLink, CardGrid, DataTable, EmptyRow, Icon, Pill, SectionHead, StatTile,
+  CardGrid, DataTable, EmptyRow, Icon, Pill, SectionHead, StatTile,
 } from '@/components/onyx-ui';
 import { redirect } from 'next/navigation';
 
@@ -86,7 +86,16 @@ export default async function OnyxBankPage({ params }: { params: Promise<{ id: s
       subtitle={questions.length + ' question' + (questions.length === 1 ? '' : 's')
         + ', ' + marks + ' marks in total'}
     >
-      <div className="mb-3"><BackLink href="/onyx/banks" label="All question banks" /></div>
+      {/*
+        * QA F7. There was a BackLink to `/onyx/banks` here, and no such page
+        * exists -- clicking it produced a 404, and Next's prefetch fired the
+        * failed request before anyone clicked, so the console errored on load.
+        *
+        * Removed rather than repointed: banks are reached from the assessments
+        * page, and the breadcrumb immediately below already links there. A
+        * BackLink pointing at the same destination would be two controls doing
+        * one job.
+        */}
       <nav aria-label="Breadcrumb" className="mb-3 flex flex-wrap items-center gap-1.5 text-sm text-muted">
         <Link href="/onyx/assessments" className="font-semibold text-brand-600 hover:underline">
           Assessments

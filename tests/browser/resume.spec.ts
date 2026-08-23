@@ -17,6 +17,7 @@
  * parses, and the writer itself is covered by unit tests that can.
  */
 import { test, expect, type Locator, type Page } from '@playwright/test';
+import { pageFetch } from './helpers.ts';
 
 const STUDENT = { email: 'student@demo.onyx', password: 'Demo#2026!' };
 
@@ -145,18 +146,23 @@ test.describe('the resume', () => {
     await signIn(page, STUDENT);
     await page.goto('/onyx/resume');
 
-    const res = await page.request.get('/api/proxy/onyx/my/resume/document.pdf');
-    expect(res.status()).toBe(200);
-    expect(res.headers()['content-type']).toContain('application/pdf');
+    const res = await pageFetch(page, '/api/proxy/onyx/my/resume/document.pdf');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('application/pdf');
     // An attachment, and named after the holder -- a folder of "resume.pdf" is
     // a folder an employer cannot sort.
-    expect(res.headers()['content-disposition']).toContain('attachment');
-    expect(res.headers()['content-disposition']).toMatch(/-resume\.pdf/);
+    expect(res.headers['content-disposition']).toContain('attachment');
+    expect(res.headers['content-disposition']).toMatch(/-resume\.pdf/);
 
     // It really is one. The unit tests prove the xref resolves; this proves the
     // bytes survived the transport, which is the half they cannot see.
-    const body = await res.body();
-    expect(body.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+    //
+    // Read as text rather than as a Buffer, because the request is made inside
+    // the page (see pageFetch). Decoding a PDF as text mangles most of it --
+    // but the signature is five ASCII characters at byte zero, so it comes
+    // through intact, and a body that had been corrupted or replaced by an
+    // error page would not start with them.
+    expect(res.text.slice(0, 5)).toBe('%PDF-');
   });
 
   test('somebody else\'s resume is not a route that exists', async ({ page }) => {
@@ -164,8 +170,8 @@ test.describe('the resume', () => {
     // Everything is under /my/ and scoped to the token. There is deliberately
     // no route that takes a user id, so there is nothing here to guess at --
     // asserted so that adding one later has to be a deliberate act.
-    const res = await page.request.get('/api/proxy/onyx/resumes/1');
-    expect([404, 405]).toContain(res.status());
+    const res = await pageFetch(page, '/api/proxy/onyx/resumes/1');
+    expect([404, 405]).toContain(res.status);
   });
 });
 

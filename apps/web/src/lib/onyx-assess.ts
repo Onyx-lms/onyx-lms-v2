@@ -11,6 +11,10 @@ export interface Assessment {
   attempts_allowed: number;
   proctoring: number;
   require_camera: number;
+  /** May an invigilator watch this candidate live? Off unless switched on. */
+  watch_camera?: boolean;
+  /** Hand the mark back at submit, where the paper needs no marker. */
+  instant_results?: boolean;
   require_screen: number;
   anonymous_marking: number;
   moderation_required: number;
@@ -33,6 +37,14 @@ export interface PaperQuestion {
   section_id: string | null;
   response: unknown;
   awarded: number | null;
+  /**
+   * Was this one right? Null where "right" is not a fact -- an essay, or an
+   * MCQ-shaped question nobody set a key on.
+   */
+  correct?: boolean | null;
+  /** The correct answer, once the candidate has no sitting left to spoil. */
+  expected?: unknown;
+  explanation?: string | null;
   /** `code` only: what the candidate needs in order to answer. Never the tests. */
   problem?: {
     id: number; title: string; statement: string | null;

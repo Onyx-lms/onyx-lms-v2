@@ -121,12 +121,41 @@ test.describe('many people at once', () => {
     for (let round = 1; round <= 5; round++) {
       // Together, not in turn. Awaiting each login before starting the next is
       // what the rest of this suite does and is exactly what hid the fault.
-      const tokens = await Promise.all(people.map(async (email) => {
+      const results = await Promise.all(people.map(async (email) => {
         const res = await api<{ token: string }>('/api/onyx/auth/login',
           { body: { email, password: PASSWORD } });
-        expect(res.status, 'a login failed outright in round ' + round).toBe(200);
-        return res.data.token;
+        return res;
       }));
+
+      /*
+       * A rate limit here is NOT this test's subject, and must not be reported
+       * as though it were.
+       *
+       * Signing in costs two calls to GoTrue -- the password grant and the
+       * refresh that scopes the session -- so five people at once is ten, and
+       * a project on the default Supabase limit reaches it within a couple of
+       * rounds. That is a deployment setting, not a session leak, and the two
+       * conclusions are opposites: one says "wait", the other says "somebody
+       * was handed another person's account".
+       *
+       * So it fails loudly and says which it is. Skipping instead would let a
+       * genuine regression hide behind an unrelated quota.
+       */
+      const throttled = results.find((r) => r.status === 429);
+      if (throttled) {
+        throw new Error(
+          'Round ' + round + ' could not be run: the Supabase auth '
+          + 'rate limit refused a sign-in ("' + throttled.message + '"). That is a '
+          + 'limit to raise in Authentication -> Rate Limits, not a session '
+          + 'fault -- this check makes ' + (people.length * 2) + ' GoTrue calls per '
+          + 'round and needs headroom for ' + (people.length * 2 * 5) + '.');
+      }
+
+      const tokens = results.map((res, i) => {
+        expect(res.status, 'a login failed outright in round ' + round
+          + ' for ' + people[i]).toBe(200);
+        return res.data.token;
+      });
 
       expect(new Set(tokens).size,
         'round ' + round + ': two people were issued the SAME token').toBe(people.length);

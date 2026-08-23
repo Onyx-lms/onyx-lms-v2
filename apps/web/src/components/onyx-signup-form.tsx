@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
 const field = 'mt-1.5 block min-h-[46px] w-full rounded-xl border border-line bg-white px-3.5 '
@@ -8,7 +8,7 @@ const field = 'mt-1.5 block min-h-[46px] w-full rounded-xl border border-line bg
 const label = 'block text-[13.5px] font-semibold text-slate-700';
 
 /**
- * A learner registering themselves.
+ * A learner registering themselves, in two steps.
  *
  * Four facts, and each one is asked because something downstream needs it: the
  * name a register prints, the address the institution issued (which is also how
@@ -21,8 +21,13 @@ const label = 'block text-[13.5px] font-semibold text-slate-700';
  * The institution is resolved from the email DOMAIN, and the form says which
  * one it found as soon as the address looks complete. That check happens
  * on blur rather than at submit, because "no institution accepts this address"
- * is the one answer worth giving before somebody types a password and a phone
- * number they are about to lose.
+ * is the one answer worth giving before somebody fills in the rest.
+ *
+ * **Why the password is on the second screen.** It would be easy to ask for
+ * everything at once and verify afterwards, and it would mean this product
+ * held a password for an address nobody had yet proved they owned. Asking for
+ * it after the code means nothing is stored in between: the first step sends a
+ * code and keeps nothing at all.
  */
 
 /** True once this component has hydrated. See OnyxLoginForm's copy for why a
@@ -33,12 +38,29 @@ function useHydrated(): boolean {
   return ready;
 }
 
+interface Details {
+  name: string; email: string; phone: string; roll_number: string;
+  tenant_id: number | null;
+}
+
 export function OnyxSignUpForm({ next }: { next?: string } = {}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const ready = useHydrated();
   const [error, setError] = useState<string | null>(null);
   const [institution, setInstitution] = useState<{ name: string } | null | 'unknown'>('unknown');
+
+  /**
+   * The details from step one, held here while the code is in the post.
+   *
+   * In component state and nowhere else -- not a cookie, not a table. If the
+   * applicant closes the tab they start again, which is the correct cost for
+   * a registration that was never completed.
+   */
+  const [details, setDetails] = useState<Details | null>(null);
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
   /**
    * The institutions somebody may pick when their address names none.
    *
@@ -56,6 +78,26 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
     })();
   }, []);
 
+  /**
+   * Seconds until another code may be asked for.
+   *
+   * Sixty because that is Supabase's own "minimum interval per user" default,
+   * and the two have to agree. This was thirty, which re-enabled the button
+   * half a minute before the server would honour it -- so the one thing a
+   * student does when a code has not arrived produced an error for doing
+   * exactly what the screen invited. A control that is enabled must work.
+   *
+   * If that interval is changed in the Supabase dashboard, change it here too.
+   */
+  const RESEND_SECONDS = 60;
+  const [cooldown, setCooldown] = useState(0);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (cooldown <= 0) return undefined;
+    timer.current = setInterval(() => setCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => { if (timer.current) clearInterval(timer.current); };
+  }, [cooldown]);
+
   const lookUp = async (email: string) => {
     if (!email.includes('@') || !email.split('@')[1]?.includes('.')) {
       setInstitution('unknown');
@@ -66,40 +108,144 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
     setInstitution(body.ok ? (body.data ?? null) : null);
   };
 
+  /** Asks the server to send a code. Shared by step one and the resend link. */
+  const sendCode = async (to: Details): Promise<boolean> => {
+    const res = await fetch('/api/web/onyx/signup-start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: to.email, tenant_id: to.tenant_id }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!body.ok) { setError(body.message ?? 'That did not work.'); return false; }
+    setSentTo(to.email);
+    setCooldown(RESEND_SECONDS);
+    return true;
+  };
+
+  // ---------------------------------------------------------------- step two
+
+  if (details && sentTo) {
+    return (
+      <form
+        method="post"
+        className="space-y-3.5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const data = new FormData(e.currentTarget);
+          setError(null);
+          setNotice(null);
+          start(async () => {
+            const res = await fetch('/api/web/onyx/signup-verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ...details,
+                code: String(data.get('code') ?? '').trim(),
+                password: String(data.get('password') ?? ''),
+              }),
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!body.ok) { setError(body.message ?? 'That did not work.'); return; }
+
+            // Straight in, and straight to whatever they were sent: somebody who
+            // followed a link to a paper and had no account yet should land on
+            // the paper, not on a dashboard that says nothing about why they came.
+            router.push(next || '/onyx/dashboard');
+            router.refresh();
+          });
+        }}
+      >
+        {error ? (
+          <p role="alert" className="rounded-xl bg-rose-50 px-3.5 py-2.5 text-[13px] text-rose-700">
+            {error}
+          </p>
+        ) : null}
+        {notice ? (
+          <p role="status" className="rounded-xl bg-emerald-50 px-3.5 py-2.5 text-[13px]
+                                      text-emerald-800">
+            {notice}
+          </p>
+        ) : null}
+
+        <div className="rounded-xl bg-brand-50 px-3.5 py-2.5 text-[13px] text-slate-700">
+          We sent a code to <strong className="break-all">{sentTo}</strong>. It is good for a
+          few minutes.
+        </div>
+
+        <div>
+          <label className={label} htmlFor="su-code">Verification code</label>
+          {/* No length is claimed anywhere on this screen. GoTrue's OTP length
+              is configuration -- this project sends eight digits, the default
+              is six -- so a field that says "six-digit" and stops at six
+              characters would silently truncate every real code here. */}
+          <input id="su-code" name="code" required
+            inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{4,10}"
+            maxLength={10} placeholder="Code from your email"
+            className={field + ' tracking-[0.3em] font-semibold'} />
+          <p className="mt-1.5 text-[12.5px] text-muted">
+            Check your spam folder if it has not arrived.
+          </p>
+        </div>
+
+        <div>
+          <label className={label} htmlFor="su-password">Choose a password</label>
+          <input id="su-password" name="password" type="password" required minLength={8}
+            autoComplete="new-password" className={field} />
+          <p className="mt-1.5 text-[12.5px] text-muted">At least 8 characters.</p>
+        </div>
+
+        <button type="submit" disabled={pending || !ready}
+          className="min-h-[46px] w-full rounded-xl bg-brand-600 px-4 text-[15px] font-bold
+                     text-white hover:bg-brand-700 disabled:opacity-50">
+          {pending ? 'Creating your account…' : 'Create my account'}
+        </button>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
+          <button type="button"
+            disabled={pending || cooldown > 0}
+            onClick={() => start(async () => {
+              setError(null);
+              setNotice(null);
+              if (await sendCode(details)) setNotice('A new code is on its way.');
+            })}
+            className="font-semibold text-brand-700 hover:underline disabled:text-muted
+                       disabled:no-underline">
+            {cooldown > 0 ? 'Send a new code in ' + cooldown + 's' : 'Send a new code'}
+          </button>
+          <button type="button"
+            onClick={() => { setDetails(null); setSentTo(null); setError(null); setNotice(null); }}
+            className="font-semibold text-slate-600 hover:underline">
+            Use a different address
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  // ---------------------------------------------------------------- step one
+
   return (
     <form
-      // POST so a submit landing before hydration cannot put the password
-      // in the URL. See OnyxLoginForm for the full reasoning.
+      // POST so a submit landing before hydration cannot put anything typed
+      // here in the URL. See OnyxLoginForm for the full reasoning.
       method="post"
       className="space-y-3.5"
       onSubmit={(e) => {
         e.preventDefault();
         const data = new FormData(e.currentTarget);
         setError(null);
+        const collected: Details = {
+          name: String(data.get('name') ?? ''),
+          email: String(data.get('email') ?? '').trim(),
+          phone: String(data.get('phone') ?? ''),
+          roll_number: String(data.get('roll_number') ?? ''),
+          // Only when the address did not name one: an address that
+          // matches is the stronger claim and should not be overridden by
+          // a dropdown somebody forgot to change.
+          tenant_id: institution === null && picked ? Number(picked) : null,
+        };
         start(async () => {
-          const res = await fetch('/api/web/onyx/signup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: String(data.get('name') ?? ''),
-              email: String(data.get('email') ?? ''),
-              password: String(data.get('password') ?? ''),
-              phone: String(data.get('phone') ?? '') || null,
-              roll_number: String(data.get('roll_number') ?? '') || null,
-              // Only when the address did not name one: an address that
-              // matches is the stronger claim and should not be overridden by
-              // a dropdown somebody forgot to change.
-              tenant_id: institution === null && picked ? Number(picked) : null,
-            }),
-          });
-          const body = await res.json().catch(() => ({}));
-          if (!body.ok) { setError(body.message ?? 'That did not work.'); return; }
-
-          // Straight in, and straight to whatever they were sent: somebody who
-          // followed a link to a paper and had no account yet should land on
-          // the paper, not on a dashboard that says nothing about why they came.
-          router.push(next || '/onyx/dashboard');
-          router.refresh();
+          if (await sendCode(collected)) setDetails(collected);
         });
       }}
     >
@@ -124,6 +270,7 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
         {institution === 'unknown' ? (
           <p className="mt-1.5 text-[12.5px] text-muted">
             Use the address your institution gave you — it is what tells us where you belong.
+            Personal addresses such as gmail.com cannot be used.
           </p>
         ) : institution === null ? (
           /*
@@ -133,8 +280,8 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
            *
            * So a list, where there is one. An institution appears on it only
            * by choosing to, and choosing to means accepting that anybody who
-           * picks it is in -- there is no check behind this, which is why the
-           * setting is off by default and says so.
+           * picks it is in -- there is no check behind this beyond the code
+           * sent to the address, which is why the setting is off by default.
            */
           <div className="mt-1.5">
             <p className="text-[12.5px] text-muted">
@@ -154,7 +301,7 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
                   ))}
                 </select>
                 <p className="mt-1.5 text-[12.5px] text-muted">
-                  You will be signed in straight away.
+                  We will email you a code to confirm the address is yours.
                 </p>
               </div>
             ) : null}
@@ -179,18 +326,14 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
         </div>
       </div>
 
-      <div>
-        <label className={label} htmlFor="su-password">Password</label>
-        <input id="su-password" name="password" type="password" required minLength={8}
-          autoComplete="new-password" className={field} />
-        <p className="mt-1.5 text-[12.5px] text-muted">At least 8 characters.</p>
-      </div>
-
       <button type="submit" disabled={pending || !ready}
         className="min-h-[46px] w-full rounded-xl bg-brand-600 px-4 text-[15px] font-bold
                    text-white hover:bg-brand-700 disabled:opacity-50">
-        {pending ? 'Creating your account…' : 'Create my account'}
+        {pending ? 'Sending your code…' : 'Send me a code'}
       </button>
+      <p className="text-center text-[12.5px] text-muted">
+        We will email you a code to confirm the address is yours.
+      </p>
     </form>
   );
 }

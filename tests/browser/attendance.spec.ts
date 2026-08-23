@@ -22,7 +22,7 @@
  */
 import { test, expect, type Page } from '@playwright/test';
 import { withDb, RUN, api, PASSWORD, mail, createTenant, adminToken, addMember, signInViaForm,
-  cleanupTenants } from './helpers.ts';
+  cleanupTenants, pageFetch } from './helpers.ts';
 
 const T = { name: 'Register Institute ' + RUN, slug: 'register-' + RUN };
 const adminEmail = mail('register', 'admin');
@@ -228,11 +228,11 @@ test('an unmarked session counts as absent, and the shortfall report says so', a
 
 test('the register exports as a CSV somebody can open', async ({ page }) => {
   await signInViaForm(page, adminEmail);
-  const res = await page.request.get(
+  const res = await pageFetch(page,
     '/api/proxy/onyx/courses/' + w.courseId + '/attendance/export.csv');
-  expect(res.status()).toBe(200);
-  expect(res.headers()['content-type']).toContain('text/csv');
-  const body = await res.text();
+  expect(res.status).toBe(200);
+  expect(res.headers['content-type']).toContain('text/csv');
+  const body = res.text;
   expect(body).toContain('Lea Learner');
   // CRLF, because the thing opening this is Excel more often than not.
   expect(body).toContain('\r\n');

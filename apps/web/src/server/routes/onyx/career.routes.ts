@@ -465,7 +465,19 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
       'Withdrawn.');
   });
 
+  /*
+   * QA F6. This required only a session, and `drives()` narrows its query for
+   * exactly one role -- `employer`, to their own drives -- so every OTHER role
+   * received the institution's entire recruitment calendar: students,
+   * guardians, the exams office.
+   *
+   * `employer` is on the list beside PLACEMENT rather than folded into it,
+   * because an employer is an outsider who may see their own drives and
+   * nothing else, and the service is what enforces that half. The role guard
+   * decides who may ask; the service decides what they are shown.
+   */
   app.get('/api/onyx/drives', async (req) => {
+    await requireOnyxRole(asReq(req), ctx.jwtSecret, ...PLACEMENT, 'employer');
     const { claims, viewer } = await viewerOf(req);
     return ok(await ctx.onyxPlacement.drives(claims.tenant_id, viewer));
   });

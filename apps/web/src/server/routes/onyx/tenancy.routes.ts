@@ -228,18 +228,47 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
    * learner: their name, the address it gave them, a number to reach them on,
    * and the roll number everything else in this product is keyed to.
    */
-  app.post('/api/onyx/auth/signup', async (req) => {
+  /**
+   * Ask for the verification code.
+   *
+   * The address is checked against the institution's domain rules here, so a
+   * personal mailbox is refused while the applicant is still on the form and
+   * no mail is sent on behalf of a registration that could never be accepted.
+   *
+   * No password is taken at this step, on purpose: nothing is stored between
+   * the two calls, so there is no window in which this product holds a
+   * password for an address nobody has proved they own.
+   */
+  app.post('/api/onyx/auth/signup/start', async (req) => {
+    const body = validate(z.object({
+      email: z.string().email(),
+      tenant_id: z.number().int().positive().nullish(),
+    }), req.body);
+    return ok(await ctx.onyxTenancy.startSignUp(body),
+      'We have sent a code to ' + body.email + '.');
+  });
+
+  /**
+   * Redeem the code and become a student.
+   *
+   * Every rule from the first step runs again -- an institution can close its
+   * registrations in the minutes somebody spends in their inbox, and the code
+   * proves control of a mailbox, not eligibility.
+   */
+  app.post('/api/onyx/auth/signup/verify', async (req) => {
     const body = validate(z.object({
       name: z.string().min(1).max(255),
       email: z.string().email(),
       password: z.string().min(8).max(255),
+      // Length is GoTrue configuration, not a constant -- see #verifyEmailCode.
+      code: z.string().min(4).max(10),
       phone: z.string().min(6).max(30).nullish(),
       roll_number: z.string().max(40).nullish(),
       // The institution they picked, when their address names none.
       tenant_id: z.number().int().positive().nullish(),
     }), req.body);
 
-    const result = await ctx.onyxTenancy.signUpStudent(body);
+    const result = await ctx.onyxTenancy.completeSignUp(body);
 
     // Signed in immediately. Asking somebody to register and then to sign in
     // with what they just typed is a form they fill in twice.
@@ -262,19 +291,6 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
    * address matches nothing, rather than accepting six fields and refusing at
    * the end. It answers only about the address it was given.
    */
-  /**
-   * The institutions a student may pick from.
-   *
-   * Unauthenticated, like the lookup beside it: somebody choosing where they
-   * study does not have an account yet. It names only institutions that
-   * actually accept requests, and only their name -- and the catalogue already
-   * names the institution behind every public course, so this discloses
-   * nothing a visitor could not already read.
-   */
-  app.get('/api/onyx/auth/signup/institutions', async () => {
-    return ok(await ctx.onyxTenancy.openInstitutions());
-  });
-
   /**
    * The institutions a student may pick from.
    *

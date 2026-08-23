@@ -41,6 +41,49 @@ const PROFILE_COLUMNS = 'id, email, name, phone, photo, status, created_at, user
 const MEMBERSHIP_COLUMNS = 'id, tenant_id, user_id, role, status, roll_number, created_at';
 
 /**
+ * Mailboxes anyone can open in thirty seconds, under any name.
+ *
+ * Used ONLY by `TenancyService.isConsumerDomain`, and only where an
+ * institution has declared no domains of its own -- read that method's comment
+ * before adding to this list, because the list is the weaker of the two rules
+ * and adding to it is rarely the right fix.
+ *
+ * Weighted towards what students in India actually use, because that is who
+ * registers here: rediffmail and the yahoo.co.in family are as common in a
+ * first-year intake as outlook.com, and a list copied from an American blog
+ * post would miss both.
+ *
+ * Deliberately NOT included: `zoho.com` and `fastmail.com`. Both sell hosting
+ * on an organisation's own domain, and a genuine institution using them
+ * arrives on that domain rather than this one -- but both also run free
+ * personal tiers, so this is a judgement call rather than an oversight.
+ */
+export const CONSUMER_EMAIL_DOMAINS: ReadonlySet<string> = new Set([
+  // Google
+  'gmail.com', 'googlemail.com',
+  // Microsoft
+  'hotmail.com', 'hotmail.co.uk', 'hotmail.co.in', 'outlook.com', 'outlook.in',
+  'live.com', 'live.in', 'live.co.uk', 'msn.com',
+  // Yahoo and its national mailboxes
+  'yahoo.com', 'yahoo.co.in', 'yahoo.in', 'yahoo.co.uk', 'yahoo.fr', 'yahoo.de',
+  'ymail.com', 'rocketmail.com',
+  // Apple
+  'icloud.com', 'me.com', 'mac.com',
+  // India
+  'rediffmail.com', 'rediff.com', 'sify.com', 'indiatimes.com', 'in.com',
+  // Privacy-focused personal mail
+  'protonmail.com', 'protonmail.ch', 'proton.me', 'pm.me', 'tutanota.com', 'tuta.io',
+  // Everything else common
+  'aol.com', 'gmx.com', 'gmx.net', 'gmx.de', 'yandex.com', 'yandex.ru', 'mail.ru',
+  'mail.com', 'email.com', 'inbox.com', 'hushmail.com', 'zoho.in',
+  // The throwaway services people reach for when a form is in their way. Not
+  // an attempt at a complete list -- there are hundreds -- but the handful
+  // that turn up first in a search for "temporary email".
+  'mailinator.com', 'guerrillamail.com', 'yopmail.com', '10minutemail.com',
+  'temp-mail.org', 'trashmail.com', 'throwawaymail.com', 'sharklasers.com',
+]);
+
+/**
  * Every role a membership may hold.
  *
  * Two of these are outsiders rather than staff: `employer` (O05) sees only its
@@ -391,6 +434,54 @@ export class TenancyService {
   }
 
   /**
+   * Did GoTrue refuse this because the project is over its auth rate limit?
+   *
+   * Matched on the message because that is all the client surfaces -- the HTTP
+   * status is not carried through to `error.message`, and every alternative
+   * (counting calls here, reading response headers the SDK discards) is more
+   * machinery for the same answer.
+   */
+  static #isRateLimit(message?: string | null): boolean {
+    return /rate limit|too many requests|429/i.test(String(message ?? ''));
+  }
+
+  /** One sentence for it, so both places that can hit it say the same thing. */
+  static #tooBusy(): HttpError {
+    return new HttpError(429,
+      'Too many people are signing in at once. Wait a few seconds and try '
+      + 'again — your password is fine.');
+  }
+
+  /**
+   * Is this a consumer mailbox rather than an address an organisation issued?
+   *
+   * A blocklist, and blocklists are always incomplete -- there is no finite
+   * list of free email providers, and one more launches every year. So this is
+   * deliberately NOT the primary rule. The primary rule is the institution's
+   * own `signup_domains`: an address that matches what an administrator listed
+   * is an organisation address BY DEFINITION and never reaches this check. See
+   * `#resolveSignup`.
+   *
+   * This is the fallback for the other case -- an institution that lists no
+   * domains at all and takes anyone who picks it from the dropdown. There, the
+   * only thing separating "a student at that college" from "anyone on the
+   * internet" is whether the address looks issued. Catching the providers that
+   * cover the overwhelming majority of personal mail is worth doing even
+   * though it cannot be complete, and gmail.com -- the one actually asked
+   * about -- is the largest of them by a wide margin.
+   *
+   * Subdomains count: `foo.gmail.com` is not a thing anyone is issued, and the
+   * same `.`-anchored test used by `domainMatches` keeps `notgmail.com` from
+   * matching `gmail.com`.
+   */
+  static isConsumerDomain(domain: string): boolean {
+    if (!domain) return false;
+    const d = domain.trim().toLowerCase();
+    return CONSUMER_EMAIL_DOMAINS.has(d)
+      || [...CONSUMER_EMAIL_DOMAINS].some((known) => d.endsWith('.' + known));
+  }
+
+  /**
    * A learner registering themselves.
    *
    * Two ways in, and which applies is the INSTITUTION's decision rather than
@@ -408,13 +499,18 @@ export class TenancyService {
    * check. It is off by default and `domain` is the mode for anyone who wants
    * the address to prove the claim.
    */
-  async signUpStudent(input: {
-    name: string; email: string; password: string;
-    phone?: string | null; roll_number?: string | null;
-    /** The institution they picked, when they picked one. */
-    tenant_id?: number | null;
-  }) {
-    const domain = TenancyService.domainOf(input.email);
+  /**
+   * Everything that decides whether an address may register, and where.
+   *
+   * Extracted so that the two halves of a verified signup -- sending the code
+   * and, minutes later, redeeming it -- run the SAME rules rather than two
+   * copies that drift. The second call is not a formality: an institution can
+   * close its registrations, or somebody else can claim the address, in the
+   * gap between the two, and the code in the applicant's inbox proves control
+   * of a mailbox and nothing else.
+   */
+  async #resolveSignup(email: string, tenantId?: number | null) {
+    const domain = TenancyService.domainOf(email);
     if (!domain) throw new HttpError(422, 'That does not look like an email address.');
 
     const { data: tenants } = await this.#db.from('onyx_tenants')
@@ -430,8 +526,8 @@ export class TenancyService {
 
     let tenant = byDomain;
 
-    if (input.tenant_id) {
-      const picked = open.find((t) => Number(t.id) === Number(input.tenant_id));
+    if (tenantId) {
+      const picked = open.find((t) => Number(t.id) === Number(tenantId));
       // Not "no such institution": one that exists but does not accept
       // registrations is a different fact, and saying so stops somebody
       // hunting for a typo in a name that was right.
@@ -455,22 +551,154 @@ export class TenancyService {
         + 'gave you.');
     }
 
-    // An address that already belongs to somebody is not told apart from one
-    // that does not -- upsertUser would attach the existing account, which is
-    // right for an administrator adding a colleague and wrong here, where it
-    // would hand a stranger a membership on an account they do not own.
-    const { data: existing } = await this.#db.from('onyx_users')
-      .select('id').eq('email', input.email.toLowerCase()).maybeSingle();
-    if (existing) {
-      throw new HttpError(409,
-        'That address already has an account. Sign in instead, or ask your '
-        + 'institution to add you to it.');
+    /*
+     * Organisation addresses only.
+     *
+     * The strong form of this rule is the institution's own domain list, and
+     * where one matched we are already done -- an administrator listing
+     * `meridian.edu` has said what a Meridian address looks like, and nothing
+     * here second-guesses it.
+     *
+     * Where nothing matched, the applicant is joining an institution that
+     * takes anyone who picks it from the dropdown, and the address is the only
+     * evidence of who they are. A free mailbox is no evidence at all: anybody
+     * can open one in the name of anybody. So it is refused, and refused
+     * BEFORE a code is sent -- there is no point mailing a verification to an
+     * address that cannot be used whatever comes back.
+     */
+    const claimed = TenancyService.domainMatches(domain, String(tenant.signup_domains ?? ''));
+    if (!claimed && TenancyService.isConsumerDomain(domain)) {
+      throw new HttpError(422,
+        'Use the email address your institution gave you. Personal addresses '
+        + '(' + domain + ' and the like) cannot be used to register — an '
+        + 'institution has no way to tell whose they are.');
     }
 
-    const user = await this.upsertUser({
-      name: input.name, email: input.email, password: input.password,
-      phone: input.phone ?? null,
+    return { domain, tenant, claimed };
+  }
+
+  /**
+   * Step one of a student registering themselves: prove the address is theirs.
+   *
+   * Everything is checked BEFORE the code goes out -- the institution, the
+   * domain rule, whether somebody already holds the address -- so a refusal
+   * arrives while they are still looking at the form rather than after they
+   * have gone to their inbox and come back. It also means we never mail a
+   * stranger on behalf of a registration that was never going to be accepted.
+   *
+   * The code itself is Supabase's: `signInWithOtp` writes the one-time token
+   * against the address and sends it.
+   *
+   * **The identity is created here, by the Admin API, rather than by letting
+   * `signInWithOtp` create it.** GoTrue will only create a user from that call
+   * when the project has public email signups switched ON, and this project
+   * has them off -- correctly, because every account in this product is made
+   * through the Admin API and an open `signUp()` would let anyone holding the
+   * anon key mint auth users. Turning that setting on to make this one call
+   * work would widen the front door to fix a window.
+   *
+   * What it creates is inert: no password, `email_confirm` false, no profile
+   * row, no membership. It cannot sign in and belongs to no institution. Only
+   * `completeSignUp` turns it into an account.
+   */
+  async startSignUp(input: { email: string; tenant_id?: number | null }) {
+    const email = input.email.trim().toLowerCase();
+    const { tenant } = await this.#resolveSignup(email, input.tenant_id);
+    await this.#refuseIfTaken(email);
+
+    /*
+     * Already there is the normal case on a retry, and is not a failure.
+     *
+     * `email_confirm: true` is not the product calling the address verified --
+     * that is what the code below is for, and no profile or membership exists
+     * until it comes back. It is a GoTrue detail: an UNCONFIRMED user asking
+     * for an OTP is treated as a signup confirmation, which this project
+     * refuses because public signups are off, so the code would never be sent
+     * at all. Every other account in this product is created the same way (see
+     * upsertUser).
+     */
+    const { error: createError } = await this.#authAdmin.auth.admin.createUser({
+      email, email_confirm: true,
     });
+    if (createError && !/already.*(registered|exists)/i.test(createError.message ?? '')) {
+      throw new HttpError(502,
+        'Could not start that registration: ' + createError.message);
+    }
+
+    const { error } = await this.#authClient.auth.signInWithOtp({
+      // The address exists by now, so this only ever mints and mails a token.
+      email,
+      options: { shouldCreateUser: false },
+    });
+    if (error) {
+      // Said as it is rather than as a generic failure. The overwhelmingly
+      // common cause is the project's email quota, and "we could not send it"
+      // sends somebody hunting for a typo in an address that was correct.
+      const message = error.message ?? '';
+      const rate = /rate|limit|too many|429/i.test(message);
+      if (rate) {
+        throw new HttpError(429,
+          'Too many codes have been requested for this address. Wait a few '
+          + 'minutes and try again.');
+      }
+      /*
+       * Supabase checks that the domain can actually receive mail, and says
+       * only "is invalid" when it cannot. Passed through as-is that reads as a
+       * typo in the address, which sends somebody looking for one in an
+       * address that is spelled correctly -- the real cause is an institution
+       * whose domain has no mail server, and the person who can fix it is not
+       * the applicant.
+       */
+      if (/invalid/i.test(message)) {
+        throw new HttpError(422,
+          'No code could be sent to that address. Its domain does not appear '
+          + 'to accept email — check the address, and tell your institution if '
+          + 'it is right.');
+      }
+      throw new HttpError(502, 'The verification code could not be sent: ' + message);
+    }
+
+    return {
+      sent: true,
+      email,
+      tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug },
+    };
+  }
+
+  /**
+   * Step two: redeem the code, and only then create anything.
+   *
+   * The order matters and is the whole point of splitting this in two. Nothing
+   * exists until `verifyOtp` has succeeded -- no profile row, no membership,
+   * no password. An abandoned registration leaves behind the passwordless
+   * auth.users row Supabase made when it sent the code, which grants nothing
+   * and which a later attempt on the same address reuses.
+   */
+  async completeSignUp(input: {
+    name: string; email: string; password: string; code: string;
+    phone?: string | null; roll_number?: string | null;
+    tenant_id?: number | null;
+  }) {
+    const email = input.email.trim().toLowerCase();
+    // Re-checked, not remembered. See #resolveSignup.
+    const { tenant } = await this.#resolveSignup(email, input.tenant_id);
+    await this.#refuseIfTaken(email);
+
+    const verified = await this.#verifyEmailCode(email, input.code);
+
+    // The account is real from here. The password is set through the Admin API
+    // rather than passed to signInWithOtp, which has nowhere to put one.
+    const { error: passwordError } = await this.#authAdmin.auth.admin.updateUserById(
+      verified.id, { password: input.password, email_confirm: true });
+    if (passwordError) {
+      throw new HttpError(422, 'Could not set that password: ' + passwordError.message);
+    }
+
+    // A retry that got this far once already has the profile row; reuse it
+    // rather than colliding on the primary key.
+    const user = (await this.userByEmail(email))
+      ?? await this.#insertProfile(verified.id, email, input.name, input.phone ?? null);
+
     const membership = await this.addMember(
       Number(tenant.id), user.id, 'student', input.roll_number ?? null);
 
@@ -479,6 +707,85 @@ export class TenancyService {
       membership,
       tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug },
     };
+  }
+
+  /**
+   * Checks an emailed code against Supabase, every way round.
+   *
+   * `verifyOtp` wants to be told which kind of token it is looking at, and the
+   * answer depends on something we cannot see: GoTrue issues a `signup` token
+   * for an address it had never heard of and a `magiclink` token for one it
+   * had. An applicant retrying after an abandoned attempt is in the second
+   * case through no action of their own.
+   *
+   * So both are tried. The alternative -- guessing from whether an auth.users
+   * row exists -- means a second round trip to be wrong in a different way,
+   * and the failure it produces ("that code is not valid") is the single most
+   * confusing thing this form could say to somebody reading the correct code
+   * off their screen.
+   */
+  async #verifyEmailCode(email: string, code: string) {
+    /*
+     * Digits, but NOT six of them.
+     *
+     * This was written as `\d{6}` because six is what everybody's mental model
+     * of an emailed code is, and this project issues EIGHT -- GoTrue's OTP
+     * length is configuration (MAILER_OTP_LENGTH), so hard-coding a number
+     * here rejects every correct code on a deployment that chose differently,
+     * before Supabase is ever asked. A range that covers what GoTrue can be
+     * set to is the only version that is right on somebody else's project too.
+     *
+     * The length still gets a cheap check, because a blank field or a pasted
+     * sentence should not cost a round trip.
+     */
+    const token = String(code ?? '').trim();
+    if (!/^\d{4,10}$/.test(token)) {
+      throw new HttpError(422, 'That code should be the digits from your email.');
+    }
+
+    let last = '';
+    for (const type of ['email', 'signup', 'magiclink'] as const) {
+      const { data, error } = await this.#authClient.auth.verifyOtp({
+        email, token, type,
+      });
+      if (!error && data?.user) return data.user;
+      last = error?.message ?? 'unknown error';
+    }
+
+    /*
+     * GoTrue says "Token has expired or is invalid" for BOTH a mistyped code
+     * and an expired one, and there is no way from here to tell which.
+     *
+     * So neither is claimed. Reading `/expire/` out of that string and saying
+     * "that code has expired, ask for a new one" would be wrong most of the
+     * time -- mistyping the digits is far commoner than sitting on them until
+     * they lapse -- and it sends somebody to request a second code when the
+     * first one was fine and their typing was not.
+     *
+     * The combined sentence is longer and is true whichever happened, and it
+     * names both ways out.
+     */
+    const definitelyExpired = /expire/i.test(last) && !/invalid/i.test(last);
+    throw new HttpError(422, definitelyExpired
+      ? 'That code has expired. Ask for a new one.'
+      : 'That code is not right, or it has expired. Check the code and try '
+        + 'again, or ask for a new one.');
+  }
+
+  /**
+   * An address that already belongs to somebody is not told apart from one
+   * that does not -- upsertUser would attach the existing account, which is
+   * right for an administrator adding a colleague and wrong here, where it
+   * would hand a stranger a membership on an account they do not own.
+   */
+  async #refuseIfTaken(email: string) {
+    const { data: existing } = await this.#db.from('onyx_users')
+      .select('id').eq('email', email.toLowerCase()).maybeSingle();
+    if (existing) {
+      throw new HttpError(409,
+        'That address already has an account. Sign in instead, or ask your '
+        + 'institution to add you to it.');
+    }
   }
 
   /**
@@ -998,6 +1305,13 @@ export class TenancyService {
       email: email.trim().toLowerCase(), password,
     });
     if (signError || !signed.session || !signed.user) {
+      // A rate limit is not a wrong password, and must never be reported as
+      // one. Told "those details do not match", somebody whose password is
+      // perfectly correct goes and resets it -- which is another mail through
+      // the same throttled service, so the reset does not arrive either. On an
+      // exam morning, when a hall signs in at once and the limit is exactly
+      // what gets hit, that turns a two-minute wait into a support queue.
+      if (TenancyService.#isRateLimit(signError?.message)) throw TenancyService.#tooBusy();
       throw new HttpError(401, 'Those details do not match.');
     }
 
@@ -1021,6 +1335,18 @@ export class TenancyService {
       refresh_token: signed.session.refresh_token,
     });
     if (refreshError || !refreshed.session) {
+      /*
+       * Signing in costs TWO calls to GoTrue -- the password grant above and
+       * this refresh, which is what scopes the session to one institution. So
+       * a burst of sign-ins reaches the project's auth rate limit at half the
+       * number of people it looks like it should, and when it does, it lands
+       * here rather than above: the password was accepted and the second call
+       * was refused.
+       *
+       * Reported as "too busy" rather than as a 500. It is not a fault in this
+       * product and there is nothing for the person to fix -- waiting works.
+       */
+      if (TenancyService.#isRateLimit(refreshError?.message)) throw TenancyService.#tooBusy();
       throw new HttpError(500, 'Signed in, but could not scope the session: ' + (refreshError?.message ?? ''));
     }
 

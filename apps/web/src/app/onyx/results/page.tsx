@@ -206,7 +206,11 @@ export default async function OnyxResultsPage() {
                       icon={a.passed === false ? 'alert' : 'award'}
                       tone={a.passed === false ? 'late' : 'good'}
                       title={a.title}
-                      href={'/onyx/assessments/' + a.assessment_id}
+                      // The ATTEMPT, not the paper. A result row that led to
+                      // the paper's front page led to a screen with no score
+                      // on it -- the click promised a result and delivered a
+                      // Start button.
+                      href={'/onyx/attempts/' + a.attempt_id}
                       meta={[
                         a.passed === null ? 'Marked' : a.passed ? 'Passed' : 'Not passed',
                         a.pass_mark !== null ? 'pass mark ' + a.pass_mark : null,
@@ -267,7 +271,9 @@ export default async function OnyxResultsPage() {
                 key={m.id}
                 icon="award"
                 tone="brand"
-                title={'Exam #' + m.exam_id}
+                // QA F11. The id only where a title genuinely cannot be
+                // found -- this is the learner's own official record.
+                title={m.exam?.title ?? 'Exam #' + m.exam_id}
                 meta={[
                   m.grade ? 'Grade ' + m.grade : 'No grade band was applied',
                   // A mark that moved and does not say it moved is the thing

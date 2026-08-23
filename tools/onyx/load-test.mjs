@@ -32,7 +32,10 @@
  */
 import { setTimeout as sleep } from 'node:timers/promises';
 
-const API = process.env.E2E_API ?? 'http://127.0.0.1:4000';
+/**
+ * 5173, not the 4000 the removed Fastify process used to serve (ADR-012).
+ */
+const API = process.env.E2E_API ?? 'http://127.0.0.1:5173';
 const arg = (name, fallback) => {
   const i = process.argv.indexOf('--' + name);
   return i === -1 ? fallback : Number(process.argv[i + 1]);

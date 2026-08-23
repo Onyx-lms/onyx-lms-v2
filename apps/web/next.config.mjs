@@ -30,9 +30,64 @@ function loadRootEnv() {
 }
 loadRootEnv();
 
+/**
+ * QA F1 -- the response headers the deployment was not sending.
+ *
+ * Vercel adds HSTS and nothing else, so the login form and the invigilation
+ * console could both be framed by a third-party page: the standard setup for
+ * clickjacking a credential form.
+ *
+ * **`Permissions-Policy` is the one to read carefully.** It governs camera and
+ * microphone delegation, which is exactly what live invigilation depends on --
+ * a copied-in policy of `camera=()` would switch that feature off across the
+ * product and the failure would look like a broken WebRTC connection rather
+ * than a header. So `camera=(self)`, and `microphone=()` because nothing here
+ * asks for audio and the day something does is the day to decide it on
+ * purpose.
+ *
+ * **`frame-ancestors 'self'` rather than `X-Frame-Options: DENY`.** Certificate
+ * verification pages are public and meant to be linked to; an employer
+ * embedding one is a use, not an attack. `SAMEORIGIN`/`'self'` stops the
+ * clickjacking case without breaking that.
+ *
+ * **No full Content-Security-Policy, deliberately.** App Router hydration needs
+ * inline scripts, so a CSP without per-request nonces has to allow
+ * `'unsafe-inline'` -- which is a header that looks like protection and is not.
+ * Doing it properly means generating a nonce in middleware and threading it
+ * through every inline script, which is a real piece of work rather than a
+ * config line. `frame-ancestors` is the part that is both meaningful and
+ * impossible to get subtly wrong, so it ships now and the rest is honest about
+ * being outstanding.
+ */
+const SECURITY_HEADERS = [
+  // Stop a browser second-guessing a declared content type -- the reason an
+  // uploaded file served as text/plain can be executed as script.
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  { key: 'Content-Security-Policy', value: "frame-ancestors 'self'" },
+  // Send the full URL within this site and only the origin off it: paths here
+  // carry attempt ids, credential ids and tenant slugs.
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  {
+    key: 'Permissions-Policy',
+    value: [
+      'camera=(self)',        // live invigilation and the proctoring preflight
+      'microphone=()',        // nothing asks for audio
+      'geolocation=()',
+      'payment=(self)',       // the gateway widget runs on our own page
+      'interest-cohort=()',
+    ].join(', '),
+  },
+];
+
 /** @type {import('next').NextConfig} */
 export default {
   reactStrictMode: true,
+
+  async headers() {
+    return [{ source: '/:path*', headers: SECURITY_HEADERS }];
+  },
+
   images: { remotePatterns: [{ protocol: 'https', hostname: '**' }] },
 
   /**

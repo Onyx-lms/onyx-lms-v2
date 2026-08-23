@@ -63,11 +63,34 @@ function schedule(exam: Exam, now: number): { phase: Phase; lead: string; sub: s
       sub: 'started ' + gap(now - start) + ' ago' };
   }
   if (now >= end || exam.status === 'completed') {
-    const d = Math.abs(days(now, start));
+    /*
+     * QA F10. This branch fires on `status === 'completed'` whether or not the
+     * date has passed -- and publishing marks is what sets that status. A
+     * resit arranged early, marks carried across from a previous sitting, or a
+     * date corrected afterwards all land here with a start date still ahead.
+     *
+     * It then called `Math.abs()`, which threw the sign away, so an exam three
+     * days in the FUTURE read "3 days ago · sat Wed, Aug 26" under the heading
+     * "Examinations already sat".
+     *
+     * Neither reading is safe to assert about a paper that is marked but not
+     * yet due, so nothing is asserted: print the date and let the reader
+     * judge. That is what `relativeWhen()` in onyx-ui.tsx already does for the
+     * same situation, and this page simply was not using it.
+     */
+    // `days(now, start)` is start MINUS now, so it is positive while the
+    // sitting is still ahead and negative once it has passed. Getting that
+    // backwards is the whole of this defect, so the past case names its own
+    // variable rather than reusing a signed one.
+    const until = days(now, start);
+    if (until > 0) {
+      return { phase: 'completed', lead: at, sub: 'marks released before the sitting' };
+    }
+    const ago = -until;
     return {
       phase: 'completed',
-      lead: d === 0 ? 'Today' : d === 1 ? 'Yesterday'
-        : d <= 13 ? d + ' days ago' : Math.round(d / 7) + ' weeks ago',
+      lead: ago === 0 ? 'Today' : ago === 1 ? 'Yesterday'
+        : ago <= 13 ? ago + ' days ago' : Math.round(ago / 7) + ' weeks ago',
       sub: 'sat ' + at,
     };
   }

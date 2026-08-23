@@ -625,10 +625,23 @@ export function Score({ value, outOf, band }: {
     lo:   'bg-red-50 text-red-700',
     none: 'bg-slate-100 text-muted',
   } as const;
+  /*
+   * QA F8. The denominator used to be `opacity-70`, which took an already
+   * tinted colour on an already tinted background below the 4.5:1 minimum --
+   * axe flagged it as a serious contrast failure on the learner's results page
+   * and the guardian's family view, and it is inherited by every marks table
+   * in the product because this component is shared.
+   *
+   * Fixed by making it lighter in WEIGHT rather than in colour. The reason the
+   * opacity was there is real -- "78" is the number and "/100" is the context,
+   * and they should not read as equally loud -- but weight and size carry that
+   * distinction without touching the contrast ratio, which is the one thing
+   * that has to survive for somebody who cannot easily read low-contrast text.
+   */
   return (
     <span className={'inline-grid min-w-[42px] place-items-center rounded-[9px] px-2 py-0.5 '
       + 'text-[13px] font-extrabold tabular-nums ' + tones[auto]}>
-      {value}{outOf ? <span className="font-bold opacity-70">/{outOf}</span> : null}
+      {value}{outOf ? <span className="text-[11.5px] font-semibold">/{outOf}</span> : null}
     </span>
   );
 }

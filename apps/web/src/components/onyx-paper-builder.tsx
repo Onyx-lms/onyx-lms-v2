@@ -54,6 +54,8 @@ export interface ExistingPaper {
   sections: Section[] | null;
   shuffle_questions: number | boolean; shuffle_options: number | boolean;
   proctoring: number | boolean; require_camera: number | boolean;
+  watch_camera?: number | boolean;
+  instant_results?: number | boolean;
   require_screen: number | boolean; anonymous_marking: number | boolean;
   moderation_required: number | boolean;
 }
@@ -103,6 +105,11 @@ export function PaperBuilder({ banks, courses, existing, label: cta }: {
     shuffle_options: existing ? on(existing.shuffle_options) : true,
     proctoring: existing ? on(existing.proctoring) : false,
     require_camera: existing ? on(existing.require_camera) : false,
+    watch_camera: existing ? on(existing.watch_camera) : false,
+    // On for a new paper, matching the column default (0035). A paper-setter
+    // switches it OFF for the papers where handing answers to the first
+    // finisher matters; they no longer have to remember to switch it on.
+    instant_results: existing ? on(existing.instant_results) : true,
     require_screen: existing ? on(existing.require_screen) : false,
     anonymous_marking: existing ? on(existing.anonymous_marking) : true,
     moderation_required: existing ? on(existing.moderation_required) : false,
@@ -157,6 +164,8 @@ export function PaperBuilder({ banks, courses, existing, label: cta }: {
       shuffle_options: form.shuffle_options,
       proctoring: form.proctoring,
       require_camera: form.require_camera,
+      watch_camera: form.watch_camera,
+      instant_results: form.instant_results,
       require_screen: form.require_screen,
       anonymous_marking: form.anonymous_marking,
       moderation_required: form.moderation_required,
@@ -541,7 +550,22 @@ function Switches({ form, set }: {
       note: 'Records events — tab switches, pastes — and asks for consent first. '
         + 'No video is stored.' },
     { k: 'require_camera', title: 'Require a camera', note: 'Only applies when monitoring is on.' },
+    // Not a monitoring switch, so it sits above them rather than among the
+    // dependent ones -- it applies whether or not a paper is proctored.
+    { k: 'instant_results', title: 'Show the score as soon as they hand in',
+      note: 'On by default. Only applies where this product can mark the paper on its own — '
+        + 'anything with an essay, an unkeyed short answer, or moderation still waits for a '
+        + 'marker, and a marker can correct a released score afterwards. Switch it off for a '
+        + 'paper others have not sat yet: the first candidate to finish learns which answers '
+        + 'were right.' },
     { k: 'require_screen', title: 'Require screen sharing', note: 'Only applies when monitoring is on.' },
+    // Said as bluntly as it deserves. Every other switch here records events;
+    // this one puts a human being on the other end of somebody's camera, and
+    // the candidate's consent screen changes wording when it is on.
+    { k: 'watch_camera', title: 'Let an invigilator watch the camera live',
+      note: 'An invigilator can open one candidate at a time and see their camera while '
+        + 'they sit. Nothing is recorded, the candidate is told on their own screen '
+        + 'whenever somebody is watching, and the consent they give says so.' },
   ] as const;
 
   return (
@@ -549,7 +573,8 @@ function Switches({ form, set }: {
       {items.map((it) => {
         // The two device switches do nothing unless monitoring is on, so they
         // say so and disable rather than silently having no effect.
-        const dependent = it.k === 'require_camera' || it.k === 'require_screen';
+        const dependent = it.k === 'require_camera' || it.k === 'require_screen'
+          || it.k === 'watch_camera';
         const disabled = dependent && !form.proctoring;
         return (
           <label key={it.k}

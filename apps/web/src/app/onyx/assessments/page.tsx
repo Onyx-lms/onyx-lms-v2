@@ -318,6 +318,10 @@ export default async function OnyxAssessmentsPage() {
                 title={(attemptsPerPaper.get(Number(a.assessment_id)) ?? 0) > 1
                   ? a.title + ' · Attempt ' + a.attempt
                   : a.title}
+                // Every one of these rows leads somewhere now. They led
+                // nowhere at all before: a learner could see "Passed" and had
+                // no way to click through to what they actually scored.
+                href={'/onyx/attempts/' + a.attempt_id}
                 meta={a.results_published
                   ? (a.passed === null ? 'Marked' : a.passed ? 'Passed' : 'Not passed')
                   : a.status === 'in_progress'

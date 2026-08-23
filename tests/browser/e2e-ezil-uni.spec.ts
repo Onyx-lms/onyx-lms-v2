@@ -18,7 +18,20 @@
 import { test, expect, type Page, type APIRequestContext } from '@playwright/test';
 import { withDb, RUN } from './helpers.ts';
 
-const API = process.env.E2E_API ?? 'http://127.0.0.1:4000';
+/**
+ * 5173, not 4000.
+ *
+ * This defaulted to the Fastify process that used to serve the API on :4000.
+ * That process was removed when the API moved into the Next app (ADR-012), so
+ * the default pointed at nothing -- and on a machine where something else has
+ * since taken :4000, at the wrong thing entirely, which is how it came to fail
+ * with a plausible-looking 401 rather than a connection error.
+ *
+ * The steps that drive the PAGE kept passing throughout, because those use
+ * Playwright's baseURL; only the steps using this constant broke. Every other
+ * spec in this suite already defaults to 5173.
+ */
+const API = process.env.E2E_API ?? 'http://127.0.0.1:5173';
 const PW = 'EzilUni#2026';
 const PLATFORM = { email: 'superadmin@onyx.platform', password: 'Platform#2026!' };
 
@@ -43,13 +56,44 @@ async function signIn(page: Page, email: string) {
     { timeout: 15_000 });
 }
 
-/** A bearer token, for the steps the product has no screen for. */
+/**
+ * A bearer token, for the steps the product has no screen for.
+ *
+ * Cached per address across the whole file. This spec walks one institution
+ * through its life in numbered steps, and every step used to sign in again --
+ * so a run that changes nothing about sessions still spent a dozen sign-ins,
+ * each of which costs TWO calls to GoTrue (the password grant, then the
+ * refresh that scopes the session). That is enough to reach a project's auth
+ * rate limit and fail a step that has nothing to do with signing in.
+ *
+ * A 429 is called out by name rather than left as "API login failed", because
+ * the two readings are different work: one is a limit to raise in the Supabase
+ * dashboard, the other is a broken login.
+ */
+const tokens = new Map<string, string>();
+
 async function token(request: APIRequestContext, email: string, password = PW) {
+  const held = tokens.get(email);
+  if (held) return held;
   const res = await request.post(API + '/api/onyx/auth/login', {
     data: { email, password },
   });
-  expect(res.ok(), 'API login for ' + email).toBeTruthy();
-  return (await res.json()).data.token as string;
+  if (res.status() === 429) {
+    throw new Error('Signing in as ' + email + ' hit the Supabase auth rate limit. '
+      + 'Raise it in Authentication -> Rate Limits; this is not a login fault.');
+  }
+  if (!res.ok()) {
+    // The status and the server's own sentence, not just "it failed". This
+    // read "API login for admin.xxx@ezil-uni.test" and nothing else, which is
+    // the same message whether the password is wrong, the account is missing,
+    // or the project is throttled -- three different things to go and do.
+    const body = await res.text().catch(() => '');
+    throw new Error('API login for ' + email + ' failed: ' + res.status() + ' '
+      + body.slice(0, 300));
+  }
+  const t = (await res.json()).data.token as string;
+  tokens.set(email, t);
+  return t;
 }
 
 // ---------------------------------------------------------------------------

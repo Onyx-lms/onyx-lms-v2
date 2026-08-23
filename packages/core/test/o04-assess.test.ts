@@ -315,7 +315,21 @@ test('the answer key is never on the candidate view', async () => {
   assert.equal(wire.includes('Paris'), false, 'an expected answer reached the candidate');
   for (const q of attempt.questions) {
     assert.equal((q as Record<string, unknown>).answer, undefined);
-    assert.equal((q as Record<string, unknown>).expected, undefined);
+    /*
+     * Null rather than absent, now that the review screen exists.
+     *
+     * `expected` is a real field on this projection -- it carries the correct
+     * answer once the candidate has no sitting left to spoil. What must never
+     * happen is it carrying one HERE, on an attempt that is still running,
+     * which is what the `?? null` asserts and what the string check above
+     * proves independently of the field's shape.
+     */
+    assert.equal((q as Record<string, unknown>).expected ?? null, null,
+      'the key reached a candidate mid-attempt');
+    assert.equal((q as Record<string, unknown>).explanation ?? null, null);
+    // And no verdict either: "correct" on a live attempt would give the
+    // answer away as surely as printing it.
+    assert.equal((q as Record<string, unknown>).correct ?? null, null);
   }
 });
 
@@ -592,10 +606,38 @@ test('ASS-03b: results are invisible until published, and moderation is enforced
   assert.equal(Number(mine.score), 6);
   assert.equal(mine.passed, true);
 
-  // And re-marking a published paper is an appeal, not an edit.
-  await assert.rejects(w.assess.mark(T, attempt.id, 'user-20', {
-    marks: [{ question_id: Number(q.essay.id), points: 0 }],
-  }), (e: HttpError) => e.status === 422);
+  /*
+   * And a released paper CAN be re-marked, which reverses what this test used
+   * to assert.
+   *
+   * The old rule -- "changing a mark after release is an appeal, not an edit"
+   * -- made sense while `published` meant a person had chosen to release. It
+   * stopped making sense when auto-marked attempts began publishing themselves
+   * at submit (migration 0035): refusing here would have made every
+   * machine-marked paper in the product permanently uncorrectable the instant
+   * it was handed in, with no way for a marker to fix a bad answer key.
+   *
+   * What must hold instead is that a correction CHANGES the result rather than
+   * withdrawing it. `#recompute` used to force every attempt it touched back
+   * to 'graded', which would have made the candidate's result disappear from
+   * their screen at the moment somebody corrected it.
+   */
+  // Through the authoritative role, because this paper was moderated and
+  // moderation outranks a first mark -- re-marking as 'first' here is accepted
+  // and correctly changes nothing, which is its own small proof that the
+  // precedence rule survived.
+  await w.assess.mark(T, attempt.id, 'user-20', {
+    role: 'first', marks: [{ question_id: Number(q.essay.id), points: 0 }],
+  });
+  assert.equal(Number((await w.assess.attemptForCandidate(T, attempt.id, 'user-10')).score), 6,
+    'a first mark overrode the moderator');
+
+  await w.assess.mark(T, attempt.id, 'user-22', {
+    role: 'moderation', marks: [{ question_id: Number(q.essay.id), points: 0 }],
+  });
+  const corrected = await w.assess.attemptForCandidate(T, attempt.id, 'user-10');
+  assert.notEqual(corrected.score, null, 'correcting a released mark hid it');
+  assert.equal(Number(corrected.score), 2, 'the correction did not reach the candidate');
 });
 
 test('an assessment in another institution is not found', async () => {

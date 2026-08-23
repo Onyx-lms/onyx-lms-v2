@@ -166,6 +166,16 @@ export interface ExamMark {
   grade: string | null;
   grade_points: number | null;
   status: 'entered' | 'moderated' | 'published';
+  /**
+   * The examination this mark is for, attached by `marksFor`.
+   *
+   * Optional because `marksForExam` -- the staff-side read, where the paper is
+   * already the thing on screen -- does not carry it.
+   */
+  exam?: {
+    id: number; title: string; starts_at: string | null;
+    max_marks: number; pass_marks: number; course_id: number | null;
+  } | null;
 }
 
 export interface Transcript {

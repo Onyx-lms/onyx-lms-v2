@@ -44,7 +44,10 @@ export type AuditAction =
   // Live Classes. A domain carries a price and a link that leaves the product,
   // so who changed one, and to what, is worth keeping.
   | 'domain.created' | 'domain.updated' | 'domain.deleted'
-  | 'domain.registered';
+  | 'domain.registered'
+  // Somebody watched a candidate's camera. Recorded because being watched is
+  // an act that should be accountable afterwards, not only visible at the time.
+  | 'proctor.watched';
 
 export interface AuditEntry {
   action: AuditAction;

@@ -4,6 +4,7 @@ import { OnyxShell } from '@/components/onyx-shell';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
 import { LiveRefresh } from '@/components/onyx-live';
+import { WatchCandidate } from '@/components/onyx-proctor-live';
 import type { Exam } from '@/lib/onyx-campus';
 import {
   ActionLink, Card, CardGrid, DataTable, EmptyRow, Icon, Meter, Pill, Score,
@@ -19,6 +20,8 @@ interface QueueRow {
   /** null means the attempt has never reported either way -- not the same as off. */
   camera_on: boolean | null; screen_on: boolean | null;
   requires_camera: boolean; requires_screen: boolean;
+  /** Whether this paper allows an invigilator to watch the camera live. */
+  watch_camera?: boolean;
   tab_switches: number; started_at: string | null;
 }
 
@@ -236,8 +239,17 @@ export default async function OnyxInvigilatePage(
                 </td>
                 <td><Score value={r.integrity_flags} band={sev.band} /></td>
                 <td className="text-right">
-                  <ActionLink href={'/onyx/attempts/' + r.attempt_id + '/integrity'}
-                    label="Watch" />
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {/* Only for papers set up for it, and only while the attempt
+                        is running. ASS-02b: one candidate at a time, because the
+                        media is peer-to-peer and a browser will not hold forty
+                        inbound streams. */}
+                    {r.watch_camera ? (
+                      <WatchCandidate attemptId={r.attempt_id} name={candidateOf(r, nameOf)} />
+                    ) : null}
+                    <ActionLink href={'/onyx/attempts/' + r.attempt_id + '/integrity'}
+                      label="Flags" />
+                  </div>
                 </td>
               </tr>
             );

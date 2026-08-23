@@ -21,10 +21,17 @@ const API = appOrigin();
 const ROUTES: Record<string, { path: string; authed: boolean }> = {
   login: { path: '/api/onyx/auth/login', authed: false },
   switch: { path: '/api/onyx/auth/switch', authed: true },
-  // Self-registration returns a session exactly as login does, so it goes
-  // through this handler for the same reason: the token has to land in an
+  // Self-registration, in two steps. The first only asks Supabase to mail a
+  // code and returns no session; the second returns one exactly as login does,
+  // which is why both go through this handler -- the token has to land in an
   // httpOnly cookie rather than in the page's JavaScript.
-  signup: { path: '/api/onyx/auth/signup', authed: false },
+  //
+  // There is no single-step `signup` entry any more, and its absence is the
+  // enforcement: a route that is not in this map is not reachable from a
+  // browser, so there is no way to reach the account-creating call without
+  // having first redeemed a code.
+  'signup-start': { path: '/api/onyx/auth/signup/start', authed: false },
+  'signup-verify': { path: '/api/onyx/auth/signup/verify', authed: false },
 };
 
 export async function POST(request: Request, ctx: { params: Promise<{ action: string }> }) {

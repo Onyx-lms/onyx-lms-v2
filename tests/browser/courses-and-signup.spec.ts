@@ -10,7 +10,7 @@
  * accumulates a "Signup Probe" per run is a worse problem than no test.
  */
 import { test, expect, request as playwrightRequest, type Page } from '@playwright/test';
-import { withDb } from './helpers.ts';
+import { withDb, otpFor } from './helpers.ts';
 
 const ADMIN = { email: 'admin@demo.onyx', password: 'Demo#2026!' };
 const STUDENT = { email: 'student@demo.onyx', password: 'Demo#2026!' };
@@ -208,17 +208,31 @@ test.describe('a learner opens their own account', () => {
     await expect(refusal).not.toContainText('ABC');
   });
 
-  test('registering creates a student who can sign in', async ({ page }) => {
-    await page.goto('/onyx/signup');
-    await page.locator('#su-name').fill('Signup Probe');
-    await page.locator('#su-email').fill(NEW_LEARNER);
-    await page.locator('#su-phone').fill('+91 90000 00000');
-    await page.locator('#su-roll').fill('ABC24-' + RUN.slice(-3));
-    await page.locator('#su-password').fill('Signup#2026!');
-    await page.getByRole('button', { name: /Create my account/ }).click();
-
-    // Straight in, no second form.
-    await page.waitForURL(/\/onyx\/dashboard/, { timeout: 20_000 });
+  /*
+   * Driven through the API rather than the form, and deliberately.
+   *
+   * Registering now takes a code, and asking for one means Supabase actually
+   * sending mail -- which it will only do to a domain that can receive it, and
+   * only a few times an hour on this plan. `demo.onyx` is neither deliverable
+   * nor worth a real send, and a suite that spends its email quota on a test
+   * whose subject is the RESULT of registering would start failing for reasons
+   * that have nothing to do with what it checks.
+   *
+   * The two-step form itself is covered end to end, click by click, in
+   * signup-and-profile.spec.ts -- which pays for exactly one send per run.
+   * What is unique here is the demo institution: that its domain resolves, and
+   * that the account lands inside it with the roll number intact.
+   */
+  test('registering creates a student who can sign in', async () => {
+    const made = await api('/api/onyx/auth/signup/verify', {
+      method: 'POST',
+      data: {
+        name: 'Signup Probe', email: NEW_LEARNER, password: 'Signup#2026!',
+        phone: '+91 90000 00000', roll_number: 'ABC24-' + RUN.slice(-3),
+        code: await otpFor(NEW_LEARNER, 'Signup#2026!'),
+      },
+    });
+    expect(made.status, JSON.stringify(made.body)).toBe(200);
 
     // A student, at the institution the domain resolved to, carrying the roll
     // number they typed.

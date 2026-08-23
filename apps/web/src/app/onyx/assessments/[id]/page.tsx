@@ -9,7 +9,8 @@ import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
 import { isExamsStaff, type Assessment, type MyAttempt } from '@/lib/onyx-assess';
 import {
-  ActionLink, BackLink, Card, CardGrid, Icon, SectionHead, StatTile, State, Stepper,
+  ActionLink, BackLink, Card, CardGrid, Icon, ListRow, RowList, Score, SectionHead,
+  StatTile, State, Stepper,
 } from '@/components/onyx-ui';
 import { ShareLink } from '@/components/onyx-share';
 
@@ -226,6 +227,33 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
               </Card>
             </section>
           ) : (
+            <>
+            {!staff && attempts.length ? (
+              <section className="mb-6">
+                <SectionHead title="Your attempts so far" />
+                <RowList label="Your attempts at this paper">
+                  {attempts.map((a) => (
+                    <ListRow
+                      key={a.attempt_id}
+                      icon={a.results_published ? 'award' : 'clock'}
+                      tone={a.results_published
+                        ? (a.passed === false ? 'late' : 'good') : 'neutral'}
+                      title={'Attempt ' + a.attempt}
+                      href={'/onyx/attempts/' + a.attempt_id}
+                      meta={a.results_published
+                        ? (a.passed === null ? 'Marked' : a.passed ? 'Passed' : 'Not passed')
+                        : a.status === 'in_progress'
+                          ? 'Still open'
+                          : 'Handed in — not marked yet'}
+                      trailing={a.results_published && a.score !== null
+                        ? <Score value={a.score} outOf={a.max_score} />
+                        : undefined}
+                    />
+                  ))}
+                </RowList>
+              </section>
+            ) : null}
+
             <section>
               <SectionHead title="Your attempt" />
               <Card className="p-4">
@@ -235,9 +263,6 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
                 ) : attempts.length >= assessment.attempts_allowed ? (
                   <p className="text-sm text-muted">
                     You have used all your attempts.
-                    {attempts.some((a) => a.results_published)
-                      ? ' Your result is on the assessments page.'
-                      : ' Results will appear once they are published.'}
                   </p>
                 ) : !open ? (
                   <p className="text-sm text-muted">
@@ -250,6 +275,7 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
                 )}
               </Card>
             </section>
+            </>
           )}
         </div>
 
@@ -303,12 +329,27 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
           <section>
             <SectionHead title="Results" />
             <Card className="p-4">
+              {/*
+                * Two readers, two different facts.
+                *
+                * This card sits outside the staff branch, so a candidate was
+                * being shown copy written for whoever presses Publish -- "every
+                * candidate can see their score, their rubric comments" -- on a
+                * page that showed them neither, and promising rubric comments
+                * that no learner-facing route serves at all.
+                */}
               <p className="text-[13px] leading-relaxed text-muted">
-                {released
-                  ? 'Released. Every candidate can see their score, their rubric comments and '
-                    + 'whether they passed.'
-                  : 'Releasing closes marking for good and shows every candidate their score, '
-                    + 'their rubric comments and whether they passed. It cannot be undone.'}
+                {staff
+                  ? (released
+                    ? 'Released. Every candidate can see their score and whether they passed.'
+                    : 'Releasing closes marking for good and shows every candidate their '
+                      + 'score and whether they passed. It cannot be undone.')
+                  : (released
+                    ? 'Results are out. Open an attempt above to see how it was marked.'
+                    : assessment.instant_results
+                      ? 'This paper marks itself, so a score appears as soon as you hand in — '
+                        + 'unless something on it has to be read by a person.'
+                      : 'Your result appears here once it has been marked and released.')}
               </p>
               <p className="mt-3 flex items-center gap-2 text-[13px]">
                 <Icon name={released ? 'eye' : 'lock'} className="h-4 w-4 shrink-0 text-muted" />

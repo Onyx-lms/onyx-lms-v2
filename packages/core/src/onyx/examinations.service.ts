@@ -674,7 +674,34 @@ export class ExaminationsService {
     if (own && !canRunExams(viewer.role)) q = q.eq('status', 'published');
 
     const { data } = await q.order('id', { ascending: true });
-    return data ?? [];
+    return this.#withExam(tenantId, data ?? []);
+  }
+
+  /**
+   * Attaches each mark's examination -- QA F11.
+   *
+   * `onyx_exam_marks` holds no title, so a learner's own results page had
+   * nothing to print and fell back to "Exam #125": their official record,
+   * naming the paper by its primary key, on the one screen they would show a
+   * parent or attach to an application. A guardian looking at the same mark
+   * already saw the real title, because GuardianService resolves it.
+   *
+   * One `.in()` for the whole page rather than the per-mark lookup the
+   * guardian does -- a transcript is a list, and a query per row is how a
+   * list becomes slow the term somebody sits ten papers.
+   *
+   * Nested under `exam` because that is the shape the platform grades screen
+   * already reads (`marks[0]?.exam?.title`).
+   */
+  async #withExam(tenantId: number, marks: Record<string, unknown>[]) {
+    if (!marks.length) return marks;
+    const ids = [...new Set(marks.map((m) => Number(m.exam_id)).filter(Boolean))];
+    if (!ids.length) return marks;
+    const { data } = await this.#db.from('onyx_exams')
+      .select('id, title, starts_at, max_marks, pass_marks, course_id')
+      .eq('tenant_id', tenantId).in('id', ids);
+    const byId = new Map((data ?? []).map((e) => [Number(e.id), e]));
+    return marks.map((m) => ({ ...m, exam: byId.get(Number(m.exam_id)) ?? null }));
   }
 
   async marksForExam(tenantId: number, examId: number, viewer: { role: Role }) {

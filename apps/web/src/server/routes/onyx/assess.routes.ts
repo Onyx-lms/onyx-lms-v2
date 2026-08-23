@@ -159,6 +159,13 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
       shuffle_options: z.boolean().optional(),
       proctoring: z.boolean().optional(),
       require_camera: z.boolean().optional(),
+      // ASS-02b. Off by default at the column too: a paper that switched
+      // this on by accident would be watching people who consented to less.
+      watch_camera: z.boolean().optional(),
+      // Hand the mark back at submit, for a paper that needs no marker. The
+      // service refuses to act on it when anything awaits a human or the
+      // paper requires moderation -- see AssessService#finalise.
+      instant_results: z.boolean().optional(),
       require_screen: z.boolean().optional(),
       anonymous_marking: z.boolean().optional(),
       moderation_required: z.boolean().optional(),
@@ -209,6 +216,13 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
       shuffle_options: z.boolean().optional(),
       proctoring: z.boolean().optional(),
       require_camera: z.boolean().optional(),
+      // ASS-02b. Off by default at the column too: a paper that switched
+      // this on by accident would be watching people who consented to less.
+      watch_camera: z.boolean().optional(),
+      // Hand the mark back at submit, for a paper that needs no marker. The
+      // service refuses to act on it when anything awaits a human or the
+      // paper requires moderation -- see AssessService#finalise.
+      instant_results: z.boolean().optional(),
       require_screen: z.boolean().optional(),
       anonymous_marking: z.boolean().optional(),
       moderation_required: z.boolean().optional(),
@@ -338,6 +352,95 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
     }), req.body);
     return ok(await ctx.onyxProctor.record(
       claims.tenant_id, idOf(req), claims.user_id, body));
+  });
+
+  // ---- ASS-02b: watching a candidate's camera, live ----------------------
+  //
+  // The video is peer-to-peer and never reaches this server. These four routes
+  // carry only the messages two browsers need in order to find each other, and
+  // they exist so that "may this person watch this candidate" is answered by
+  // the same guards as everything else rather than by a second set of rules on
+  // a Realtime channel. Migration 0033's header has the reasoning and the
+  // limits -- one candidate at a time, and some networks need a TURN relay.
+
+  /**
+   * Which end of the negotiation a caller is, worked out from who they are.
+   *
+   * NEVER from the request body. A candidate who could name themselves the
+   * watcher would be able to read an invigilator's half of the exchange, and
+   * to post an offer that makes their own screen believe somebody with
+   * authority is watching them.
+   *
+   * Owning the attempt makes you the candidate. Otherwise you must be staff
+   * who may invigilate -- the same authority that already reads the proctoring
+   * timeline for that attempt, so nobody is escalated by this: somebody who
+   * may see every flag raised against a candidate may see the camera those
+   * flags came from.
+   */
+  const sideOf = async (
+    claims: { tenant_id: number; user_id: string; tenant_role: string },
+    attemptId: number,
+  ): Promise<'watcher' | 'candidate'> => {
+    if (await ctx.onyxProctor.isCandidate(claims.tenant_id, attemptId, claims.user_id)) {
+      return 'candidate';
+    }
+    if (!(STAFF as readonly string[]).includes(claims.tenant_role)) {
+      throw new HttpError(403, 'That is not your attempt.');
+    }
+    return 'watcher';
+  };
+
+  /**
+   * Whoever may invigilate this paper asks to watch one candidate.
+   *
+   * The service refuses if the paper was not set up for live invigilation, if
+   * the attempt has finished, or if the candidate never consented.
+   */
+  app.post('/api/onyx/attempts/:id/watch', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    return ok(await ctx.onyxProctor.startWatch(
+      claims.tenant_id, idOf(req), { userId: claims.user_id }));
+  });
+
+  /**
+   * Is anybody watching me?
+   *
+   * The CANDIDATE's own screen asks this, which is why it is `requireOnyx` and
+   * an ownership check rather than a staff role. It does two things: nothing
+   * streams until somebody is actually looking, and the person being watched
+   * is told so on their own screen while it happens.
+   */
+  app.get('/api/onyx/attempts/:id/watch', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    if (!(await ctx.onyxProctor.isCandidate(claims.tenant_id, idOf(req), claims.user_id))) {
+      throw new HttpError(403, 'That is not your attempt.');
+    }
+    return ok(await ctx.onyxProctor.watchState(claims.tenant_id, idOf(req)));
+  });
+
+  /** One message into the negotiation. */
+  app.post('/api/onyx/attempts/:id/signal', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      session_id: z.string().uuid(),
+      kind: z.enum(['offer', 'answer', 'ice', 'bye']),
+      payload: z.unknown(),
+    }), req.body);
+    const sender = await sideOf(claims, idOf(req));
+    return ok(await ctx.onyxProctor.postSignal(claims.tenant_id, idOf(req), {
+      sessionId: body.session_id, sender, kind: body.kind, payload: body.payload,
+    }));
+  });
+
+  /** Everything the other side has sent on this session since `after`. */
+  app.get('/api/onyx/attempts/:id/signal', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const q = req.query as { session_id?: string; after?: string };
+    if (!q.session_id) throw new HttpError(422, 'Which watching session?');
+    const sender = await sideOf(claims, idOf(req));
+    return ok(await ctx.onyxProctor.pollSignals(claims.tenant_id, idOf(req), {
+      sessionId: q.session_id, sender, after: q.after ? Number(q.after) : 0,
+    }));
   });
 
   app.get('/api/onyx/attempts/:id/proctor', async (req) => {

@@ -46,6 +46,10 @@ docs:check` fails the build if it has.
 | `POST` | `/api/onyx/attempts/:id/submit` | any member |
 | `POST` | `/api/onyx/assessments/expire` | admin, faculty, exams |
 | `POST` | `/api/onyx/attempts/:id/proctor` | any member |
+| `POST` | `/api/onyx/attempts/:id/watch` | admin, faculty, exams |
+| `GET` | `/api/onyx/attempts/:id/watch` | any member |
+| `POST` | `/api/onyx/attempts/:id/signal` | any member |
+| `GET` | `/api/onyx/attempts/:id/signal` | any member |
 | `GET` | `/api/onyx/attempts/:id/proctor` | admin, faculty, exams |
 | `GET` | `/api/onyx/proctor/queue` | admin, faculty, exams |
 | `POST` | `/api/onyx/proctor/events/:id/review` | admin, faculty, exams |
@@ -68,7 +72,7 @@ docs:check` fails the build if it has.
 | Method | Path | Who may call it |
 | --- | --- | --- |
 | `POST` | `/api/onyx/allocations` | admin, exams, faculty |
-| `GET` | `/api/onyx/allocations` | any member |
+| `GET` | `/api/onyx/allocations` | admin, exams, faculty |
 | `GET` | `/api/onyx/semesters/:id/workload` | admin, faculty |
 | `POST` | `/api/onyx/rooms` | admin, exams, faculty |
 | `GET` | `/api/onyx/rooms` | any member |
@@ -103,8 +107,8 @@ docs:check` fails the build if it has.
 | `POST` | `/api/onyx/fee-heads` | admin, exams, faculty |
 | `GET` | `/api/onyx/fee-heads` | admin, exams, faculty |
 | `POST` | `/api/onyx/fee-structures` | any member |
-| `GET` | `/api/onyx/fee-structures` | admin, exams, faculty |
-| `GET` | `/api/onyx/fee-structures/:id` | admin, exams, faculty |
+| `GET` | `/api/onyx/fee-structures` | admin |
+| `GET` | `/api/onyx/fee-structures/:id` | admin |
 | `POST` | `/api/onyx/fee-structures/:id/publish` | any member |
 | `POST` | `/api/onyx/invoices` | any member |
 | `GET` | `/api/onyx/invoices` | any member |
@@ -115,7 +119,7 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/finance/outstanding` | any member |
 | `POST` | `/api/onyx/payments` | admin, exams, faculty |
 | `GET` | `/api/onyx/gateways` | any member |
-| `GET` | `/api/onyx/admin/gateways` | admin, exams, faculty |
+| `GET` | `/api/onyx/admin/gateways` | admin |
 | `PUT` | `/api/onyx/admin/gateways` | admin, exams, faculty |
 | `POST` | `/api/onyx/invoices/:id/checkout` | any member |
 | `POST` | `/api/onyx/payments/confirm` | any member |
@@ -166,7 +170,7 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/my/applications` | any member |
 | `PATCH` | `/api/onyx/applications/:id` | any member |
 | `POST` | `/api/onyx/applications/:id/withdraw` | any member |
-| `GET` | `/api/onyx/drives` | any member |
+| `GET` | `/api/onyx/drives` | employer |
 | `POST` | `/api/onyx/drives` | admin, placement |
 | `POST` | `/api/onyx/rounds/:id/results` | admin, placement |
 | `GET` | `/api/onyx/drives/:id/summary` | admin, placement |
@@ -401,8 +405,8 @@ docs:check` fails the build if it has.
 | `PATCH` | `/api/onyx/tenant/settings` | admin |
 | `GET` | `/api/onyx/permissions` | any member |
 | `PUT` | `/api/onyx/permissions` | admin |
-| `POST` | `/api/onyx/auth/signup` | **no token** — public by design |
-| `GET` | `/api/onyx/auth/signup/institutions` | **no token** — public by design |
+| `POST` | `/api/onyx/auth/signup/start` | **no token** — public by design |
+| `POST` | `/api/onyx/auth/signup/verify` | **no token** — public by design |
 | `GET` | `/api/onyx/auth/signup/institutions` | **no token** — public by design |
 | `GET` | `/api/onyx/auth/signup/institution` | **no token** — public by design |
 | `GET` | `/api/onyx/my/profile-details` | any member |
@@ -418,4 +422,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_332 endpoints across 9 route files._
+_336 endpoints across 9 route files._
