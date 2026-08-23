@@ -1,0 +1,597 @@
+{
+  "phase": "roles+isolation",
+  "base": "https://onyx-lms-v2.vercel.app",
+  "roleCheck": [
+    {
+      "key": "admin",
+      "email": "admin@demo.onyx",
+      "csv_role": "admin",
+      "actual_role": "admin",
+      "tenant": "abc-institution",
+      "tenant_id": 1,
+      "verdict": "PASS"
+    },
+    {
+      "key": "faculty",
+      "email": "faculty@demo.onyx",
+      "csv_role": "faculty",
+      "actual_role": "admin",
+      "tenant": "abc-institution",
+      "tenant_id": 1,
+      "verdict": "FAIL"
+    },
+    {
+      "key": "exams",
+      "email": "exams@demo.onyx",
+      "csv_role": "exams",
+      "actual_role": "exams",
+      "tenant": "abc-institution",
+      "tenant_id": 1,
+      "verdict": "PASS"
+    },
+    {
+      "key": "placement",
+      "email": "placement@demo.onyx",
+      "csv_role": "placement",
+      "actual_role": "placement",
+      "tenant": "abc-institution",
+      "tenant_id": 1,
+      "verdict": "PASS"
+    },
+    {
+      "key": "employer",
+      "email": "employer@demo.onyx",
+      "csv_role": "employer",
+      "actual_role": "employer",
+      "tenant": "abc-institution",
+      "tenant_id": 1,
+      "verdict": "PASS"
+    },
+    {
+      "key": "guardian",
+      "email": "guardian@demo.onyx",
+      "csv_role": "guardian",
+      "actual_role": "guardian",
+      "tenant": "abc-institution",
+      "tenant_id": 1,
+      "verdict": "PASS"
+    },
+    {
+      "key": "student",
+      "email": "student@demo.onyx",
+      "csv_role": "student",
+      "actual_role": "student",
+      "tenant": "abc-institution",
+      "tenant_id": 1,
+      "verdict": "PASS"
+    },
+    {
+      "key": "m_admin",
+      "email": "kavya.rao@meridian.edu",
+      "csv_role": "admin",
+      "actual_role": "admin",
+      "tenant": "meridian-tech",
+      "tenant_id": 190,
+      "verdict": "PASS"
+    },
+    {
+      "key": "m_faculty",
+      "email": "leela.iyer@meridian.edu",
+      "csv_role": "faculty",
+      "actual_role": "faculty",
+      "tenant": "meridian-tech",
+      "tenant_id": 190,
+      "verdict": "PASS"
+    },
+    {
+      "key": "m_student",
+      "email": "ananya.krishnan@meridian.edu",
+      "csv_role": "student",
+      "actual_role": "student",
+      "tenant": "meridian-tech",
+      "tenant_id": 190,
+      "verdict": "PASS"
+    },
+    {
+      "key": "m_placement",
+      "email": "nisha.verma@meridian.edu",
+      "csv_role": "placement",
+      "actual_role": "placement",
+      "tenant": "meridian-tech",
+      "tenant_id": 190,
+      "verdict": "PASS"
+    },
+    {
+      "key": "m_guardian",
+      "email": "sunita.pillai@example.com",
+      "csv_role": "guardian",
+      "actual_role": "guardian",
+      "tenant": "meridian-tech",
+      "tenant_id": 190,
+      "verdict": "PASS"
+    },
+    {
+      "key": "m_exams",
+      "email": "ravi.chandran@meridian.edu",
+      "csv_role": "exams",
+      "actual_role": "exams",
+      "tenant": "meridian-tech",
+      "tenant_id": 190,
+      "verdict": "PASS"
+    }
+  ],
+  "isolation": [
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/courses/60",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Course not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/courses/61",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Course not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/courses/62",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Course not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/courses/63",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Course not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/courses/64",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Course not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/members/1",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/members/2",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/members/3",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/members/4",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/members/5",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/assessments/26",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/assessments/27",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/assessments/28",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/assessments/89",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/assessments/90",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/exams/12",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"No such exam.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/exams/13",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"No such exam.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/exams/14",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"No such exam.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/exams/15",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"No such exam.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/exams/18",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"No such exam.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/programs/14",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/courses/54",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Course not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/courses/55",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Course not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/courses/56",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Course not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/members/453",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/members/454",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/members/455",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/members/456",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/members/457",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/assessments/15",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/assessments/16",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/assessments/19",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/assessments/20",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/assessments/21",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/exams/5",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"No such exam.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/exams/6",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"No such exam.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/exams/7",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"No such exam.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/exams/8",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"No such exam.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/programs/12",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-admin->meridian",
+      "url": "/api/onyx/jobs/11",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Job not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/courses/54",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Course not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/courses/55",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Course not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/courses/56",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Course not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/members/453",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/members/454",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/members/455",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/members/456",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/members/457",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/assessments/15",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/assessments/16",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/assessments/19",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/assessments/20",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/assessments/21",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/exams/5",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"No such exam.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/exams/6",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"No such exam.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/exams/7",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"No such exam.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/exams/8",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"No such exam.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/programs/12",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "abc-student->meridian",
+      "url": "/api/onyx/jobs/11",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Job not found.\"}",
+      "verdict": "PASS"
+    }
+  ]
+}

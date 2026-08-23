@@ -1,0 +1,72 @@
+{
+  "phase": "interactive",
+  "base": "https://onyx-lms-v2.vercel.app",
+  "steps": [
+    {
+      "name": "student: click course row -> detail",
+      "verdict": "PASS",
+      "detail": "landed /onyx/courses/54 len=1784"
+    },
+    {
+      "name": "student: course exposes lesson links",
+      "verdict": "PASS",
+      "detail": "22 links; first=/onyx/courses/54/lessons/108"
+    },
+    {
+      "name": "student: lesson page renders",
+      "verdict": "PASS",
+      "detail": "status=200 landed=/onyx/courses/54/lessons/108 len=1197",
+      "snippet": "Skip to the main content\nOnyx LMS\nAN\nINSTITUTION\nMeridian Institute of Technology\nStudent\nDashboard\nCourses\nLive Classes\nPractice\nWorkspaces\nASSESSMENT\nAssessments\nExaminations\nResults\nContests\nCAMPUS\nTimetable\nFees\nHelp\nCAREER\nJobs\nInterviews\nResume\nYour profile\nInbox\nananya.krishnan@meridian.edu\nSign out\nUI upload check 1787032953545 | Data Structures · Lesson 1 of 21 | Back to Data Structures\nD"
+    },
+    {
+      "name": "student: code IDE mounts (Monaco)",
+      "verdict": "PASS",
+      "detail": "monaco-nodes=1 run/submit buttons=2 len=859"
+    },
+    {
+      "name": "student: code Run produces a verdict",
+      "verdict": "PASS",
+      "detail": "Contests"
+    },
+    {
+      "name": "admin: tenant settings API",
+      "verdict": "FAIL",
+      "detail": "404 {\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}"
+    },
+    {
+      "name": "admin: audit log scoped to own tenant",
+      "verdict": "PASS",
+      "detail": "status=200 rows=5 tenant_ids=[190]"
+    },
+    {
+      "name": "sign out invalidates the session",
+      "verdict": "PASS",
+      "detail": "sign-out button=1 -> after: /onyx/login?next=%2Fonyx%2Fdashboard"
+    },
+    {
+      "name": "API rejects the signed-out cookie",
+      "verdict": "PASS",
+      "detail": "401 {\"ok\":false,\"level\":\"error\",\"message\":\"Unauthenticated.\"}"
+    },
+    {
+      "name": "mobile 390px no h-overflow: /onyx/dashboard",
+      "verdict": "PASS",
+      "detail": "scrollW=390 clientW=390"
+    },
+    {
+      "name": "mobile 390px no h-overflow: /onyx/courses",
+      "verdict": "PASS",
+      "detail": "scrollW=390 clientW=390"
+    },
+    {
+      "name": "mobile 390px no h-overflow: /onyx/results",
+      "verdict": "PASS",
+      "detail": "scrollW=390 clientW=390"
+    },
+    {
+      "name": "mobile: bottom tab bar present",
+      "verdict": "PASS",
+      "detail": "24 nav links"
+    }
+  ]
+}

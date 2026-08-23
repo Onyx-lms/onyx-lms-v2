@@ -78,7 +78,21 @@ const NAV: Record<Role, OnyxNavGroup[]> = {
   student: [
     { items: [I.dashboard, I.courses, I.domains, I.practice, I.spaces] },
     { label: 'Assessment', items: [I.assess, I.exams, I.results, I.contests] },
-    { label: 'Campus', items: [I.timetable, I.fees, I.support] },
+    /*
+     * No Fees for a learner.
+     *
+     * Asked for directly. What a student pays for in this product is a course
+     * -- the locked-course purchase on the catalogue -- and that has its own
+     * screen; institution fee invoices are the office's ledger and were never
+     * something a learner acted on here.
+     *
+     * Faculty never had this item, so there was nothing to take away there.
+     *
+     * The ROUTE is untouched and still scoped to the caller's own invoices.
+     * This removes an entrance, not a permission: anybody holding a link still
+     * reaches their own record, and nobody reaches anyone else's.
+     */
+    { label: 'Campus', items: [I.timetable, I.support] },
     // Students only. A resume is assembled from a learner's OWN record --
     // batches, courses, awarded skills, certificates -- and staff have
     // CareerService.profile for the same records where they are entitled to

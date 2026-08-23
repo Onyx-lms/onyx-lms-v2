@@ -1,0 +1,52 @@
+{
+  "steps": [
+    {
+      "seq": 1,
+      "name": "student sees the scheduled examination",
+      "verdict": "PASS",
+      "detail": "ED 1 sat, awaiting or holding marks COMPLETED Examinations already sat EXAM WHEN DURATION OUT OF STATUS QE101 End-of-term Examination QE101 · pass mark 40 3 days ago sat Wed, Aug 26, 04:01 PM 120 min 100 Complet"
+    },
+    {
+      "seq": 2,
+      "name": "  and its mark after publication",
+      "verdict": "WARN",
+      "detail": "78 not shown on /onyx/exams"
+    },
+    {
+      "seq": 3,
+      "name": "results: Assessments tab shows the class test",
+      "verdict": "PASS",
+      "detail": "he pass mark set BEST 95% highest paper so far AVERAGE 95% across released papers QE101 — Class Test 1 95% Passed · pass mark 10 19 /20 Grades Your official record: examination marks as the examinations office re"
+    },
+    {
+      "seq": 4,
+      "name": "results: Grades tab reachable",
+      "verdict": "PASS",
+      "detail": "clicked"
+    },
+    {
+      "seq": 5,
+      "name": "results: Grades tab shows the examination",
+      "verdict": "PASS",
+      "detail": "people who teach you. A score appears once it has been marked and released. RELEASED 1 paper marked PASSED 1 against the pass mark set BEST 95% highest paper so far AVERAGE 95% across released p"
+    },
+    {
+      "seq": 6,
+      "name": "dashboard reflects progress",
+      "verdict": "PASS",
+      "detail": "Skip to the main content Onyx LMS 2 QA INSTITUTION QA Certification College 00810765 Student Dashboard Courses Live Classes Practice Workspaces ASSESSMENT Assessments Examinations Results Contests CAMPUS Timetable Fees Help CAREER Job"
+    },
+    {
+      "seq": 7,
+      "name": "lesson opens with the authored body text",
+      "verdict": "PASS",
+      "detail": "e Your profile Inbox qa.s1.00810765@onyx.test Sign out What quality means Foundations of Software Quality · Lesson 1 of 4 Back to Foundations of Software"
+    },
+    {
+      "seq": 8,
+      "name": "resume assembles the learner record",
+      "verdict": "PASS",
+      "detail": "course listed=true len=1614"
+    }
+  ]
+}

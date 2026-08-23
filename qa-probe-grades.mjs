@@ -1,0 +1,15 @@
+import { launch, newPage, BASE } from './qa-lib.mjs';
+import fs from 'node:fs';
+const S = JSON.parse(fs.readFileSync('qa-lifecycle-state.json','utf8'));
+const b = await launch(); const c = await b.newContext(); const p = await newPage(c);
+await p.goto(BASE + '/onyx/login', { waitUntil: 'domcontentloaded' });
+await p.locator('#email').fill('qa.s1.' + S.stamp + '@onyx.test');
+await p.locator('#password').fill('QaCert#2026!');
+await p.getByRole('button', { name: /sign in/i }).click();
+await p.waitForURL((u) => !u.pathname.endsWith('/login'), { timeout: 30000 });
+await p.goto(BASE + '/onyx/results', { waitUntil: 'domcontentloaded' });
+await p.waitForTimeout(3000);
+const main = await p.locator('main').innerText();
+console.log('===== /onyx/results (full main) =====');
+console.log(main);
+await b.close();

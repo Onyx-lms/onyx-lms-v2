@@ -1,0 +1,1005 @@
+{
+  "stamp": "00810765",
+  "slug": "qa-cert-00810765",
+  "base": "https://onyx-lms-v2.vercel.app",
+  "created": {
+    "tenant": {
+      "id": 478,
+      "name": "QA Certification College 00810765",
+      "slug": "qa-cert-00810765",
+      "status": 1,
+      "plan": "standard",
+      "faculty_can_schedule_exams": true,
+      "permissions": {},
+      "created_at": "2026-08-23T16:00:15.466717+00:00",
+      "updated_at": "2026-08-23T16:00:15.466717+00:00"
+    },
+    "program": {
+      "id": 116,
+      "tenant_id": 478,
+      "name": "B.Tech Quality Engineering",
+      "code": "BTQE",
+      "description": "Programme created by the QA lifecycle run.",
+      "duration_semesters": 8,
+      "status": 1,
+      "created_at": "2026-08-23T16:00:21.573963+00:00"
+    },
+    "semester": {
+      "id": 116,
+      "tenant_id": 478,
+      "program_id": 116,
+      "name": "Semester 1",
+      "number": 1,
+      "starts_on": "2026-08-01",
+      "ends_on": "2026-12-15",
+      "status": 1
+    },
+    "members": {
+      "faculty": {
+        "user": {
+          "id": "87df7ff0-c79d-4f08-8203-b464deedde00",
+          "email": "qa.faculty.00810765@onyx.test",
+          "name": "Dr. Farah Lecturer"
+        },
+        "membership": {
+          "id": 1532,
+          "tenant_id": 478,
+          "user_id": "87df7ff0-c79d-4f08-8203-b464deedde00",
+          "role": "faculty",
+          "status": 1,
+          "roll_number": null,
+          "created_at": "2026-08-23T16:00:22.90335+00:00"
+        }
+      },
+      "exams": {
+        "user": {
+          "id": "f8618100-c404-4532-a38e-2b778f182889",
+          "email": "qa.exams.00810765@onyx.test",
+          "name": "Eshan Controller"
+        },
+        "membership": {
+          "id": 1533,
+          "tenant_id": 478,
+          "user_id": "f8618100-c404-4532-a38e-2b778f182889",
+          "role": "exams",
+          "status": 1,
+          "roll_number": null,
+          "created_at": "2026-08-23T16:00:24.060469+00:00"
+        }
+      },
+      "s1": {
+        "user": {
+          "id": "49ee49e9-a6b1-48ce-b127-1635515dd5db",
+          "email": "qa.s1.00810765@onyx.test",
+          "name": "Sana Learner"
+        },
+        "membership": {
+          "id": 1534,
+          "tenant_id": 478,
+          "user_id": "49ee49e9-a6b1-48ce-b127-1635515dd5db",
+          "role": "student",
+          "status": 1,
+          "roll_number": "QE-001",
+          "created_at": "2026-08-23T16:00:25.196005+00:00"
+        }
+      },
+      "s2": {
+        "user": {
+          "id": "84036803-8fa7-4915-a889-ac0b49229ae5",
+          "email": "qa.s2.00810765@onyx.test",
+          "name": "Rohit Learner"
+        },
+        "membership": {
+          "id": 1535,
+          "tenant_id": 478,
+          "user_id": "84036803-8fa7-4915-a889-ac0b49229ae5",
+          "role": "student",
+          "status": 1,
+          "roll_number": "QE-002",
+          "created_at": "2026-08-23T16:00:26.349828+00:00"
+        }
+      },
+      "s3": {
+        "user": {
+          "id": "41bd7246-beef-4bd5-b207-5d0b526bb25f",
+          "email": "qa.s3.00810765@onyx.test",
+          "name": "Meena Learner"
+        },
+        "membership": {
+          "id": 1536,
+          "tenant_id": 478,
+          "user_id": "41bd7246-beef-4bd5-b207-5d0b526bb25f",
+          "role": "student",
+          "status": 1,
+          "roll_number": "QE-003",
+          "created_at": "2026-08-23T16:00:27.462877+00:00"
+        }
+      }
+    },
+    "course": {
+      "id": 202,
+      "tenant_id": 478,
+      "program_id": 116,
+      "semester_id": 116,
+      "code": "QE101",
+      "title": "Foundations of Software Quality",
+      "slug": "foundations-of-software-quality",
+      "description": "Course authored by the QA lifecycle run.",
+      "credits": 4,
+      "self_enroll": 0,
+      "access": "batch",
+      "price_minor": 0,
+      "currency": "INR",
+      "status": 0,
+      "created_by": "be1b9c01-3981-4bdd-a9d9-968150d0c043",
+      "created_at": "2026-08-23T16:00:28.765434+00:00"
+    },
+    "modules": [
+      {
+        "id": 96,
+        "tenant_id": 478,
+        "course_id": 202,
+        "title": "Module 1 — Principles of Quality",
+        "summary": null,
+        "sort": 1
+      },
+      {
+        "id": 97,
+        "tenant_id": 478,
+        "course_id": 202,
+        "title": "Module 2 — Testing in Practice",
+        "summary": null,
+        "sort": 2
+      }
+    ],
+    "lessons": [
+      {
+        "id": 319,
+        "tenant_id": 478,
+        "course_id": 202,
+        "module_id": 96,
+        "title": "What quality means",
+        "type": "text",
+        "path": null,
+        "body": "Fitness for purpose, and who decides it.",
+        "duration_seconds": 600,
+        "sort": 1,
+        "is_preview": 0
+      },
+      {
+        "id": 320,
+        "tenant_id": 478,
+        "course_id": 202,
+        "module_id": 96,
+        "title": "Cost of defects",
+        "type": "text",
+        "path": null,
+        "body": "Why a defect found late costs more.",
+        "duration_seconds": 720,
+        "sort": 2,
+        "is_preview": 0
+      },
+      {
+        "id": 321,
+        "tenant_id": 478,
+        "course_id": 202,
+        "module_id": 97,
+        "title": "Test design techniques",
+        "type": "text",
+        "path": null,
+        "body": "Equivalence partitioning and boundary values.",
+        "duration_seconds": 900,
+        "sort": 1,
+        "is_preview": 0
+      },
+      {
+        "id": 322,
+        "tenant_id": 478,
+        "course_id": 202,
+        "module_id": 97,
+        "title": "Automation strategy",
+        "type": "text",
+        "path": null,
+        "body": "What to automate, and what never to.",
+        "duration_seconds": 840,
+        "sort": 2,
+        "is_preview": 0
+      }
+    ],
+    "bank": {
+      "id": 64,
+      "tenant_id": 478,
+      "course_id": 202,
+      "name": "QE101 — Quality Fundamentals",
+      "description": "Bank authored by the QA lifecycle run.",
+      "created_by": "87df7ff0-c79d-4f08-8203-b464deedde00",
+      "created_at": "2026-08-23T16:00:41.350698+00:00"
+    },
+    "questions": [
+      {
+        "id": 200,
+        "tenant_id": 478,
+        "bank_id": 64,
+        "type": "single",
+        "prompt": "Which of these is the cheapest stage at which to fix a defect?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Requirements"
+          },
+          {
+            "id": "b",
+            "text": "Implementation"
+          },
+          {
+            "id": "c",
+            "text": "System test"
+          },
+          {
+            "id": "d",
+            "text": "Production"
+          }
+        ],
+        "answer": "a",
+        "explanation": "Cost of change rises with time.",
+        "points": 5,
+        "difficulty": "easy",
+        "tags": [],
+        "version": 1,
+        "status": "active",
+        "problem_id": null,
+        "created_at": "2026-08-23T16:00:42.198342+00:00"
+      },
+      {
+        "id": 201,
+        "tenant_id": 478,
+        "bank_id": 64,
+        "type": "single",
+        "prompt": "Boundary value analysis primarily targets which class of defect?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Concurrency races"
+          },
+          {
+            "id": "b",
+            "text": "Off-by-one errors"
+          },
+          {
+            "id": "c",
+            "text": "Memory leaks"
+          },
+          {
+            "id": "d",
+            "text": "Styling regressions"
+          }
+        ],
+        "answer": "b",
+        "explanation": null,
+        "points": 5,
+        "difficulty": "easy",
+        "tags": [],
+        "version": 1,
+        "status": "active",
+        "problem_id": null,
+        "created_at": "2026-08-23T16:00:42.915526+00:00"
+      },
+      {
+        "id": 202,
+        "tenant_id": 478,
+        "bank_id": 64,
+        "type": "multiple",
+        "prompt": "Select every property of a good automated test.",
+        "options": [
+          {
+            "id": "a",
+            "text": "Deterministic"
+          },
+          {
+            "id": "b",
+            "text": "Order-dependent"
+          },
+          {
+            "id": "c",
+            "text": "Fast"
+          },
+          {
+            "id": "d",
+            "text": "Readable on failure"
+          }
+        ],
+        "answer": [
+          "a",
+          "c",
+          "d"
+        ],
+        "explanation": null,
+        "points": 6,
+        "difficulty": "medium",
+        "tags": [],
+        "version": 1,
+        "status": "active",
+        "problem_id": null,
+        "created_at": "2026-08-23T16:00:43.603381+00:00"
+      },
+      {
+        "id": 203,
+        "tenant_id": 478,
+        "bank_id": 64,
+        "type": "short",
+        "prompt": "In one sentence, state why a flaky test is worse than no test.",
+        "options": [],
+        "answer": null,
+        "explanation": null,
+        "points": 4,
+        "difficulty": "medium",
+        "tags": [],
+        "version": 1,
+        "status": "active",
+        "problem_id": null,
+        "created_at": "2026-08-23T16:00:44.317143+00:00"
+      }
+    ],
+    "assessment": {
+      "id": 101,
+      "tenant_id": 478,
+      "course_id": 202,
+      "title": "QE101 — Class Test 1",
+      "instructions": "Answer every question. Written answers are marked by hand.",
+      "opens_at": null,
+      "closes_at": null,
+      "duration_minutes": 30,
+      "attempts_allowed": 1,
+      "sections": [
+        {
+          "id": "s1",
+          "take": 4,
+          "title": "All questions",
+          "bank_id": 64
+        }
+      ],
+      "shuffle_questions": 0,
+      "shuffle_options": 0,
+      "proctoring": 0,
+      "require_camera": 0,
+      "require_screen": 0,
+      "watch_camera": false,
+      "anonymous_marking": 1,
+      "moderation_required": 0,
+      "pass_mark": 10,
+      "status": "draft",
+      "results_published_at": null,
+      "created_by": "87df7ff0-c79d-4f08-8203-b464deedde00",
+      "created_at": "2026-08-23T16:00:45.699453+00:00"
+    },
+    "attempt": {
+      "id": 144,
+      "assessment_id": 101,
+      "attempt": 1,
+      "status": "in_progress",
+      "started_at": "2026-08-23T16:00:52.434+00:00",
+      "expires_at": "2026-08-23T16:30:52.434+00:00",
+      "submitted_at": null,
+      "seconds_remaining": 1799,
+      "max_score": 20,
+      "score": null,
+      "pass_mark": null,
+      "questions": [
+        {
+          "question_id": 200,
+          "type": "single",
+          "prompt": "Which of these is the cheapest stage at which to fix a defect?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Requirements"
+            },
+            {
+              "id": "b",
+              "text": "Implementation"
+            },
+            {
+              "id": "c",
+              "text": "System test"
+            },
+            {
+              "id": "d",
+              "text": "Production"
+            }
+          ],
+          "points": 5,
+          "section_id": "s1",
+          "response": null,
+          "awarded": null
+        },
+        {
+          "question_id": 201,
+          "type": "single",
+          "prompt": "Boundary value analysis primarily targets which class of defect?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Concurrency races"
+            },
+            {
+              "id": "b",
+              "text": "Off-by-one errors"
+            },
+            {
+              "id": "c",
+              "text": "Memory leaks"
+            },
+            {
+              "id": "d",
+              "text": "Styling regressions"
+            }
+          ],
+          "points": 5,
+          "section_id": "s1",
+          "response": null,
+          "awarded": null
+        },
+        {
+          "question_id": 202,
+          "type": "multiple",
+          "prompt": "Select every property of a good automated test.",
+          "options": [
+            {
+              "id": "a",
+              "text": "Deterministic"
+            },
+            {
+              "id": "b",
+              "text": "Order-dependent"
+            },
+            {
+              "id": "c",
+              "text": "Fast"
+            },
+            {
+              "id": "d",
+              "text": "Readable on failure"
+            }
+          ],
+          "points": 6,
+          "section_id": "s1",
+          "response": null,
+          "awarded": null
+        },
+        {
+          "question_id": 203,
+          "type": "short",
+          "prompt": "In one sentence, state why a flaky test is worse than no test.",
+          "options": [],
+          "points": 4,
+          "section_id": "s1",
+          "response": null,
+          "awarded": null
+        }
+      ]
+    },
+    "paperQuestionIds": [
+      200,
+      201,
+      202,
+      203
+    ],
+    "hall": {
+      "id": 78,
+      "tenant_id": 478,
+      "code": "H1",
+      "name": "Main Hall",
+      "row_count": 5,
+      "col_count": 6,
+      "capacity": 30,
+      "status": 1,
+      "created_at": "2026-08-23T16:01:05.6958+00:00"
+    },
+    "exam": {
+      "id": 125,
+      "tenant_id": 478,
+      "semester_id": 116,
+      "course_id": 202,
+      "assessment_id": null,
+      "title": "QE101 End-of-term Examination",
+      "starts_at": "2026-08-26T16:01:05.779+00:00",
+      "duration_minutes": 120,
+      "max_marks": 100,
+      "pass_marks": 40,
+      "status": "scheduled",
+      "created_by": "f8618100-c404-4532-a38e-2b778f182889",
+      "created_at": "2026-08-23T16:01:06.354599+00:00",
+      "updated_at": "2026-08-23T16:01:06.354599+00:00"
+    }
+  },
+  "steps": [
+    {
+      "seq": 1,
+      "act": "superadmin",
+      "name": "sign in to platform console",
+      "verdict": "PASS",
+      "detail": "/onyx/platform"
+    },
+    {
+      "seq": 2,
+      "act": "superadmin",
+      "name": "create institution + first admin",
+      "verdict": "PASS",
+      "detail": "200 \"Institution created.\" tenant_id=478",
+      "tenant_id": 478
+    },
+    {
+      "seq": 3,
+      "act": "superadmin",
+      "name": "institution appears in console list",
+      "verdict": "PASS",
+      "detail": "total=6 contains=true"
+    },
+    {
+      "seq": 4,
+      "act": "superadmin",
+      "name": "creation written to platform audit",
+      "verdict": "PASS",
+      "detail": "top action=tenant.created matched=true"
+    },
+    {
+      "seq": 5,
+      "act": "admin",
+      "name": "first admin can sign in",
+      "verdict": "PASS",
+      "detail": "role=admin tenant=qa-cert-00810765"
+    },
+    {
+      "seq": 6,
+      "act": "admin",
+      "name": "create programme",
+      "verdict": "PASS",
+      "detail": "200 \"Programme created.\" id=116"
+    },
+    {
+      "seq": 7,
+      "act": "admin",
+      "name": "create semester",
+      "verdict": "PASS",
+      "detail": "200 \"Semester created.\" id=116"
+    },
+    {
+      "seq": 8,
+      "act": "admin",
+      "name": "add member (faculty)",
+      "verdict": "PASS",
+      "detail": "200 \"Member added.\" qa.faculty.00810765@onyx.test"
+    },
+    {
+      "seq": 9,
+      "act": "admin",
+      "name": "add member (exams)",
+      "verdict": "PASS",
+      "detail": "200 \"Member added.\" qa.exams.00810765@onyx.test"
+    },
+    {
+      "seq": 10,
+      "act": "admin",
+      "name": "add member (student)",
+      "verdict": "PASS",
+      "detail": "200 \"Member added.\" qa.s1.00810765@onyx.test"
+    },
+    {
+      "seq": 11,
+      "act": "admin",
+      "name": "add member (student)",
+      "verdict": "PASS",
+      "detail": "200 \"Member added.\" qa.s2.00810765@onyx.test"
+    },
+    {
+      "seq": 12,
+      "act": "admin",
+      "name": "add member (student)",
+      "verdict": "PASS",
+      "detail": "200 \"Member added.\" qa.s3.00810765@onyx.test"
+    },
+    {
+      "seq": 13,
+      "act": "admin",
+      "name": "roster lists all 6 members",
+      "verdict": "PASS",
+      "detail": "count=6"
+    },
+    {
+      "seq": 14,
+      "act": "admin",
+      "name": "create course",
+      "verdict": "PASS",
+      "detail": "200 \"Course created.\" id=202"
+    },
+    {
+      "seq": 15,
+      "act": "admin",
+      "name": "assign faculty to course",
+      "verdict": "PASS",
+      "detail": "200 \"Assigned.\""
+    },
+    {
+      "seq": 16,
+      "act": "admin",
+      "name": "create module 1",
+      "verdict": "PASS",
+      "detail": "200 \"Module added.\" id=96"
+    },
+    {
+      "seq": 17,
+      "act": "admin",
+      "name": "  add lesson 1.1",
+      "verdict": "PASS",
+      "detail": "200 \"Lesson added.\" \"What quality means\""
+    },
+    {
+      "seq": 18,
+      "act": "admin",
+      "name": "  add lesson 1.2",
+      "verdict": "PASS",
+      "detail": "200 \"Lesson added.\" \"Cost of defects\""
+    },
+    {
+      "seq": 19,
+      "act": "admin",
+      "name": "create module 2",
+      "verdict": "PASS",
+      "detail": "200 \"Module added.\" id=97"
+    },
+    {
+      "seq": 20,
+      "act": "admin",
+      "name": "  add lesson 2.1",
+      "verdict": "PASS",
+      "detail": "200 \"Lesson added.\" \"Test design techniques\""
+    },
+    {
+      "seq": 21,
+      "act": "admin",
+      "name": "  add lesson 2.2",
+      "verdict": "PASS",
+      "detail": "200 \"Lesson added.\" \"Automation strategy\""
+    },
+    {
+      "seq": 22,
+      "act": "admin",
+      "name": "course outline reflects authoring",
+      "verdict": "PASS",
+      "detail": "200 modules=2"
+    },
+    {
+      "seq": 23,
+      "act": "admin",
+      "name": "publish course",
+      "verdict": "PASS",
+      "detail": "200 \"Course is open.\""
+    },
+    {
+      "seq": 24,
+      "act": "admin",
+      "name": "enrol Sana Learner",
+      "verdict": "PASS",
+      "detail": "200 \"Enrolled.\""
+    },
+    {
+      "seq": 25,
+      "act": "admin",
+      "name": "enrol Rohit Learner",
+      "verdict": "PASS",
+      "detail": "200 \"Enrolled.\""
+    },
+    {
+      "seq": 26,
+      "act": "admin",
+      "name": "enrol Meena Learner",
+      "verdict": "PASS",
+      "detail": "200 \"Enrolled.\""
+    },
+    {
+      "seq": 27,
+      "act": "admin",
+      "name": "roster shows 3 enrolled learners",
+      "verdict": "PASS",
+      "detail": "count=3"
+    },
+    {
+      "seq": 28,
+      "act": "faculty",
+      "name": "faculty signs in",
+      "verdict": "PASS",
+      "detail": "role=faculty"
+    },
+    {
+      "seq": 29,
+      "act": "faculty",
+      "name": "create question bank",
+      "verdict": "PASS",
+      "detail": "200 \"Bank created.\" id=64"
+    },
+    {
+      "seq": 30,
+      "act": "faculty",
+      "name": "add question 1 (single)",
+      "verdict": "PASS",
+      "detail": "200 \"Question added.\""
+    },
+    {
+      "seq": 31,
+      "act": "faculty",
+      "name": "add question 2 (single)",
+      "verdict": "PASS",
+      "detail": "200 \"Question added.\""
+    },
+    {
+      "seq": 32,
+      "act": "faculty",
+      "name": "add question 3 (multiple)",
+      "verdict": "PASS",
+      "detail": "200 \"Question added.\""
+    },
+    {
+      "seq": 33,
+      "act": "faculty",
+      "name": "add question 4 (short)",
+      "verdict": "PASS",
+      "detail": "200 \"Question added.\""
+    },
+    {
+      "seq": 34,
+      "act": "faculty",
+      "name": "bank returns questions WITH answer key",
+      "verdict": "PASS",
+      "detail": "count=4 answer_key_present=true"
+    },
+    {
+      "seq": 35,
+      "act": "faculty",
+      "name": "create assessment (draws 4 from bank)",
+      "verdict": "PASS",
+      "detail": "200 \"Assessment created.\" id=101"
+    },
+    {
+      "seq": 36,
+      "act": "faculty",
+      "name": "preview the paper before publishing",
+      "verdict": "PASS",
+      "detail": "200 items=4"
+    },
+    {
+      "seq": 37,
+      "act": "student",
+      "name": "draft assessment hidden from learner",
+      "verdict": "PASS",
+      "detail": "my/assessments count=0 contains_draft=false"
+    },
+    {
+      "seq": 38,
+      "act": "faculty",
+      "name": "publish assessment",
+      "verdict": "PASS",
+      "detail": "200 \"Published.\""
+    },
+    {
+      "seq": 39,
+      "act": "student",
+      "name": "published assessment appears for learner",
+      "verdict": "FAIL",
+      "detail": "count=0"
+    },
+    {
+      "seq": 40,
+      "act": "student",
+      "name": "start attempt",
+      "verdict": "PASS",
+      "detail": "200 attempt=144"
+    },
+    {
+      "seq": 41,
+      "act": "student",
+      "name": "candidate view withholds the answer key",
+      "verdict": "PASS",
+      "detail": "questions=4 answer_field_present=false explanation_leaked=false"
+    },
+    {
+      "seq": 42,
+      "act": "student",
+      "name": "server-side clock is authoritative",
+      "verdict": "PASS",
+      "detail": "seconds_remaining=1799"
+    },
+    {
+      "seq": 43,
+      "act": "student",
+      "name": "autosave answer 1",
+      "verdict": "PASS",
+      "detail": "200"
+    },
+    {
+      "seq": 44,
+      "act": "student",
+      "name": "autosave answer 2",
+      "verdict": "PASS",
+      "detail": "200"
+    },
+    {
+      "seq": 45,
+      "act": "student",
+      "name": "autosave answer 3",
+      "verdict": "PASS",
+      "detail": "200"
+    },
+    {
+      "seq": 46,
+      "act": "student",
+      "name": "autosave answer 4",
+      "verdict": "PASS",
+      "detail": "200"
+    },
+    {
+      "seq": 47,
+      "act": "student",
+      "name": "hand the paper in",
+      "verdict": "PASS",
+      "detail": "200 \"Handed in.\" status=submitted"
+    },
+    {
+      "seq": 48,
+      "act": "faculty",
+      "name": "marking queue shows the submitted paper",
+      "verdict": "PASS",
+      "detail": "queue=1"
+    },
+    {
+      "seq": 49,
+      "act": "faculty",
+      "name": "marker sees the paper with responses",
+      "verdict": "PASS",
+      "detail": "200 items=4"
+    },
+    {
+      "seq": 50,
+      "act": "student",
+      "name": "result hidden before release",
+      "verdict": "PASS",
+      "detail": "results count=0"
+    },
+    {
+      "seq": 51,
+      "act": "faculty",
+      "name": "mark the paper (19 / 20)",
+      "verdict": "PASS",
+      "detail": "200 \"Marked.\" score=19"
+    },
+    {
+      "seq": 52,
+      "act": "faculty",
+      "name": "release results",
+      "verdict": "PASS",
+      "detail": "200 \"1 results published.\""
+    },
+    {
+      "seq": 53,
+      "act": "faculty",
+      "name": "results analytics available",
+      "verdict": "PASS",
+      "detail": "200 {\"assessment_id\":101,\"title\":\"QE101 — Class Test 1\",\"published\":true,\"cohort\":{\"sat\":1,\"max_score\":20,\"mean\":19,\"median\":19,\"stdev\":0,\"highest\":19,\"lo"
+    },
+    {
+      "seq": 54,
+      "act": "faculty",
+      "name": "item analysis available",
+      "verdict": "PASS",
+      "detail": "200"
+    },
+    {
+      "seq": 55,
+      "act": "student",
+      "name": "released result now visible",
+      "verdict": "FAIL",
+      "detail": "not found in 0 rows"
+    },
+    {
+      "seq": 56,
+      "act": "student",
+      "name": "score matches what was marked",
+      "verdict": "WARN",
+      "detail": "student sees undefined, marker recorded 19"
+    },
+    {
+      "seq": 57,
+      "act": "exams",
+      "name": "examinations officer signs in",
+      "verdict": "PASS",
+      "detail": "role=exams"
+    },
+    {
+      "seq": 58,
+      "act": "exams",
+      "name": "create examination hall (5×6)",
+      "verdict": "PASS",
+      "detail": "200 id=78"
+    },
+    {
+      "seq": 59,
+      "act": "exams",
+      "name": "schedule examination",
+      "verdict": "PASS",
+      "detail": "200 id=125"
+    },
+    {
+      "seq": 60,
+      "act": "exams",
+      "name": "allocate seating",
+      "verdict": "PASS",
+      "detail": "200 seated=3"
+    },
+    {
+      "seq": 61,
+      "act": "exams",
+      "name": "seating plan readable",
+      "verdict": "PASS",
+      "detail": "200"
+    },
+    {
+      "seq": 62,
+      "act": "exams",
+      "name": "enter marks for 3 candidates",
+      "verdict": "PASS",
+      "detail": "200"
+    },
+    {
+      "seq": 63,
+      "act": "student",
+      "name": "exam mark hidden before publish",
+      "verdict": "PASS",
+      "detail": "results rows=0"
+    },
+    {
+      "seq": 64,
+      "act": "exams",
+      "name": "publish examination marks",
+      "verdict": "PASS",
+      "detail": "200"
+    },
+    {
+      "seq": 65,
+      "act": "student",
+      "name": "examination result visible after publish",
+      "verdict": "PASS",
+      "detail": "78/?"
+    },
+    {
+      "seq": 66,
+      "act": "exams",
+      "name": "proctor queue reachable",
+      "verdict": "PASS",
+      "detail": "200"
+    },
+    {
+      "seq": 67,
+      "act": "admin",
+      "name": "audit log records the lifecycle",
+      "verdict": "PASS",
+      "detail": "rows=17 found=[assessment.published, result.published, assessment.grade_changed] missing=[]"
+    },
+    {
+      "seq": 68,
+      "act": "admin",
+      "name": "course benchmark analytics",
+      "verdict": "PASS",
+      "detail": "200"
+    }
+  ],
+  "auditActions": [
+    "result.published",
+    "marks.entered",
+    "seating.allocated",
+    "exam.scheduled",
+    "assessment.grade_changed",
+    "assessment.published",
+    "enrolment.created",
+    "course.faculty_assigned",
+    "membership.created"
+  ]
+}

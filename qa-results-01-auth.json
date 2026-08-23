@@ -1,0 +1,341 @@
+{
+  "phase": "auth",
+  "base": "https://onyx-lms-v2.vercel.app",
+  "checks": [
+    {
+      "id": "PUB-/",
+      "group": "public",
+      "path": "/",
+      "landed": "/",
+      "status": 200,
+      "ms": 5629,
+      "nav_error": null,
+      "errorText": [],
+      "h1": "Skip to the main content",
+      "empty": false,
+      "pageerrors": [],
+      "consoleErrors": [],
+      "badResp": [],
+      "bodyLen": 3517,
+      "verdict": "PASS"
+    },
+    {
+      "id": "PUB-/onyx/login",
+      "group": "public",
+      "path": "/onyx/login",
+      "landed": "/onyx/login",
+      "status": 200,
+      "ms": 718,
+      "nav_error": null,
+      "errorText": [],
+      "h1": "Skip to the main content",
+      "empty": false,
+      "pageerrors": [],
+      "consoleErrors": [],
+      "badResp": [],
+      "bodyLen": 626,
+      "verdict": "PASS"
+    },
+    {
+      "id": "PUB-/onyx/platform/login",
+      "group": "public",
+      "path": "/onyx/platform/login",
+      "landed": "/onyx/platform/login",
+      "status": 200,
+      "ms": 504,
+      "nav_error": null,
+      "errorText": [],
+      "h1": "Skip to the main content",
+      "empty": false,
+      "pageerrors": [],
+      "consoleErrors": [],
+      "badResp": [],
+      "bodyLen": 537,
+      "verdict": "PASS"
+    },
+    {
+      "id": "PUB-/onyx/signup",
+      "group": "public",
+      "path": "/onyx/signup",
+      "landed": "/onyx/signup",
+      "status": 200,
+      "ms": 289,
+      "nav_error": null,
+      "errorText": [],
+      "h1": "Skip to the main content",
+      "empty": false,
+      "pageerrors": [],
+      "consoleErrors": [],
+      "badResp": [],
+      "bodyLen": 748,
+      "verdict": "PASS"
+    },
+    {
+      "id": "PUB-/health",
+      "group": "public",
+      "path": "/health",
+      "landed": "/health",
+      "status": 200,
+      "ms": 331,
+      "nav_error": null,
+      "errorText": [],
+      "h1": "{\"ok\":true,\"data\":{\"status\":\"up\",\"ts\":\"2026-08-23T15:06:19.375Z\",\"uptime_seconds\":3,\"checks\":[{\"name\":\"database\",\"ok\":tr",
+      "empty": false,
+      "pageerrors": [],
+      "consoleErrors": [],
+      "badResp": [],
+      "bodyLen": 134,
+      "verdict": "PASS"
+    },
+    {
+      "id": "ANON-/onyx/dashboard",
+      "group": "anon-guard",
+      "path": "/onyx/dashboard",
+      "landed": "/onyx/login?next=%2Fonyx%2Fdashboard",
+      "status": 200,
+      "ms": 443,
+      "nav_error": null,
+      "errorText": [],
+      "h1": "Skip to the main content",
+      "empty": false,
+      "pageerrors": [],
+      "consoleErrors": [],
+      "badResp": [],
+      "bodyLen": 626,
+      "leaked": false,
+      "verdict": "PASS"
+    },
+    {
+      "id": "ANON-/onyx/people",
+      "group": "anon-guard",
+      "path": "/onyx/people",
+      "landed": "/onyx/login?next=%2Fonyx%2Fpeople",
+      "status": 200,
+      "ms": 583,
+      "nav_error": null,
+      "errorText": [],
+      "h1": "Skip to the main content",
+      "empty": false,
+      "pageerrors": [],
+      "consoleErrors": [],
+      "badResp": [],
+      "bodyLen": 626,
+      "leaked": false,
+      "verdict": "PASS"
+    },
+    {
+      "id": "ANON-/onyx/settings",
+      "group": "anon-guard",
+      "path": "/onyx/settings",
+      "landed": "/onyx/login?next=%2Fonyx%2Fsettings",
+      "status": 200,
+      "ms": 415,
+      "nav_error": null,
+      "errorText": [],
+      "h1": "Skip to the main content",
+      "empty": false,
+      "pageerrors": [],
+      "consoleErrors": [],
+      "badResp": [],
+      "bodyLen": 626,
+      "leaked": false,
+      "verdict": "PASS"
+    },
+    {
+      "id": "ANON-/onyx/audit",
+      "group": "anon-guard",
+      "path": "/onyx/audit",
+      "landed": "/onyx/login?next=%2Fonyx%2Faudit",
+      "status": 200,
+      "ms": 552,
+      "nav_error": null,
+      "errorText": [],
+      "h1": "Skip to the main content",
+      "empty": false,
+      "pageerrors": [],
+      "consoleErrors": [],
+      "badResp": [],
+      "bodyLen": 626,
+      "leaked": false,
+      "verdict": "PASS"
+    },
+    {
+      "id": "ANON-/onyx/platform/tenants",
+      "group": "anon-guard",
+      "path": "/onyx/platform/tenants",
+      "landed": "/onyx/platform/tenants",
+      "status": 404,
+      "ms": 326,
+      "nav_error": null,
+      "errorText": [],
+      "h1": "Skip to the main content",
+      "empty": false,
+      "pageerrors": [],
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        }
+      ],
+      "badResp": [
+        {
+          "url": "/onyx/platform/tenants",
+          "status": 404
+        }
+      ],
+      "bodyLen": 109,
+      "leaked": true,
+      "verdict": "FAIL"
+    },
+    {
+      "id": "ANON-/onyx/platform/admins",
+      "group": "anon-guard",
+      "path": "/onyx/platform/admins",
+      "landed": "/onyx/platform/login",
+      "status": 200,
+      "ms": 523,
+      "nav_error": null,
+      "errorText": [],
+      "h1": "Skip to the main content",
+      "empty": false,
+      "pageerrors": [],
+      "consoleErrors": [],
+      "badResp": [],
+      "bodyLen": 537,
+      "leaked": false,
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-open-redirect",
+      "group": "security",
+      "landed": "https://onyx-lms-v2.vercel.app/onyx/login?next=https://evil.example/x",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-bad-password",
+      "group": "security",
+      "stayed": true,
+      "shows": true,
+      "msg": "",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-tenant-admin-at-platform-door",
+      "group": "security",
+      "landed": "/onyx/platform/login",
+      "verdict": "PASS"
+    },
+    {
+      "id": "LOGIN-superadmin",
+      "group": "login",
+      "email": "superadmin@onyx.platform",
+      "landed": "/onyx/platform",
+      "ms": 2594,
+      "verdict": "PASS"
+    },
+    {
+      "id": "LOGIN-admin",
+      "group": "login",
+      "email": "admin@demo.onyx",
+      "landed": "/onyx/dashboard",
+      "ms": 3526,
+      "verdict": "PASS"
+    },
+    {
+      "id": "LOGIN-faculty",
+      "group": "login",
+      "email": "faculty@demo.onyx",
+      "landed": "/onyx/dashboard",
+      "ms": 4094,
+      "verdict": "PASS"
+    },
+    {
+      "id": "LOGIN-exams",
+      "group": "login",
+      "email": "exams@demo.onyx",
+      "landed": "/onyx/dashboard",
+      "ms": 2377,
+      "verdict": "PASS"
+    },
+    {
+      "id": "LOGIN-placement",
+      "group": "login",
+      "email": "placement@demo.onyx",
+      "landed": "/onyx/dashboard",
+      "ms": 2546,
+      "verdict": "PASS"
+    },
+    {
+      "id": "LOGIN-employer",
+      "group": "login",
+      "email": "employer@demo.onyx",
+      "landed": "/onyx/dashboard",
+      "ms": 2607,
+      "verdict": "PASS"
+    },
+    {
+      "id": "LOGIN-guardian",
+      "group": "login",
+      "email": "guardian@demo.onyx",
+      "landed": "/onyx/dashboard",
+      "ms": 2780,
+      "verdict": "PASS"
+    },
+    {
+      "id": "LOGIN-student",
+      "group": "login",
+      "email": "student@demo.onyx",
+      "landed": "/onyx/dashboard",
+      "ms": 5121,
+      "verdict": "PASS"
+    },
+    {
+      "id": "LOGIN-m_admin",
+      "group": "login",
+      "email": "kavya.rao@meridian.edu",
+      "landed": "/onyx/dashboard",
+      "ms": 3288,
+      "verdict": "PASS"
+    },
+    {
+      "id": "LOGIN-m_faculty",
+      "group": "login",
+      "email": "leela.iyer@meridian.edu",
+      "landed": "/onyx/dashboard",
+      "ms": 3266,
+      "verdict": "PASS"
+    },
+    {
+      "id": "LOGIN-m_student",
+      "group": "login",
+      "email": "ananya.krishnan@meridian.edu",
+      "landed": "/onyx/dashboard",
+      "ms": 4378,
+      "verdict": "PASS"
+    },
+    {
+      "id": "LOGIN-m_placement",
+      "group": "login",
+      "email": "nisha.verma@meridian.edu",
+      "landed": "/onyx/dashboard",
+      "ms": 2317,
+      "verdict": "PASS"
+    },
+    {
+      "id": "LOGIN-m_guardian",
+      "group": "login",
+      "email": "sunita.pillai@example.com",
+      "landed": "/onyx/dashboard",
+      "ms": 2739,
+      "verdict": "PASS"
+    },
+    {
+      "id": "LOGIN-m_exams",
+      "group": "login",
+      "email": "ravi.chandran@meridian.edu",
+      "landed": "/onyx/dashboard",
+      "ms": 2794,
+      "verdict": "PASS"
+    }
+  ]
+}

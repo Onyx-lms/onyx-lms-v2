@@ -1,0 +1,189 @@
+{
+  "phase": "security+perf",
+  "base": "https://onyx-lms-v2.vercel.app",
+  "steps": [
+    {
+      "name": "header strict-transport-security",
+      "verdict": "PASS",
+      "detail": "max-age=63072000; includeSubDomains; preload"
+    },
+    {
+      "name": "header x-content-type-options",
+      "verdict": "WARN",
+      "detail": "ABSENT"
+    },
+    {
+      "name": "header x-frame-options",
+      "verdict": "WARN",
+      "detail": "ABSENT"
+    },
+    {
+      "name": "header content-security-policy",
+      "verdict": "WARN",
+      "detail": "ABSENT"
+    },
+    {
+      "name": "header referrer-policy",
+      "verdict": "WARN",
+      "detail": "ABSENT"
+    },
+    {
+      "name": "header permissions-policy",
+      "verdict": "WARN",
+      "detail": "ABSENT"
+    },
+    {
+      "name": "cookie onyx_tenant_session",
+      "verdict": "PASS",
+      "detail": "httpOnly=true secure=true sameSite=Lax path=/"
+    },
+    {
+      "name": "session token not exposed to JS",
+      "verdict": "PASS",
+      "detail": "document.cookie=\"\" localStorage=[]"
+    },
+    {
+      "name": "tampered session cookie rejected",
+      "verdict": "PASS",
+      "detail": "cookie=onyx_tenant_session -> /onyx/login?next=%2Fonyx%2Fdashboard"
+    },
+    {
+      "name": "tampered cookie rejected by API",
+      "verdict": "PASS",
+      "detail": "401 {\"ok\":false,\"level\":\"error\",\"message\":\"Unauthenticated.\"}"
+    },
+    {
+      "name": "employer renders /onyx/jobs",
+      "verdict": "PASS",
+      "detail": "status=200 len=277"
+    },
+    {
+      "name": "employer renders /onyx/interviews",
+      "verdict": "PASS",
+      "detail": "status=200 len=851"
+    },
+    {
+      "name": "employer renders /onyx/inbox",
+      "verdict": "PASS",
+      "detail": "status=200 len=448"
+    },
+    {
+      "name": "employer renders /onyx/profile",
+      "verdict": "PASS",
+      "detail": "status=200 len=1274"
+    },
+    {
+      "name": "employer denied /onyx/people",
+      "verdict": "PASS",
+      "detail": "-> /onyx/denied"
+    },
+    {
+      "name": "employer denied /onyx/finance",
+      "verdict": "PASS",
+      "detail": "-> /onyx/denied"
+    },
+    {
+      "name": "employer denied /onyx/audit",
+      "verdict": "PASS",
+      "detail": "-> /onyx/denied"
+    },
+    {
+      "name": "employer denied /onyx/settings",
+      "verdict": "PASS",
+      "detail": "-> /onyx/denied"
+    },
+    {
+      "name": "employer API /api/onyx/members",
+      "status": 403,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
+      "verdict": "INFO"
+    },
+    {
+      "name": "employer API /api/onyx/employers",
+      "status": 403,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
+      "verdict": "INFO"
+    },
+    {
+      "name": "employer API /api/onyx/employers/mine",
+      "status": 404,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"No employer record is linked to this account.\"}",
+      "verdict": "INFO"
+    },
+    {
+      "name": "employer API /api/onyx/results",
+      "status": 200,
+      "body": "{\"ok\":true,\"data\":[]}",
+      "verdict": "INFO"
+    }
+  ],
+  "perf": [
+    {
+      "path": "/onyx/dashboard",
+      "wall": 1210,
+      "ttfb": 139,
+      "dcl": 1198,
+      "load": 1202
+    },
+    {
+      "path": "/onyx/courses",
+      "wall": 861,
+      "ttfb": 57,
+      "dcl": 660,
+      "load": 853
+    },
+    {
+      "path": "/onyx/people?role=student",
+      "wall": 693,
+      "ttfb": 60,
+      "dcl": 658,
+      "load": 677
+    },
+    {
+      "path": "/onyx/finance",
+      "wall": 1010,
+      "ttfb": 48,
+      "dcl": 853,
+      "load": 994
+    },
+    {
+      "path": "/onyx/audit",
+      "wall": 1027,
+      "ttfb": 87,
+      "dcl": 1012,
+      "load": 1013
+    },
+    {
+      "path": "/onyx/settings",
+      "wall": 623,
+      "ttfb": 31,
+      "dcl": 564,
+      "load": 615
+    }
+  ],
+  "headers": {
+    "age": "0",
+    "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "content-encoding": "br",
+    "content-type": "text/html; charset=utf-8",
+    "date": "Sun, 23 Aug 2026 15:36:30 GMT",
+    "link": "</_next/static/media/636a5ac981f94f8b-s.p.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/media/af4bf8399d1aacdf-s.p.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/css/8ba6982332f5edaa.css>; rel=preload; as=\"style\", </_next/static/css/6a5f97146766caf5.css>; rel=preload; as=\"style\"",
+    "server": "Vercel",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+    "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "x-matched-path": "/onyx/login",
+    "x-powered-by": "Next.js",
+    "x-vercel-cache": "MISS",
+    "x-vercel-id": "bom1::sin1::9xhxg-1787499390017-39d2aaa477c6"
+  },
+  "cookies": [
+    {
+      "name": "onyx_tenant_session",
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax",
+      "path": "/",
+      "expires": 1787500291.43029
+    }
+  ]
+}

@@ -1,0 +1,215 @@
+{
+  "stamp": "00810765",
+  "steps": [
+    {
+      "seq": 1,
+      "act": "admin",
+      "name": "dashboard names the institution",
+      "verdict": "PASS",
+      "detail": "Skip to the main content Onyx LMS QA INSTITUTION QA Certification College 00810765 Administrator Dashboard Courses Live "
+    },
+    {
+      "seq": 2,
+      "act": "admin",
+      "name": "course appears in the catalogue",
+      "verdict": "PASS",
+      "detail": "e, or an administrator can put you on an existing one, below. ALL COURSES QE101 Foundations of Software Quality Course authored by the QA lifecycle run. 3 enrolled Dr. Far"
+    },
+    {
+      "seq": 3,
+      "act": "admin",
+      "name": "course page shows both modules",
+      "verdict": "PASS",
+      "detail": "module1=true module2=true"
+    },
+    {
+      "seq": 4,
+      "act": "admin",
+      "name": "course page shows the lessons",
+      "verdict": "PASS",
+      "detail": "len=1579"
+    },
+    {
+      "seq": 5,
+      "act": "admin",
+      "name": "programme listed",
+      "verdict": "PASS",
+      "detail": "dd a programme Add a semester Add a batch PROGRAMMES B.Tech Quality Engineering BTQE Live Programme created by the QA lifecycle r"
+    },
+    {
+      "seq": 6,
+      "act": "admin",
+      "name": "all three learners on the roster",
+      "verdict": "PASS",
+      "detail": "roll numbers shown=false"
+    },
+    {
+      "seq": 7,
+      "act": "admin",
+      "name": "audit screen shows the lifecycle actions",
+      "verdict": "PASS",
+      "detail": "len=2652"
+    },
+    {
+      "seq": 8,
+      "act": "faculty",
+      "name": "assessment listed for its author",
+      "verdict": "PASS",
+      "detail": "ch and what to do next ASSESSMENT COURSE WINDOW STATE ACTIONS QE101 — Class Test 1 30 min · 1 section drawn QE101 Open any time Released Results"
+    },
+    {
+      "seq": 9,
+      "act": "faculty",
+      "name": "assessment detail page",
+      "verdict": "PASS",
+      "detail": "len=1105"
+    },
+    {
+      "seq": 10,
+      "act": "faculty",
+      "name": "marking screen shows the sat paper",
+      "verdict": "PASS",
+      "detail": "not named on this paper. Assessments QE101 — Class Test 1 Marking MARKING Every script is marked 1 of 1 marked See the results 100% marked 1 handed in · 0 f"
+    },
+    {
+      "seq": 11,
+      "act": "faculty",
+      "name": "results screen shows the cohort score",
+      "verdict": "PASS",
+      "detail": "very candidate can see their score, their rubric comments and whether they passed. SAT 1 candidates MEAN 19 out of 20 MEDIAN 19 out of 20 PASS RATE 100% 1 of 1 passed GRADE DISTRIBUTIO"
+    },
+    {
+      "seq": 12,
+      "act": "faculty",
+      "name": "question bank screen",
+      "verdict": "PASS",
+      "detail": "questions visible=true"
+    },
+    {
+      "seq": 13,
+      "act": "student",
+      "name": "dashboard renders for the new learner",
+      "verdict": "PASS",
+      "detail": "len=1338"
+    },
+    {
+      "seq": 14,
+      "act": "student",
+      "name": "enrolled course appears",
+      "verdict": "PASS",
+      "detail": "st Sign out Courses You are taking 1 course MY COURSES Your dashboard Foundations of Software Quality QE101 · B.Tech Quality Engineering 3 enro"
+    },
+    {
+      "seq": 15,
+      "act": "student",
+      "name": "course page shows the authored lessons",
+      "verdict": "PASS",
+      "detail": "modules=true lessons=true"
+    },
+    {
+      "seq": 16,
+      "act": "student",
+      "name": "published assessment is DISCOVERABLE",
+      "verdict": "PASS",
+      "detail": "hen a paper is set for one of your courses it appears here. YOUR PAPERS QE101 — Class Test 1 Passed 19 /20"
+    },
+    {
+      "seq": 17,
+      "act": "student",
+      "name": "results page shows the ASSESSMENT result",
+      "verdict": "PASS",
+      "detail": "title=true score19=true :: s here once it has been released. Request a transcript Assessments 1 Grades 1 Assessments Class tests and coursework, marked by the people who teach you. A score appears "
+    },
+    {
+      "seq": 18,
+      "act": "student",
+      "name": "results page shows the EXAMINATION result",
+      "verdict": "FAIL",
+      "detail": "title=false score78=true"
+    },
+    {
+      "seq": 19,
+      "act": "student",
+      "name": "scheduled examination on the timetable",
+      "verdict": "WARN",
+      "detail": "len=372"
+    },
+    {
+      "seq": 20,
+      "act": "exams",
+      "name": "examination listed",
+      "verdict": "PASS",
+      "detail": "marks COMPLETED Examinations already sat EXAM WHEN DURATION OUT OF STATUS QE101 End-of-term Examination QE101 · pass mark 40 3 days ago sat Wed, Aug 26"
+    },
+    {
+      "seq": 21,
+      "act": "exams",
+      "name": "examination detail page",
+      "verdict": "PASS",
+      "detail": "seating/marks visible=true"
+    },
+    {
+      "seq": 22,
+      "act": "exams",
+      "name": "examination marking screen",
+      "verdict": "PASS",
+      "detail": "len=1107 shows candidates=true"
+    },
+    {
+      "seq": 23,
+      "act": "exams",
+      "name": "invigilation console",
+      "verdict": "PASS",
+      "detail": "len=1454"
+    },
+    {
+      "seq": 24,
+      "act": "superadmin",
+      "name": "new institution on the console list",
+      "verdict": "PASS",
+      "detail": "len=2075"
+    },
+    {
+      "seq": 25,
+      "act": "superadmin",
+      "name": "tenant courses shows authored data",
+      "verdict": "PASS",
+      "detail": "looking for \"QE101\" — found"
+    },
+    {
+      "seq": 26,
+      "act": "superadmin",
+      "name": "tenant students shows authored data",
+      "verdict": "PASS",
+      "detail": "looking for \"Sana\" — found"
+    },
+    {
+      "seq": 27,
+      "act": "superadmin",
+      "name": "tenant staff shows authored data",
+      "verdict": "WARN",
+      "detail": "looking for \"Farah\" — absent; len=923"
+    },
+    {
+      "seq": 28,
+      "act": "superadmin",
+      "name": "tenant assessments shows authored data",
+      "verdict": "PASS",
+      "detail": "looking for \"Class Test\" — found"
+    },
+    {
+      "seq": 29,
+      "act": "superadmin",
+      "name": "tenant examinations shows authored data",
+      "verdict": "PASS",
+      "detail": "looking for \"End-of-term\" — found"
+    },
+    {
+      "seq": 30,
+      "act": "superadmin",
+      "name": "tenant grades shows authored data",
+      "verdict": "PASS",
+      "detail": "looking for \"QE101\" — found"
+    }
+  ]
+}

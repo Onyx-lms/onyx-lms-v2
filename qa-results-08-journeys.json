@@ -1,0 +1,197 @@
+{
+  "phase": "journeys",
+  "base": "https://onyx-lms-v2.vercel.app",
+  "steps": [
+    {
+      "who": "student",
+      "name": "dashboard renders",
+      "verdict": "PASS",
+      "detail": "len=1895",
+      "snippet": "Skip to the main content\nOnyx LMS\nAN\nINSTITUTION\nMeridian Institute of Technology\nStudent\nDashboard\nCourses\nLive Classes\nPractice\nWorkspaces\nASSESSMENT\nAssessments\nExaminations\nResults\nContests\nCAMPUS\nTimetable\nFees\nHelp\nCAREER\nJobs\nInterviews\nResume\nYour profile\nInbox\nananya.krishnan@meridian.edu\nSign out\nHi, Ananya 👋\n\nYou're 66 lessons from finishing your plan.\n\nSTART HERE\n\nData Structures\n\nFoundations: reading\n\nStart course\nAll courses\n0% complete\n0 of 21 lessons\nDUE NEXT\nAll courses\nData St"
+    },
+    {
+      "who": "student",
+      "name": "courses list has rows",
+      "verdict": "PASS",
+      "detail": "12 course links"
+    },
+    {
+      "who": "student",
+      "name": "course detail opens",
+      "verdict": "FAIL",
+      "detail": "/onyx/courses/54 -> /onyx/courses len=1142"
+    },
+    {
+      "who": "student",
+      "name": "lesson page opens",
+      "verdict": "SKIP",
+      "detail": "no lesson links on course"
+    },
+    {
+      "who": "student",
+      "name": "practice problem + code editor",
+      "verdict": "WARN",
+      "detail": "/onyx/practice/results editor-nodes=0 len=699"
+    },
+    {
+      "who": "student",
+      "name": "renders /onyx/results",
+      "verdict": "PASS",
+      "detail": "status=200 len=1378",
+      "snippet": "Skip to the main content\nOnyx LMS\nAN\nINSTITUTION\nMeridian Institute of Technology\nStudent\nDashboard\nCourses\nLive Classes\nPractice\nWorkspaces\nASSESSMENT\nAssessments\nExaminations\nResults\nContests\nCAMPUS\nTimetable\nFees\nHelp\nCAREER\nJobs\nInterviews\nResume\nYour profile\nInbox\nananya.krishnan@meridian.edu\nSign out\nResults\n\nPublished results only. A mark appears here once it has been released.\n\nRequest a t"
+    },
+    {
+      "who": "student",
+      "name": "renders /onyx/resume",
+      "verdict": "PASS",
+      "detail": "status=200 len=2072",
+      "snippet": "Skip to the main content\nOnyx LMS\nAN\nINSTITUTION\nMeridian Institute of Technology\nStudent\nDashboard\nCourses\nLive Classes\nPractice\nWorkspaces\nASSESSMENT\nAssessments\nExaminations\nResults\nContests\nCAMPUS\nTimetable\nFees\nHelp\nCAREER\nJobs\nInterviews\nResume\nYour profile\nInbox\nananya.krishnan@meridian.edu\nSign out\nResume\n\nAssembled from your record here. Yours to edit and to download.\n\nAnanya Krishnan\n\nan"
+    },
+    {
+      "who": "student",
+      "name": "renders /onyx/fees",
+      "verdict": "PASS",
+      "detail": "status=200 len=1271",
+      "snippet": "Skip to the main content\nOnyx LMS\nAN\nINSTITUTION\nMeridian Institute of Technology\nStudent\nDashboard\nCourses\nLive Classes\nPractice\nWorkspaces\nASSESSMENT\nAssessments\nExaminations\nResults\nContests\nCAMPUS\nTimetable\nFees\nHelp\nCAREER\nJobs\nInterviews\nResume\nYour profile\nInbox\nananya.krishnan@meridian.edu\nSign out\nFees\n\nNothing outstanding.\n\nOUTSTANDING BALANCE\n\nINR 0.00\n\nEverything raised so far has been"
+    },
+    {
+      "who": "student",
+      "name": "renders /onyx/timetable",
+      "verdict": "PASS",
+      "detail": "status=200 len=1135",
+      "snippet": "Skip to the main content\nOnyx LMS\nAN\nINSTITUTION\nMeridian Institute of Technology\nStudent\nDashboard\nCourses\nLive Classes\nPractice\nWorkspaces\nASSESSMENT\nAssessments\nExaminations\nResults\nContests\nCAMPUS\nTimetable\nFees\nHelp\nCAREER\nJobs\nInterviews\nResume\nYour profile\nInbox\nananya.krishnan@meridian.edu\nSign out\nTimetable\n\nThe courses you are enrolled in.\n\nSESSIONS\n3\non the week's grid\nCONTACT HOURS\n3\ns"
+    },
+    {
+      "who": "student",
+      "name": "renders /onyx/inbox",
+      "verdict": "PASS",
+      "detail": "status=200 len=1029",
+      "snippet": "Skip to the main content\nOnyx LMS\nAN\nINSTITUTION\nMeridian Institute of Technology\nStudent\nDashboard\nCourses\nLive Classes\nPractice\nWorkspaces\nASSESSMENT\nAssessments\nExaminations\nResults\nContests\nCAMPUS\nTimetable\nFees\nHelp\nCAREER\nJobs\nInterviews\nResume\nYour profile\nInbox\nananya.krishnan@meridian.edu\nSign out\nInbox\n\n5 unread notifications\n\nMark all as read\nTHIS WEEK\n\"Data Structures resit\" has been s"
+    },
+    {
+      "who": "faculty",
+      "name": "course detail (teaching view)",
+      "verdict": "PASS",
+      "detail": "/onyx/courses/55 len=2684",
+      "snippet": "Skip to the main content\nOnyx LMS\nLE\nINSTITUTION\nMeridian Institute of Technology\nFaculty\nDashboard\nCourses\nLive Classes\nPractice\nWorkspaces\nASSESSMENT\nAssessments\nExaminations\nInvigilate\nTEACHING\nProgrammes\nTimetable\nTeaching load\nPeople\nSUPPORT\nMentor queue\nInbox\nYour profile\nleela.iyer@meridian.edu\nSign out\nOperating Systems\n\nCS202 · 4 credits\n\nAll courses\nCopy public link\n\nUP NEXT\n\nFoundations: reading\n\nUnit 1 — Foundations\n\nStart\n0% complete\n0 of 15 lessons\n01\nUnit 1 — Foundations\n5 lessons"
+    },
+    {
+      "who": "faculty",
+      "name": "course attendance",
+      "verdict": "PASS",
+      "detail": "status=200 len=1972"
+    },
+    {
+      "who": "faculty",
+      "name": "people roster lists members",
+      "verdict": "PASS",
+      "detail": "20 rows"
+    },
+    {
+      "who": "faculty",
+      "name": "assessments list",
+      "verdict": "PASS",
+      "detail": "len=1278"
+    },
+    {
+      "who": "guardian",
+      "name": "family page",
+      "verdict": "PASS",
+      "detail": "len=1303",
+      "snippet": "Skip to the main content\nOnyx LMS\nSU\nINSTITUTION\nMeridian Institute of Technology\nParent or guardian\nYour family\nInbox\nYour profile\nsunita.pillai@example.com\nSign out\nYour family\n\nOnly what each learner has chosen to share.\n\nAP\nAditya Pillai\n\nParent\n\nATTENDANCE\n10%\n1 of 10 sessions\nPUBLISHED RESULTS\n5\nAverage 23%\nFEES OUTSTANDING\nNot shared\nThis learner has not shared it\nRESULTS SO FAR\nAditya Pillai’s published results, examinations and assessments alike\nPAPER\tKIND\tMARK\tBAND\nData Structures end-of-term\tExamination\t38 / 100 · Fail\t38\n/100\n\nOperating Systems end-of-term\tExamination\t38 / 100 · Fail\t38\n/100\n\nDatabase Systems end-of-term\tExamination\t38 / 100 · Fail\t38\n/100\n\nData Structures — class test\tAssessment\t0 / 12\t0\n/12\n\nOperating Systems — class test\tAssessment\t0 / 9\t0\n/9\nCOURSES\nData Structures\nCS201 · 4 credits\nOperating Systems\nCS202 · 4 credits\nDatabase Systems\nCS203 · 3 credits\nMa"
+    },
+    {
+      "who": "guardian",
+      "name": "family links to a child record",
+      "verdict": "WARN",
+      "detail": "0 links"
+    },
+    {
+      "who": "guardian",
+      "name": "family API",
+      "verdict": "PASS",
+      "detail": "200 {\"ok\":true,\"data\":{\"children\":[{\"link_id\":8,\"student_user_id\":\"679c90b8-ea09-4147-9456-c38e65df940c\",\"name\":\"Aditya Pillai\",\"relationship\":\"parent\",\"shares\":{\"attendance\":true,\"results\":true,\"fees\":false},\"attendance\":{\"attended\":1,\"total\":10,\"percent\":10,\"records\":[{\"session_id\":32,\"status\":\"presen"
+    },
+    {
+      "who": "placement",
+      "name": "renders /onyx/placement",
+      "verdict": "PASS",
+      "detail": "len=1051",
+      "snippet": "Skip to the main content\nOnyx LMS\nNI\nINSTITUTION\nMeridian Institute of Technology\nPlacement\nPLACEMENT\nPlacement\nJobs\nInterviews\nContests\nCertificates\nInbox\nYour profile\nnisha.verma@meridian.edu\nSign out\nPlacement\n\nEmployers, posts and drives at this institution.\n\nSchedule a drive\nAdd a skill\nAward a"
+    },
+    {
+      "who": "placement",
+      "name": "renders /onyx/jobs",
+      "verdict": "PASS",
+      "detail": "len=365",
+      "snippet": "Skip to the main content\nOnyx LMS\nNI\nINSTITUTION\nMeridian Institute of Technology\nPlacement\nPLACEMENT\nPlacement\nJobs\nInterviews\nContests\nCertificates\nInbox\nYour profile\nnisha.verma@meridian.edu\nSign out\nJobs\n\nOpenings shared with this institution.\n\nAdd an employer\nPost a job\nOPEN ROLES · 1\nGraduate "
+    },
+    {
+      "who": "placement",
+      "name": "renders /onyx/interviews",
+      "verdict": "PASS",
+      "detail": "len=911",
+      "snippet": "Skip to the main content\nOnyx LMS\nNI\nINSTITUTION\nMeridian Institute of Technology\nPlacement\nPLACEMENT\nPlacement\nJobs\nInterviews\nContests\nCertificates\nInbox\nYour profile\nnisha.verma@meridian.edu\nSign out\nMock interviews\n\nPractice, with structured feedback afterwards.\n\nUPCOMING\n\nNothing scheduled for "
+    },
+    {
+      "who": "placement",
+      "name": "renders /onyx/certificates",
+      "verdict": "PASS",
+      "detail": "len=1461",
+      "snippet": "Skip to the main content\nOnyx LMS\nNI\nINSTITUTION\nMeridian Institute of Technology\nPlacement\nPLACEMENT\nPlacement\nJobs\nInterviews\nContests\nCertificates\nInbox\nYour profile\nnisha.verma@meridian.edu\nSign out\nCertificates\n\n4 in force of 4 issued\n\nIssue a certificate\nISSUED\n4\nsince this register opened\nIN "
+    },
+    {
+      "who": "exams",
+      "name": "exam detail",
+      "verdict": "PASS",
+      "detail": "/onyx/exams/8 len=1037",
+      "snippet": "Skip to the main content\nOnyx LMS\nRA\nINSTITUTION\nMeridian Institute of Technology\nExaminations\nEXAMINATIONS\nAssessments\nInvigilate\nExaminations\nTimetable\nCertificates\nInbox\nYour profile\nravi.chandran@meridian.edu\nSign out\nData Structures resit\n\nIn 2 weeks · 120 minutes · out of 100\n\nAll examinations\nCopy link for candidates\nExaminations\nData Structures resit\nScheduled\nRunning\nClosed\nMarked\nPublished\nEdit exam\nAllocate seating\nEnter marks\nNothing left to moderate\nPublish results\nWHEN\nIn 2 weeks\n0"
+    },
+    {
+      "who": "exams",
+      "name": "exam marking",
+      "verdict": "PASS",
+      "detail": "status=200 len=1037"
+    },
+    {
+      "who": "exams",
+      "name": "invigilate console",
+      "verdict": "PASS",
+      "detail": "len=1471"
+    },
+    {
+      "who": "admin",
+      "name": "renders /onyx/settings",
+      "verdict": "PASS",
+      "detail": "len=6000",
+      "snippet": "Skip to the main content\nOnyx LMS\nKA\nINSTITUTION\nMeridian Institute of Technology\nAdministrator\nDashboard\nCourses\nLive Classes\nWorkspaces\nASSESSMENT\nAssessments\nInvigilate\nExaminations\nContests\nCertificates\nCAMPUS\nProgrammes\nTimetable\nStudents\nFaculty\nFinance\nCAREER\nPlacement\nJobs\nOPERATIONS\nSettings\nYour profile\nkavya.rao@meridian.edu\nSign out\nSettings\n\nHow Meridian Institute of Technology runs, "
+    },
+    {
+      "who": "admin",
+      "name": "renders /onyx/finance",
+      "verdict": "PASS",
+      "detail": "len=3003",
+      "snippet": "Skip to the main content\nOnyx LMS\nKA\nINSTITUTION\nMeridian Institute of Technology\nAdministrator\nDashboard\nCourses\nLive Classes\nWorkspaces\nASSESSMENT\nAssessments\nInvigilate\nExaminations\nContests\nCertificates\nCAMPUS\nProgrammes\nTimetable\nStudents\nFaculty\nFinance\nCAREER\nPlacement\nJobs\nOPERATIONS\nSettings\nYour profile\nkavya.rao@meridian.edu\nSign out\nFinance\n\nINR 9,740.00 outstanding across 4 invoices\n\n"
+    },
+    {
+      "who": "admin",
+      "name": "renders /onyx/audit",
+      "verdict": "PASS",
+      "detail": "len=6000",
+      "snippet": "Skip to the main content\nOnyx LMS\nKA\nINSTITUTION\nMeridian Institute of Technology\nAdministrator\nDashboard\nCourses\nLive Classes\nWorkspaces\nASSESSMENT\nAssessments\nInvigilate\nExaminations\nContests\nCertificates\nCAMPUS\nProgrammes\nTimetable\nStudents\nFaculty\nFinance\nCAREER\nPlacement\nJobs\nOPERATIONS\nSettings\nYour profile\nkavya.rao@meridian.edu\nSign out\nAudit log\n\nSensitive actions across this institution,"
+    },
+    {
+      "who": "admin",
+      "name": "renders /onyx/people?role=student",
+      "verdict": "PASS",
+      "detail": "len=2500",
+      "snippet": "Skip to the main content\nOnyx LMS\nKA\nINSTITUTION\nMeridian Institute of Technology\nAdministrator\nDashboard\nCourses\nLive Classes\nWorkspaces\nASSESSMENT\nAssessments\nInvigilate\nExaminations\nContests\nCertificates\nCAMPUS\nProgrammes\nTimetable\nStudents\nFaculty\nFinance\nCAREER\nPlacement\nJobs\nOPERATIONS\nSettings\nYour profile\nkavya.rao@meridian.edu\nSign out\nStudents\n\nEveryone at Meridian Institute of Technolog"
+    },
+    {
+      "who": "admin",
+      "name": "settings capability matrix present",
+      "verdict": "PASS",
+      "detail": "63 toggles"
+    }
+  ]
+}

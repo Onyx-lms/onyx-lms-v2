@@ -1,0 +1,171 @@
+{
+  "abc": {
+    "/api/onyx/courses": {
+      "status": 200,
+      "count": 5,
+      "ids": [
+        60,
+        61,
+        62,
+        63,
+        64
+      ]
+    },
+    "/api/onyx/members": {
+      "status": 200,
+      "count": 20,
+      "ids": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "/api/onyx/assessments": {
+      "status": 200,
+      "count": 6,
+      "ids": [
+        26,
+        27,
+        28,
+        89,
+        90
+      ]
+    },
+    "/api/onyx/exams": {
+      "status": 200,
+      "count": 8,
+      "ids": [
+        12,
+        13,
+        14,
+        15,
+        18
+      ]
+    },
+    "/api/onyx/programs": {
+      "status": 200,
+      "count": 1,
+      "ids": [
+        14
+      ]
+    },
+    "/api/onyx/jobs": {
+      "status": 200,
+      "count": 0,
+      "ids": []
+    }
+  },
+  "mer": {
+    "/api/onyx/courses": {
+      "status": 200,
+      "count": 3,
+      "ids": [
+        54,
+        55,
+        56
+      ]
+    },
+    "/api/onyx/members": {
+      "status": 200,
+      "count": 19,
+      "ids": [
+        453,
+        454,
+        455,
+        456,
+        457
+      ]
+    },
+    "/api/onyx/assessments": {
+      "status": 200,
+      "count": 6,
+      "ids": [
+        15,
+        16,
+        19,
+        20,
+        21
+      ]
+    },
+    "/api/onyx/exams": {
+      "status": 200,
+      "count": 4,
+      "ids": [
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    "/api/onyx/programs": {
+      "status": 200,
+      "count": 1,
+      "ids": [
+        12
+      ]
+    },
+    "/api/onyx/jobs": {
+      "status": 200,
+      "count": 1,
+      "ids": [
+        11
+      ]
+    }
+  },
+  "sessions": {
+    "admin": {
+      "tid": 1,
+      "tenant": "abc-institution"
+    },
+    "faculty": {
+      "tid": 1,
+      "tenant": "abc-institution"
+    },
+    "exams": {
+      "tid": 1,
+      "tenant": "abc-institution"
+    },
+    "placement": {
+      "tid": 1,
+      "tenant": "abc-institution"
+    },
+    "employer": {
+      "tid": 1,
+      "tenant": "abc-institution"
+    },
+    "guardian": {
+      "tid": 1,
+      "tenant": "abc-institution"
+    },
+    "student": {
+      "tid": 1,
+      "tenant": "abc-institution"
+    },
+    "m_admin": {
+      "tid": 190,
+      "tenant": "meridian-tech"
+    },
+    "m_faculty": {
+      "tid": 190,
+      "tenant": "meridian-tech"
+    },
+    "m_student": {
+      "tid": 190,
+      "tenant": "meridian-tech"
+    },
+    "m_placement": {
+      "tid": 190,
+      "tenant": "meridian-tech"
+    },
+    "m_guardian": {
+      "tid": 190,
+      "tenant": "meridian-tech"
+    },
+    "m_exams": {
+      "tid": 190,
+      "tenant": "meridian-tech"
+    }
+  }
+}
