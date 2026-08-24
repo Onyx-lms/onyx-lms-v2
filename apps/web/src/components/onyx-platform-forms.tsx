@@ -56,6 +56,30 @@ async function post(path: string, body?: unknown, method = 'POST') {
     headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
+
+  /*
+   * An expired session is said in words, not in a status word.
+   *
+   * The platform cookie lasts an hour and nothing refreshes it, so an operator
+   * who leaves the console open and comes back gets 401 on the first thing
+   * they save -- and what appeared under the form was the API's own
+   * "Unauthenticated.", printed in red beside a filled-in form that looked
+   * broken. Nothing was wrong with the form or with what they typed.
+   *
+   * So the session is named as the problem and the sign-in page is the fix,
+   * carrying `?expired=1` so it can say why somebody is looking at it and
+   * `?next=` so they land back where they were rather than at the top.
+   */
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      // Sent, not merely told. Nothing on this page can be saved until they
+      // sign in again, so leaving them on it to read a sentence would be
+      // asking them to do the navigation themselves.
+      window.location.assign('/onyx/platform/login?expired=1&next='
+        + encodeURIComponent(window.location.pathname));
+    }
+    return { ok: false, message: 'Your session has expired. Sign in again to save this.' };
+  }
   return res.json().catch(() => ({ ok: false, message: 'Something went wrong.' }));
 }
 
@@ -95,7 +119,14 @@ export function PlatformLoginForm() {
           });
           const body = await res.json().catch(() => ({ ok: false }));
           if (!body.ok) { setError(body.message ?? 'Those details do not match.'); return; }
-          router.push('/onyx/platform');
+          /*
+           * Back to where they were, when they were sent here by an expired
+           * session. `next` is read off OUR OWN url and accepted only when it
+           * is a path inside the console -- an open redirect on a sign-in page
+           * is how somebody gets sent to a copy of it.
+           */
+          const next = new URLSearchParams(window.location.search).get('next');
+          router.push(next && /^\/onyx\/platform(\/|$)/.test(next) ? next : '/onyx/platform');
           router.refresh();
         });
       }}
@@ -2324,12 +2355,9 @@ export function AddModuleForm({ tenantId, courseId }: {
         <label className={label} htmlFor="am-summary">What it covers</label>
         <textarea id="am-summary" name="summary" maxLength={4000} rows={2} className={field} />
       </div>
-      {/* Said before they press it, because the console cannot upload a video
-          and pretending otherwise wastes somebody's afternoon. */}
       <p className="text-[12.5px] leading-relaxed text-muted">
-        A module is added empty. Lessons that carry a file — video, slides, a document — are
-        uploaded from the course itself, where the browser can send the file straight to
-        storage.
+        A module is added empty. Add lessons to it — video, slides, a document, an image, a
+        link or written text — from the module itself, once it is here.
       </p>
       <div className="flex gap-2">
         <button type="submit" disabled={pending} className={button}>
@@ -2410,5 +2438,220 @@ export function ModuleRowActions({ tenantId, module: mod }: {
         Remove
       </button>
     </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// Lessons
+// ---------------------------------------------------------------------------
+
+/**
+ * What each kind of lesson needs, said in the words an author would use.
+ *
+ * The five are the product's own (`ONYX_LESSON_TYPES`), and the shape of the
+ * form follows the choice rather than showing every field at once: a video
+ * needs a file, a link needs an address, text needs text, and showing all
+ * three asks somebody to work out which two to ignore.
+ */
+const LESSON_KINDS = [
+  { type: 'video', label: 'Video', needs: 'file', accept: 'video/*',
+    hint: 'A lecture recording or screencast. Uploaded straight to storage.' },
+  { type: 'document', label: 'Document', needs: 'file', accept: '.pdf,.doc,.docx,.ppt,.pptx,.txt',
+    hint: 'Slides, a PDF, a handout.' },
+  { type: 'image', label: 'Image', needs: 'file', accept: 'image/*',
+    hint: 'A diagram or a scan.' },
+  { type: 'link', label: 'Link', needs: 'url',
+    hint: 'Something hosted elsewhere. Opens in a new tab for the learner.' },
+  { type: 'text', label: 'Written', needs: 'text',
+    hint: 'Reading set out on the page itself — no file to upload.' },
+] as const;
+
+/**
+ * Add a lesson to a module, from the console.
+ *
+ * The file never passes through this server: the browser asks for a signed
+ * ticket and PUTs to storage directly, which is what makes a lecture recording
+ * possible at all — Vercel rejects request bodies over about 4.5 MB.
+ *
+ * Progress is reported against the STEP that is running. "Could not be
+ * uploaded" and "could not be saved" send an author to two different places,
+ * and one "something went wrong" sends them nowhere.
+ */
+export function AddLessonForm({ tenantId, courseId, moduleId }: {
+  tenantId: number; courseId: number; moduleId: number;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [kind, setKind] = useState<string>('video');
+  const [stage, setStage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const chosen = LESSON_KINDS.find((k) => k.type === kind)!;
+
+  async function uploadAndGetPath(picked: File): Promise<string> {
+    setStage('Preparing…');
+    const ticketRes = await fetch('/api/proxy/onyx/platform/tenants/' + tenantId
+      + '/courses/' + courseId + '/uploads/sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: picked.name }),
+    });
+    const ticket = await ticketRes.json().catch(() => ({ ok: false }));
+    if (!ticket.ok) throw new Error(ticket.message ?? 'Could not start the upload.');
+
+    setStage('Uploading ' + picked.name + '…');
+    const put = await fetch(ticket.data.signedUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': picked.type || 'application/octet-stream' },
+      body: picked,
+    });
+    if (!put.ok) throw new Error('The file could not be uploaded. Check your connection.');
+    return ticket.data.path as string;
+  }
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)}
+        className="rounded-lg border border-slate-300 px-3 py-1.5 text-[13px] font-semibold">
+        Add a lesson
+      </button>
+    );
+  }
+
+  return (
+    <form
+      className="mt-3 grid gap-3 rounded-xl border border-line bg-slate-50 p-3.5"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const data = new FormData(form);
+        setError(null);
+        start(async () => {
+          try {
+            let path: string | null = null;
+            if (chosen.needs === 'file') {
+              const picked = (data.get('file') as File | null) ?? null;
+              if (!picked || !picked.size) throw new Error('Choose a file first.');
+              path = await uploadAndGetPath(picked);
+            }
+            if (chosen.needs === 'url') path = String(data.get('url') ?? '').trim();
+
+            setStage('Saving…');
+            const res = await post('onyx/platform/tenants/' + tenantId
+              + '/modules/' + moduleId + '/lessons', {
+              title: String(data.get('title') ?? ''),
+              type: chosen.type,
+              path,
+              body: chosen.needs === 'text' ? String(data.get('body') ?? '') : null,
+              is_preview: data.get('is_preview') === 'on',
+            });
+            if (!res.ok) throw new Error(res.message ?? 'That did not save.');
+            setStage(null);
+            setOpen(false);
+            router.refresh();
+          } catch (err) {
+            setStage(null);
+            setError(err instanceof Error ? err.message : 'That did not work.');
+          }
+        });
+      }}
+    >
+      {error ? <p role="alert" className="text-[13px] text-red-700">{error}</p> : null}
+
+      <div>
+        <span className={label}>What kind of lesson</span>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {LESSON_KINDS.map((k) => (
+            <button
+              key={k.type} type="button" onClick={() => setKind(k.type)}
+              aria-pressed={kind === k.type}
+              className={'min-h-[34px] rounded-lg border px-3 text-[12.5px] font-semibold '
+                + (kind === k.type
+                  ? 'border-brand-600 bg-brand-600 text-white'
+                  : 'border-line bg-white text-slate-700 hover:bg-brand-50')}
+            >
+              {k.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-[12.5px] text-muted">{chosen.hint}</p>
+      </div>
+
+      <div>
+        <label className={label} htmlFor="al-title">Lesson title</label>
+        <input id="al-title" name="title" required maxLength={255}
+          placeholder="Variables and types" className={field} />
+      </div>
+
+      {chosen.needs === 'file' ? (
+        <div>
+          <label className={label} htmlFor="al-file">File</label>
+          <input id="al-file" name="file" type="file" accept={chosen.accept} required
+            className={field + ' py-2'} />
+        </div>
+      ) : null}
+
+      {chosen.needs === 'url' ? (
+        <div>
+          <label className={label} htmlFor="al-url">Address</label>
+          <input id="al-url" name="url" type="url" required maxLength={500}
+            placeholder="https://example.com/reading" className={field} />
+        </div>
+      ) : null}
+
+      {chosen.needs === 'text' ? (
+        <div>
+          <label className={label} htmlFor="al-body">The reading itself</label>
+          <textarea id="al-body" name="body" required rows={6} maxLength={200_000}
+            className={field} />
+        </div>
+      ) : null}
+
+      <label className="flex items-center gap-2 text-[13px] font-semibold text-slate-700">
+        <input type="checkbox" name="is_preview" className="h-4 w-4 rounded border-slate-300" />
+        {/* Said in terms of who sees it, not in terms of a flag name. */}
+        Open to anyone browsing the course, before they enrol
+      </label>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="submit" disabled={pending} className={button}>
+          {stage ?? (pending ? 'Working…' : 'Add the lesson')}
+        </button>
+        <button type="button" disabled={pending} onClick={() => { setOpen(false); setError(null); }}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** Remove one lesson. */
+export function LessonRemoveButton({ tenantId, lesson }: {
+  tenantId: number; lesson: { id: number; title: string };
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <>
+      {error ? <span role="alert" className="text-[12px] text-red-700">{error}</span> : null}
+      <button
+        type="button" disabled={pending}
+        aria-label={'Remove ' + lesson.title}
+        onClick={() => start(async () => {
+          const res = await post('onyx/platform/tenants/' + tenantId + '/lessons/' + lesson.id,
+            undefined, 'DELETE');
+          if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+          router.refresh();
+        })}
+        className="shrink-0 rounded-lg border border-slate-300 px-2 py-1 text-[12px]
+                   font-semibold text-red-700 disabled:opacity-40"
+      >
+        Remove
+      </button>
+    </>
   );
 }

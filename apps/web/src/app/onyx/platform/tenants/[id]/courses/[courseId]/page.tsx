@@ -2,10 +2,19 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import { attempt, Unavailable, money } from '@/lib/onyx-platform-tenant';
-import { AddModuleForm, ModuleRowActions } from '@/components/onyx-platform-forms';
-import { Card, Icon, Pill, SectionHead, State } from '@/components/onyx-ui';
+import {
+  AddModuleForm, ModuleRowActions, AddLessonForm, LessonRemoveButton,
+} from '@/components/onyx-platform-forms';
+import {
+  Card, Icon, Pill, SectionHead, State, type IconName,
+} from '@/components/onyx-ui';
 
 export const metadata: Metadata = { title: 'Course' };
+
+/** A lesson wears the icon of what it actually is. */
+const ICON_OF: Record<string, IconName> = {
+  video: 'play', document: 'file', image: 'file', text: 'book', link: 'external',
+};
 
 interface Lesson {
   id: number; module_id: number; title: string; type: string;
@@ -28,11 +37,13 @@ interface Outline {
  * setting up an institution had to sign in as that institution to build its
  * first course structure.
  *
- * Modules are editable here. Lessons are listed but not authored here, and the
- * page says why: a lesson that carries a file needs the browser to send that
- * file straight to storage, which is the course's own screen. Listing them
- * read-only is still worth doing -- it is how somebody sees that a module is
- * an empty heading rather than a week of teaching.
+ * Modules and lessons are both authored here, files included. The upload does
+ * not pass through this server: the browser takes a signed ticket and PUTs
+ * straight to storage, which is the only way a lecture recording is possible
+ * at all -- Vercel rejects request bodies over about 4.5 MB.
+ *
+ * The lesson composer sits INSIDE the module it adds to rather than once at
+ * the top, so there is never a question of which module a file is going into.
  */
 export default async function OnyxPlatformCoursePage(
   { params }: { params: Promise<{ id: string; courseId: string }> },
@@ -128,10 +139,12 @@ export default async function OnyxPlatformCoursePage(
                   <ul className="mt-3 divide-y divide-line border-t border-line pt-1">
                     {m.lessons.map((l) => (
                       <li key={l.id} className="flex items-center gap-2.5 py-2 text-[13px]">
-                        <Icon name="play" className="h-3.5 w-3.5 shrink-0 text-muted" />
+                        <Icon name={ICON_OF[l.type] ?? 'file'}
+                          className="h-3.5 w-3.5 shrink-0 text-muted" />
                         <span className="min-w-0 flex-1 truncate text-ink">{l.title}</span>
                         <span className="shrink-0 text-[12px] text-muted">{l.type}</span>
                         {l.is_preview ? <Pill tone="neutral">Preview</Pill> : null}
+                        <LessonRemoveButton tenantId={tenantId} lesson={l} />
                       </li>
                     ))}
                   </ul>
@@ -140,17 +153,20 @@ export default async function OnyxPlatformCoursePage(
                     No lessons in this module yet.
                   </p>
                 )}
+
+                {/* The lesson composer lives INSIDE the module it adds to, so
+                    there is never a question of which one a file is going
+                    into. */}
+                <div className="mt-2 border-t border-line pt-3">
+                  <AddLessonForm tenantId={tenantId} courseId={course.id} moduleId={m.id} />
+                </div>
               </Card>
             </li>
           ))}
         </ol>
       )}
 
-      <p className="text-[12.5px] leading-relaxed text-muted">
-        Lessons are added from the course itself, signed in at the institution — a lesson
-        carrying a video or a document needs the browser to send that file straight to
-        storage, which this console cannot do on its behalf.
-      </p>
+
     </div>
   );
 }

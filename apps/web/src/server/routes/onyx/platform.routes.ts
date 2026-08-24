@@ -484,6 +484,45 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       idOf(req), subIdOf(req, 'moduleId'), claims.user_id, body), 'Updated.');
   });
 
+  app.post('/api/onyx/platform/tenants/:id/modules/:moduleId/lessons', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      title: z.string().min(1).max(255),
+      type: z.enum(['video', 'document', 'image', 'text', 'link']),
+      // A storage KEY from the sign route below for a file, or a URL for a
+      // link. Never a path a caller invented: the key is minted server-side.
+      path: z.string().max(500).nullish(),
+      body: z.string().max(200_000).nullish(),
+      duration_seconds: z.number().int().min(0).max(86_400).optional(),
+      is_preview: z.boolean().optional(),
+    }), req.body);
+    return ok(await ctx.onyxPlatform.createCourseLesson(
+      idOf(req), subIdOf(req, 'moduleId'), claims.user_id, body), 'Lesson added.');
+  });
+
+  app.delete('/api/onyx/platform/tenants/:id/lessons/:lessonId', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxPlatform.removeCourseLesson(
+      idOf(req), subIdOf(req, 'lessonId'), claims.user_id), 'Removed.');
+  });
+
+  /**
+   * A ticket to upload one lesson file, for the console.
+   *
+   * The same seam the course's own composer uses: the browser PUTs straight
+   * to storage and sends us back only the key. The key is derived from the
+   * tenant in the path, never from anything the caller supplies -- a path
+   * from a request body is a path into another institution's files.
+   */
+  app.post('/api/onyx/platform/tenants/:id/courses/:courseId/uploads/sign', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      filename: z.string().min(1).max(255),
+    }), req.body);
+    return ok(await ctx.onyxContent.signLessonUpload(
+      idOf(req), subIdOf(req, 'courseId'), body.filename));
+  });
+
   app.delete('/api/onyx/platform/tenants/:id/modules/:moduleId', async (req) => {
     const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     return ok(await ctx.onyxPlatform.removeCourseModule(

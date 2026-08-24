@@ -26,14 +26,24 @@ export const metadata: Metadata = { title: 'Platform sign in' };
  * `PlatformLoginForm` is untouched: same fields, same error announcement, same
  * POST to /api/onyx-platform/login and the same platform cookie back.
  */
-export default async function OnyxPlatformLoginPage() {
+export default async function OnyxPlatformLoginPage(
+  { searchParams }: { searchParams?: Promise<{ expired?: string }> },
+) {
   if (await getPlatformSession()) redirect('/onyx/platform');
+  // Why they are looking at this page, when they did not ask to be. A platform
+  // session lasts an hour and nothing refreshes it, so an operator who leaves
+  // the console open and comes back is sent here by the first thing they try
+  // to save -- and being told "sign in" with no reason reads as the product
+  // having lost their work.
+  const expired = (await searchParams)?.expired === '1';
 
   return (
     <OnyxAuthSplit
       tone="platform"
       title="Platform console"
-      subtitle="For operators, not for any one institution."
+      subtitle={expired
+        ? 'Your session timed out. Sign in again and carry on where you were.'
+        : 'For operators, not for any one institution.'}
       claim="Every institution, and the record of what was done to it."
       points={[
         { icon: 'building', text: 'Create institutions and their first administrator' },

@@ -1969,6 +1969,75 @@ export class PlatformService {
     return { id: moduleId, removed: true };
   }
 
+  /**
+   * A lesson, added from the console.
+   *
+   * The same five kinds the course's own composer offers, and the same rules:
+   * anything that points at something needs a `path`, and text carries its own
+   * body. The rules live here rather than only in the form, because a form is
+   * a convenience and an API is a contract.
+   *
+   * The file itself never passes through this server. The browser gets a
+   * signed ticket and PUTs straight to storage -- Vercel rejects request
+   * bodies over about 4.5 MB and a lecture recording is comfortably larger.
+   */
+  async createCourseLesson(tenantId: number, moduleId: number, actorId: string | null, input: {
+    title: string; type: string; path?: string | null; body?: string | null;
+    duration_seconds?: number; is_preview?: boolean;
+  }) {
+    const mod = await this.#courseModule(tenantId, moduleId);
+    const type = input.type;
+    if (!['video', 'document', 'image', 'text', 'link'].includes(type)) {
+      throw new HttpError(422, 'That is not a lesson type.');
+    }
+    // A video lesson with nothing to play is the commonest authoring mistake,
+    // and it only shows up when a learner opens it.
+    if (type !== 'text' && !String(input.path ?? '').trim()) {
+      throw new HttpError(422, type === 'link'
+        ? 'A link lesson needs an address to point at.'
+        : 'A ' + type + ' lesson needs a file.');
+    }
+    if (type === 'text' && !String(input.body ?? '').trim()) {
+      throw new HttpError(422, 'A text lesson needs some text.');
+    }
+
+    // Appended, for the reason a module is: everything created here would
+    // otherwise share sort 0 inside its module.
+    const { data: siblings } = await this.#db.from('onyx_lessons')
+      .select('sort').eq('tenant_id', tenantId).eq('module_id', moduleId);
+    const sort = (siblings ?? []).reduce((max, l) => Math.max(max, Number(l.sort ?? 0)), -1) + 1;
+
+    const { data, error } = await this.#db.from('onyx_lessons').insert({
+      tenant_id: tenantId,
+      // Denormalised from the module, exactly as ContentService does it, so
+      // the enrolment check on the learner's side stays one read.
+      course_id: mod.course_id,
+      module_id: moduleId,
+      title: input.title.trim(),
+      type,
+      path: type === 'text' ? null : String(input.path ?? '').trim(),
+      body: type === 'text' ? input.body : null,
+      duration_seconds: input.duration_seconds ?? 0,
+      sort,
+      is_preview: input.is_preview ? 1 : 0,
+    }).select('id, module_id, title, type, sort, is_preview').maybeSingle();
+    if (error) throw new HttpError(500, 'Could not add that lesson: ' + error.message);
+    await this.#log(actorId, 'lesson.created', 'lesson', Number(data!.id), null,
+      { module_id: moduleId, title: data!.title, type });
+    return data;
+  }
+
+  async removeCourseLesson(tenantId: number, lessonId: number, actorId: string | null) {
+    const { data: lesson } = await this.#db.from('onyx_lessons')
+      .select('id, title, module_id').eq('tenant_id', tenantId).eq('id', lessonId).maybeSingle();
+    if (!lesson) throw new HttpError(404, 'No such lesson.');
+    const { error } = await this.#db.from('onyx_lessons')
+      .delete().eq('tenant_id', tenantId).eq('id', lessonId);
+    if (error) throw new HttpError(500, 'Could not remove that lesson: ' + error.message);
+    await this.#log(actorId, 'lesson.deleted', 'lesson', lessonId, { title: lesson.title }, null);
+    return { id: lessonId, removed: true };
+  }
+
   async #courseModule(tenantId: number, moduleId: number) {
     const { data } = await this.#db.from('onyx_modules')
       .select('id, course_id, title, summary, sort')
