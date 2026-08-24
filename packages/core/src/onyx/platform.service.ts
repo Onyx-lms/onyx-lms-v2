@@ -20,6 +20,9 @@ import { HttpError } from '../http/errors.ts';
 import { slugify } from '../authoring/slug.ts';
 import { ROLES } from './tenancy.service.ts';
 import { gradeFor } from './examinations.service.ts';
+// The same two tests the marker applies, so the count an operator reads and
+// the decision `#finalise` makes can never drift apart.
+import { isObjective, hasKey } from './assess.service.ts';
 // The same guard the institution-side service uses, imported rather than
 // copied: a curriculum link becomes an anchor's href, and `javascript:` in
 // an href is stored XSS with extra steps. Two implementations of that check
@@ -2223,20 +2226,50 @@ export class PlatformService {
    * way to see whether one did -- so "add sections" would have been a form
    * with nothing to choose from and no explanation.
    */
+  /**
+   * The banks a paper can draw from, and how much of each a machine can mark.
+   *
+   * `needs_marking` is the count worth reading twice. A section says "take two
+   * from this bank" and the draw is random, so ONE question in the bank that
+   * needs a person is enough to decide the experience of a candidate who is
+   * unlucky enough to be dealt it: the paper stops releasing at hand-in and
+   * waits for a marker.
+   *
+   * That is correct behaviour and it is not the surprising part. The surprising
+   * part is that an essay ANNOUNCES itself and an unkeyed multiple-choice does
+   * not -- a question authored without a correct option set reads as objective
+   * everywhere it is listed, and marks exactly like an essay. So an operator
+   * builds a paper of "four MCQs", switches instant results on, and the results
+   * do not come instantly, with nothing on any screen saying why.
+   *
+   * Counted here rather than at publish, because this is the moment the choice
+   * is made: the section editor is where a bank is picked.
+   */
   async questionBanks(tenantId: number) {
     const { data: banks } = await this.#db.from('onyx_question_banks')
       .select('id, name, course_id, description, created_at').eq('tenant_id', tenantId)
       .order('id');
     if (!(banks ?? []).length) return [];
-    const { data: questions } = await this.#db.from('onyx_questions')
-      .select('id, bank_id, status').eq('tenant_id', tenantId);
+    // eslint-disable-next-line max-len
+    const { data: questions } = await this.#db.from('onyx_questions').select('id, bank_id, status, type, answer').eq('tenant_id', tenantId);
+
     const counts = new Map<number, number>();
+    const human = new Map<number, number>();
     for (const q of questions ?? []) {
       if (Number(q.status) === 0) continue;      // retired questions are not drawable
       const key = Number(q.bank_id);
       counts.set(key, (counts.get(key) ?? 0) + 1);
+      // The same two tests `#finalise` applies, in the same order: a type no
+      // machine can judge, or an objective type with nothing to judge against.
+      if (!isObjective(String(q.type)) || !hasKey(q.answer)) {
+        human.set(key, (human.get(key) ?? 0) + 1);
+      }
     }
-    return (banks ?? []).map((b) => ({ ...b, question_count: counts.get(Number(b.id)) ?? 0 }));
+    return (banks ?? []).map((b) => ({
+      ...b,
+      question_count: counts.get(Number(b.id)) ?? 0,
+      needs_marking: human.get(Number(b.id)) ?? 0,
+    }));
   }
 
   /**

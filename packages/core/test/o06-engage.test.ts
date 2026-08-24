@@ -310,3 +310,50 @@ test('LRN-06b a learner asking for their tickets never sees another learner\'s',
   assert.equal(mine.length, 1);
   assert.equal(mine[0]!.subject, 'My ticket');
 });
+
+test('LRN-06b the answer reaches the learner who asked, and the staff notes do not', async () => {
+  /*
+   * The defect this exists for was silent and complete.
+   *
+   * A learner's view stripped the note off EVERY event, which is right for the
+   * notes staff write to each other and exactly wrong for the one event whose
+   * whole purpose is to be read by the person who asked. So a learner watched
+   * their ticket turn from "open" to "answered" and never saw the answer:
+   * staff wrote a reply into the void and the queue reported it delivered.
+   */
+  const { support } = world();
+  const raised = await support.raise(T, student.userId, {
+    subject: 'My video will not play', body: 'It sits at nought per cent.',
+  });
+  const id = Number(raised.id);
+
+  await support.respond(T, id, faculty, 'Re-encoded — try it again.');
+  // A note between staff, which the learner is not party to.
+  await support.assign(T, id, faculty.userId, faculty);
+
+  const theirs = await support.ticket(T, id, student);
+  const answer = theirs.events.find((e) => e.kind === 'responded');
+  assert.equal(answer?.note, 'Re-encoded — try it again.',
+    'the reply never reached the person who asked');
+
+  for (const e of theirs.events) {
+    if (e.kind === 'responded') continue;
+    assert.equal(e.note, null, 'a staff note leaked to the learner: ' + e.kind);
+  }
+
+  // Staff still see the whole trail.
+  const staff = await support.ticket(T, id, faculty);
+  assert.ok(staff.events.length >= theirs.events.length);
+});
+
+test('LRN-06b the queue carries the question, not only its subject', async () => {
+  // Somebody deciding whether they can answer has to read the problem. The
+  // queue returned a title and nothing else, so any screen listing tickets
+  // showed a subject line with an empty space under it.
+  const { support } = world();
+  await support.raise(T, student.userId, {
+    subject: 'My video will not play', body: 'It sits at nought per cent.',
+  });
+  const queue = await support.queue(T, faculty, {});
+  assert.equal(queue[0]?.body, 'It sits at nought per cent.');
+});

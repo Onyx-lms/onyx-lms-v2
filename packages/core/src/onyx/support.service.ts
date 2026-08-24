@@ -49,6 +49,8 @@ export const TICKET_PRIORITIES: TicketPriority[] = ['low', 'normal', 'high', 'ur
 export interface TicketView {
   id: number;
   subject: string;
+  /** The question as it was asked. See #view for why the queue carries it. */
+  body: string;
   status: TicketStatus;
   priority: TicketPriority;
   owner_id: string | null;
@@ -219,9 +221,23 @@ export class SupportService {
       course_id: row.course_id,
       discussion_id: row.discussion_id,
       sla_minutes: row.sla_minutes,
-      // The trail is between staff. A learner sees that things happened and
-      // when, not the notes written about their problem.
-      events: (events ?? []).map((e) => (isMentor(viewer.role)
+      /*
+       * The trail is between staff — EXCEPT the answer, which is the whole
+       * point of the ticket.
+       *
+       * This stripped the note off every event for a learner, which is right
+       * for the notes staff write to each other while working a problem and
+       * exactly wrong for the one event whose entire purpose is to be read by
+       * the person who asked. The effect was a learner watching their ticket
+       * turn from "open" to "answered" and never seeing the answer: staff
+       * wrote a reply into the void and the queue reported it delivered.
+       *
+       * So a `responded` event keeps its note for them, and everything else —
+       * assignment, escalation, the running commentary — still does not. What
+       * a learner may read is the reply they were sent, not the discussion
+       * about them.
+       */
+      events: (events ?? []).map((e) => (isMentor(viewer.role) || e.kind === 'responded'
         ? e
         : { ...e, note: null, detail: {} })),
     };
@@ -371,6 +387,15 @@ export class SupportService {
     return {
       id: Number(t.id),
       subject: String(t.subject),
+      /*
+       * The question as it was asked.
+       *
+       * The queue carried only a subject, so any screen listing tickets could
+       * show a title and nothing else — and somebody deciding whether they can
+       * answer has to read the problem. It is the raiser's own words, so a
+       * learner reading their own list is shown nothing they did not write.
+       */
+      body: t.body === null || t.body === undefined ? '' : String(t.body),
       status: t.status as TicketStatus,
       priority: t.priority as TicketPriority,
       owner_id: t.owner_id === null || t.owner_id === undefined ? null : String(t.owner_id),

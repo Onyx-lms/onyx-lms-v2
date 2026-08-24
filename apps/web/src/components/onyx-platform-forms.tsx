@@ -3146,6 +3146,33 @@ export function LessonEditForm({ tenantId, lesson }: {
 
 export interface ConsoleBank {
   id: number; name: string; course_id: number | null; question_count: number;
+  /**
+   * How many of them a machine cannot mark — an essay or a code question, or a
+   * multiple-choice nobody set a correct option on. The second kind is why this
+   * is on the screen at all: it reads as objective everywhere it is listed and
+   * marks exactly like an essay.
+   */
+  needs_marking?: number;
+}
+
+/**
+ * What drawing from this bank means for when the candidate gets their mark.
+ *
+ * The draw is random, so one unmarkable question in the bank is enough to
+ * decide it for whoever is dealt that question — which makes "some of these
+ * need a marker" the honest thing to say, not "this paper will be marked by
+ * hand".
+ */
+function markingNote(bank: ConsoleBank | undefined): string | null {
+  const needs = Number(bank?.needs_marking ?? 0);
+  if (!bank || !needs) return null;
+  if (needs >= bank.question_count) {
+    return 'Every question in this bank needs a marker, so results will not be instant.';
+  }
+  return needs + ' of the ' + bank.question_count + ' questions in this bank need a marker'
+    + ' (an essay, a code question, or a multiple-choice with no correct option set).'
+    + ' If the draw includes one, the result waits for a person instead of appearing'
+    + ' at hand-in.';
 }
 
 /**
@@ -3208,7 +3235,9 @@ export function AssessmentSectionsForm({ tenantId, assessment, banks }: {
             >
               {usable.map((b) => (
                 <option key={b.id} value={b.id}>
-                  {b.name} ({b.question_count} question{b.question_count === 1 ? '' : 's'})
+                  {b.name} ({b.question_count} question{b.question_count === 1 ? '' : 's'}
+                  {Number(b.needs_marking ?? 0)
+                    ? ', ' + b.needs_marking + ' needing a marker' : ''})
                 </option>
               ))}
             </select>
@@ -3224,6 +3253,13 @@ export function AssessmentSectionsForm({ tenantId, assessment, banks }: {
                          text-red-700">
               Remove
             </button>
+            {/* Said once per section rather than once per form: which bank was
+                picked is what decides it, and a form can hold several. */}
+            {markingNote(usable.find((b) => Number(b.id) === Number(row.bank_id))) ? (
+              <p className="text-[12.5px] leading-relaxed text-amber-800 sm:col-span-3">
+                {markingNote(usable.find((b) => Number(b.id) === Number(row.bank_id)))}
+              </p>
+            ) : null}
           </li>
         ))}
       </ul>
