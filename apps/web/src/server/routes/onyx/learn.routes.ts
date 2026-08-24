@@ -235,15 +235,19 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
       currency: z.string().length(3).optional(),
       status: z.number().int().min(0).max(1).optional(),
     }), req.body);
-    // A locked course with no price is a course nobody can ever enter. The
-    // database says so too (0024), but a 422 naming the field is a better
-    // answer than a constraint violation.
-    if (body.access === 'locked' && !body.price_minor) {
-      const current = await ctx.onyxAcademics.course(claims.tenant_id, idOf(req));
-      if (!Number(current.price_minor)) {
-        throw new HttpError(422, 'A locked course needs a price before it can be locked.');
-      }
-    }
+    /*
+     * Locking a course with no price is no longer a refusal, because it is no
+     * longer ambiguous: `updateCourse` gives it DEFAULT_LOCKED_PRICE_MINOR.
+     *
+     * This guard used to refuse it with a 422 naming the field, which was
+     * better than the raw constraint violation from 0024 underneath it and
+     * still made an administrator answer a question the product can answer
+     * itself. It has to go rather than stay as a belt: it runs BEFORE the
+     * service, so leaving it in place would mean the default existed on
+     * create and was unreachable on update -- the same choice refused in one
+     * place and honoured in the other. A course that already carries a price
+     * still keeps it; that is the service's rule, not this one's.
+     */
     /*
      * Recorded, like every other write on a course.
      *

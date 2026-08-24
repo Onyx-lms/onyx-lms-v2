@@ -112,8 +112,10 @@ const saved = await step('Razorpay configured with the client’s test keys',
       },
     },
   });
+// 1 and 0, as the column stores them -- a flag is a flag whichever way it is
+// spelled, and pinning the test to `=== true` would be testing the driver.
 check('and it is in test mode, switched on',
-  saved.data?.test_mode === true && saved.data?.status === true,
+  Boolean(saved.data?.test_mode) && Boolean(saved.data?.status),
   'test_mode=' + saved.data?.test_mode + ' status=' + saved.data?.status);
 
 // The one thing a gateway record must never do.
@@ -159,6 +161,12 @@ const wasFree = await step('an open course starts free', '/api/onyx/courses', {
   method: 'POST', token: at,
   body: { code: 'FRE' + RUN.slice(-4), title: 'Free course ' + RUN, credits: 3, access: 'open' },
 });
+// A second one, kept open, because the first is locked a few lines below and
+// phase 4 needs a course that is genuinely still free to be refused a sale.
+const staysFree = await step('and another that stays that way', '/api/onyx/courses', {
+  method: 'POST', token: at,
+  body: { code: 'FR2' + RUN.slice(-4), title: 'Still free ' + RUN, credits: 3, access: 'open' },
+});
 check('at no price', Number(wasFree.data?.price_minor) === 0,
   'price_minor=' + wasFree.data?.price_minor);
 
@@ -184,8 +192,9 @@ await step('the ₹300 course is published', '/api/onyx/courses/' + courseId + '
 
 startPhase('3. the door is shut before paying');
 
-await refuse('the learner cannot start it', 402, '/api/onyx/courses/' + courseId + '/start',
-  { method: 'POST', token: st, body: {} });
+// Enrolment IS entry for a self-service course; buying is what unlocks it.
+await refuse('the learner cannot enrol without paying', 402,
+  '/api/onyx/courses/' + courseId + '/enroll', { method: 'POST', token: st, body: {} });
 const outline = await call('/api/onyx/courses/' + courseId, { token: st });
 check('and the catalogue says so rather than pretending',
   outline.data?.access === 'locked' && !outline.data?.purchased,
@@ -221,8 +230,11 @@ check('and Razorpay agrees the order exists, unpaid',
 check('carrying our reference back to us, so a webhook can find it',
   atRazorpay.body?.notes?.reference === reference);
 
+// Published first, or the refusal is "not open" and says nothing about price.
+await step('the free course is published',
+  '/api/onyx/courses/' + staysFree.data?.id + '/publish', { method: 'POST', token: at });
 await refuse('a free course cannot be sold', 422,
-  '/api/onyx/courses/' + wasFree.data?.id + '/checkout', {
+  '/api/onyx/courses/' + staysFree.data?.id + '/checkout', {
     method: 'POST', token: st, body: { gateway: 'razorpay' },
   });
 
@@ -259,7 +271,7 @@ check('because the product asks Razorpay rather than believing the browser',
   unpaid.data?.status !== 'captured');
 
 await refuse('and the course is still locked', 402,
-  '/api/onyx/courses/' + courseId + '/start', { method: 'POST', token: st, body: {} });
+  '/api/onyx/courses/' + courseId + '/enroll', { method: 'POST', token: st, body: {} });
 
 // ---------------------------------------------------------------------------
 
@@ -297,10 +309,14 @@ const hookBody = await hook.json().catch(() => ({}));
 check('Razorpay’s webhook is accepted', hook.status === 200,
   hook.status + ' ' + JSON.stringify(hookBody?.data ?? hookBody).slice(0, 120));
 
-const started = await call('/api/onyx/courses/' + courseId + '/start',
+const started = await call('/api/onyx/courses/' + courseId + '/enroll',
   { method: 'POST', token: st, body: {} });
-check('and the learner can now start the course they paid for',
+check('and the learner can now enter the course they paid for',
   started.status === 200, started.status + ' ' + (started.message ?? ''));
+
+const outlineNow = await call('/api/onyx/courses/' + courseId + '/outline', { token: st });
+check('the lessons behind the paywall are readable', outlineNow.status === 200,
+  outlineNow.status + ' ' + (outlineNow.message ?? ''));
 
 const after = await call('/api/onyx/courses/' + courseId, { token: st });
 check('the course reads as theirs', after.data?.purchased === true || after.data?.enrolled === true,
@@ -328,8 +344,11 @@ const forgedHook = await fetch(BASE + '/api/onyx/payments/webhook/' + tenantId +
   headers: { 'Content-Type': 'application/json', 'x-razorpay-signature': 'not-a-signature' },
   body: event,
 });
-check('a webhook nobody signed changes nothing', forgedHook.status === 200,
-  'answered ' + forgedHook.status + ', which is what stops a retry storm');
+const forgedBody = await forgedHook.json().catch(() => ({}));
+check('a webhook nobody signed changes nothing, and is not an error',
+  forgedHook.status === 200 && forgedBody?.data?.handled === false,
+  'answered ' + forgedHook.status + ' ' + JSON.stringify(forgedBody?.data ?? {})
+  + ' -- an error here is a retry schedule');
 
 // ---------------------------------------------------------------------------
 

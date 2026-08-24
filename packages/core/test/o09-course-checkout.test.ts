@@ -315,3 +315,62 @@ test('an unconfirmed payment enrols nobody', async () => {
   assert.equal(db.tables.onyx_enrollments.length, 0,
     'a course opened before the bank had confirmed anything');
 });
+
+// -------------------------------------------------------------- the webhook
+
+/**
+ * A provider whose webhook parser throws, which is what the shipped ones do.
+ *
+ * Razorpay's `parseWebhook` throws on a missing or invalid signature -- the
+ * right thing for it to do, since it cannot return an outcome it could not
+ * verify. What matters is what the SERVICE does with that, and the answer
+ * cannot be "let it escape".
+ */
+registerProvider({
+  identifier: 'throwpay',
+  async createCheckout(order) {
+    return { redirectUrl: order.successUrl, providerRef: 'order_thr', clientPayload: {} };
+  },
+  async verify() { return { status: 'paid' as const, providerRef: 'order_thr' }; },
+  async parseWebhook() { throw new Error('Invalid signature.'); },
+});
+
+test('a webhook that fails its signature check is refused, not thrown', async () => {
+  /*
+   * Found against a live Razorpay account: an unsigned webhook came back 500.
+   *
+   * The route above this promises 200 either way, and says why -- a gateway
+   * that receives an error RETRIES, and retrying is the wrong answer to "I
+   * cannot verify this". A 500 turns one forged or misconfigured request into
+   * a retry schedule nobody here controls.
+   */
+  const db = seed();
+  db.tables.onyx_payment_gateways.push({
+    id: 2, tenant_id: T, identifier: 'throwpay', title: 'Throws', currency: 'INR',
+    test_mode: 1, status: 1, created_at: 'now', updated_at: 'now', keys: { k: 'v' },
+  });
+  const { checkout } = services(db);
+
+  const result = await checkout.webhook('throwpay',
+    { rawBody: '{"event":"order.paid"}', headers: {} }, T);
+
+  assert.equal(result.handled, false, 'an unverifiable webhook was treated as handled');
+  assert.equal((result as { reason: string }).reason, 'bad_signature');
+});
+
+test('a webhook for a gateway nobody configured is refused the same way', async () => {
+  // Every rejection on this path has to come back as an answer rather than an
+  // exception, for the same reason: the caller is a gateway, and its response
+  // to an error is to come back.
+  const db = seed();
+  const { checkout } = services(db);
+
+  for (const [gateway, reason] of [
+    ['throwpay', 'not_configured'],
+    ['nosuchgateway', 'unknown_gateway'],
+  ] as const) {
+    const result = await checkout.webhook(gateway, { rawBody: '{}', headers: {} }, T);
+    assert.equal(result.handled, false);
+    assert.equal((result as { reason: string }).reason, reason);
+  }
+});

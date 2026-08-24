@@ -551,7 +551,29 @@ export class OnyxCheckoutService {
     const config = await this.#config(tenantId, identifier).catch(() => null);
     if (!config) return { handled: false as const, reason: 'not_configured' };
 
-    const parsed = await provider.parseWebhook(req, config);
+    /*
+     * A webhook that fails its signature check is refused, not thrown.
+     *
+     * Every other rejection on this path returns `handled: false` with a
+     * reason, because the route above answers 200 either way and says why: a
+     * gateway that receives an error RETRIES, and retrying is the wrong answer
+     * to "I cannot verify this". `parseWebhook` was the one step that threw --
+     * the Razorpay provider throws on a missing or invalid signature -- so an
+     * unsigned request became a 500, and a gateway seeing 500s comes back
+     * again, and again, on a schedule nobody here controls.
+     *
+     * Counted rather than merely swallowed. A handful of these is somebody
+     * with a stale secret; a flood of them is somebody trying references
+     * against a live endpoint, and the difference should be visible from
+     * outside.
+     */
+    let parsed;
+    try {
+      parsed = await provider.parseWebhook(req, config);
+    } catch {
+      increment('onyx_payment_webhook_rejected_total', { gateway: identifier });
+      return { handled: false as const, reason: 'bad_signature' };
+    }
     if (!parsed) return { handled: false as const, reason: 'not_ours' };
 
     const intent = readIntent(parsed.reference, this.#secret, this.#now());

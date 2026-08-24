@@ -1,0 +1,261 @@
+{
+  "base": "https://onyx-lms-v2.vercel.app",
+  "slug": "qp-mt6psnsj",
+  "run": "mt6psnsj",
+  "passed": 31,
+  "failed": 11,
+  "results": [
+    {
+      "phase": "1. an institution with a merchant account",
+      "label": "platform operator signs in",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "phase": "1. an institution with a merchant account",
+      "label": "institution created",
+      "pass": true,
+      "detail": "200 Institution created."
+    },
+    {
+      "phase": "1. an institution with a merchant account",
+      "label": "a learner is added",
+      "pass": true,
+      "detail": "200 Member added."
+    },
+    {
+      "phase": "1. an institution with a merchant account",
+      "label": "Razorpay configured with the client’s test keys",
+      "pass": true,
+      "detail": "200 Saved."
+    },
+    {
+      "phase": "1. an institution with a merchant account",
+      "label": "and it is in test mode, switched on",
+      "pass": false,
+      "detail": "test_mode=1 status=1"
+    },
+    {
+      "phase": "1. an institution with a merchant account",
+      "label": "an administrator reads the configuration back",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "1. an institution with a merchant account",
+      "label": "no secret comes back out of it, ever",
+      "pass": true,
+      "detail": "names only: [\"razorpay_key\",\"razorpay_secret\",\"razorpay_webhook_secret\"]"
+    },
+    {
+      "phase": "1. an institution with a merchant account",
+      "label": "a learner cannot read the merchant configuration",
+      "pass": true,
+      "detail": "expected 403, got 403 This action is unauthorized."
+    },
+    {
+      "phase": "1. an institution with a merchant account",
+      "label": "the learner is told which gateway to use",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "1. an institution with a merchant account",
+      "label": "Razorpay is offered to them",
+      "pass": true,
+      "detail": "[{\"identifier\":\"razorpay\",\"title\":\"Razorpay\",\"currency\":\"INR\"}]"
+    },
+    {
+      "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
+      "label": "a locked course created with no price at all",
+      "pass": true,
+      "detail": "200 Course created."
+    },
+    {
+      "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
+      "label": "is priced at ₹300, not refused by the database",
+      "pass": true,
+      "detail": "price_minor=30000 (₹300)"
+    },
+    {
+      "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
+      "label": "a price somebody typed still wins",
+      "pass": true,
+      "detail": "200 Course created."
+    },
+    {
+      "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
+      "label": "and is stored as typed",
+      "pass": true,
+      "detail": "price_minor=149900"
+    },
+    {
+      "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
+      "label": "an open course starts free",
+      "pass": true,
+      "detail": "200 Course created."
+    },
+    {
+      "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
+      "label": "at no price",
+      "pass": true,
+      "detail": "price_minor=0"
+    },
+    {
+      "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
+      "label": "locking it afterwards prices it too",
+      "pass": false,
+      "detail": "422 A locked course needs a price before it can be locked."
+    },
+    {
+      "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
+      "label": "at the same ₹300",
+      "pass": false,
+      "detail": "price_minor=undefined"
+    },
+    {
+      "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
+      "label": "a course that already has a price keeps it",
+      "pass": true,
+      "detail": "200 Course updated."
+    },
+    {
+      "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
+      "label": "₹1,499 is not quietly made ₹300",
+      "pass": true,
+      "detail": "price_minor=149900"
+    },
+    {
+      "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
+      "label": "the ₹300 course is published",
+      "pass": true,
+      "detail": "200 Course is open."
+    },
+    {
+      "phase": "3. the door is shut before paying",
+      "label": "the learner cannot start it",
+      "pass": false,
+      "detail": "expected 402, got 404 Not found."
+    },
+    {
+      "phase": "3. the door is shut before paying",
+      "label": "and the catalogue says so rather than pretending",
+      "pass": true,
+      "detail": "access=locked purchased=undefined"
+    },
+    {
+      "phase": "4. a real order at Razorpay",
+      "label": "the learner opens a checkout",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "4. a real order at Razorpay",
+      "label": "Razorpay gave us an order",
+      "pass": true,
+      "detail": "order=order_TTT9SQSnf1VgZJ"
+    },
+    {
+      "phase": "4. a real order at Razorpay",
+      "label": "for ₹300 exactly",
+      "pass": true,
+      "detail": "amount_minor=30000 payload=30000"
+    },
+    {
+      "phase": "4. a real order at Razorpay",
+      "label": "in rupees",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "phase": "4. a real order at Razorpay",
+      "label": "the widget gets the PUBLIC key and nothing else",
+      "pass": true,
+      "detail": "key=rzp_test_TTS7K…"
+    },
+    {
+      "phase": "4. a real order at Razorpay",
+      "label": "and Razorpay agrees the order exists, unpaid",
+      "pass": true,
+      "detail": "amount=30000 status=created"
+    },
+    {
+      "phase": "4. a real order at Razorpay",
+      "label": "carrying our reference back to us, so a webhook can find it",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "phase": "4. a real order at Razorpay",
+      "label": "a free course cannot be sold",
+      "pass": false,
+      "detail": "expected 422, got 403 This course is not open."
+    },
+    {
+      "phase": "5. what a forged callback gets",
+      "label": "a made-up signature is refused",
+      "pass": true,
+      "detail": "status=failed Razorpay signature mismatch."
+    },
+    {
+      "phase": "5. what a forged callback gets",
+      "label": "a correctly signed callback for an UNPAID order is not a payment",
+      "pass": true,
+      "detail": "status=pending"
+    },
+    {
+      "phase": "5. what a forged callback gets",
+      "label": "because the product asks Razorpay rather than believing the browser",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "phase": "5. what a forged callback gets",
+      "label": "and the course is still locked",
+      "pass": false,
+      "detail": "expected 402, got 404 Not found."
+    },
+    {
+      "phase": "6. a captured payment, and the door opens",
+      "label": "Razorpay’s webhook is accepted",
+      "pass": true,
+      "detail": "200 {\"handled\":true,\"status\":\"captured\",\"replayed\":false,\"purchase\":{\"tenant_id\":714,\"course_id\":333,\"user_id\":\"7fbb16e0-a84"
+    },
+    {
+      "phase": "6. a captured payment, and the door opens",
+      "label": "and the learner can now start the course they paid for",
+      "pass": false,
+      "detail": "404 Not found."
+    },
+    {
+      "phase": "6. a captured payment, and the door opens",
+      "label": "the course reads as theirs",
+      "pass": false,
+      "detail": "purchased=undefined enrolled=undefined"
+    },
+    {
+      "phase": "6. a captured payment, and the door opens",
+      "label": "a replayed webhook is not a second sale",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "phase": "6. a captured payment, and the door opens",
+      "label": "exactly one purchase is on record",
+      "pass": false,
+      "detail": "0 rows, amount=?"
+    },
+    {
+      "phase": "6. a captured payment, and the door opens",
+      "label": "for the ₹300 that was charged, not a figure from the request",
+      "pass": false,
+      "detail": "amount_minor=undefined"
+    },
+    {
+      "phase": "6. a captured payment, and the door opens",
+      "label": "a webhook nobody signed changes nothing",
+      "pass": false,
+      "detail": "answered 500, which is what stops a retry storm"
+    }
+  ]
+}
