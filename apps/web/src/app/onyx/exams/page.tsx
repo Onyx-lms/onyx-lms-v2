@@ -462,8 +462,9 @@ export default async function OnyxExamsPage() {
             head={<><th scope="col">Exam</th><th scope="col">When</th><th scope="col">Status</th></>}
           >
             <EmptyRow colSpan={3} icon="calendar">
-              Nothing is scheduled. A paper needs a course, a semester, a start time and a
-              mark scheme before it can hold candidates.
+              Nothing is scheduled. An exam needs a course, a start time and a mark
+              scheme before it can hold candidates — the term comes from the course,
+              and a resit or a certification sitting need not have one at all.
             </EmptyRow>
           </DataTable>
         ) : null}

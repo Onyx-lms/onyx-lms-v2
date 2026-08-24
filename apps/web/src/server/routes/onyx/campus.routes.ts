@@ -19,6 +19,7 @@ import { z } from 'zod';
 import { validate, ok, requireOnyx, requireOnyxRole, HttpError } from '@onyx/core';
 import type { Role } from '@onyx/types';
 import type { AppContext } from '../../app-context.ts';
+import { syncExamAssessmentWindow } from '../../exam-window.ts';
 import { assertCan } from '../../capability.ts';
 
 const asReq = (req: ReqLike) => ({
@@ -137,29 +138,6 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
       body: 'Starts ' + when + '.',
       link: '/onyx/exams/' + exam.id,
     })));
-  }
-
-  async function syncExamAssessmentWindow(
-    tenantId: number, assessmentId: number,
-    exam: { course_id: number; starts_at: string; duration_minutes: number; status: string },
-    actor: { userId: string; role: Role },
-  ) {
-    const assessment = await ctx.onyxAssess.assessment(tenantId, assessmentId);
-    if (Number(assessment.course_id) !== Number(exam.course_id)) {
-      throw new HttpError(422,
-        'That assessment is not on this exam’s course — pick one that is, or leave it unlinked.');
-    }
-    const start = Date.parse(exam.starts_at);
-    const end = start + exam.duration_minutes * 60_000;
-    await ctx.onyxAssess.updateAssessment(tenantId, assessmentId, actor, {
-      opens_at: new Date(start).toISOString(),
-      closes_at: new Date(end).toISOString(),
-      duration_minutes: exam.duration_minutes,
-      // A cancelled exam's paper stops taking attempts; scheduling or
-      // editing an active one never force-publishes it -- that stays the
-      // office's own decision, made once the paper is actually ready.
-      status: exam.status === 'cancelled' ? 'closed' : undefined,
-    });
   }
 
   // =========================================================================
@@ -470,7 +448,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
     const exam = await ctx.onyxExams.schedule(claims.tenant_id, viewer,
       { ...body, semester_id: semesterId ?? null });
     if (body.assessment_id && exam) {
-      await syncExamAssessmentWindow(claims.tenant_id, body.assessment_id, exam, viewer);
+      await syncExamAssessmentWindow(ctx, claims.tenant_id, body.assessment_id, exam, viewer);
     }
     if (exam) await notifyExamScheduled(claims.tenant_id, claims.user_id, body.course_id, exam);
     return ok(exam);
@@ -513,7 +491,8 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
     if (exam?.assessment_id
       && (body.starts_at !== undefined || body.duration_minutes !== undefined
         || body.status === 'cancelled')) {
-      await syncExamAssessmentWindow(claims.tenant_id, Number(exam.assessment_id), exam, viewer);
+      await syncExamAssessmentWindow(
+        ctx, claims.tenant_id, Number(exam.assessment_id), exam, viewer);
     }
     return ok(exam, 'Updated.');
   });

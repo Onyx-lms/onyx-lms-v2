@@ -72,12 +72,22 @@ export default async function OnyxPracticeResultsPage(
         ? 'What a learner has solved, and who set each problem.'
         : 'Every problem you have handed in, and how it went.'}
       action={
-        <Link href="/onyx/practice"
-          className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2
-                     text-[13px] font-semibold hover:bg-canvas">
-          <Icon name="code" className="h-4 w-4" />
-          Back to practice
-        </Link>
+        <span className="flex flex-wrap items-center gap-2">
+          {staff ? (
+            <Link href="/onyx/practice/submissions"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2
+                         text-[13px] font-semibold hover:bg-canvas">
+              <Icon name="list" className="h-4 w-4" />
+              All submissions
+            </Link>
+          ) : null}
+          <Link href="/onyx/practice"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2
+                       text-[13px] font-semibold hover:bg-canvas">
+            <Icon name="code" className="h-4 w-4" />
+            Back to practice
+          </Link>
+        </span>
       }
     >
       {staff ? (

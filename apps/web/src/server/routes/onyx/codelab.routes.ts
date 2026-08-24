@@ -247,6 +247,42 @@ export function registerOnyxCodeLabRoutes(app: Router, ctx: AppContext): void {
   });
 
   /**
+   * Every practice hand-in at the institution, filtered.
+   *
+   * The one thing staff could not do before this route existed: look at
+   * practice as an activity rather than one problem or one person at a time.
+   * `/problems/:id/attempts` needs a problem chosen first and
+   * `/practice/results/:userId` needs a person, so "has anybody submitted
+   * anything today, and is the grader keeping up" had no answer in the
+   * product at all.
+   *
+   * Tenant-scoped for the same stated reason `/practice/results/:userId` is:
+   * a problem may sit in the bank with no `course_id`, so narrowing faculty to
+   * their own courses would hide every standalone problem and leave the view
+   * quietly incomplete. A faculty member can already read any single
+   * submission through `/submissions/code/:id`, so this widens discovery, not
+   * access.
+   */
+  app.get('/api/onyx/practice/submissions', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    const q = validate(z.object({
+      problem_id: z.coerce.number().int().positive().optional(),
+      user_id: z.string().max(64).optional(),
+      course_id: z.coerce.number().int().positive().optional(),
+      // The states the grader actually writes -- queued, running, then done
+      // or failed. 'graded' is the word the UI prints, not a value in the row.
+      status: z.enum(['queued', 'running', 'done', 'failed']).optional(),
+      language: z.string().max(50).optional(),
+      mode: z.enum(['run', 'submit']).optional(),
+      from: z.string().max(40).optional(),
+      to: z.string().max(40).optional(),
+      search: z.string().max(255).optional(),
+      limit: z.coerce.number().int().min(1).max(1000).optional(),
+    }), req.query ?? {});
+    return ok(await ctx.onyxCodeLab.allSubmissions(claims.tenant_id, q));
+  });
+
+  /**
    * Drains the queue on demand.
    *
    * The API also runs the worker on an interval; this exists so an operator can
@@ -289,11 +325,33 @@ export function registerOnyxCodeLabRoutes(app: Router, ctx: AppContext): void {
    */
   app.get('/api/onyx/workspaces/all', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    /*
+     * The filters narrow what the caller may already see; they never widen it.
+     * `listForCourses` intersects a `course_id` with the courses actually
+     * taught, so asking for somebody else's class is an empty list rather
+     * than a leak.
+     *
+     * `course_id=none` is its own value, not a missing one: "personal
+     * projects, attached to no course" is a real thing to look for, and a
+     * blank string would be indistinguishable from not filtering.
+     */
+    const q = validate(z.object({
+      course_id: z.union([z.literal('none'), z.coerce.number().int().positive()]).optional(),
+      // A uuid since 0014. Coercing it to a number would make every owner
+      // filter NaN and quietly answer with nothing.
+      user_id: z.string().max(64).optional(),
+      language: z.string().max(50).optional(),
+      search: z.string().max(255).optional(),
+    }), req.query ?? {});
+    const filters = {
+      ...q,
+      course_id: q.course_id === 'none' ? null : q.course_id,
+    };
     if (claims.tenant_role === 'admin') {
-      return ok(await ctx.onyxWorkspaces.listAll(claims.tenant_id));
+      return ok(await ctx.onyxWorkspaces.listAll(claims.tenant_id, filters));
     }
     const teaching = await ctx.onyxAcademics.teachingFor(claims.tenant_id, claims.user_id);
-    return ok(await ctx.onyxWorkspaces.listForCourses(claims.tenant_id, teaching));
+    return ok(await ctx.onyxWorkspaces.listForCourses(claims.tenant_id, teaching, filters));
   });
 
   app.post('/api/onyx/workspaces', async (req) => {

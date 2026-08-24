@@ -211,6 +211,7 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/problems/:id/attempts` | admin, faculty |
 | `GET` | `/api/onyx/practice/results` | any member |
 | `GET` | `/api/onyx/practice/results/:userId` | admin, faculty |
+| `GET` | `/api/onyx/practice/submissions` | admin, faculty |
 | `POST` | `/api/onyx/queue/drain` | admin |
 | `GET` | `/api/onyx/queue` | admin |
 | `GET` | `/api/onyx/workspaces` | any member |
@@ -403,6 +404,14 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/platform/tenants/:id/banks/:bankId/questions` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/banks/:bankId/questions` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/problems` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/problems` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/problems/:problemId` | platform admin |
+| `PATCH` | `/api/onyx/platform/tenants/:id/problems/:problemId` | platform admin |
+| `PUT` | `/api/onyx/platform/tenants/:id/problems/:problemId/tests` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/problems/:problemId/publish` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/problems/:problemId/unpublish` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/code-submissions` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/workspaces` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/exam-week` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/banks` | platform admin |
 | `PUT` | `/api/onyx/platform/tenants/:id/assessments/:assessmentId/sections` | platform admin |
@@ -453,4 +462,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_367 endpoints across 9 route files._
+_376 endpoints across 9 route files._

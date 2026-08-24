@@ -5,6 +5,10 @@ import { useEffect, useId, useState, useTransition } from 'react';
 import { Modal } from '@/components/onyx-modal';
 import { ROLE_LABELS } from '@/lib/onyx-nav';
 import { DangerPanel } from '@/components/onyx-danger';
+import {
+  ProblemDraftFields, blankProblemDraft, createProblemFromDraft, problemDraftError,
+  type ProblemDraft,
+} from '@/components/onyx-code-problem';
 
 /**
  * The platform console's forms -- signing in, provisioning an institution,
@@ -1719,17 +1723,22 @@ export function CreateAssessmentForm({ tenantId, courses }: {
   );
 }
 
-interface SemesterOption { id: number; name: string }
-
 /**
  * Schedule an exam.
  *
- * Needs a course. A semester is optional -- 0037 dropped that NOT NULL because
- * a resit or a certification sitting belongs to no term, and the API takes the
- * course's own when nobody names one.
+ * A course, a time and a mark scheme. **No semester field**, and that is the
+ * whole of the decision: 0037 dropped the NOT NULL on `onyx_exams.semester_id`
+ * because a resit, a make-up sitting and a certification exam on a course
+ * outside any programme are all real, and the API takes the term from the
+ * course when there is one. This form asked anyway, which left an operator
+ * choosing between a row they had no reason to think about and a blank
+ * labelled "Optional" -- two ways of answering a question the record does not
+ * need. The institution's own scheduling form stopped asking some time ago;
+ * this is the console catching up, and nothing about the row that gets written
+ * changes.
  */
-export function CreateExamForm({ tenantId, courses, semesters, papers = [] }: {
-  tenantId: number; courses: CourseOption[]; semesters: SemesterOption[];
+export function CreateExamForm({ tenantId, courses, papers = [] }: {
+  tenantId: number; courses: CourseOption[];
   /** The institution's papers, so a sitting can be one sat in a browser. */
   papers?: { id: number; title: string; course_id: number | null; status: string }[];
 }) {
@@ -1738,8 +1747,7 @@ export function CreateExamForm({ tenantId, courses, semesters, papers = [] }: {
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [courseId, setCourseId] = useState<number | null>(courses[0]?.id ?? null);
-  // A course is all that is genuinely required. A semester is not: 0037 made a
-  // sitting with no term a real thing, and the API takes the course's own.
+  // A course is all that is genuinely required.
   const ready = courses.length > 0;
 
   /*
@@ -1760,14 +1768,12 @@ export function CreateExamForm({ tenantId, courses, semesters, papers = [] }: {
         setError(null);
         start(async () => {
           const startsRaw = String(data.get('starts_at') ?? '');
-          const semester = String(data.get('semester_id') ?? '');
           const paper = String(data.get('assessment_id') ?? '');
           const res = await post('onyx/platform/tenants/' + tenantId + '/exams', {
             title: String(data.get('title') ?? ''),
             course_id: Number(data.get('course_id')),
-            // Absent rather than zero when nobody picked one: the API reads
-            // the course's own term, and 0 is not a term.
-            ...(semester ? { semester_id: Number(semester) } : {}),
+            // No semester_id is sent at all. The API reads the course's own
+            // term, and writes none where the course has none.
             ...(paper ? { assessment_id: Number(paper) } : {}),
             starts_at: startsRaw ? new Date(startsRaw).toISOString() : '',
             duration_minutes: Number(data.get('duration_minutes') || 180),
@@ -1839,18 +1845,6 @@ export function CreateExamForm({ tenantId, courses, semesters, papers = [] }: {
         <input id="ce-pass" name="pass_marks" type="number" min={0} defaultValue={40}
           className={field} />
       </div>
-      <div>
-        <label className={label} htmlFor="ce-semester">Semester</label>
-        <select id="ce-semester" name="semester_id" className={field} defaultValue="">
-          <option value="">Take it from the course</option>
-          {semesters.map((sem) => <option key={sem.id} value={sem.id}>{sem.name}</option>)}
-        </select>
-        {/* Optional, and said so. It was required here while the institution's
-            own form had stopped asking -- 0037 dropped the NOT NULL because a
-            resit or a certification sitting belongs to no term. */}
-        <p className="mt-1 text-[12px] text-muted">Optional.</p>
-      </div>
-
       <div className="col-span-full flex gap-2 pt-1">
         <button type="submit" disabled={pending} className={button}>
           {pending ? 'Scheduling…' : 'Schedule it'}
@@ -2469,7 +2463,8 @@ export function DomainRowActions({ tenantId, domain }: {
 
   return (
     <>
-      <div className="flex items-center justify-end gap-1.5">
+      <div className="flex flex-wrap items-center justify-end gap-1.5">
+        <EditDomainForm tenantId={tenantId} domain={domain} />
         <button type="button" disabled={pending} onClick={() => setStatus(published ? 0 : 1)}
           className={rowButton + ' border-line bg-white text-slate-700 hover:bg-brand-50'}>
           {published ? 'Withdraw' : 'Publish'}
@@ -3122,9 +3117,23 @@ interface DraftQuestion {
   correct: string;
   /** A `single` with no key: marked by a person, not by a machine. */
   manualOnly: boolean;
-  /** `code` only: the published Code Lab problem whose tests mark it. */
+  /**
+   * `code` only: the published Code Lab problem whose tests mark it, or
+   * NEW_CONSOLE_PROBLEM to write one as part of saving the paper.
+   */
   problemId: string;
+  /** `code` only, and only when problemId is NEW_CONSOLE_PROBLEM. */
+  draft: ProblemDraft;
 }
+
+/**
+ * The picker's "write one here" option.
+ *
+ * A sentinel on the same menu rather than a toggle beside it: which problem
+ * marks this question is one question, and its answer is either one that
+ * exists or one that does not yet.
+ */
+const NEW_CONSOLE_PROBLEM = '__new__';
 
 /*
  * `correct` starts blank rather than at 'a'.
@@ -3136,7 +3145,7 @@ interface DraftQuestion {
  */
 const blankQuestion = (): DraftQuestion => ({
   type: 'single', prompt: '', points: '10', options: ['', '', '', ''],
-  correct: '', manualOnly: false, problemId: '',
+  correct: '', manualOnly: false, problemId: '', draft: blankProblemDraft(),
 });
 
 /**
@@ -3212,12 +3221,52 @@ export function ConsoleCreatePaper({ tenantId, courses, problems = [] }: {
         }
       }
       if (q.type === 'code' && !q.problemId) {
-        setError('“' + q.prompt.slice(0, 40) + '…” needs a problem to be marked against.');
+        setError('“' + q.prompt.slice(0, 40)
+          + '…” needs a problem to be marked against — pick one, or write a new one.');
         return;
+      }
+      // A drafted problem is checked here with everything else, before the
+      // first request goes out. The whole point of this pre-flight is that a
+      // paper is never left half-made; a problem drafted on question three
+      // that turns out to have no visible test case must not be discovered
+      // after the bank and two questions already exist.
+      if (q.type === 'code' && q.problemId === NEW_CONSOLE_PROBLEM) {
+        const wrong = problemDraftError(q.draft);
+        if (wrong) {
+          setError('“' + q.prompt.slice(0, 40) + '…”: ' + wrong);
+          return;
+        }
       }
     }
 
     const base = 'onyx/platform/tenants/' + tenantId;
+
+    /*
+     * Any problem written on this form is made FIRST, before the bank.
+     *
+     * It has to be: a code question cannot be bound to a problem that does not
+     * exist, and only a PUBLISHED problem can mark one -- so each drafted
+     * problem is created, given its test cases and published, and the id it
+     * comes back with is what the question carries.
+     *
+     * Before the bank rather than alongside the questions, so that a refusal
+     * here costs nothing: at this point the only rows written are problems,
+     * which are a bank of their own and are worth keeping even if the paper
+     * is abandoned. The reverse order would leave an empty question bank
+     * behind every failed attempt.
+     */
+    const authored = new Map<number, number>();
+    for (const [i, q] of clean.entries()) {
+      if (q.type !== 'code' || q.problemId !== NEW_CONSOLE_PROBLEM) continue;
+      setStage('Creating problem for question ' + (i + 1) + '…');
+      const made = await createProblemFromDraft(post, base + '/problems', q.draft);
+      if ('error' in made) {
+        setStage(null);
+        setError('Question ' + (i + 1) + ': ' + made.error);
+        return;
+      }
+      authored.set(i, made.id);
+    }
 
     setStage('Making the bank…');
     // One bank per paper, so editing one exam's questions never touches
@@ -3242,7 +3291,7 @@ export function ConsoleCreatePaper({ tenantId, courses, problems = [] }: {
         }
         : q.type === 'code'
           ? { type: 'code', prompt: q.prompt, points: Number(q.points) || 10,
-            problem_id: Number(q.problemId) }
+            problem_id: authored.get(i) ?? Number(q.problemId) }
           : { type: 'essay', prompt: q.prompt, points: Number(q.points) || 10 };
 
       const made = await post(base + '/banks/' + bankId + '/questions', body);
@@ -3363,9 +3412,20 @@ export function ConsoleCreatePaper({ tenantId, courses, problems = [] }: {
                       {(['single', 'essay', 'code'] as const).map((t) => (
                         <button
                           key={t} type="button" aria-pressed={q.type === t}
-                          disabled={t === 'code' && !usableProblems.length}
+                          /*
+                           * Never disabled any more.
+                           *
+                           * This was gated on the institution already having a
+                           * published problem, which was right while pointing
+                           * at one was the only option and is exactly backwards
+                           * now: an institution with an empty bank is the one
+                           * that most needs to write a problem while setting
+                           * its first coding paper, and the picker's "write a
+                           * new problem" is the way out of precisely that empty
+                           * state. The gate disabled the door out of the room.
+                           */
                           title={t === 'code' && !usableProblems.length
-                            ? 'This institution has no published Code Lab problem yet'
+                            ? 'No published problem here yet — you can write one on the form'
                             : undefined}
                           onClick={() => setQuestion(i, { type: t })}
                           className={'min-h-[30px] rounded-lg border px-2.5 text-[12px] '
@@ -3440,7 +3500,22 @@ export function ConsoleCreatePaper({ tenantId, courses, problems = [] }: {
                         {usableProblems.map((x) => (
                           <option key={x.id} value={x.id}>{x.title}</option>
                         ))}
+                        {/* Last on the menu. An existing problem is the better
+                            answer where there is one -- practised, trusted, and
+                            the candidate's history with it stays in one place.
+                            Writing one here is for when there is nothing to
+                            reuse, which on a first coding paper is every
+                            question. */}
+                        <option value={NEW_CONSOLE_PROBLEM}>+ Write a new problem…</option>
                       </select>
+                      {q.problemId === NEW_CONSOLE_PROBLEM ? (
+                        <div className="mt-2.5">
+                          <ProblemDraftFields draft={q.draft}
+                            onChange={(patch) => setQuestion(i,
+                              { draft: { ...q.draft, ...patch } })}
+                            inputClass={field} labelClass={label} />
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
 
@@ -3473,6 +3548,817 @@ export function ConsoleCreatePaper({ tenantId, courses, problems = [] }: {
               </button>
             </div>
           </form>
+        </Modal>
+      ) : null}
+    </>
+  );
+}
+
+/* ===================================================================== *
+ * Code Lab, from the console.
+ *
+ * The bank was READABLE here long before it was writable: the paper builder
+ * lists an institution's published problems so a coding question can be bound
+ * to one. What it could not do was make a problem, so the first coding problem
+ * at any institution had to be authored by signing in as that institution's
+ * own administrator -- which is the one thing a platform operator is not
+ * supposed to have to do.
+ *
+ * These four components are the whole authoring loop, and each maps onto one
+ * CodeLabService call rather than reimplementing its rules:
+ *
+ *   ConsoleCreateProblem  POST   .../problems          -- statement and limits
+ *   ConsoleProblemEdit    PATCH  .../problems/:id      -- change any of it
+ *   ConsoleTestCases      PUT    .../problems/:id/tests -- the answer key
+ *   ConsolePublishProblem POST   .../problems/:id/publish | /unpublish
+ *
+ * The order matters and the product says so: a problem is created as a DRAFT,
+ * because the API refuses to publish one with no test cases and refuses to
+ * change the cases of a published one. Publishing is therefore the last step
+ * and unpublishing is the only door back -- offered plainly here rather than
+ * worked around, since changing the key under submissions already marked would
+ * regrade them silently.
+ * ===================================================================== */
+
+const LANGUAGE_CHOICES = ['python', 'javascript', 'typescript', 'java', 'c', 'cpp', 'go', 'rust'];
+
+const SOLUTION_RULES: { value: string; label: string }[] = [
+  { value: 'never', label: 'Never show it' },
+  { value: 'after_solve', label: 'Once they solve it' },
+  { value: 'after_attempts', label: 'After a number of attempts' },
+  { value: 'after_date', label: 'From a date' },
+];
+
+/** Draft a coding problem: what it asks, in what language, under what limits. */
+export function ConsoleCreateProblem({ tenantId, courses }: {
+  tenantId: number; courses: CourseOption[];
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const [languages, setLanguages] = useState<string[]>(['python']);
+  const [rule, setRule] = useState('after_solve');
+
+  const toggle = (lang: string) => setLanguages((ls) =>
+    (ls.includes(lang) ? ls.filter((l) => l !== lang) : [...ls, lang]));
+
+  const form = (
+    <form
+      className="grid gap-3 sm:grid-cols-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        setError(null);
+        start(async () => {
+          if (!languages.length) { setError('Pick at least one language.'); return; }
+          const afterDate = String(data.get('solution_after') ?? '');
+          const courseRaw = String(data.get('course_id') ?? '');
+          const made = await post('onyx/platform/tenants/' + tenantId + '/problems', {
+            title: String(data.get('title') ?? ''),
+            statement: String(data.get('statement') ?? '') || null,
+            difficulty: String(data.get('difficulty') ?? 'easy'),
+            topic: String(data.get('topic') ?? '').trim() || null,
+            tags: String(data.get('tags') ?? '').split(',')
+              .map((t) => t.trim()).filter(Boolean),
+            languages,
+            course_id: courseRaw ? Number(courseRaw) : null,
+            // Seconds and megabytes on the form, because that is how a time
+            // limit is talked about; milliseconds and kilobytes on the wire,
+            // because that is what the sandbox takes.
+            time_limit_ms: Math.round((Number(data.get('time_limit')) || 5) * 1000),
+            memory_limit_kb: Math.round((Number(data.get('memory_limit')) || 256) * 1024),
+            solution: String(data.get('solution') ?? '').trim() || null,
+            solution_rule: rule,
+            ...(rule === 'after_attempts'
+              ? { solution_after_attempts: Number(data.get('after_attempts')) || 3 } : {}),
+            solution_after: rule === 'after_date' && afterDate
+              ? new Date(afterDate).toISOString() : null,
+          });
+          if (!made.ok) { setError(made.message ?? 'That did not work.'); return; }
+          setOpen(false);
+          // Straight to the new problem, not back to the list: it is a draft
+          // with no test cases, and the next thing anybody has to do is write
+          // them. Returning to the list would make a half-finished problem one
+          // more row to find.
+          router.push('/onyx/platform/tenants/' + tenantId + '/problems/' + made.data.id);
+        });
+      }}
+    >
+      <Error_ message={error} />
+      <p className="col-span-full text-[12.5px] text-muted">
+        Created as a draft. The next screen sets its test cases, which it cannot be
+        published without.
+      </p>
+
+      <div className="sm:col-span-2">
+        <label className={label} htmlFor="cprob-title">Problem</label>
+        <input id="cprob-title" name="title" required maxLength={255} placeholder="Two Sum"
+          className={field} />
+      </div>
+
+      <div className="sm:col-span-2">
+        <label className={label} htmlFor="cprob-statement">Description</label>
+        <textarea id="cprob-statement" name="statement" required rows={6}
+          placeholder={'What the program must do, the shape of its input and its output, '
+            + 'and a worked example.'}
+          className={field + ' py-2 leading-relaxed'} />
+        <p className="mt-1 text-[12px] text-muted">
+          This is what a learner reads. The visible test cases are shown alongside it, so
+          the example here and the cases below should agree.
+        </p>
+      </div>
+
+      <div>
+        <label className={label} htmlFor="cprob-difficulty">Difficulty</label>
+        <select id="cprob-difficulty" name="difficulty" defaultValue="easy" className={field}>
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </div>
+      <div>
+        <label className={label} htmlFor="cprob-topic">Topic</label>
+        <input id="cprob-topic" name="topic" maxLength={100} placeholder="Arrays"
+          className={field} />
+      </div>
+
+      <div className="sm:col-span-2">
+        <label className={label} htmlFor="cprob-tags">Tags</label>
+        <input id="cprob-tags" name="tags" placeholder="arrays, hashing" className={field} />
+        <p className="mt-1 text-[12px] text-muted">Comma-separated.</p>
+      </div>
+
+      <fieldset className="sm:col-span-2 rounded-xl border border-line p-3">
+        <legend className="px-1 text-[13.5px] font-semibold text-slate-700">
+          Languages it may be solved in
+        </legend>
+        <div className="flex flex-wrap gap-2">
+          {LANGUAGE_CHOICES.map((lang) => {
+            const on = languages.includes(lang);
+            return (
+              <button key={lang} type="button" onClick={() => toggle(lang)}
+                aria-pressed={on}
+                className={'rounded-xl px-3 py-1.5 text-[13px] font-semibold '
+                  + (on
+                    ? 'bg-brand-600 text-white'
+                    : 'border border-slate-300 bg-white text-slate-700 hover:bg-brand-50')}>
+                {lang}
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-[12px] text-muted">
+          A learner may only submit in one of these. Leaving one out is how a problem
+          whose answer key assumes Python stays fair.
+        </p>
+      </fieldset>
+
+      <div>
+        <label className={label} htmlFor="cprob-time">Time per case (seconds)</label>
+        <input id="cprob-time" name="time_limit" type="number" min={0.1} max={30} step="0.1"
+          defaultValue={5} className={field} />
+      </div>
+      <div>
+        <label className={label} htmlFor="cprob-memory">Memory per case (MB)</label>
+        <input id="cprob-memory" name="memory_limit" type="number" min={16} max={1024}
+          defaultValue={256} className={field} />
+      </div>
+
+      <div className="sm:col-span-2">
+        <label className={label} htmlFor="cprob-course">Course</label>
+        <select id="cprob-course" name="course_id" defaultValue="" className={field}>
+          <option value="">Not tied to a course</option>
+          {courses.map((c) => (
+            <option key={c.id} value={c.id}>{c.code} — {c.title}</option>
+          ))}
+        </select>
+        <p className="mt-1 text-[12px] text-muted">
+          A problem on no course is still practised and still examinable — it simply does
+          not appear under a course.
+        </p>
+      </div>
+
+      <fieldset className="sm:col-span-2 rounded-xl border border-line p-3">
+        <legend className="px-1 text-[13.5px] font-semibold text-slate-700">
+          Worked solution
+        </legend>
+        <label className="block text-[12.5px] font-semibold text-slate-700" htmlFor="cprob-solution">
+          Solution (optional)
+        </label>
+        <textarea id="cprob-solution" name="solution" rows={4}
+          className={field + ' py-2 font-mono text-[12.5px]'} />
+        <label className="mt-2 block text-[12.5px] font-semibold text-slate-700"
+          htmlFor="cprob-rule">
+          Release it to a learner
+        </label>
+        <select id="cprob-rule" name="solution_rule" value={rule}
+          onChange={(e) => setRule(e.target.value)} className={field}>
+          {SOLUTION_RULES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+        </select>
+        {rule === 'after_attempts' ? (
+          <div className="mt-2">
+            <label className="block text-[12.5px] font-semibold text-slate-700"
+              htmlFor="cprob-attempts">
+              After this many attempts
+            </label>
+            <input id="cprob-attempts" name="after_attempts" type="number" min={1} max={100}
+              defaultValue={3} className={field} />
+          </div>
+        ) : null}
+        {rule === 'after_date' ? (
+          <div className="mt-2">
+            <label className="block text-[12.5px] font-semibold text-slate-700"
+              htmlFor="cprob-after">
+              From
+            </label>
+            <input id="cprob-after" name="solution_after" type="datetime-local" className={field} />
+          </div>
+        ) : null}
+      </fieldset>
+
+      <div className="col-span-full flex gap-2 pt-1">
+        <button type="submit" disabled={pending} className={button}>
+          {pending ? 'Creating…' : 'Create the draft'}
+        </button>
+        <button type="button" disabled={pending} onClick={() => setOpen(false)}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} className={button}>
+        Add a problem
+      </button>
+      {open ? (
+        <Modal title="New coding problem" onClose={() => setOpen(false)} wide>
+          {form}
+        </Modal>
+      ) : null}
+    </>
+  );
+}
+
+export interface ConsoleProblem {
+  id: number; title: string; slug: string; statement: string | null;
+  difficulty: string; topic: string | null; tags: string[]; languages: string[];
+  course_id: number | null; time_limit_ms: number; memory_limit_kb: number;
+  status: string;
+}
+
+/**
+ * Change a problem after the fact.
+ *
+ * Open regardless of whether it is published, and deliberately so: the
+ * statement, the topic and the languages carry no answer key, and a typo in a
+ * question is worth fixing while people are reading it. The TEST CASES are the
+ * exception, and they are not on this form -- see ConsoleTestCases.
+ */
+export function ConsoleProblemEdit({ tenantId, problem, courses }: {
+  tenantId: number; problem: ConsoleProblem; courses: CourseOption[];
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const [languages, setLanguages] = useState<string[]>(problem.languages ?? []);
+
+  const toggle = (lang: string) => setLanguages((ls) =>
+    (ls.includes(lang) ? ls.filter((l) => l !== lang) : [...ls, lang]));
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)}
+        className="rounded-lg border border-slate-300 px-3 py-1.5 text-[13px] font-semibold
+                   hover:border-brand-300 hover:text-brand-700">
+        Edit
+      </button>
+    );
+  }
+
+  return (
+    <Modal title="Edit problem" onClose={() => setOpen(false)} wide>
+      <form
+        className="grid gap-3 sm:grid-cols-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const data = new FormData(e.currentTarget);
+          setError(null);
+          start(async () => {
+            if (!languages.length) { setError('Pick at least one language.'); return; }
+            const courseRaw = String(data.get('course_id') ?? '');
+            const res = await post(
+              'onyx/platform/tenants/' + tenantId + '/problems/' + problem.id,
+              {
+                title: String(data.get('title') ?? ''),
+                statement: String(data.get('statement') ?? '') || null,
+                difficulty: String(data.get('difficulty') ?? problem.difficulty),
+                topic: String(data.get('topic') ?? '').trim() || null,
+                tags: String(data.get('tags') ?? '').split(',')
+                  .map((t) => t.trim()).filter(Boolean),
+                languages,
+                course_id: courseRaw ? Number(courseRaw) : null,
+                time_limit_ms: Math.round((Number(data.get('time_limit')) || 5) * 1000),
+                memory_limit_kb: Math.round((Number(data.get('memory_limit')) || 256) * 1024),
+              }, 'PATCH');
+            if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+            setOpen(false);
+            router.refresh();
+          });
+        }}
+      >
+        <Error_ message={error} />
+        <div className="sm:col-span-2">
+          <label className={label} htmlFor="ep-title">Problem</label>
+          <input id="ep-title" name="title" required maxLength={255}
+            defaultValue={problem.title} className={field} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className={label} htmlFor="ep-statement">Description</label>
+          <textarea id="ep-statement" name="statement" rows={8}
+            defaultValue={problem.statement ?? ''}
+            className={field + ' py-2 leading-relaxed'} />
+        </div>
+        <div>
+          <label className={label} htmlFor="ep-difficulty">Difficulty</label>
+          <select id="ep-difficulty" name="difficulty" defaultValue={problem.difficulty}
+            className={field}>
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+        <div>
+          <label className={label} htmlFor="ep-topic">Topic</label>
+          <input id="ep-topic" name="topic" maxLength={100} defaultValue={problem.topic ?? ''}
+            className={field} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className={label} htmlFor="ep-tags">Tags</label>
+          <input id="ep-tags" name="tags" defaultValue={(problem.tags ?? []).join(', ')}
+            className={field} />
+        </div>
+        <fieldset className="sm:col-span-2 rounded-xl border border-line p-3">
+          <legend className="px-1 text-[13.5px] font-semibold text-slate-700">Languages</legend>
+          <div className="flex flex-wrap gap-2">
+            {[...new Set([...LANGUAGE_CHOICES, ...(problem.languages ?? [])])].map((lang) => {
+              const on = languages.includes(lang);
+              return (
+                <button key={lang} type="button" onClick={() => toggle(lang)} aria-pressed={on}
+                  className={'rounded-xl px-3 py-1.5 text-[13px] font-semibold '
+                    + (on
+                      ? 'bg-brand-600 text-white'
+                      : 'border border-slate-300 bg-white text-slate-700 hover:bg-brand-50')}>
+                  {lang}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+        <div>
+          <label className={label} htmlFor="ep-time">Time per case (seconds)</label>
+          <input id="ep-time" name="time_limit" type="number" min={0.1} max={30} step="0.1"
+            defaultValue={problem.time_limit_ms / 1000} className={field} />
+        </div>
+        <div>
+          <label className={label} htmlFor="ep-memory">Memory per case (MB)</label>
+          <input id="ep-memory" name="memory_limit" type="number" min={16} max={1024}
+            defaultValue={Math.round(problem.memory_limit_kb / 1024)} className={field} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className={label} htmlFor="ep-course">Course</label>
+          <select id="ep-course" name="course_id" defaultValue={problem.course_id ?? ''}
+            className={field}>
+            <option value="">Not tied to a course</option>
+            {courses.map((c) => (
+              <option key={c.id} value={c.id}>{c.code} — {c.title}</option>
+            ))}
+          </select>
+        </div>
+        <div className="col-span-full flex gap-2 pt-1">
+          <button type="submit" disabled={pending} className={button}>
+            {pending ? 'Saving…' : 'Save'}
+          </button>
+          <button type="button" disabled={pending} onClick={() => setOpen(false)}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+interface DraftCase {
+  name: string; stdin: string; expected_stdout: string; is_hidden: boolean; weight: string;
+}
+
+/**
+ * The answer key: the cases a submission is marked against.
+ *
+ * Two rules are the API's and are stated here rather than discovered on save,
+ * because both are about the problem being fair rather than about the form:
+ *
+ *   * **At least one case must be visible.** Without one a learner cannot tell
+ *     what the problem wants, only that they got it wrong.
+ *   * **A hidden case is the answer.** Its input, its expected output and what
+ *     a submission printed for it never reach a learner -- which is what makes
+ *     an auto-graded coding question worth anything.
+ *
+ * A published problem's cases cannot be edited at all. That is not this
+ * component being cautious: changing them under submissions already marked
+ * would regrade those silently, and nobody would know which score meant what.
+ * The way back is Unpublish, offered beside this as its own deliberate act.
+ */
+export function ConsoleTestCases({ tenantId, problemId, initial, published }: {
+  tenantId: number; problemId: number;
+  initial?: { name?: string | null; stdin: string | null; expected_stdout: string | null;
+    is_hidden: number | boolean; weight?: number }[];
+  published: boolean;
+}) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const [cases, setCases] = useState<DraftCase[]>(
+    (initial ?? []).length
+      ? initial!.map((t) => ({
+        name: t.name ?? '',
+        stdin: t.stdin ?? '',
+        expected_stdout: t.expected_stdout ?? '',
+        is_hidden: Boolean(t.is_hidden),
+        weight: String(t.weight ?? 1),
+      }))
+      : [
+        // One of each, so the shape of a usable key is the starting point
+        // rather than something to be discovered from an error message.
+        { name: 'Example', stdin: '', expected_stdout: '', is_hidden: false, weight: '1' },
+        { name: 'Hidden', stdin: '', expected_stdout: '', is_hidden: true, weight: '1' },
+      ]);
+
+  const setCase = (i: number, patch: Partial<DraftCase>) =>
+    setCases((cs) => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+
+  if (published) {
+    return (
+      <div className="rounded-2xl border border-line bg-white p-4">
+        <p className="text-[13px] text-muted">
+          This problem is published, so its test cases are fixed — changing them under
+          submissions already marked would regrade those silently. Unpublish it to edit
+          them; it stops accepting new submissions until it is published again.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      className="space-y-3 rounded-2xl border border-line bg-white p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError(null);
+        start(async () => {
+          const clean = cases
+            .map((c) => ({ ...c, expected_stdout: c.expected_stdout }))
+            .filter((c) => c.expected_stdout.trim() !== '' || c.stdin.trim() !== '');
+          if (!clean.length) { setError('A problem needs at least one test case.'); return; }
+          if (!clean.some((c) => !c.is_hidden)) {
+            setError('At least one case has to be visible — otherwise a learner cannot tell '
+              + 'what the problem wants.');
+            return;
+          }
+          const res = await post(
+            'onyx/platform/tenants/' + tenantId + '/problems/' + problemId + '/tests',
+            {
+              tests: clean.map((c, i) => ({
+                name: c.name.trim() || 'Case ' + (i + 1),
+                stdin: c.stdin,
+                expected_stdout: c.expected_stdout,
+                is_hidden: c.is_hidden,
+                weight: Number(c.weight) || 1,
+              })),
+            }, 'PUT');
+          if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+          router.refresh();
+        });
+      }}
+    >
+      <Error_ message={error} />
+
+      {cases.map((c, i) => (
+        <div key={i} className="rounded-xl border border-line p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <input aria-label={'Name of case ' + (i + 1)} value={c.name}
+              onChange={(e) => setCase(i, { name: e.target.value })}
+              placeholder={'Case ' + (i + 1)}
+              className={field + ' mt-0 max-w-[14rem] min-h-[38px]'} />
+            <label className="flex items-center gap-1.5 text-[13px] font-semibold">
+              <input type="checkbox" checked={c.is_hidden}
+                onChange={(e) => setCase(i, { is_hidden: e.target.checked })} />
+              Hidden
+            </label>
+            <label className="flex items-center gap-1.5 text-[13px] font-semibold">
+              Weight
+              <input type="number" min={0.01} step="0.01" value={c.weight}
+                onChange={(e) => setCase(i, { weight: e.target.value })}
+                className={field + ' mt-0 w-[6rem] min-h-[38px]'} />
+            </label>
+            <span className="flex-1" />
+            {cases.length > 1 ? (
+              <button type="button"
+                onClick={() => setCases((cs) => cs.filter((_, j) => j !== i))}
+                className="text-[12.5px] font-semibold text-rose-700 hover:underline">
+                Remove
+              </button>
+            ) : null}
+          </div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <div>
+              <label className="block text-[12px] font-semibold text-slate-700"
+                htmlFor={'tc-in-' + i}>
+                Input (stdin)
+              </label>
+              <textarea id={'tc-in-' + i} rows={3} value={c.stdin}
+                onChange={(e) => setCase(i, { stdin: e.target.value })}
+                className={field + ' py-2 font-mono text-[12.5px]'} />
+            </div>
+            <div>
+              <label className="block text-[12px] font-semibold text-slate-700"
+                htmlFor={'tc-out-' + i}>
+                Expected output
+              </label>
+              <textarea id={'tc-out-' + i} rows={3} value={c.expected_stdout}
+                onChange={(e) => setCase(i, { expected_stdout: e.target.value })}
+                className={field + ' py-2 font-mono text-[12.5px]'} />
+            </div>
+          </div>
+          {c.is_hidden ? (
+            <p className="mt-1.5 text-[12px] text-muted">
+              Hidden: neither this input, this expected output, nor what a submission printed
+              for it is ever shown to a learner.
+            </p>
+          ) : null}
+        </div>
+      ))}
+
+      <div className="flex flex-wrap gap-2">
+        <button type="button"
+          onClick={() => setCases((cs) => [...cs,
+            { name: '', stdin: '', expected_stdout: '', is_hidden: true, weight: '1' }])}
+          className="rounded-lg border border-line bg-white px-3 py-1.5 text-[13px] font-semibold">
+          Add another case
+        </button>
+        <span className="flex-1" />
+        <button type="submit" disabled={pending} className={button}>
+          {pending ? 'Saving…' : 'Save the test cases'}
+        </button>
+      </div>
+
+      <p className="text-[12px] text-muted">
+        Trailing spaces and line endings are ignored when output is compared — a correct
+        answer is not failed over a <code>\r\n</code>.
+      </p>
+    </form>
+  );
+}
+
+/** Publish a finished draft, or pull a live problem back to draft to fix it. */
+export function ConsolePublishProblem({ tenantId, problemId, published, caseCount }: {
+  tenantId: number; problemId: number; published: boolean; caseCount: number;
+}) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  const act = (what: 'publish' | 'unpublish') => start(async () => {
+    setError(null);
+    const res = await post(
+      'onyx/platform/tenants/' + tenantId + '/problems/' + problemId + '/' + what);
+    if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+    router.refresh();
+  });
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {error ? (
+        <p role="alert" className="w-full text-[13px] text-rose-700">{error}</p>
+      ) : null}
+      {published ? (
+        <>
+          <button type="button" disabled={pending} onClick={() => act('unpublish')}
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-[13px] font-semibold
+                       hover:border-rose-300 hover:text-rose-700 disabled:opacity-50">
+            {pending ? 'Working…' : 'Unpublish'}
+          </button>
+          <span className="text-[12.5px] text-muted">
+            Stops accepting new submissions, and lets the test cases be edited again.
+          </span>
+        </>
+      ) : (
+        <>
+          <button type="button" disabled={pending || caseCount === 0} onClick={() => act('publish')}
+            className={button}
+            title={caseCount === 0 ? 'Add test cases first' : undefined}>
+            {pending ? 'Publishing…' : 'Publish it'}
+          </button>
+          <span className="text-[12.5px] text-muted">
+            {caseCount === 0
+              ? 'A problem cannot be published with no test cases.'
+              : 'Learners can practise it, and a coding question can be marked against it.'}
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
+
+/**
+ * Edit one Live Class.
+ *
+ * The console could publish it, withdraw it and destroy it, and could not fix
+ * a typo in its title — so a price entered wrongly, or a name spelled wrong on
+ * the tile every learner sees, meant removing the whole thing and building it
+ * again, taking its registrations with it.
+ *
+ * The banner can be replaced here too, which the institution's own edit form
+ * cannot do: it sets the picture at creation and never again. Same three steps
+ * as everywhere else — ticket, PUT to storage, key — and leaving the field
+ * empty keeps whatever is already there rather than clearing it, because "I
+ * did not touch this" and "remove this" are different intentions and only one
+ * of them is expressed by an empty file input.
+ */
+export function EditDomainForm({ tenantId, domain }: {
+  tenantId: number; domain: ConsoleDomain;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stage, setStage] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  async function uploadBanner(picked: File): Promise<string> {
+    setStage('Uploading…');
+    const ticketRes = await fetch('/api/proxy/onyx/platform/tenants/' + tenantId
+      + '/domains/uploads/sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: picked.name }),
+    });
+    const ticket = await ticketRes.json().catch(() => ({ ok: false }));
+    if (!ticket.ok) throw new Error(ticket.message ?? 'Could not start the upload.');
+    const put = await fetch(ticket.data.signedUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': picked.type || 'application/octet-stream' },
+      body: picked,
+    });
+    if (!put.ok) throw new Error('The image could not be uploaded. Check your connection.');
+    return ticket.data.path as string;
+  }
+
+  const form = (
+    <form
+      className="grid gap-3 sm:grid-cols-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        setError(null);
+        start(async () => {
+          try {
+            const picked = (data.get('banner') as File | null) ?? null;
+            const imagePath = picked && picked.size ? await uploadBanner(picked) : null;
+
+            setStage('Saving…');
+            const res = await post('onyx/platform/tenants/' + tenantId + '/domains/' + domain.id, {
+              title: String(data.get('title') ?? ''),
+              summary: String(data.get('summary') ?? ''),
+              curriculum_url: String(data.get('curriculum_url') ?? ''),
+              certificate: String(data.get('certificate') ?? ''),
+              duration_label: String(data.get('duration_label') ?? ''),
+              price_minor: Math.round(Number(data.get('price_rupees') || 0) * 100),
+              status: Number(data.get('status') ?? 0),
+              // Omitted when nobody chose a new one: sending null would wipe
+              // the banner somebody uploaded, which is not what leaving a file
+              // input alone means.
+              ...(imagePath ? { image_path: imagePath } : {}),
+            }, 'PATCH');
+            if (!res.ok) throw new Error(res.message ?? 'That did not save.');
+            setStage(null);
+            setOpen(false);
+            router.refresh();
+          } catch (err) {
+            setStage(null);
+            setError(err instanceof Error ? err.message : 'That did not work.');
+          }
+        });
+      }}
+    >
+      {error ? (
+        <p role="alert" className="col-span-full rounded-xl bg-red-50 px-3 py-2 text-[13px]
+                                   text-red-700">{error}</p>
+      ) : null}
+
+      <div className="sm:col-span-2">
+        <label className={label} htmlFor="ed-title">Title</label>
+        <input id="ed-title" name="title" required maxLength={200}
+          defaultValue={domain.title} className={field} />
+      </div>
+
+      <div className="sm:col-span-2">
+        <label className={label} htmlFor="ed-banner">Replace the banner</label>
+        <input
+          id="ed-banner" name="banner" type="file" accept="image/*"
+          onChange={(e) => {
+            const picked = e.target.files?.[0] ?? null;
+            if (picked && picked.size > MAX_BANNER_BYTES) {
+              setError('That image is larger than 5 MB. A tile only needs a small one.');
+              e.target.value = '';
+              return;
+            }
+            setError(null);
+          }}
+          className="mt-1.5 block w-full text-[13.5px] file:mr-3 file:rounded-lg file:border-0
+                     file:bg-brand-50 file:px-3 file:py-2 file:text-[13px] file:font-semibold
+                     file:text-brand-700"
+        />
+        <p className="mt-1 text-[12px] text-muted">
+          {domain.image_url
+            ? 'Leave empty to keep the picture that is already there.'
+            : 'Optional. Shown on the tile — a wide image works best. Up to 5 MB.'}
+        </p>
+      </div>
+
+      <div className="sm:col-span-2">
+        <label className={label} htmlFor="ed-summary">Summary</label>
+        <textarea id="ed-summary" name="summary" maxLength={4000} rows={3}
+          defaultValue={domain.summary} className={field} />
+      </div>
+
+      <div>
+        <label className={label} htmlFor="ed-duration">Duration</label>
+        <input id="ed-duration" name="duration_label" maxLength={80}
+          defaultValue={domain.duration_label} className={field} />
+      </div>
+      <div>
+        <label className={label} htmlFor="ed-cert">Certificate awarded</label>
+        <input id="ed-cert" name="certificate" maxLength={200}
+          placeholder="Leave empty if none"
+          defaultValue={domain.certificate} className={field} />
+      </div>
+
+      <div>
+        <label className={label} htmlFor="ed-price">Price</label>
+        {/* Rupees, converted on the way out -- the column stores minor units
+            and nobody setting a price should have to multiply by a hundred. */}
+        <div className="relative">
+          <span aria-hidden className="pointer-events-none absolute left-3 top-1/2
+                                       -translate-y-1/2 text-[15px] font-semibold text-muted">₹</span>
+          <input id="ed-price" name="price_rupees" type="number" min={0} step="0.01"
+            defaultValue={(Number(domain.price_minor ?? 0) / 100).toFixed(2)}
+            className={field + ' pl-7'} />
+        </div>
+      </div>
+      <div>
+        <label className={label} htmlFor="ed-status">Shown to learners</label>
+        <select id="ed-status" name="status" defaultValue={String(domain.status)}
+          className={field}>
+          <option value="1">Published</option>
+          <option value="0">Draft — nobody outside sees it</option>
+        </select>
+      </div>
+
+      <div className="sm:col-span-2">
+        <label className={label} htmlFor="ed-url">Curriculum link</label>
+        <input id="ed-url" name="curriculum_url" maxLength={500}
+          placeholder="example.com/curriculum"
+          defaultValue={domain.curriculum_url} className={field} />
+      </div>
+
+      <div className="col-span-full flex gap-2 pt-1">
+        <button type="submit" disabled={pending} className={button}>
+          {stage ?? (pending ? 'Saving…' : 'Save')}
+        </button>
+        <button type="button" disabled={pending} onClick={() => setOpen(false)}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}
+        className="min-h-[34px] whitespace-nowrap rounded-lg border border-line bg-white px-3
+                   text-[12.5px] font-semibold text-slate-700 hover:bg-brand-50">
+        Edit
+      </button>
+      {open ? (
+        <Modal title="Edit this Live Class" onClose={() => setOpen(false)} wide>
+          {form}
         </Modal>
       ) : null}
     </>

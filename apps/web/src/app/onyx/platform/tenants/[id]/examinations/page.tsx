@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import {
   attempt, RosterHeader, WhenCell, SCROLLER, Unavailable, Workflow,
-  type AcademicsPayload, type Semester,
+  type AcademicsPayload,
 } from '@/lib/onyx-platform-tenant';
 import {
   CreateExamForm, ExamEditToggle, ConsoleCreatePaper,
@@ -18,11 +18,11 @@ export default async function OnyxPlatformExamsPage(
   await requirePlatformSession();
   const { id } = await params;
   const tenantId = Number(id);
-  const [academics, semesters] = await Promise.all([
-    attempt<AcademicsPayload>(
-      '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/academics?limit=200'),
-    attempt<Semester[]>('/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/semesters'),
-  ]);
+  // No semester list any more: the scheduling form stopped asking which term a
+  // sitting belongs to, because the API takes it from the course and 0037
+  // allows an exam that belongs to no term at all.
+  const academics = await attempt<AcademicsPayload>(
+    '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/academics?limit=200');
   // Published Code Lab problems, so a coding question in the paper builder has
   // something to be marked against. Safe if it fails -- the builder simply
   // does not offer the coding type.
@@ -41,7 +41,6 @@ export default async function OnyxPlatformExamsPage(
                 the reason the institution's own screen puts both together. */}
             <ConsoleCreatePaper tenantId={tenantId} courses={courses} problems={problems} />
           <CreateExamForm tenantId={tenantId} courses={courses}
-            semesters={semesters ?? []}
             // So a sitting can be one somebody sits in a browser. Filtered to
             // the chosen course inside the form: the API refuses a paper from
             // another course, and offering one here would be offering

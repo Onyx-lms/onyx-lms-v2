@@ -18,7 +18,7 @@ import type { OnyxDb } from './db.ts';
 import type { Role } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
 import { slugify } from '../authoring/slug.ts';
-import { peopleFor } from './directory.ts';
+import { peopleFor, UNKNOWN_PERSON } from './directory.ts';
 import type { AcademicsService } from './academics.service.ts';
 import type { QueueService } from './queue.service.ts';
 import {
@@ -30,6 +30,8 @@ const PROBLEM_COLUMNS = 'id, tenant_id, course_id, title, slug, statement, diffi
 const TEST_COLUMNS = 'id, tenant_id, problem_id, name, stdin, expected_stdout, is_hidden, weight, sort';
 const HINT_COLUMNS = 'id, tenant_id, problem_id, body, sort, penalty_percent';
 const SUBMISSION_COLUMNS = 'id, tenant_id, problem_id, user_id, language, source, mode, status, score, max_score, passed, total, compile_output, error, runtime_ms, memory_kb, queued_at, graded_at';
+/** What a filtered feed of submissions needs. Deliberately without `source`. */
+const FEED_COLUMNS = 'id, tenant_id, problem_id, user_id, language, mode, status, score, max_score, passed, total, error, runtime_ms, memory_kb, queued_at, graded_at';
 const CASE_COLUMNS = 'id, tenant_id, submission_id, test_id, name, is_hidden, passed, weight, runtime_ms, memory_kb, stdout, error';
 
 export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
@@ -717,6 +719,121 @@ export class CodeLabService {
     ]);
     const learner = people.get(String(userId)) ?? null;
     return { learner, results: rows };
+  }
+
+  /**
+   * LAB-04 -- every practice hand-in at the institution, filtered.
+   *
+   * The three reads that already existed each answer a question narrower than
+   * the one staff actually arrive with. `submissions()` is one problem for one
+   * person; `attempts()` is one problem for everyone; `practiceResultsFor()`
+   * is one person across the bank. None of them answers "who has been handing
+   * work in, on what, and how did it go" -- which is the question a tutor
+   * scanning a cohort, or an operator checking the grader is alive, is asking.
+   *
+   * Filters are applied in the database wherever the column is on the row, and
+   * in memory only for the two that are not: `course_id` lives on the problem,
+   * and the free-text search runs over resolved names and titles that no
+   * single query returns. `limit` is a real bound rather than a page size --
+   * this is a monitoring view, not a ledger to page through -- and the caller
+   * is told when it bit, so a truncated list never reads as a complete one.
+   *
+   * Unlike the learner-facing reads, `mode` defaults to everything: a Run is
+   * not an attempt at the problem (see #practice), but "did their code even
+   * execute" is exactly what somebody watching the queue wants to see.
+   */
+  async allSubmissions(tenantId: number, filters: {
+    problem_id?: number; user_id?: string; course_id?: number;
+    status?: string; language?: string; mode?: string;
+    from?: string; to?: string; search?: string; limit?: number;
+  } = {}) {
+    const limit = Math.min(Math.max(filters.limit ?? 200, 1), 1000);
+
+    // The problem is the only filter that has to be resolved before the
+    // submissions query, because `course_id` is the problem's column and not
+    // the submission's. Fetched anyway -- the list has to name each problem.
+    const { data: problemRows } = await this.#db.from('onyx_problems')
+      .select('id, title, slug, difficulty, topic, course_id, status')
+      .eq('tenant_id', tenantId);
+    const problems = new Map((problemRows ?? []).map((p) => [Number(p.id), p]));
+
+    // FEED_COLUMNS, not SUBMISSION_COLUMNS: this is a list of hundreds of rows
+    // and `source` is the whole of somebody's program. A monitoring table
+    // never renders it, and shipping every learner's code to draw a status
+    // chip is bandwidth spent on something the page then throws away. One
+    // submission's code is read through `/submissions/code/:id`, which is
+    // where reading one person's work belongs.
+    let q = this.#db.from('onyx_code_submissions')
+      .select(FEED_COLUMNS).eq('tenant_id', tenantId);
+    if (filters.problem_id) q = q.eq('problem_id', filters.problem_id);
+    if (filters.user_id) q = q.eq('user_id', filters.user_id);
+    if (filters.status) q = q.eq('status', filters.status);
+    if (filters.language) q = q.eq('language', filters.language);
+    if (filters.mode) q = q.eq('mode', filters.mode);
+    if (filters.from) {
+      const t = Date.parse(filters.from);
+      if (!Number.isFinite(t)) throw new HttpError(422, 'That is not a start date.');
+      q = q.gte('queued_at', new Date(t).toISOString());
+    }
+    if (filters.to) {
+      const t = Date.parse(filters.to);
+      if (!Number.isFinite(t)) throw new HttpError(422, 'That is not an end date.');
+      q = q.lte('queued_at', new Date(t).toISOString());
+    }
+    if (filters.course_id) {
+      const onCourse = [...problems.values()]
+        .filter((p) => Number(p.course_id) === Number(filters.course_id))
+        .map((p) => Number(p.id));
+      // An institution with no problem on that course has no submissions on
+      // it either -- and `.in()` with an empty list is an error in PostgREST,
+      // not an empty result.
+      if (!onCourse.length) {
+        return { submissions: [], total: 0, truncated: false, languages: [], statuses: [] };
+      }
+      q = q.in('problem_id', onCourse);
+    }
+
+    // One row past the limit, so "there are more of these" is a fact rather
+    // than a guess made from the list being exactly `limit` long.
+    const { data } = await q.order('id', { ascending: false }).limit(limit + 1);
+    let rows = data ?? [];
+
+    const people = await peopleFor(this.#db, tenantId, rows.map((r) => r.user_id));
+
+    let out = rows.map((r) => {
+      const problem = problems.get(Number(r.problem_id)) ?? null;
+      const person = people.get(String(r.user_id)) ?? null;
+      return {
+        ...r,
+        problem_title: problem?.title ?? 'Deleted problem',
+        problem_slug: problem?.slug ?? null,
+        difficulty: problem?.difficulty ?? null,
+        topic: problem?.topic ?? null,
+        course_id: problem?.course_id ?? null,
+        learner: person?.name ?? UNKNOWN_PERSON,
+        roll_number: person?.roll_number ?? null,
+      };
+    });
+
+    if (filters.search?.trim()) {
+      // Over the resolved fields, which is the only place a name and a problem
+      // title exist on the same object -- a `.ilike()` could search neither.
+      const needle = filters.search.trim().toLowerCase();
+      out = out.filter((r) => r.learner.toLowerCase().includes(needle)
+        || (r.roll_number ?? '').toLowerCase().includes(needle)
+        || r.problem_title.toLowerCase().includes(needle));
+    }
+
+    const truncated = out.length > limit;
+    if (truncated) out = out.slice(0, limit);
+
+    // What the filter menus should offer: what is actually in this
+    // institution's submissions, not the full list of languages the sandbox
+    // supports, most of which nobody here has ever used.
+    const languages = [...new Set(rows.map((r) => String(r.language)).filter(Boolean))].sort();
+    const statuses = [...new Set(rows.map((r) => String(r.status)).filter(Boolean))].sort();
+
+    return { submissions: out, total: out.length, truncated, languages, statuses };
   }
 
   // ---- internals ----

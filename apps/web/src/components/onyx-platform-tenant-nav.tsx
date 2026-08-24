@@ -50,6 +50,14 @@ const GROUPS: TenantNavGroup[] = [
     { seg: 'timetable', label: 'Timetable', icon: 'calendar' },
     { seg: 'examinations', label: 'Examinations', icon: 'award' },
     { seg: 'assessments', label: 'Assessments', icon: 'target' },
+    // Code Lab, which had no console route at all. The paper builder could
+    // BIND a coding question to one of an institution's published problems but
+    // there was no way to create one, so the first coding problem anywhere had
+    // to be authored by signing in as that institution's own administrator.
+    { seg: 'problems', label: 'Code Lab', icon: 'code' },
+    // What learners actually did with it: hand-ins and project workspaces.
+    // Beside Code Lab because it is the same feature read from the other end.
+    { seg: 'practice', label: 'Practice activity', icon: 'layers' },
   ] },
   { label: 'Governance', items: [
     { seg: 'permissions', label: 'Permissions', icon: 'shield' },
@@ -110,7 +118,7 @@ const OFF_MENU: Record<string, string> = {
  */
 const DETAIL_OF: Record<string, string> = {
   courses: 'Course', domains: 'Live Class', assessments: 'Assessment',
-  examinations: 'Examination',
+  examinations: 'Examination', problems: 'Coding problem',
 };
 
 export function sectionOf(pathname: string, tenantId: number): {

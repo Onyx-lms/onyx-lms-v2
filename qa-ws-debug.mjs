@@ -1,0 +1,12 @@
+import { chromium } from '@playwright/test';
+const BASE='http://localhost:5199';
+const b=await chromium.launch(); const c=await b.newContext(); const p=await c.newPage();
+await p.goto(BASE+'/onyx/login',{waitUntil:'domcontentloaded'});
+await p.locator('#email').fill('admin@demo.onyx'); await p.locator('#password').fill('Demo#2026!');
+await p.getByRole('button',{name:/sign in/i}).click();
+await p.waitForURL(u=>!u.pathname.endsWith('/login'),{timeout:40000});
+const jar = (await c.cookies()).map(k=>k.name+'='+k.value).join('; ');
+const html = await (await fetch(BASE+'/onyx/workspaces?language=python',{headers:{Cookie:jar}})).text();
+const i = html.indexOf('w-language');
+console.log('select html:', html.slice(i-200, i+600).replace(/</g,'\n<'));
+await b.close();

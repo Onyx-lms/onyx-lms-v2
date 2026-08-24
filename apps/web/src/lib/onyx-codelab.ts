@@ -68,7 +68,8 @@ export interface ProblemDetail extends Problem {
 export interface Workspace {
   id: number;
   course_id: number | null;
-  user_id: number;
+  /** The owner's account id -- a uuid since 0014, not a bigint. */
+  user_id: string;
   title: string;
   language: string;
   entry_path: string;
@@ -100,3 +101,47 @@ export interface WorkspaceRunResult {
 export const DIFFICULTY_LABELS: Record<string, string> = {
   easy: 'Easy', medium: 'Medium', hard: 'Hard',
 };
+
+/**
+ * One practice hand-in, as the staff-facing lists read it.
+ *
+ * The problem's title and the learner's name are resolved by the service
+ * rather than by the page: both live on other tables, and every screen that
+ * needed them was otherwise going to resolve them again.
+ */
+export interface CodeSubmissionRow {
+  id: number;
+  problem_id: number;
+  user_id: string;
+  language: string;
+  mode: 'run' | 'submit';
+  /** What the grader writes. 'done' is the success state -- the UI labels it Graded. */
+  status: 'queued' | 'running' | 'done' | 'failed';
+  score: number;
+  max_score: number;
+  passed: number;
+  total: number;
+  error: string | null;
+  runtime_ms: number | null;
+  memory_kb: number | null;
+  queued_at: string;
+  graded_at: string | null;
+  problem_title: string;
+  problem_slug: string | null;
+  difficulty: string | null;
+  topic: string | null;
+  course_id: number | null;
+  learner: string;
+  roll_number: string | null;
+}
+
+/** What `GET /api/onyx/practice/submissions` answers with. */
+export interface CodeSubmissionFeed {
+  submissions: CodeSubmissionRow[];
+  total: number;
+  /** True when the limit bit, so a partial list never reads as a whole one. */
+  truncated: boolean;
+  /** The languages and states actually present, for the filter menus. */
+  languages: string[];
+  statuses: string[];
+}

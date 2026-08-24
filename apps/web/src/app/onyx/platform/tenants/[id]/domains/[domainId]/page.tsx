@@ -5,6 +5,7 @@ import {
   attempt, SCROLLER, Unavailable, money, ago,
 } from '@/lib/onyx-platform-tenant';
 import { Card, DataTable, EmptyRow, Icon, Pill, SectionHead, State } from '@/components/onyx-ui';
+import { EditDomainForm, type ConsoleDomain } from '@/components/onyx-platform-forms';
 
 export const metadata: Metadata = { title: 'Live Class' };
 
@@ -83,9 +84,14 @@ export default async function OnyxPlatformDomainPage(
               </span>
             </div>
           </div>
-          {domain.status === 1
-            ? <State tone="on">Published</State>
-            : <State tone="idle">Draft</State>}
+          <div className="flex shrink-0 items-center gap-2">
+            {domain.status === 1
+              ? <State tone="on">Published</State>
+              : <State tone="idle">Draft</State>}
+            {/* Editing belongs here as well as on the tile: this is the page
+                somebody lands on when they open a Live Class to change it. */}
+            <EditDomainForm tenantId={tenantId} domain={domain as ConsoleDomain} />
+          </div>
         </div>
         {domain.curriculum_url ? (
           <a href={domain.curriculum_url} target="_blank" rel="noopener noreferrer"

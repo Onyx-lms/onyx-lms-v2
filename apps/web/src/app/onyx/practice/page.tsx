@@ -74,10 +74,16 @@ export default async function OnyxPracticePage({ searchParams }: {
       // "Your results" pointed at /onyx/results, which is the grades ledger:
       // exam marks, assessment attempts and transcripts, and not one word
       // about practice. The button promised one thing and delivered another.
-      // Staff get the same link because the page behind it answers a question
-      // they also have -- which problems has a given learner solved.
+      //
+      // Staff get two links rather than that one, because they ask two
+      // questions. "Learner progress" needs a name chosen before it shows
+      // anything, which is the wrong shape for "has anybody handed anything in
+      // today" -- so the cohort-wide submission feed is its own destination.
       action={isStaff(me.role) ? (
-        <ActionLink href="/onyx/practice/results" label="Learner progress" tone="quiet" />
+        <span className="flex flex-wrap items-center gap-2">
+          <ActionLink href="/onyx/practice/submissions" label="Submissions" tone="quiet" />
+          <ActionLink href="/onyx/practice/results" label="Learner progress" tone="quiet" />
+        </span>
       ) : (
         <ActionLink href="/onyx/practice/results" label="Your practice results" tone="quiet" />
       )}

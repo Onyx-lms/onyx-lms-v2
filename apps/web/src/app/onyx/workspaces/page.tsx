@@ -40,9 +40,40 @@ function since(iso: string, now = Date.now()): string {
     { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+/**
+ * The filters the monitoring table understands.
+ *
+ * They apply to the STAFF table only, never to "your workspaces" above it: a
+ * lecturer narrowing the institution's list to one learner did not also mean
+ * to hide their own projects, and a filter that silently empties two lists is
+ * a filter people stop trusting.
+ */
+interface Query {
+  owner?: string; course?: string; language?: string; search?: string;
+}
+
+/** Only the filters that were actually set, so the URL stays readable. */
+function monitorQuery(q: Query): URLSearchParams {
+  const out = new URLSearchParams();
+  if (q.owner?.trim()) out.set('user_id', q.owner.trim());
+  // 'none' is a value, not a blank: "personal projects, on no course" is a
+  // real thing to look for and has to survive the round trip.
+  if (q.course?.trim()) out.set('course_id', q.course.trim());
+  if (q.language?.trim()) out.set('language', q.language.trim());
+  if (q.search?.trim()) out.set('search', q.search.trim());
+  return out;
+}
+
+const control = 'mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm '
+  + 'focus:border-brand-600 focus:outline-none';
+const filterLabel = 'block text-[12px] font-semibold text-slate-700';
+
 /** LAB-05 -- a learner's project workspaces. */
-export default async function OnyxWorkspacesPage() {
+export default async function OnyxWorkspacesPage(
+  { searchParams }: { searchParams: Promise<Query> },
+) {
   await requireOnyxSession();
+  const q = await searchParams;
   const [me, workspaces, courses] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
     onyxApi<Workspace[]>('/api/onyx/workspaces'),
@@ -57,16 +88,26 @@ export default async function OnyxWorkspacesPage() {
   // admin-and-faculty already; `?all=1` so a course only a faculty member's
   // own draft is still named correctly rather than falling back to an id.
   const staff = me.role === 'admin' || me.role === 'faculty';
+  // The filters go to the server, not to a `.filter()` on the response: what
+  // comes back is already scoped to what this person may see (an admin's whole
+  // institution, a lecturer's own classes), and narrowing it there keeps that
+  // boundary the one place it is decided.
+  const monitor = monitorQuery(q);
   const [everyProject, members] = staff
     ? await Promise.all([
-      onyxApiSafe<Workspace[]>('/api/onyx/workspaces/all'),
-      onyxApiSafe<{ user: { id: number; name: string; email: string } | null }[]>(
+      onyxApiSafe<Workspace[]>(
+        '/api/onyx/workspaces/all' + (monitor.size ? '?' + monitor : '')),
+      onyxApiSafe<{ user_id: string; roll_number: string | null;
+        user: { id: string; name: string; email: string } | null }[]>(
         '/api/onyx/members'),
     ])
     : [null, null];
+  const filtering = monitor.size > 0;
+  // Keyed as a string on both sides: an account id is a uuid (0014), and a
+  // Map keyed by one type and read with another silently misses every row.
   const ownerOf = new Map((members ?? [])
     .filter((m) => m.user)
-    .map((m) => [m.user!.id, m.user!]));
+    .map((m) => [String(m.user!.id), m.user!]));
   const allCourses = staff
     ? await onyxApiSafe<Course[]>('/api/onyx/courses?all=1')
     : null;
@@ -179,12 +220,83 @@ export default async function OnyxWorkspacesPage() {
           <SectionHead title={(me.role === 'admin'
             ? 'Every project at ' + me.tenant.name
             : 'Every project on your courses') + ' · ' + everyProject.length} />
+
+          {/* A GET form, so a narrowed view is a URL somebody can send. The
+              language menu is built from what came back rather than from a
+              fixed list: once a filter is on, it lists what is in front of you,
+              which is the honest set to widen from. */}
+          <Card className="mb-4 p-4">
+            <form method="GET" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="sm:col-span-2">
+                <label className={filterLabel} htmlFor="w-search">Search</label>
+                <input id="w-search" name="search" defaultValue={q.search ?? ''}
+                  placeholder="Project name" className={control} />
+              </div>
+              <div>
+                <label className={filterLabel} htmlFor="w-owner">Owner</label>
+                <select id="w-owner" name="owner" defaultValue={q.owner ?? ''}
+                  className={control}>
+                  <option value="">Anyone</option>
+                  {(members ?? []).filter((m) => m.user).map((m) => (
+                    <option key={m.user_id} value={m.user_id}>
+                      {m.roll_number ? m.roll_number + ' · ' : ''}{m.user!.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={filterLabel} htmlFor="w-course">Course</label>
+                <select id="w-course" name="course" defaultValue={q.course ?? ''}
+                  className={control}>
+                  <option value="">Any course</option>
+                  {/* Only offered to an administrator: for faculty this list is
+                      course-attached work by definition, so "no course" is an
+                      empty answer rather than a useful filter. */}
+                  {me.role === 'admin'
+                    ? <option value="none">Personal projects (no course)</option>
+                    : null}
+                  {(allCourses ?? []).map((c) => (
+                    <option key={c.id} value={c.id}>{c.code} — {c.title}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={filterLabel} htmlFor="w-language">Language</label>
+                <select id="w-language" name="language" defaultValue={q.language ?? ''}
+                  className={control}>
+                  <option value="">Any language</option>
+                  {[...new Set([
+                    ...everyProject.map((w) => w.language),
+                    ...(q.language ? [q.language] : []),
+                  ].filter(Boolean))].sort().map((l) => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
+                <button type="submit"
+                  className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white
+                             hover:bg-brand-700">
+                  Show these
+                </button>
+                {filtering ? (
+                  <Link href="/onyx/workspaces"
+                    className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold
+                               hover:bg-canvas">
+                    Clear
+                  </Link>
+                ) : null}
+              </div>
+            </form>
+          </Card>
           {everyProject.length === 0 ? (
             <Card>
               <Empty icon="layers">
-                {me.role === 'admin'
-                  ? 'Nobody has started a project yet.'
-                  : 'No student has started a project on a course you teach yet.'}
+                {filtering
+                  ? 'No project matches those filters. Widen them or clear them.'
+                  : me.role === 'admin'
+                    ? 'Nobody has started a project yet.'
+                    : 'No student has started a project on a course you teach yet.'}
               </Empty>
             </Card>
           ) : (
@@ -215,7 +327,7 @@ export default async function OnyxWorkspacesPage() {
                   {[...everyProject]
                     .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))
                     .map((w) => {
-                      const owner = ownerOf.get(w.user_id);
+                      const owner = ownerOf.get(String(w.user_id));
                       const course = w.course_id === null ? null : courseByIdAll.get(w.course_id);
                       return (
                         <tr key={w.id} className="hover:bg-brand-50/40">

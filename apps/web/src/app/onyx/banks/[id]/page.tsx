@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: 'Question bank' };
 
 interface Question {
   id: number;
-  type: 'single' | 'multiple' | 'truefalse' | 'short' | 'essay';
+  type: 'single' | 'multiple' | 'truefalse' | 'short' | 'essay' | 'code';
   prompt: string;
   options: { id: string; text: string }[] | null;
   /** Fetched but not rendered in the read-only row -- see the page's own
@@ -33,6 +33,9 @@ const TYPE_LABELS: Record<string, string> = {
   truefalse: 'True/false',
   short: 'Short answer',
   essay: 'Essay',
+  // 0021 added this type and nothing here was told: a coding question rendered
+  // with the raw word "code" in the chip while every other type had a name.
+  code: 'Write code',
 };
 
 /** An objective question is scored against a key; the rest are marked by hand. */
@@ -52,15 +55,25 @@ export default async function OnyxBankPage({ params }: { params: Promise<{ id: s
   const me = await onyxApi<Me>('/api/onyx/me');
   if (!isExamsStaff(me.role)) redirect('/onyx/denied');
 
-  // Published problems only: a code question needs something that can actually
-  // mark it, and the service refuses a draft problem anyway.
-  const [banks, questions, problems] = await Promise.all([
+  const [banks, questions, allProblems] = await Promise.all([
     onyxApi<{ id: number; name: string; description: string | null; course_id: number | null }[]>(
       '/api/onyx/banks'),
     onyxApi<Question[]>('/api/onyx/banks/' + id + '/questions'),
-      onyxApiSafe<{ id: number; title: string; difficulty: string }[]>(
+    onyxApiSafe<{ id: number; title: string; difficulty: string; status: string }[]>(
       '/api/onyx/problems'),
   ]);
+  /*
+   * Published only, and filtered HERE rather than relied on upstream.
+   *
+   * The comment on this fetch used to claim the endpoint returned published
+   * problems only. It does not: `/api/onyx/problems` shows staff the whole
+   * bank, drafts included, which is right for the Practice screen and wrong
+   * for this picker -- it offered drafts, and binding a question to one is
+   * refused by the service with a 422 nobody could have anticipated from the
+   * menu. A draft is not an option here because its tests are not finished,
+   * and its tests are what mark the question.
+   */
+  const problems = (allProblems ?? []).filter((p) => p.status === 'published');
   const bank = banks.find((b) => String(b.id) === id);
   const marks = questions.reduce((sum, q) => sum + Number(q.points), 0);
   const objective = questions.filter((q) => OBJECTIVE.has(q.type)).length;
@@ -123,7 +136,7 @@ export default async function OnyxBankPage({ params }: { params: Promise<{ id: s
 
       {canEdit ? (
         <div className="mt-5">
-          <AddQuestion problems={problems ?? []} bankId={Number(id)} />
+          <AddQuestion problems={problems} bankId={Number(id)} />
         </div>
       ) : null}
 

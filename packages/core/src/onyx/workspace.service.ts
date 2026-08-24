@@ -53,6 +53,42 @@ export function normalisePath(input: string): string {
   return cleaned;
 }
 
+/**
+ * What a monitoring list may be narrowed by.
+ *
+ * Only the columns that are actually on the workspace row. `search` is not one
+ * of them -- it runs over the title in memory below, because the other thing
+ * somebody searches for (an owner's name) lives on a different table and the
+ * page already has those names resolved.
+ */
+export interface WorkspaceFilters {
+  course_id?: number | null;
+  /** A uuid since 0014, not a bigint -- never coerce it to a number. */
+  user_id?: string;
+  language?: string;
+  search?: string;
+}
+
+type WorkspaceQuery = { eq: (col: string, v: unknown) => WorkspaceQuery; is: (col: string, v: unknown) => WorkspaceQuery };
+
+function applyFilters<Q>(q: Q, filters: WorkspaceFilters): Q {
+  let out = q as unknown as WorkspaceQuery;
+  // `course_id: null` is a real answer -- "personal projects, on no course" --
+  // and distinct from not filtering at all, so it is checked for explicitly
+  // rather than falling into the falsy branch with 0 and undefined.
+  if (filters.course_id === null) out = out.is('course_id', null);
+  else if (filters.course_id) out = out.eq('course_id', filters.course_id);
+  if (filters.user_id) out = out.eq('user_id', filters.user_id);
+  if (filters.language) out = out.eq('language', filters.language);
+  return out as unknown as Q;
+}
+
+function searchOf<T extends { title: string }>(rows: T[], search?: string): T[] {
+  if (!search?.trim()) return rows;
+  const needle = search.trim().toLowerCase();
+  return rows.filter((w) => String(w.title ?? '').toLowerCase().includes(needle));
+}
+
 export class WorkspaceService {
   #db: OnyxDb;
   #academics: AcademicsService;
@@ -106,12 +142,13 @@ export class WorkspaceService {
    * administrator does not create workspaces here, they monitor everyone
    * who does. Ownership is who to ask about it, not who else can read it:
    * see #assertReachable() for the actual open-one-and-look-inside check. */
-  async listAll(tenantId: number) {
-    const { data } = await this.#db.from('onyx_workspaces')
+  async listAll(tenantId: number, filters: WorkspaceFilters = {}) {
+    let q = this.#db.from('onyx_workspaces')
       .select(WORKSPACE_COLUMNS)
-      .eq('tenant_id', tenantId)
-      .order('id', { ascending: false });
-    return data ?? [];
+      .eq('tenant_id', tenantId);
+    q = applyFilters(q, filters);
+    const { data } = await q.order('id', { ascending: false });
+    return searchOf(data ?? [], filters.search);
   }
 
   /**
@@ -122,13 +159,26 @@ export class WorkspaceService {
    * individually if they somehow had its id; this is the list that makes
    * them discoverable in the first place.
    */
-  async listForCourses(tenantId: number, courseIds: number[]) {
+  async listForCourses(tenantId: number, courseIds: number[], filters: WorkspaceFilters = {}) {
     if (!courseIds.length) return [];
-    const { data } = await this.#db.from('onyx_workspaces')
+    // A course filter from the caller narrows what they may already see; it
+    // never widens it. Asking for a course they do not teach is an empty list,
+    // not somebody else's classes.
+    const asked = filters.course_id;
+    // "Personal projects, on no course" is a coherent thing to ask for and an
+    // empty answer here: this list is course-attached work by definition, so
+    // the honest response is nothing rather than every class they teach.
+    if (asked === null) return [];
+    const scope = asked
+      ? courseIds.filter((id) => Number(id) === Number(asked))
+      : courseIds;
+    if (!scope.length) return [];
+    let q = this.#db.from('onyx_workspaces')
       .select(WORKSPACE_COLUMNS)
-      .eq('tenant_id', tenantId).in('course_id', courseIds)
-      .order('id', { ascending: false });
-    return data ?? [];
+      .eq('tenant_id', tenantId).in('course_id', scope);
+    q = applyFilters(q, { ...filters, course_id: undefined });
+    const { data } = await q.order('id', { ascending: false });
+    return searchOf(data ?? [], filters.search);
   }
 
   /** The workspace with its tree, its snapshots and its review comments. */

@@ -45,6 +45,22 @@ const I = {
   // sitemap entry and every stale link somebody saved.
   domains:   { href: '/onyx/domains', label: 'Live Classes', icon: 'video' },
   practice:  { href: '/onyx/practice', label: 'Practice', icon: 'code' },
+  /**
+   * The same route, named for what STAFF do there.
+   *
+   * `/onyx/practice` is two screens sharing a URL: a learner works through
+   * problems, and staff read the bank, drafts included, with the form that
+   * creates one at the top. Calling it "Practice" on an administrator's menu
+   * described the half that is not theirs, which is most of the reason the
+   * item had been dropped from that menu altogether -- and dropping it took
+   * the only entrance to problem authoring with it.
+   */
+  bank:      { href: '/onyx/practice', label: 'Code Lab', icon: 'code' },
+  // Staff only, and its own destination rather than a link inside the bank:
+  // "what has this cohort handed in" is a different question from "what is in
+  // the bank", and the bank page cannot answer it without a problem chosen
+  // first.
+  handins:   { href: '/onyx/practice/submissions', label: 'Submissions', icon: 'list' },
   spaces:    { href: '/onyx/workspaces', label: 'Workspaces', icon: 'layers' },
   assess:    { href: '/onyx/assessments', label: 'Assessments', icon: 'edit' },
   results:   { href: '/onyx/results', label: 'Results', icon: 'award' },
@@ -116,7 +132,7 @@ const NAV: Record<Role, OnyxNavGroup[]> = {
     { items: [I.inbox] },
   ],
   faculty: [
-    { items: [I.dashboard, I.courses, I.domains, I.practice, I.spaces] },
+    { items: [I.dashboard, I.courses, I.domains, I.practice, I.handins, I.spaces] },
     { label: 'Assessment', items: [I.assess, I.exams, I.invigilate] },
     { label: 'Teaching', items: [I.programs, I.timetable, I.allocate, I.people] },
     { label: 'Support', items: [I.mentor, I.inbox, I.profile] },
@@ -148,11 +164,21 @@ const NAV: Record<Role, OnyxNavGroup[]> = {
   // people control, which is the reason there is nowhere else to navigate to.
   guardian: [{ items: [I.family, I.inbox, I.profile] }],
   admin: [
-    // Practice (a learner's own coding drills) dropped from here: it is not
-    // a job an administrator does, unlike Workspaces, which stays -- an
-    // admin monitors every learner's projects there, rather than keeping
-    // their own.
-    { items: [I.dashboard, I.courses, I.domains, I.spaces] },
+    { items: [I.dashboard, I.courses, I.domains] },
+    /*
+     * Code Lab, which an administrator had no way to reach from the menu.
+     *
+     * The item was dropped once as "Practice — a learner's own coding drills,
+     * not a job an administrator does". That is true of the learner's half of
+     * `/onyx/practice` and false of the staff half: the same route is the
+     * problem bank, drafts included, and carries the form that CREATES a
+     * coding problem. Removing the link removed the only entrance to problem
+     * authoring in the whole product for the one role that owns it, and left
+     * "where do I add a coding problem" with no answer short of typing the
+     * URL. It is back under the name of the job, with the two things an
+     * administrator monitors rather than does beside it.
+     */
+    { label: 'Code Lab', items: [I.bank, I.handins, I.spaces] },
     // Invigilation and placement are the administrator's too: ASS-03 lets them
     // watch a sitting and CAR-04 makes them keeper of the employer records.
     // Both were reachable only by typing the URL until this line existed.

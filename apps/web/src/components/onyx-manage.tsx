@@ -3,6 +3,10 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/onyx-ui';
+import {
+  ProblemDraftFields, blankProblemDraft, createProblemFromDraft,
+  type ProblemDraft,
+} from '@/components/onyx-code-problem';
 
 /**
  * The management surfaces that take a LIST rather than a record.
@@ -1237,6 +1241,16 @@ const QUESTION_TYPES = [
  * rule worth meeting at the point of typing rather than discovering on save.
  * An essay carries no key at all: it is marked by a person.
  */
+/**
+ * The picker's "write one here" option.
+ *
+ * A sentinel rather than a separate toggle, because the question being asked
+ * is one question -- which problem marks this? -- and its answer is either one
+ * that exists or one that does not yet. A checkbox beside the menu would let
+ * both be set at once, and something would have to decide which wins.
+ */
+const NEW_PROBLEM = '__new__';
+
 export function AddQuestion({ bankId, problems = [] }: {
   bankId: number;
   /** Published Code Lab problems a `code` question can point at. */
@@ -1253,10 +1267,15 @@ export function AddQuestion({ bankId, problems = [] }: {
   const [correct, setCorrect] = useState<string[]>([]);
   const [answer, setAnswer] = useState('false');
   const [problemId, setProblemId] = useState('');
+  // '' means "use the picker". NEW means author one here and now -- see
+  // onyx-code-problem.tsx for why the picker keeps its place rather than being
+  // replaced by this.
+  const [draft, setDraft] = useState<ProblemDraft>(blankProblemDraft);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   const choice = type === 'single' || type === 'multiple';
+  const authoring = problemId === NEW_PROBLEM;
 
   return (
     <Shell title="New question" cta="Add a question" open={open} setOpen={setOpen}
@@ -1290,13 +1309,26 @@ export function AddQuestion({ bankId, problems = [] }: {
            * exactly how it was reported.
            */
           if (!problemId) {
-            setError(problems.length
-              ? 'Choose the problem this question is answered against.'
-              : 'There are no published problems to ask yet. Author one in Practice, '
-                + 'give it test cases and publish it first.');
+            setError('Choose the problem this question is answered against, or write a new one.');
             return;
           }
-          body.problem_id = Number(problemId);
+          if (authoring) {
+            /*
+             * Made, keyed and published before the question is posted.
+             *
+             * In that order and not the other way round: a question cannot be
+             * bound to a problem that does not exist yet, and a code question
+             * whose problem is still a draft cannot be marked. If any of the
+             * three steps is refused the question is NOT posted -- leaving a
+             * question pointing at a half-finished problem is worse than
+             * leaving the form open with the reason on it.
+             */
+            const made = await createProblemFromDraft(send, 'problems', draft);
+            if ('error' in made) { setError(made.error); return; }
+            body.problem_id = made.id;
+          } else {
+            body.problem_id = Number(problemId);
+          }
         }
         const res = await send('banks/' + bankId + '/questions', body);
         if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
@@ -1305,6 +1337,7 @@ export function AddQuestion({ bankId, problems = [] }: {
         setCorrect([]);
         setAnswer('false');
         setProblemId('');
+        setDraft(blankProblemDraft());
         setOpen(false);
         router.refresh();
       })}>
@@ -1395,18 +1428,38 @@ export function AddQuestion({ bankId, problems = [] }: {
             <select id="q-problem" value={problemId}
               onChange={(e) => setProblemId(e.target.value)}
               className={input + ' mt-1 w-full'}>
-              <option value="">Choose a published problem…</option>
+              <option value="">
+                {problems.length ? 'Choose a published problem…' : 'Choose…'}
+              </option>
               {problems.map((p) => (
                 <option key={p.id} value={p.id}>{p.title} ({p.difficulty})</option>
               ))}
+              {/* Last on the menu, not first. An existing problem is the better
+                  answer where there is one: it has been practised, its tests
+                  are trusted, and a candidate's history with it stays in one
+                  place. Writing a new one is for when there is nothing to
+                  reuse -- which, on an institution's first coding paper, is
+                  every question. */}
+              <option value={NEW_PROBLEM}>+ Write a new problem…</option>
             </select>
             <p className="mt-1 text-xs text-muted">
-              {problems.length
-                ? 'Its test cases mark the answer, hidden ones included — there is no key '
-                  + 'to type here, because the tests are the key.'
-                : 'No published problems yet. Author one in Practice, give it test cases '
-                  + 'and publish it, and it can be asked here.'}
+              {authoring
+                ? 'It is created, given its test cases and published when you save this '
+                  + 'question — all three, because a code question can only be marked by a '
+                  + 'published problem.'
+                : problems.length
+                  ? 'Its test cases mark the answer, hidden ones included — there is no key '
+                    + 'to type here, because the tests are the key.'
+                  : 'No published problems yet — write one here, or author it in Practice '
+                    + 'and come back.'}
             </p>
+            {authoring ? (
+              <div className="mt-3">
+                <ProblemDraftFields draft={draft}
+                  onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
+                  inputClass={input} labelClass="block text-[13px] font-semibold text-slate-700" />
+              </div>
+            ) : null}
           </div>
         ) : (
           <p className="text-xs text-muted">

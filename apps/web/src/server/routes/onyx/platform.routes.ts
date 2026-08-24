@@ -17,6 +17,7 @@ import {
 } from '@onyx/core';
 import type { Role } from '@onyx/types';
 import type { AppContext } from '../../app-context.ts';
+import { syncExamAssessmentWindow } from '../../exam-window.ts';
 
 const asReq = (req: ReqLike) => ({
   headers: req.headers as Record<string, string | string[] | undefined>,
@@ -27,6 +28,33 @@ const idOf = (req: ReqLike) => Number((req.params as { id: string }).id);
 const subIdOf = (req: ReqLike, key: string) =>
   Number((req.params as Record<string, string>)[key]);
 const RoleSchema = z.enum(ROLES as [Role, ...Role[]]);
+
+/**
+ * The fields a Code Lab problem is written with, from the console.
+ *
+ * One schema for create and patch, because they take the same fields and only
+ * differ on whether `title` is required -- each route `.extend()`s that.
+ * Nothing here re-checks what the service already checks (that a difficulty is
+ * a difficulty, that a date rule carries a date): a second copy of a rule is a
+ * second place for it to drift.
+ */
+const ProblemBody = z.object({
+  statement: z.string().max(50_000).nullish(),
+  difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+  topic: z.string().max(100).nullish(),
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  languages: z.array(z.string().max(30)).max(20).optional(),
+  course_id: z.number().int().positive().nullish(),
+  time_limit_ms: z.number().int().min(100).max(30_000).optional(),
+  memory_limit_kb: z.number().int().min(1024).max(1024 * 1024).optional(),
+  solution: z.string().max(50_000).nullish(),
+  solution_rule: z.enum(['never', 'after_solve', 'after_attempts', 'after_date']).optional(),
+  solution_after_attempts: z.number().int().min(1).max(100).optional(),
+  solution_after: z.string().max(40).nullish(),
+});
+
+type ProblemInput = Parameters<AppContext['onyxCodeLab']['createProblem']>[2];
+type ProblemPatch = Parameters<AppContext['onyxCodeLab']['updateProblem']>[2];
 
 export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
   app.post('/api/onyx/platform/login', async (req) => {
@@ -263,7 +291,29 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       // console could only ever schedule an exam marked by hand.
       assessment_id: z.number().int().positive().nullish(),
     }), req.body);
-    return ok(await ctx.onyxPlatform.createExam(idOf(req), claims.user_id, body), 'Exam scheduled.');
+    const exam = await ctx.onyxPlatform.createExam(idOf(req), claims.user_id, body);
+
+    /*
+     * The paper is opened for exactly this sitting.
+     *
+     * The tenant-side route has always done this and the console's never did:
+     * it wrote the link and left the assessment's own `opens_at`/`closes_at`
+     * alone. An operator who scheduled an exam through a paper therefore
+     * produced a sitting whose paper was not open at the time the sitting
+     * happened -- and, because the calendar selects assessments on
+     * `closes_at`, a paper with a null window never appeared on anybody's
+     * week at all. The exam showed; the thing candidates actually sit did not.
+     *
+     * A platform operator acts with an institution administrator's authority
+     * here, which is the same authority the console already exercises on every
+     * other write in this file.
+     */
+    if (body.assessment_id && exam) {
+      await syncExamAssessmentWindow(ctx, idOf(req), body.assessment_id,
+        exam as unknown as Parameters<typeof syncExamAssessmentWindow>[3],
+        { userId: claims.user_id, role: 'admin' });
+    }
+    return ok(exam, 'Exam scheduled.');
   });
 
   app.get('/api/onyx/platform/tenants/:id/semesters', async (req) => {
@@ -668,7 +718,133 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
    */
   app.get('/api/onyx/platform/tenants/:id/problems', async (req) => {
     await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
-    return ok(await ctx.onyxCodeLab.problems(idOf(req), 'admin'));
+    const q = validate(z.object({
+      difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+      topic: z.string().max(100).optional(),
+      course_id: z.coerce.number().int().positive().optional(),
+      search: z.string().max(255).optional(),
+    }), req.query ?? {});
+    // 'admin' -- the console reads the bank as staff, so drafts are listed too.
+    // Publishing is what makes a problem bindable to a code question, and an
+    // operator cannot finish a draft they are not shown.
+    return ok(await ctx.onyxCodeLab.problems(idOf(req), 'admin', {
+      difficulty: q.difficulty, topic: q.topic, courseId: q.course_id, search: q.search,
+    }));
+  });
+
+  /*
+   * ------------------------------------------------------------------------
+   * Code Lab authoring, from the console.
+   *
+   * The bank was readable here and nowhere else: an operator could bind a code
+   * question to a problem but had no way to CREATE one, so the first coding
+   * problem at any institution had to be authored by signing in as that
+   * institution's own administrator. These routes are the same
+   * CodeLabService calls the tenant side already makes -- no second
+   * implementation of the validation, the publish rules, or of what a hidden
+   * case may reveal.
+   *
+   * requirePlatformAdmin throughout, like every other route in this file. A
+   * platform operator has no tenant role, so the service is handed 'admin'
+   * explicitly for the reads that take one.
+   * ------------------------------------------------------------------------
+   */
+
+  app.post('/api/onyx/platform/tenants/:id/problems', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(ProblemBody.extend({
+      title: z.string().min(1).max(255),
+      slug: z.string().max(255).optional(),
+    }), req.body);
+    return ok(
+      await ctx.onyxCodeLab.createProblem(idOf(req), claims.user_id, body as ProblemInput),
+      'Problem created as a draft.');
+  });
+
+  /** One problem, unredacted -- hidden cases included, because staff author them. */
+  app.get('/api/onyx/platform/tenants/:id/problems/:problemId', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxCodeLab.problem(
+      idOf(req), subIdOf(req, 'problemId'), claims.user_id, 'admin'));
+  });
+
+  app.patch('/api/onyx/platform/tenants/:id/problems/:problemId', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(ProblemBody.extend({
+      title: z.string().min(1).max(255).optional(),
+    }), req.body);
+    return ok(
+      await ctx.onyxCodeLab.updateProblem(idOf(req), subIdOf(req, 'problemId'),
+        body as ProblemPatch),
+      'Saved.');
+  });
+
+  /**
+   * The answer key.
+   *
+   * The service refuses this on a published problem -- changing the cases
+   * under submissions already graded would regrade them silently -- so the
+   * console offers Unpublish below rather than working around it.
+   */
+  app.put('/api/onyx/platform/tenants/:id/problems/:problemId/tests', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      tests: z.array(z.object({
+        name: z.string().max(120).optional(),
+        stdin: z.string().max(64 * 1024).nullish(),
+        expected_stdout: z.string().max(64 * 1024),
+        is_hidden: z.boolean().optional(),
+        weight: z.number().min(0.01).max(1000).optional(),
+      })).min(1).max(100),
+    }), req.body);
+    return ok(await ctx.onyxCodeLab.setTests(
+      idOf(req), subIdOf(req, 'problemId'), body.tests), 'Test cases saved.');
+  });
+
+  app.post('/api/onyx/platform/tenants/:id/problems/:problemId/publish', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxCodeLab.publishProblem(
+      idOf(req), subIdOf(req, 'problemId')), 'Published.');
+  });
+
+  app.post('/api/onyx/platform/tenants/:id/problems/:problemId/unpublish', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxCodeLab.unpublishProblem(
+      idOf(req), subIdOf(req, 'problemId')), 'Back to draft.');
+  });
+
+  /** Every practice hand-in at this institution, filtered. */
+  app.get('/api/onyx/platform/tenants/:id/code-submissions', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const q = validate(z.object({
+      problem_id: z.coerce.number().int().positive().optional(),
+      user_id: z.string().max(64).optional(),
+      course_id: z.coerce.number().int().positive().optional(),
+      // The states the grader actually writes -- queued, running, then done
+      // or failed. 'graded' is the word the UI prints, not a value in the row.
+      status: z.enum(['queued', 'running', 'done', 'failed']).optional(),
+      language: z.string().max(50).optional(),
+      mode: z.enum(['run', 'submit']).optional(),
+      from: z.string().max(40).optional(),
+      to: z.string().max(40).optional(),
+      search: z.string().max(255).optional(),
+      limit: z.coerce.number().int().min(1).max(1000).optional(),
+    }), req.query ?? {});
+    return ok(await ctx.onyxCodeLab.allSubmissions(idOf(req), q));
+  });
+
+  /** Every project workspace at this institution, filtered. */
+  app.get('/api/onyx/platform/tenants/:id/workspaces', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const q = validate(z.object({
+      course_id: z.union([z.literal('none'), z.coerce.number().int().positive()]).optional(),
+      user_id: z.string().max(64).optional(),
+      language: z.string().max(50).optional(),
+      search: z.string().max(255).optional(),
+    }), req.query ?? {});
+    return ok(await ctx.onyxWorkspaces.listAll(idOf(req), {
+      ...q, course_id: q.course_id === 'none' ? null : q.course_id,
+    }));
   });
 
   /** The week a candidate would see: examinations and paper windows. */

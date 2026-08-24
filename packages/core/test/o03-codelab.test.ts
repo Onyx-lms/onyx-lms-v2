@@ -63,6 +63,9 @@ function world(provider: ExecutionProvider = fakeProvider(), now = () => 1_800_0
     onyx_workspace_snapshots: [],
     onyx_workspace_comments: [],
     onyx_users: [],
+    // peopleFor() reads roll numbers off the membership, so the monitoring
+    // feeds need the table to exist even when nobody is in it.
+    onyx_memberships: [],
   });
   const academics = new AcademicsService(db as never);
   const enqueued: { kind: string; payload: Record<string, unknown> }[] = [];
@@ -938,4 +941,120 @@ test('a practice record stops at the institution boundary', async () => {
   const id = await aProblem(w, 'Ours');
   graded(w, id, 'user-10', { score: 1, max_score: 1 });
   assert.equal((await w.codelab.practiceResults(OTHER, 'user-10')).length, 0);
+});
+
+// ---------------------------------------------------------------------------
+// The cohort-wide submission feed, and the monitoring filters on workspaces.
+//
+// These two reads are what the console and the staff screens are built on, and
+// both are filters over other people's work -- so what they are asked to
+// EXCLUDE matters at least as much as what they return.
+// ---------------------------------------------------------------------------
+
+test('the submission feed names the problem and the person, and never ships the source', async () => {
+  const w = world();
+  (w.db.tables.onyx_users as Record<string, unknown>[]).push(
+    { id: 'user-10', tenant_id: T, name: 'Priya Nair', email: 'p@x.test' });
+  const id = await aProblem(w, 'Two Sum');
+  graded(w, id, 'user-10', { score: 1, max_score: 1, source: 'print(42)' });
+
+  const feed = await w.codelab.allSubmissions(T);
+  assert.equal(feed.submissions.length, 1);
+  const [row] = feed.submissions;
+  assert.equal(row!.problem_title, 'Two Sum');
+  assert.equal(row!.learner, 'Priya Nair');
+  // A monitoring table never renders a program. Shipping every learner's code
+  // to draw a status chip is bandwidth spent on something the page discards.
+  assert.equal((row as Record<string, unknown>).source, undefined);
+  assert.doesNotMatch(JSON.stringify(feed), /print\(42\)/);
+});
+
+test('the feed filters by state, by kind and by person', async () => {
+  const w = world();
+  const id = await aProblem(w, 'Filterable');
+  graded(w, id, 'user-10', { score: 1, max_score: 1 });
+  graded(w, id, 'user-11', { status: 'failed', score: 0, max_score: 1 });
+  graded(w, id, 'user-10', { mode: 'run', score: 1, max_score: 1 });
+
+  // 'done' is what the grader writes. 'graded' is only ever a label on a chip,
+  // and filtering on it would silently return nothing.
+  assert.equal((await w.codelab.allSubmissions(T, { status: 'done' })).submissions.length, 2,
+    'the graded hand-in and the graded run are both done');
+  assert.equal((await w.codelab.allSubmissions(T, { status: 'failed' })).submissions.length, 1);
+  // Unlike the learner-facing reads, a Run is included by default -- "did
+  // their code even execute" is what somebody watching the queue wants -- so
+  // hand-ins are a filter rather than the only thing here.
+  assert.equal((await w.codelab.allSubmissions(T, { mode: 'submit' })).submissions.length, 2);
+  assert.equal((await w.codelab.allSubmissions(T, { mode: 'run' })).submissions.length, 1);
+  assert.equal(
+    (await w.codelab.allSubmissions(T, { status: 'done', mode: 'submit' })).submissions.length, 1);
+  assert.equal((await w.codelab.allSubmissions(T, { user_id: 'user-11' })).submissions.length, 1);
+});
+
+test('a course filter with no problem on that course answers empty, not everything', async () => {
+  const w = world();
+  const id = await aProblem(w, 'Standalone');       // course_id is null
+  graded(w, id, 'user-10', { score: 1, max_score: 1 });
+
+  // `.in()` on an empty list is an error in PostgREST, not an empty result --
+  // so the empty case is answered before the query is built. Getting this
+  // wrong returns the whole institution's submissions under a course filter.
+  const feed = await w.codelab.allSubmissions(T, { course_id: 1 });
+  assert.deepEqual(feed.submissions, []);
+  assert.equal(feed.total, 0);
+});
+
+test('the feed searches names, roll numbers and problem titles together', async () => {
+  const w = world();
+  (w.db.tables.onyx_users as Record<string, unknown>[]).push(
+    { id: 'user-10', tenant_id: T, name: 'Priya Nair', email: 'p@x.test' });
+  (w.db.tables.onyx_memberships as Record<string, unknown>[]).push(
+    { id: 1, tenant_id: T, user_id: 'user-10', role: 'student', status: 1,
+      roll_number: 'CS-2024-014' });
+  const id = await aProblem(w, 'Binary Search');
+  graded(w, id, 'user-10', { score: 1, max_score: 1 });
+
+  for (const needle of ['priya', 'CS-2024', 'binary']) {
+    assert.equal((await w.codelab.allSubmissions(T, { search: needle })).submissions.length, 1,
+      'searching for ' + needle + ' found nothing');
+  }
+  assert.equal((await w.codelab.allSubmissions(T, { search: 'nobody' })).submissions.length, 0);
+});
+
+test('a truncated feed says so, rather than looking complete', async () => {
+  const w = world();
+  const id = await aProblem(w, 'Popular');
+  for (let i = 0; i < 5; i += 1) graded(w, id, 'user-10', { score: 1, max_score: 1 });
+
+  const capped = await w.codelab.allSubmissions(T, { limit: 3 });
+  assert.equal(capped.submissions.length, 3);
+  assert.equal(capped.truncated, true, 'a partial list must not read as a whole one');
+
+  const whole = await w.codelab.allSubmissions(T, { limit: 50 });
+  assert.equal(whole.truncated, false);
+});
+
+test('the feed stops at the institution boundary', async () => {
+  const w = world();
+  const id = await aProblem(w, 'Ours');
+  graded(w, id, 'user-10', { score: 1, max_score: 1 });
+  assert.equal((await w.codelab.allSubmissions(OTHER)).submissions.length, 0);
+});
+
+test('workspace monitoring filters narrow, and never widen, what faculty may see', async () => {
+  const w = world();
+  await w.workspaces.create(T, 'user-10', { title: 'Course project', course_id: 1 });
+  await w.workspaces.create(T, 'user-10', { title: 'Personal thing' });
+
+  // An administrator sees both, and can ask for the personal one specifically.
+  assert.equal((await w.workspaces.listAll(T)).length, 2);
+  assert.equal((await w.workspaces.listAll(T, { course_id: null })).length, 1);
+  assert.equal((await w.workspaces.listAll(T, { search: 'personal' })).length, 1);
+
+  // A lecturer's list is course-attached work by definition. Asking for a
+  // course they do not teach is an empty list, not somebody else's class; and
+  // asking for "no course" is empty rather than every class they teach.
+  assert.equal((await w.workspaces.listForCourses(T, [1])).length, 1);
+  assert.equal((await w.workspaces.listForCourses(T, [1], { course_id: 2 })).length, 0);
+  assert.equal((await w.workspaces.listForCourses(T, [1], { course_id: null })).length, 0);
 });
