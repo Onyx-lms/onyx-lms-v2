@@ -31,6 +31,7 @@ export type MetricName =
   | 'onyx_proctor_failures_total'
   | 'onyx_payments_total'
   | 'onyx_payment_failures_total'
+  | 'onyx_payment_webhook_rejected_total'
   | 'onyx_attempts_expired_total'
   | 'onyx_workspace_runs_total'
   | 'onyx_workspace_run_failures_total'
@@ -46,6 +47,10 @@ const HELP: Record<MetricName, string> = {
   onyx_proctor_failures_total: 'Proctoring events that could not be recorded.',
   onyx_payments_total: 'Payments settled, by whichever path got there first.',
   onyx_payment_failures_total: 'Payments that failed to settle. Alert on any.',
+  onyx_payment_webhook_rejected_total:
+    'Gateway webhooks refused before they were read -- almost always a bad or '
+    + 'missing signature. A few are a stale secret; a flood is somebody trying '
+    + 'references against a live endpoint.',
   onyx_attempts_expired_total: 'Abandoned assessment attempts closed by the sweep.',
   onyx_workspace_runs_total: 'Workspace files run through the sandbox, outside grading.',
   onyx_workspace_run_failures_total: 'Workspace runs the sandbox itself could not complete.',
