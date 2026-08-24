@@ -18,6 +18,21 @@ const RUN = Date.now().toString(36);
 /** The one institution this may touch. Named, not chosen at runtime. */
 const ONLY = 'abc-institution';
 
+/*
+ * An administrator OF that institution, for the half of this suite that has to
+ * act as one -- enrolling a learner is a tenant act, not a platform one, and
+ * the platform token deliberately cannot do it. Read from the credentials
+ * sheet rather than typed here.
+ */
+const fs = await import('node:fs');
+const credRows = fs.readFileSync('onyx-v2-credentials.csv', 'utf8')
+  .trim().split('\n')
+  .map((line) => line.replace('\r', ''))
+  .slice(1).map((r) => r.split(','));
+const abcAdminRow = credRows.find((r) => r[1] === ONLY && r[2] === 'admin');
+const ADMIN_EMAIL = abcAdminRow?.[4];
+const ADMIN_PASSWORD = abcAdminRow?.[5];
+
 const results = [];
 let phase = '';
 const startPhase = (n) => { phase = n; console.log('\n== ' + n + ' =='); };
@@ -393,8 +408,133 @@ check('an operator can correct it afterwards', edited.status === 200,
 
 // ---------------------------------------------------------------------------
 
-startPhase('8. putting ABC Institution back as it was');
+startPhase('8. watching a real attempt from the console');
 
+/*
+ * Monitoring, proved by making something to monitor.
+ *
+ * A summary read against an empty paper proves nothing -- it would answer "0
+ * attempts" whether or not the code worked. So a learner is enrolled, sits the
+ * paper the console built, and the console is then asked what it can see. The
+ * learner is removed with the institution's own leftovers at the end.
+ */
+const learnerEmail = 'qcm.' + RUN + '.stu@onyx.test';
+const at = (await call('/api/onyx/auth/login', { method: 'POST',
+  body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } })).data?.token;
+check('an administrator of ABC signs in', Boolean(at), ADMIN_EMAIL);
+
+const enrolled = await call('/api/onyx/members', { method: 'POST', token: at,
+  body: { name: 'Console QA Learner', email: learnerEmail, role: 'student',
+    password: 'QaConsole#2026!' } });
+check('a learner is added to sit it', enrolled.status === 200,
+  enrolled.status + ' ' + (enrolled.message ?? ''));
+
+const roster = (await call('/api/onyx/members', { token: at })).data ?? [];
+const learner = roster.find((m) => m.user?.email === learnerEmail);
+await call('/api/onyx/courses/' + course.id + '/enroll',
+  { method: 'POST', token: at, body: { user_id: learner?.user_id } });
+
+// The paper needs an open window before anybody can start it.
+await call('/api/onyx/platform/tenants/' + tid + '/assessments/' + paperId, {
+  method: 'PATCH', token: pt,
+  body: {
+    opens_at: new Date(Date.now() - 60_000).toISOString(),
+    closes_at: new Date(Date.now() + 3_600_000).toISOString(),
+  },
+});
+
+const lt = (await call('/api/onyx/auth/login', { method: 'POST',
+  body: { email: learnerEmail, password: 'QaConsole#2026!' } })).data?.token;
+const started = await call('/api/onyx/assessments/' + paperId + '/start',
+  { method: 'POST', token: lt, body: {} });
+check('the learner starts the paper the console built', started.status === 200,
+  started.status + ' ' + (started.message ?? ''));
+const attemptId = started.data?.id;
+
+for (const q of started.data?.questions ?? []) {
+  await call('/api/onyx/attempts/' + attemptId + '/answer', {
+    method: 'POST', token: lt,
+    body: { question_id: q.question_id, response: (q.options ?? [])[0]?.id ?? 'answer' },
+  });
+}
+const handedIn = await call('/api/onyx/attempts/' + attemptId + '/submit',
+  { method: 'POST', token: lt, body: {} });
+check('and hands it in', handedIn.status === 200,
+  handedIn.status + ' ' + (handedIn.message ?? ''));
+
+// Now the half this phase is really about.
+const monitored = await step('the operator opens the paper',
+  '/api/onyx/platform/tenants/' + tid + '/assessments/' + paperId, { token: pt });
+const mineAttempt = (monitored.data?.attempts ?? [])
+  .find((t) => Number(t.id) === Number(attemptId));
+check('and sees the attempt, with the candidate named', Boolean(mineAttempt?.student?.name),
+  mineAttempt?.student?.name + ' <' + mineAttempt?.student?.email + '>');
+check('the cohort figures are counted, not guessed',
+  Number(monitored.data?.summary?.sat) >= 1,
+  JSON.stringify(monitored.data?.summary));
+
+const oneAttempt = await step('the operator opens that attempt',
+  '/api/onyx/platform/tenants/' + tid + '/attempts/' + attemptId, { token: pt });
+check('and can read what the candidate answered, question by question',
+  (oneAttempt.data?.questions ?? []).length > 0
+  && (oneAttempt.data?.questions ?? []).every((q) => q.prompt),
+  (oneAttempt.data?.questions ?? []).length + ' questions, '
+  + (oneAttempt.data?.questions ?? []).filter((q) => q.response !== null).length + ' answered');
+check('with the marks the machine gave each one',
+  (oneAttempt.data?.questions ?? []).some((q) => q.auto_points !== null),
+  (oneAttempt.data?.questions ?? []).map((q) => q.type + '=' + q.auto_points).join(' '));
+check('and the invigilation record is there, even when it is empty',
+  Array.isArray(oneAttempt.data?.proctor_events)
+  && typeof oneAttempt.data?.integrity_score === 'number',
+  (oneAttempt.data?.proctor_events ?? []).length + ' events, weight '
+  + oneAttempt.data?.integrity_score);
+
+const anonAttempt = await call('/api/onyx/platform/tenants/' + tid + '/attempts/' + attemptId);
+check('none of which is open to an anonymous caller',
+  anonAttempt.status === 401 || anonAttempt.status === 403, 'status ' + anonAttempt.status);
+
+// A sitting tied to that paper shows the same attempts.
+const tied = await call('/api/onyx/platform/tenants/' + tid + '/exams', {
+  method: 'POST', token: pt,
+  body: {
+    course_id: course.id, title: 'Console QA tied sitting ' + RUN,
+    starts_at: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+    duration_minutes: 60, max_marks: 100, pass_marks: 40, assessment_id: paperId,
+    ...(semesterId ? { semester_id: semesterId } : {}),
+  },
+});
+const tiedId = tied.data?.id;
+if (tiedId) {
+  const examView = await step('a sitting tied to that paper opens',
+    '/api/onyx/platform/tenants/' + tid + '/exams/' + tiedId, { token: pt });
+  check('and carries the browser attempts with it',
+    (examView.data?.paper?.attempts ?? []).some((t) => Number(t.id) === Number(attemptId)),
+    (examView.data?.paper?.attempts ?? []).length + ' attempts through the paper');
+  check('alongside its own mark sheet and seating',
+    Array.isArray(examView.data?.marks) && Array.isArray(examView.data?.seats),
+    (examView.data?.marks ?? []).length + ' marks, '
+    + (examView.data?.seats ?? []).length + ' seats');
+}
+
+// A Live Class opens onto who registered.
+const domainView = await step('a Live Class opens',
+  '/api/onyx/platform/tenants/' + tid + '/domains/' + domainId, { token: pt });
+check('with its registrations and what was taken',
+  Array.isArray(domainView.data?.registrations)
+  && typeof domainView.data?.summary?.taken_minor === 'number',
+  (domainView.data?.registrations ?? []).length + ' registered, '
+  + '₹' + Number(domainView.data?.summary?.taken_minor ?? 0) / 100 + ' taken');
+
+// ---------------------------------------------------------------------------
+
+startPhase('9. putting ABC Institution back as it was');
+
+if (typeof tiedId !== 'undefined' && tiedId) {
+  const goneTied = await call('/api/onyx/platform/tenants/' + tid + '/exams/' + tiedId,
+    { method: 'DELETE', token: pt });
+  check('the tied sitting is removed', goneTied.status === 200 || goneTied.status === 404,
+    goneTied.status + ' ' + (goneTied.message ?? ''));
+}
 if (examId) {
   const goneExam = await call('/api/onyx/platform/tenants/' + tid + '/exams/' + examId,
     { method: 'DELETE', token: pt });
@@ -402,10 +542,44 @@ if (examId) {
     goneExam.status + ' ' + (goneExam.message ?? ''));
 }
 if (paperId) {
+  /*
+   * The paper now carries a real attempt, and `deleteAssessment` refuses a
+   * paper anybody has sat. That is the behaviour this suite asserted two
+   * phases ago and it is not something to work around -- so the refusal is
+   * CHECKED, and then the test clears up after itself the only honest way
+   * left: by removing the attempt it created.
+   *
+   * Through the database rather than the API, deliberately. There is no route
+   * that deletes an attempt and there should not be one: an attempt is
+   * somebody's answers and their mark, and a product that lets an operator
+   * delete those with one request is a product that will. A test tidying up
+   * its own fixture is a different act from an operator deleting a record,
+   * and only one of them belongs in the API.
+   */
   const gonePaper = await call('/api/onyx/platform/tenants/' + tid + '/assessments/' + paperId,
     { method: 'DELETE', token: pt });
-  check('the paper is removed', gonePaper.status === 200 || gonePaper.status === 404,
-    gonePaper.status + ' ' + (gonePaper.message ?? ''));
+  check('the paper refuses to go while somebody has sat it',
+    gonePaper.status === 422, gonePaper.status + ' ' + (gonePaper.message ?? ''));
+
+  const { withDb } = await import('../tests/e2e/harness.ts');
+  await withDb(async (db) => {
+    await db.query(
+      'DELETE FROM public."onyx_assessment_attempts" WHERE tenant_id = $1 AND assessment_id = $2',
+      [tid, paperId]);
+  });
+
+  const nowGone = await call('/api/onyx/platform/tenants/' + tid + '/assessments/' + paperId,
+    { method: 'DELETE', token: pt });
+  check('and goes once the fixture attempt is cleared', nowGone.status === 200,
+    nowGone.status + ' ' + (nowGone.message ?? ''));
+
+  if (learner?.id) {
+    const goneLearner = await call('/api/onyx/platform/tenants/' + tid
+      + '/members/' + learner.id, { method: 'DELETE', token: pt });
+    check('and the learner this suite added is removed',
+      goneLearner.status === 200 || goneLearner.status === 404,
+      goneLearner.status + ' ' + (goneLearner.message ?? ''));
+  }
 }
 
 for (const lessonId of lessonIds) {

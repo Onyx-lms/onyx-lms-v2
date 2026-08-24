@@ -1542,15 +1542,53 @@ export class PlatformService {
    * mark's normal lock. It is not skipped by accident.
    */
   async createExam(tenantId: number, actorId: string | null, input: {
-    semester_id: number; course_id: number; title: string; starts_at: string;
+    semester_id?: number | null; course_id: number; title: string; starts_at: string;
     duration_minutes?: number; max_marks?: number; pass_marks?: number;
+    /** The online paper this sitting is sat through, where there is one. */
+    assessment_id?: number | null;
   }) {
     const { data: course } = await this.#db.from('onyx_courses')
-      .select('id').eq('tenant_id', tenantId).eq('id', input.course_id).maybeSingle();
+      .select('id, semester_id').eq('tenant_id', tenantId).eq('id', input.course_id).maybeSingle();
     if (!course) throw new HttpError(404, 'No such course.');
-    const { data: semester } = await this.#db.from('onyx_semesters')
-      .select('id').eq('tenant_id', tenantId).eq('id', input.semester_id).maybeSingle();
-    if (!semester) throw new HttpError(404, 'No such semester.');
+
+    /*
+     * The term, taken from the course when nobody names one.
+     *
+     * This route demanded a semester while the institution's own route stopped
+     * doing so -- migration 0037 dropped the NOT NULL because better than a
+     * quarter of the courses in this database belong to no programme, and a
+     * resit or a certification sitting is still an exam. An operator was left
+     * unable to schedule from the console exactly the sittings the product had
+     * just been changed to allow.
+     */
+    let semesterId = input.semester_id ?? null;
+    if (semesterId) {
+      const { data: semester } = await this.#db.from('onyx_semesters')
+        .select('id').eq('tenant_id', tenantId).eq('id', semesterId).maybeSingle();
+      if (!semester) throw new HttpError(404, 'No such semester.');
+    } else {
+      semesterId = course.semester_id ? Number(course.semester_id) : null;
+    }
+
+    /*
+     * The paper, if this is sat in a browser.
+     *
+     * Checked to be on the SAME course before anything is written. Tying a
+     * sitting to a paper from another course leaves an exam half-linked to
+     * somebody else's questions, and a candidate following "sit this exam"
+     * lands on the wrong paper -- the tenant-side route learned this the hard
+     * way and checks before it inserts, so this one does too.
+     */
+    if (input.assessment_id) {
+      const { data: paper } = await this.#db.from('onyx_assessments')
+        .select('id, course_id').eq('tenant_id', tenantId)
+        .eq('id', input.assessment_id).maybeSingle();
+      if (!paper) throw new HttpError(404, 'No such assessment.');
+      if (Number(paper.course_id) !== Number(input.course_id)) {
+        throw new HttpError(422,
+          'That paper is not on this exam’s course — pick one that is, or leave it unlinked.');
+      }
+    }
 
     const start = Date.parse(input.starts_at);
     if (!Number.isFinite(start)) throw new HttpError(422, 'That is not a valid start time.');
@@ -1559,11 +1597,14 @@ export class PlatformService {
     if (passMarks > maxMarks) throw new HttpError(422, 'The pass mark cannot be above the maximum.');
 
     const { data, error } = await this.#db.from('onyx_exams').insert({
-      tenant_id: tenantId, semester_id: input.semester_id, course_id: input.course_id,
+      tenant_id: tenantId, semester_id: semesterId, course_id: input.course_id,
+      assessment_id: input.assessment_id ?? null,
       title: input.title.trim(), starts_at: new Date(start).toISOString(),
       duration_minutes: input.duration_minutes ?? 180, max_marks: maxMarks, pass_marks: passMarks,
       status: 'scheduled', created_by: actorId,
-    }).select('id, title, course_id, starts_at, duration_minutes, max_marks, pass_marks, status')
+    })
+      // eslint-disable-next-line max-len -- one literal: a concatenated select collapses the client's row type.
+      .select('id, title, course_id, semester_id, assessment_id, starts_at, duration_minutes, max_marks, pass_marks, status')
       .maybeSingle();
     if (error) throw new HttpError(500, 'Could not schedule the exam: ' + error.message);
     await this.#log(actorId, 'exam.scheduled', 'exam', Number(data!.id), null,

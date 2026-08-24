@@ -249,13 +249,19 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
   app.post('/api/onyx/platform/tenants/:id/exams', async (req) => {
     const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     const body = validate(z.object({
-      semester_id: z.number().int().positive(),
+      // Optional, and taken from the course when it is absent -- 0037 made a
+      // sitting with no term a real thing, and this route was still demanding
+      // one.
+      semester_id: z.number().int().positive().nullish(),
       course_id: z.number().int().positive(),
       title: z.string().min(1).max(255),
       starts_at: z.string(),
       duration_minutes: z.number().int().min(5).max(600).optional(),
       max_marks: z.number().min(1).max(1000).optional(),
       pass_marks: z.number().min(0).max(1000).optional(),
+      // Ties the sitting to a paper sat in the browser. Without this the
+      // console could only ever schedule an exam marked by hand.
+      assessment_id: z.number().int().positive().nullish(),
     }), req.body);
     return ok(await ctx.onyxPlatform.createExam(idOf(req), claims.user_id, body), 'Exam scheduled.');
   });
