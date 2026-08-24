@@ -1,7 +1,7 @@
 {
   "base": "https://onyx-lms-v2.vercel.app",
-  "slug": "qe-mt714i0b",
-  "run": "mt714i0b",
+  "slug": "qe-mt735ga7",
+  "run": "mt735ga7",
   "passed": 87,
   "failed": 0,
   "results": [
@@ -129,7 +129,7 @@
       "phase": "2. a question bank, every type the product offers",
       "label": "the coding question kept its problem",
       "pass": true,
-      "detail": "problem_id=121"
+      "detail": "problem_id=124"
     },
     {
       "phase": "2. a question bank, every type the product offers",
@@ -201,7 +201,7 @@
       "phase": "4. scheduling the sitting",
       "label": "the paper took the sitting's window",
       "pass": true,
-      "detail": "opens=2026-08-24T10:24:33.362+00:00 closes=2026-08-24T11:54:33.362+00:00"
+      "detail": "opens=2026-08-24T11:21:16.326+00:00 closes=2026-08-24T12:51:16.326+00:00"
     },
     {
       "phase": "4. scheduling the sitting",
@@ -261,13 +261,13 @@
       "phase": "5. the sitting owns its slot on the timetable",
       "label": "the examination is on it",
       "pass": true,
-      "detail": "Finals sitting mt714i0b"
+      "detail": "Finals sitting mt735ga7"
     },
     {
       "phase": "5. the sitting owns its slot on the timetable",
       "label": "it carries its own start, not the day",
       "pass": true,
-      "detail": "starts_at=2026-08-24T10:24:33.362+00:00"
+      "detail": "starts_at=2026-08-24T11:21:16.326+00:00"
     },
     {
       "phase": "5. the sitting owns its slot on the timetable",
@@ -291,7 +291,7 @@
       "phase": "5. the sitting owns its slot on the timetable",
       "label": "and not the other course, which they are not enrolled on",
       "pass": true,
-      "detail": "396"
+      "detail": "431"
     },
     {
       "phase": "6. sitting the paper",
@@ -303,7 +303,7 @@
       "phase": "6. sitting the paper",
       "label": "the paper followed it",
       "pass": true,
-      "detail": "opens=2026-08-24T09:23:40.795+00:00"
+      "detail": "opens=2026-08-24T10:20:23.219+00:00"
     },
     {
       "phase": "6. sitting the paper",
@@ -321,7 +321,7 @@
       "phase": "6. sitting the paper",
       "label": "the coding question arrives with its problem, and no tests",
       "pass": true,
-      "detail": "problem=121"
+      "detail": "problem=124"
     },
     {
       "phase": "6. sitting the paper",
@@ -375,7 +375,7 @@
       "phase": "7. what comes back",
       "label": "and the marks are held with it, every one of them",
       "pass": true,
-      "detail": "short=null single=null truefalse=null multiple=null code=null essay=null"
+      "detail": "truefalse=null essay=null short=null code=null multiple=null single=null"
     },
     {
       "phase": "7. what comes back",
@@ -447,7 +447,7 @@
       "phase": "8. the marker, and the correction",
       "label": "every question now carries the mark it earned",
       "pass": true,
-      "detail": "short=5 single=5 truefalse=5 multiple=5 code=10 essay=16"
+      "detail": "truefalse=5 essay=16 short=5 code=10 multiple=5 single=5"
     },
     {
       "phase": "8. the marker, and the correction",

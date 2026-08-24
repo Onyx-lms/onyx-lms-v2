@@ -1,7 +1,7 @@
 {
   "base": "https://onyx-lms-v2.vercel.app",
-  "slug": "qf-mt713gio",
-  "run": "mt713gio",
+  "slug": "qf-mt734hq0",
+  "run": "mt734hq0",
   "passed": 68,
   "failed": 0,
   "results": [
@@ -27,7 +27,7 @@
       "phase": "1. an institution with people in it",
       "label": "the roll number is on their membership",
       "pass": true,
-      "detail": "roll=CS-2026-3GIO"
+      "detail": "roll=CS-2026-4HQ0"
     },
     {
       "phase": "2. finding a student by name or roll number",
@@ -69,7 +69,7 @@
       "phase": "2. finding a student by name or roll number",
       "label": "and it carries the roll number, so it can be shown and searched",
       "pass": true,
-      "detail": "roll_number=CS-2026-3GIO"
+      "detail": "roll_number=CS-2026-4HQ0"
     },
     {
       "phase": "2. finding a student by name or roll number",
@@ -141,7 +141,7 @@
       "phase": "3. the timetable",
       "label": "the same room at the same hour is refused",
       "pass": true,
-      "detail": "expected 409/422, got 409 R3GIO already has Timetabled Subject with Fay Faculty on Tuesday 09:00-10:00. Fay Faculty is already teaching Timetabled Subject in R3GIO on Tuesday 09:00-10:00. That batch is already in Timetabled Subject in R3GIO on Tuesday 09:00-10:00."
+      "detail": "expected 409/422, got 409 R4HQ0 already has Timetabled Subject with Fay Faculty on Tuesday 09:00-10:00. Fay Faculty is already teaching Timetabled Subject in R4HQ0 on Tuesday 09:00-10:00. That batch is already in Timetabled Subject in R4HQ0 on Tuesday 09:00-10:00."
     },
     {
       "phase": "3. the timetable",
@@ -153,7 +153,7 @@
       "phase": "3. the timetable",
       "label": "the check reports the conflict rather than staying silent",
       "pass": true,
-      "detail": "{\"clear\":false,\"clashes\":[{\"resource\":\"room\",\"slot_id\":43,\"description\":\"R3GIO already has"
+      "detail": "{\"clear\":false,\"clashes\":[{\"resource\":\"room\",\"slot_id\":44,\"description\":\"R4HQ0 already has"
     },
     {
       "phase": "3. the timetable",
@@ -273,7 +273,7 @@
       "phase": "4. practice, and the sandbox behind it",
       "label": "and it says something useful",
       "pass": true,
-      "detail": "{\"id\":26,\"body\":\"Slicing with a negative step reverses a sequence.\",\"p"
+      "detail": "{\"id\":27,\"body\":\"Slicing with a negative step reverses a sequence.\",\"p"
     },
     {
       "phase": "4. practice, and the sandbox behind it",

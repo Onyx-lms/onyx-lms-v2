@@ -337,7 +337,7 @@
     "phase": "3. assessment and examination",
     "status": "PASS",
     "what": "schedules an examination without naming a semester",
-    "detail": "semester_id=174",
+    "detail": "semester_id=176",
     "evidence": {
       "status": 200,
       "message": null
@@ -494,7 +494,7 @@
     "phase": "5. learner",
     "status": "PASS",
     "what": "hands the paper in",
-    "detail": "score=null/15",
+    "detail": "score=10/10",
     "evidence": {
       "status": 200,
       "message": "Handed in."
@@ -511,7 +511,7 @@
     "phase": "5. learner",
     "status": "PASS",
     "what": "reads their own papers",
-    "detail": "1 sat, 0 with results",
+    "detail": "1 sat, 1 with results",
     "evidence": null
   },
   {
