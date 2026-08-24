@@ -241,6 +241,8 @@ export default async function OnyxPlatformTimetablePage(
                             left: 'calc(' + (lane * 100 / lanes) + '% + 3px)',
                             width: 'calc(' + (100 / lanes) + '% - 6px)',
                           }}
+                          title={block.subject + ' · ' + block.name + ' · '
+                            + hhmm(block.fromMin) + '–' + hhmm(block.toMin)}
                           className={'absolute overflow-hidden rounded-lg border-l-[3px] px-2 py-1 '
                             + 'text-left shadow-sm transition hover:shadow-md '
                             + (block.cancelled
@@ -256,14 +258,25 @@ export default async function OnyxPlatformTimetablePage(
                                           uppercase tracking-wide text-red-800">
                             {block.subject}
                           </div>
-                          <div className={'truncate text-[12px] font-bold leading-tight '
+                          {/* Wrapped, not truncated. Two sittings at the same
+                              hour halve the column between them, and a name
+                              cut to "Data S…" identifies nothing -- which is
+                              the whole job of this box. Two lines fit in the
+                              shortest block the grid draws. */}
+                          <div className={'line-clamp-2 text-[12px] font-bold leading-tight '
                             + (block.cancelled ? 'line-through' : 'text-ink')}>
                             {block.name}
                           </div>
-                          <div className="truncate font-mono text-[10.5px] tabular-nums text-muted">
-                            {hhmm(block.fromMin)}–{hhmm(block.toMin)}
-                          </div>
-                          {block.draft ? (
+                          {/* The time is dropped from a short block rather
+                              than squeezing the name out: the row it sits on
+                              already says the hour. */}
+                          {height >= 46 ? (
+                            <div className="truncate font-mono text-[10.5px] tabular-nums
+                                            text-muted">
+                              {hhmm(block.fromMin)}–{hhmm(block.toMin)}
+                            </div>
+                          ) : null}
+                          {block.draft && height >= 62 ? (
                             <div className="mt-0.5 text-[10px] font-bold uppercase text-slate-600">
                               Draft
                             </div>
