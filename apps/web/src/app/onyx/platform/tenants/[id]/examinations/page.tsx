@@ -5,7 +5,9 @@ import {
   attempt, RosterHeader, WhenCell, SCROLLER, Unavailable, Workflow,
   type AcademicsPayload, type Semester,
 } from '@/lib/onyx-platform-tenant';
-import { CreateExamForm, ExamEditToggle } from '@/components/onyx-platform-forms';
+import {
+  CreateExamForm, ExamEditToggle, ConsoleCreatePaper,
+} from '@/components/onyx-platform-forms';
 import { DataTable, EmptyRow } from '@/components/onyx-ui';
 
 export const metadata: Metadata = { title: 'Examinations' };
@@ -21,6 +23,11 @@ export default async function OnyxPlatformExamsPage(
       '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/academics?limit=200'),
     attempt<Semester[]>('/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/semesters'),
   ]);
+  // Published Code Lab problems, so a coding question in the paper builder has
+  // something to be marked against. Safe if it fails -- the builder simply
+  // does not offer the coding type.
+  const problems = (await attempt<{ id: number; title: string; status: string }[]>(
+    '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/problems')) ?? [];
   const exams = academics?.exams ?? [];
   const courses = academics?.courses ?? [];
 
@@ -28,6 +35,11 @@ export default async function OnyxPlatformExamsPage(
     <div className="min-w-0 space-y-4">
       <RosterHeader count={exams.length} noun="examination"
         action={(
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Build the paper here, then pick it in the form beside this --
+                which is the order somebody scheduling an exam works in, and
+                the reason the institution's own screen puts both together. */}
+            <ConsoleCreatePaper tenantId={tenantId} courses={courses} problems={problems} />
           <CreateExamForm tenantId={tenantId} courses={courses}
             semesters={semesters ?? []}
             // So a sitting can be one somebody sits in a browser. Filtered to
@@ -37,6 +49,7 @@ export default async function OnyxPlatformExamsPage(
             papers={(academics?.assessments ?? []).map((a) => ({
               id: a.id, title: a.title, course_id: a.course_id, status: a.status,
             }))} />
+          </div>
         )} />
 
       {academics === null ? <Unavailable what="examination list" /> : (

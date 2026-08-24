@@ -3104,3 +3104,377 @@ export function AssessmentPublishButton({ tenantId, assessment }: {
     </div>
   );
 }
+
+
+// ---------------------------------------------------------------------------
+// A whole paper, in one form
+// ---------------------------------------------------------------------------
+
+const OPTION_IDS = ['a', 'b', 'c', 'd'] as const;
+
+interface DraftQuestion {
+  type: 'single' | 'essay' | 'code';
+  prompt: string;
+  points: string;
+  /** Four slots; blank ones are dropped on submit. `single` only. */
+  options: string[];
+  /** One of OPTION_IDS. Blank until somebody says which is right. */
+  correct: string;
+  /** A `single` with no key: marked by a person, not by a machine. */
+  manualOnly: boolean;
+  /** `code` only: the published Code Lab problem whose tests mark it. */
+  problemId: string;
+}
+
+/*
+ * `correct` starts blank rather than at 'a'.
+ *
+ * Option A pre-selected means somebody who types four options and never
+ * touches the radios has silently locked in "A is correct" -- a paper that
+ * marks itself wrongly and looks finished. Nothing is correct until it is
+ * said to be.
+ */
+const blankQuestion = (): DraftQuestion => ({
+  type: 'single', prompt: '', points: '10', options: ['', '', '', ''],
+  correct: '', manualOnly: false, problemId: '',
+});
+
+/**
+ * Authors a whole paper -- bank, questions, and the assessment that draws
+ * every one of them -- then publishes it.
+ *
+ * The console could already do all of this and only as four separate acts
+ * across two screens: create a bank, add questions to it, create a paper, set
+ * its sections, publish. Every one of those is a place to stop halfway, and
+ * the half-finished state (a paper drawing no questions) is one the engine
+ * only complains about when a candidate presses Start.
+ *
+ * The institution's own Examinations screen has had this shortcut since
+ * papers existed. This is the same path for an operator, on the screen they
+ * are already on when they think of it.
+ *
+ * Coding questions are offered here and are not on the faculty version: the
+ * console has the problems list, and a paper an operator builds should not be
+ * less capable than one they could assemble by hand from the same API.
+ */
+export function ConsoleCreatePaper({ tenantId, courses, problems = [] }: {
+  tenantId: number;
+  courses: CourseOption[];
+  /** Published Code Lab problems, for a coding question to be marked by. */
+  problems?: { id: number; title: string; status: string }[];
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [courseId, setCourseId] = useState(courses[0] ? String(courses[0].id) : '');
+  const [duration, setDuration] = useState('60');
+  const [passMark, setPassMark] = useState('');
+  const [questions, setQuestions] = useState<DraftQuestion[]>([blankQuestion()]);
+  const [error, setError] = useState<string | null>(null);
+  const [stage, setStage] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  const usableProblems = problems.filter((x) => String(x.status) === 'published');
+  const setQuestion = (i: number, patch: Partial<DraftQuestion>) =>
+    setQuestions((qs) => qs.map((q, j) => (j === i ? { ...q, ...patch } : q)));
+  const setOption = (i: number, oi: number, text: string) =>
+    setQuestions((qs) => qs.map((q, j) => (j === i
+      ? { ...q, options: q.options.map((o, k) => (k === oi ? text : o)) } : q)));
+
+  const submit = () => start(async () => {
+    setError(null);
+    if (!courseId) { setError('Pick a course.'); return; }
+
+    const clean = questions
+      .map((q) => ({ ...q, prompt: q.prompt.trim() }))
+      .filter((q) => q.prompt !== '');
+    if (!clean.length) { setError('Add at least one question.'); return; }
+
+    /*
+     * Everything checked BEFORE anything is written.
+     *
+     * The first request creates a bank; failing on question three would leave
+     * an empty bank behind and the operator staring at an error. Nothing is
+     * sent until the whole paper is known to be valid.
+     */
+    for (const q of clean) {
+      if (q.type === 'single') {
+        const opts = q.options.map((o, i) => ({ id: OPTION_IDS[i]!, text: o.trim() }))
+          .filter((o) => o.text !== '');
+        if (opts.length < 2) {
+          setError('“' + q.prompt.slice(0, 40) + '…” needs at least two options.');
+          return;
+        }
+        if (!q.manualOnly && !opts.some((o) => o.id === q.correct)) {
+          setError('“' + q.prompt.slice(0, 40)
+            + '…” — mark which option is correct, or mark it for manual marking.');
+          return;
+        }
+      }
+      if (q.type === 'code' && !q.problemId) {
+        setError('“' + q.prompt.slice(0, 40) + '…” needs a problem to be marked against.');
+        return;
+      }
+    }
+
+    const base = 'onyx/platform/tenants/' + tenantId;
+
+    setStage('Making the bank…');
+    // One bank per paper, so editing one exam's questions never touches
+    // another's.
+    const bank = await post(base + '/banks', {
+      name: title.trim() + ' — question bank', course_id: Number(courseId),
+    });
+    if (!bank.ok) { setStage(null); setError(bank.message ?? 'Could not make the bank.'); return; }
+    const bankId = bank.data.id as number;
+
+    for (const [i, q] of clean.entries()) {
+      setStage('Adding question ' + (i + 1) + ' of ' + clean.length + '…');
+      const body = q.type === 'single'
+        ? {
+          type: 'single', prompt: q.prompt, points: Number(q.points) || 10,
+          options: q.options.map((o, oi) => ({ id: OPTION_IDS[oi]!, text: o.trim() }))
+            .filter((o) => o.text !== ''),
+          // No key at all when it is marked by hand: the API leaves such a
+          // question unmarked rather than grading every answer wrong against
+          // a blank one.
+          answer: q.manualOnly ? undefined : q.correct,
+        }
+        : q.type === 'code'
+          ? { type: 'code', prompt: q.prompt, points: Number(q.points) || 10,
+            problem_id: Number(q.problemId) }
+          : { type: 'essay', prompt: q.prompt, points: Number(q.points) || 10 };
+
+      const made = await post(base + '/banks/' + bankId + '/questions', body);
+      if (!made.ok) {
+        setStage(null);
+        setError('Question ' + (i + 1) + ': ' + (made.message ?? 'could not be added.'));
+        return;
+      }
+    }
+
+    setStage('Making the paper…');
+    const paper = await post(base + '/assessments', {
+      title: title.trim(),
+      course_id: Number(courseId),
+      duration_minutes: Number(duration) || 60,
+      ...(passMark.trim() ? { pass_mark: Number(passMark) } : {}),
+    });
+    if (!paper.ok) { setStage(null); setError(paper.message ?? 'Could not make the paper.'); return; }
+    const paperId = paper.data.id as number;
+
+    setStage('Drawing the questions…');
+    const sections = await post(base + '/assessments/' + paperId + '/sections', {
+      sections: [{ id: 's1', title: 'All questions', bank_id: bankId, take: clean.length }],
+    }, 'PUT');
+    if (!sections.ok) {
+      setStage(null);
+      setError('Paper made, but it draws nothing: ' + (sections.message ?? 'set its sections.'));
+      return;
+    }
+
+    setStage('Publishing…');
+    // Published rather than left a draft: a paper nobody scheduling an exam
+    // can see in the picker a moment later has not finished being made.
+    const live = await post(base + '/assessments/' + paperId + '/publish', {});
+    if (!live.ok) {
+      setStage(null);
+      setError('Paper made but not published: ' + (live.message ?? 'publish it from its row.'));
+      return;
+    }
+
+    setStage(null);
+    setTitle('');
+    setQuestions([blankQuestion()]);
+    setOpen(false);
+    router.refresh();
+  });
+
+  const totalMarks = questions
+    .filter((q) => q.prompt.trim())
+    .reduce((n, q) => n + (Number(q.points) || 0), 0);
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} disabled={!courses.length}
+        title={courses.length ? undefined : 'Needs at least one course'}
+        className="min-h-[42px] rounded-xl border border-line bg-white px-4 text-sm font-semibold
+                   hover:bg-brand-50 disabled:opacity-40">
+        Create a paper
+      </button>
+
+      {open ? (
+        <Modal title="Create a paper" onClose={() => setOpen(false)} wide>
+          <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="space-y-4">
+            <p className="text-[12.5px] leading-relaxed text-muted">
+              Builds a question bank and a published paper in one go, ready to pick as an
+              examination’s online paper straight afterwards.
+            </p>
+
+            {error ? (
+              <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-[13px] text-red-700">
+                {error}
+              </p>
+            ) : null}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className={label} htmlFor="cp-title">Paper title</label>
+                <input id="cp-title" required value={title} placeholder="CS101 Midterm"
+                  onChange={(e) => setTitle(e.target.value)} className={field} />
+              </div>
+              <div>
+                <label className={label} htmlFor="cp-course">Course</label>
+                <select id="cp-course" required value={courseId} className={field}
+                  onChange={(e) => setCourseId(e.target.value)}>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>{c.code} — {c.title}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={label} htmlFor="cp-duration">Duration (minutes)</label>
+                <input id="cp-duration" type="number" min={5} max={600} value={duration}
+                  onChange={(e) => setDuration(e.target.value)} className={field} />
+              </div>
+              <div>
+                <label className={label} htmlFor="cp-pass">Pass mark</label>
+                <input id="cp-pass" type="number" min={0} value={passMark} placeholder="Optional"
+                  onChange={(e) => setPassMark(e.target.value)} className={field} />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-baseline justify-between gap-2 border-t
+                            border-line pt-3">
+              <h3 className="text-[14px] font-bold text-ink">Questions</h3>
+              <span className="text-[12.5px] tabular-nums text-muted">
+                {questions.filter((q) => q.prompt.trim()).length} written · {totalMarks} marks
+              </span>
+            </div>
+
+            <ol className="space-y-3">
+              {questions.map((q, i) => (
+                <li key={i} className="rounded-xl border border-line bg-slate-50 p-3.5">
+                  <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-mono text-[12.5px] font-bold text-muted">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {(['single', 'essay', 'code'] as const).map((t) => (
+                        <button
+                          key={t} type="button" aria-pressed={q.type === t}
+                          disabled={t === 'code' && !usableProblems.length}
+                          title={t === 'code' && !usableProblems.length
+                            ? 'This institution has no published Code Lab problem yet'
+                            : undefined}
+                          onClick={() => setQuestion(i, { type: t })}
+                          className={'min-h-[30px] rounded-lg border px-2.5 text-[12px] '
+                            + 'font-semibold disabled:opacity-40 '
+                            + (q.type === t
+                              ? 'border-brand-600 bg-brand-600 text-white'
+                              : 'border-line bg-white text-slate-700')}
+                        >
+                          {t === 'single' ? 'Multiple choice' : t === 'essay' ? 'Written' : 'Code'}
+                        </button>
+                      ))}
+                      {questions.length > 1 ? (
+                        <button type="button"
+                          onClick={() => setQuestions((qs) => qs.filter((_, j) => j !== i))}
+                          className="min-h-[30px] rounded-lg border border-line bg-white px-2.5
+                                     text-[12px] font-semibold text-red-700">
+                          Remove
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <textarea
+                    value={q.prompt} rows={2} placeholder="The question"
+                    aria-label={'Question ' + (i + 1)}
+                    onChange={(e) => setQuestion(i, { prompt: e.target.value })}
+                    className={field + ' mt-0'}
+                  />
+
+                  {q.type === 'single' ? (
+                    <div className="mt-2.5 space-y-1.5">
+                      {q.options.map((o, oi) => (
+                        <div key={oi} className="flex items-center gap-2">
+                          {/* The radio IS the answer key, beside the option it
+                              marks -- a separate "correct answer" dropdown is
+                              a second place for the two to disagree. */}
+                          <input
+                            type="radio" name={'correct-' + i} checked={q.correct === OPTION_IDS[oi]}
+                            disabled={q.manualOnly}
+                            aria-label={'Option ' + OPTION_IDS[oi]!.toUpperCase() + ' is correct'}
+                            onChange={() => setQuestion(i, { correct: OPTION_IDS[oi]! })}
+                            className="h-4 w-4 shrink-0"
+                          />
+                          <input
+                            value={o} placeholder={'Option ' + OPTION_IDS[oi]!.toUpperCase()}
+                            aria-label={'Option ' + OPTION_IDS[oi]!.toUpperCase()}
+                            onChange={(e) => setOption(i, oi, e.target.value)}
+                            className={field + ' mt-0'}
+                          />
+                        </div>
+                      ))}
+                      <label className="flex items-center gap-2 text-[12.5px] text-slate-700">
+                        <input type="checkbox" checked={q.manualOnly}
+                          onChange={(e) => setQuestion(i, {
+                            manualOnly: e.target.checked,
+                            correct: e.target.checked ? '' : q.correct,
+                          })}
+                          className="h-4 w-4 rounded border-slate-300" />
+                        No single right answer — a person marks this one
+                      </label>
+                    </div>
+                  ) : null}
+
+                  {q.type === 'code' ? (
+                    <div className="mt-2.5">
+                      <label className={label} htmlFor={'cp-prob-' + i}>
+                        Marked by the tests of
+                      </label>
+                      <select id={'cp-prob-' + i} value={q.problemId} className={field}
+                        onChange={(e) => setQuestion(i, { problemId: e.target.value })}>
+                        <option value="">Choose a problem</option>
+                        {usableProblems.map((x) => (
+                          <option key={x.id} value={x.id}>{x.title}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <label className="text-[12.5px] font-semibold text-slate-700"
+                      htmlFor={'cp-points-' + i}>
+                      Marks
+                    </label>
+                    <input id={'cp-points-' + i} type="number" min={1} value={q.points}
+                      onChange={(e) => setQuestion(i, { points: e.target.value })}
+                      className={field + ' mt-0 w-24'} />
+                  </div>
+                </li>
+              ))}
+            </ol>
+
+            <button type="button" onClick={() => setQuestions((qs) => [...qs, blankQuestion()])}
+              className="rounded-lg border border-line bg-white px-3 py-1.5 text-[13px]
+                         font-semibold">
+              Add another question
+            </button>
+
+            <div className="flex gap-2 border-t border-line pt-3">
+              <button type="submit" disabled={pending} className={button}>
+                {stage ?? (pending ? 'Working…' : 'Create and publish it')}
+              </button>
+              <button type="button" disabled={pending} onClick={() => setOpen(false)}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+    </>
+  );
+}

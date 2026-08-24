@@ -6,7 +6,7 @@ import {
 } from '@/lib/onyx-platform-tenant';
 import {
   CreateAssessmentForm, AssessmentEditToggle, AssessmentSectionsForm,
-  AssessmentPublishButton, type ConsoleBank,
+  AssessmentPublishButton, ConsoleCreatePaper, type ConsoleBank,
 } from '@/components/onyx-platform-forms';
 import { Banner, DataTable, EmptyRow, Pill } from '@/components/onyx-ui';
 
@@ -20,6 +20,11 @@ export default async function OnyxPlatformAssessmentsPage(
   const tenantId = Number(id);
   const academics = await attempt<AcademicsPayload>(
     '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/academics?limit=200');
+  // Published Code Lab problems, so a coding question in the paper builder has
+  // something to be marked against. Safe if it fails -- the builder simply
+  // does not offer the coding type.
+  const problems = (await attempt<{ id: number; title: string; status: string }[]>(
+    '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/problems')) ?? [];
   const assessments = academics?.assessments ?? [];
   const courses = academics?.courses ?? [];
   // What there is to draw from. A paper needs a bank with questions in it, and
@@ -32,7 +37,16 @@ export default async function OnyxPlatformAssessmentsPage(
   return (
     <div className="min-w-0 space-y-4">
       <RosterHeader count={assessments.length} noun="assessment"
-        action={<CreateAssessmentForm tenantId={tenantId} courses={courses} />} />
+        action={(
+          <div className="flex flex-wrap items-center gap-2">
+            {/* The whole paper in one form -- bank, questions, sections,
+                published. The control beside it makes an EMPTY paper, which
+                is still worth having when the questions are coming from a
+                bank that already exists. */}
+            <ConsoleCreatePaper tenantId={tenantId} courses={courses} problems={problems} />
+            <CreateAssessmentForm tenantId={tenantId} courses={courses} />
+          </div>
+        )} />
 
       {/* Said on the list, where somebody can act on it -- not at the moment a
           candidate presses Start, which is where the engine refuses it. */}
