@@ -27,7 +27,17 @@ export default async function OnyxPlatformExamsPage(
   return (
     <div className="min-w-0 space-y-4">
       <RosterHeader count={exams.length} noun="examination"
-        action={<CreateExamForm tenantId={tenantId} courses={courses} semesters={semesters ?? []} />} />
+        action={(
+          <CreateExamForm tenantId={tenantId} courses={courses}
+            semesters={semesters ?? []}
+            // So a sitting can be one somebody sits in a browser. Filtered to
+            // the chosen course inside the form: the API refuses a paper from
+            // another course, and offering one here would be offering
+            // something that cannot be saved.
+            papers={(academics?.assessments ?? []).map((a) => ({
+              id: a.id, title: a.title, course_id: a.course_id, status: a.status,
+            }))} />
+        )} />
 
       {academics === null ? <Unavailable what="examination list" /> : (
         <div tabIndex={0} role="region" aria-label="Examinations" className={SCROLLER}>

@@ -1623,13 +1623,9 @@ export function CreateAssessmentForm({ tenantId, courses }: {
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
-  if (!open) {
-    return <button type="button" onClick={() => setOpen(true)} className={button}>Add an assessment</button>;
-  }
-  return (
+  const form = (
     <form
-      className="grid gap-3 rounded-2xl border border-line bg-slate-50 p-4 sm:grid-cols-2
-                 lg:grid-cols-4"
+      className="grid gap-3 sm:grid-cols-2"
       onSubmit={(e) => {
         e.preventDefault();
         const data = new FormData(e.currentTarget);
@@ -1665,7 +1661,7 @@ export function CreateAssessmentForm({ tenantId, courses }: {
         </select>
       </div>
       <div>
-        <label className={label} htmlFor="cs-duration">Minutes</label>
+        <label className={label} htmlFor="cs-duration">Duration (minutes)</label>
         <input id="cs-duration" name="duration_minutes" type="number" min={1} defaultValue={60}
           className={field} />
       </div>
@@ -1681,54 +1677,98 @@ export function CreateAssessmentForm({ tenantId, courses }: {
         <label className={label} htmlFor="cs-closes">Closes</label>
         <input id="cs-closes" name="closes_at" type="datetime-local" className={field} />
       </div>
-      <div className="col-span-full flex gap-2">
+      {/*
+        * Said before the button, not discovered afterwards.
+        *
+        * A paper is created EMPTY: it draws no questions until sections are
+        * set against a question bank, and until then nobody can sit it. The
+        * engine refuses it at the moment a candidate presses Start, which is
+        * far too late for anybody to do something about it.
+        */}
+      <p className="col-span-full text-[12.5px] leading-relaxed text-muted">
+        A paper is created as a draft with no questions in it. Add a section from a question
+        bank next — the “Add questions” control on its row — and then publish it.
+      </p>
+
+      <div className="col-span-full flex gap-2 pt-1">
         <button type="submit" disabled={pending} className={button}>
-          {pending ? 'Creating…' : 'Create'}
+          {pending ? 'Creating…' : 'Create the paper'}
         </button>
-        <button type="button" onClick={() => setOpen(false)}
+        <button type="button" disabled={pending} onClick={() => setOpen(false)}
           className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
           Cancel
         </button>
       </div>
     </form>
   );
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} className={button}>
+        Add an assessment
+      </button>
+      {/* A dialog, for the reason the exam form is one: four columns of fields
+          unfolding inside a header row is what put a horizontal scrollbar
+          under the whole page. */}
+      {open ? (
+        <Modal title="New paper" onClose={() => setOpen(false)} wide>
+          {form}
+        </Modal>
+      ) : null}
+    </>
+  );
 }
 
 interface SemesterOption { id: number; name: string }
 
-/** Schedule an exam -- needs both a course and a semester, unlike the other
- * creation forms. */
-export function CreateExamForm({ tenantId, courses, semesters }: {
+/**
+ * Schedule an exam.
+ *
+ * Needs a course. A semester is optional -- 0037 dropped that NOT NULL because
+ * a resit or a certification sitting belongs to no term, and the API takes the
+ * course's own when nobody names one.
+ */
+export function CreateExamForm({ tenantId, courses, semesters, papers = [] }: {
   tenantId: number; courses: CourseOption[]; semesters: SemesterOption[];
+  /** The institution's papers, so a sitting can be one sat in a browser. */
+  papers?: { id: number; title: string; course_id: number | null; status: string }[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const ready = courses.length > 0 && semesters.length > 0;
+  const [courseId, setCourseId] = useState<number | null>(courses[0]?.id ?? null);
+  // A course is all that is genuinely required. A semester is not: 0037 made a
+  // sitting with no term a real thing, and the API takes the course's own.
+  const ready = courses.length > 0;
 
-  if (!open) {
-    return (
-      <button type="button" onClick={() => setOpen(true)} disabled={!ready} className={button}
-        title={ready ? undefined : 'Needs at least one course and one semester'}>
-        Schedule an exam
-      </button>
-    );
-  }
-  return (
+  /*
+   * Only papers on the CHOSEN course.
+   *
+   * The API refuses a paper from another course -- a sitting half-linked to
+   * somebody else's questions sends a candidate to the wrong paper -- so
+   * offering them here would be offering something that cannot be saved.
+   */
+  const onThisCourse = papers.filter((a) => Number(a.course_id) === Number(courseId));
+
+  const form = (
     <form
-      className="grid gap-3 rounded-2xl border border-line bg-slate-50 p-4 sm:grid-cols-2
-                 lg:grid-cols-4"
+      className="grid gap-3 sm:grid-cols-2"
       onSubmit={(e) => {
         e.preventDefault();
         const data = new FormData(e.currentTarget);
         setError(null);
         start(async () => {
           const startsRaw = String(data.get('starts_at') ?? '');
+          const semester = String(data.get('semester_id') ?? '');
+          const paper = String(data.get('assessment_id') ?? '');
           const res = await post('onyx/platform/tenants/' + tenantId + '/exams', {
             title: String(data.get('title') ?? ''),
             course_id: Number(data.get('course_id')),
-            semester_id: Number(data.get('semester_id')),
+            // Absent rather than zero when nobody picked one: the API reads
+            // the course's own term, and 0 is not a term.
+            ...(semester ? { semester_id: Number(semester) } : {}),
+            ...(paper ? { assessment_id: Number(paper) } : {}),
             starts_at: startsRaw ? new Date(startsRaw).toISOString() : '',
             duration_minutes: Number(data.get('duration_minutes') || 180),
             max_marks: Number(data.get('max_marks') || 100),
@@ -1748,27 +1788,49 @@ export function CreateExamForm({ tenantId, courses, semesters }: {
       </div>
       <div>
         <label className={label} htmlFor="ce-course">Course</label>
-        <select id="ce-course" name="course_id" required className={field}>
+        <select id="ce-course" name="course_id" required className={field}
+          value={courseId ?? ''} onChange={(e) => setCourseId(Number(e.target.value))}>
           {courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.title}</option>)}
-        </select>
-      </div>
-      <div>
-        <label className={label} htmlFor="ce-semester">Semester</label>
-        <select id="ce-semester" name="semester_id" required className={field}>
-          {semesters.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       </div>
       <div>
         <label className={label} htmlFor="ce-starts">Starts</label>
         <input id="ce-starts" name="starts_at" type="datetime-local" required className={field} />
       </div>
+
+      {/*
+        * The paper this sitting is sat on, and the reason this form existed
+        * without one was an oversight rather than a decision: every sitting
+        * scheduled from here was marked by hand, and there was no way from the
+        * console to run an examination anybody sits in a browser.
+        */}
+      <div className="sm:col-span-2">
+        <label className={label} htmlFor="ce-paper">Online paper</label>
+        <select id="ce-paper" name="assessment_id" className={field}>
+          <option value="">Offline — marks entered by hand</option>
+          {onThisCourse.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.title}{a.status === 'published' ? '' : ' (' + a.status + ')'}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-[12px] leading-relaxed text-muted">
+          {onThisCourse.length
+            ? 'Ties this sitting to a paper sat through the browser. Its own open and close '
+              + 'times are overridden to exactly this sitting — unlike an ordinary '
+              + 'assessment, a candidate cannot start it early or late.'
+            : 'This course has no paper yet. Build one under Assessments — a paper needs a '
+              + 'question bank to draw from before anybody can sit it.'}
+        </p>
+      </div>
+
       <div>
-        <label className={label} htmlFor="ce-dur">Minutes</label>
+        <label className={label} htmlFor="ce-dur">Duration (minutes)</label>
         <input id="ce-dur" name="duration_minutes" type="number" min={5} defaultValue={180}
           className={field} />
       </div>
       <div>
-        <label className={label} htmlFor="ce-max">Out of</label>
+        <label className={label} htmlFor="ce-max">Total marks</label>
         <input id="ce-max" name="max_marks" type="number" min={1} defaultValue={100}
           className={field} />
       </div>
@@ -1777,16 +1839,44 @@ export function CreateExamForm({ tenantId, courses, semesters }: {
         <input id="ce-pass" name="pass_marks" type="number" min={0} defaultValue={40}
           className={field} />
       </div>
-      <div className="col-span-full flex gap-2">
+      <div>
+        <label className={label} htmlFor="ce-semester">Semester</label>
+        <select id="ce-semester" name="semester_id" className={field} defaultValue="">
+          <option value="">Take it from the course</option>
+          {semesters.map((sem) => <option key={sem.id} value={sem.id}>{sem.name}</option>)}
+        </select>
+        {/* Optional, and said so. It was required here while the institution's
+            own form had stopped asking -- 0037 dropped the NOT NULL because a
+            resit or a certification sitting belongs to no term. */}
+        <p className="mt-1 text-[12px] text-muted">Optional.</p>
+      </div>
+
+      <div className="col-span-full flex gap-2 pt-1">
         <button type="submit" disabled={pending} className={button}>
-          {pending ? 'Scheduling…' : 'Schedule'}
+          {pending ? 'Scheduling…' : 'Schedule it'}
         </button>
-        <button type="button" onClick={() => setOpen(false)}
+        <button type="button" disabled={pending} onClick={() => setOpen(false)}
           className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
           Cancel
         </button>
       </div>
     </form>
+  );
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} disabled={!ready} className={button}
+        title={ready ? undefined : 'Needs at least one course'}>
+        Schedule an exam
+      </button>
+      {/* A dialog. Four columns of fields expanding inside a header row is
+          what put a horizontal scrollbar under the whole page. */}
+      {open ? (
+        <Modal title="Schedule an exam" onClose={() => setOpen(false)} wide>
+          {form}
+        </Modal>
+      ) : null}
+    </>
   );
 }
 
