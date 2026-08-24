@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { PasswordField } from '@/components/onyx-password-field';
 
 interface Profile {
   name: string | null; email: string; phone: string | null;
@@ -54,6 +55,12 @@ export function ProfileForm({ profile, mode = 'details' }: {
       <label htmlFor={name} className="block text-sm font-medium text-slate-700">{label}</label>
       {opts.textarea ? (
         <textarea id={name} name={name} rows={3} defaultValue={opts.defaultValue ?? ''}
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500" />
+      ) : opts.type === 'password' ? (
+        // Changing a password blind is the case where a typo costs the most:
+        // it is accepted, and the next sign-in is the one that fails.
+        <PasswordField id={name} name={name}
+          autoComplete={name === 'current_password' ? 'current-password' : 'new-password'}
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500" />
       ) : (
         <input id={name} name={name} type={opts.type ?? 'text'} defaultValue={opts.defaultValue ?? ''}

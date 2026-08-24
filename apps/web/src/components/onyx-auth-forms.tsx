@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
+import { PasswordField } from '@/components/onyx-password-field';
 
 /**
  * F-06 -- signing in, and standing up a new institution.
@@ -129,7 +130,7 @@ export function OnyxLoginForm({ next }: { next?: string } = {}) {
       </div>
       <div>
         <label className={label} htmlFor="password">Password</label>
-        <input id="password" name="password" type="password" required
+        <PasswordField id="password" name="password" required
           autoComplete="current-password" className={field} />
       </div>
       <button type="submit" disabled={pending || !ready} className={button}>

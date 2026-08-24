@@ -5,6 +5,7 @@ import { useEffect, useId, useState, useTransition } from 'react';
 import { Modal } from '@/components/onyx-modal';
 import { ROLE_LABELS } from '@/lib/onyx-nav';
 import { DangerPanel } from '@/components/onyx-danger';
+import { PasswordField } from '@/components/onyx-password-field';
 import {
   ProblemDraftFields, blankProblemDraft, createProblemFromDraft, problemDraftError,
   type ProblemDraft,
@@ -142,7 +143,7 @@ export function PlatformLoginForm() {
       </div>
       <div>
         <label className={label} htmlFor="password">Password</label>
-        <input id="password" name="password" type="password" required
+        <PasswordField id="password" name="password" required
           autoComplete="current-password" className={field} />
       </div>
       <button type="submit" disabled={pending || !ready} className={button + ' w-full'}>
@@ -240,7 +241,7 @@ export function CreateTenantForm() {
               <label className={label} htmlFor="ct-admin-password">
                 Administrator&rsquo;s password
               </label>
-              <input id="ct-admin-password" name="admin_password" type="password" required
+              <PasswordField id="ct-admin-password" name="admin_password" required
                 minLength={8} autoComplete="new-password" className={field} />
             </div>
             {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
@@ -416,7 +417,7 @@ export function CreateProfileForm({ lockedTenant, defaultType, only, cta }: {
             </div>
             <div>
               <label className={label} htmlFor="cp-password">Password</label>
-              <input id="cp-password" name="password" type="password" required minLength={8}
+              <PasswordField id="cp-password" name="password" required minLength={8}
                 autoComplete="new-password" className={field} />
             </div>
             <div className="flex gap-2 pt-1">
@@ -510,7 +511,7 @@ export function GrantAdminForm() {
             </div>
             <div>
               <label className={label} htmlFor="ga-password">Password (new account only)</label>
-              <input id="ga-password" name="password" type="password" minLength={8}
+              <PasswordField id="ga-password" name="password" minLength={8}
                 autoComplete="new-password" className={field} />
             </div>
             <div className="flex gap-2 pt-1">

@@ -7,6 +7,7 @@ import { Modal } from '@/components/onyx-modal';
 import { Icon } from '@/components/onyx-ui';
 import { DangerPanel } from '@/components/onyx-danger';
 import type { Role } from '@/lib/onyx-session';
+import { PasswordField } from '@/components/onyx-password-field';
 
 /**
  * F-04 / F-06 -- the roster of one institution.
@@ -238,7 +239,7 @@ export function OnyxPeople({ members, canEdit, initialRole, tenantName }: {
           </Labelled>
           <Labelled label="Temporary password" htmlFor="ap-password"
             hint="Leave blank and they set their own on first sign-in.">
-            <input id="ap-password" name="password" type="password" minLength={8}
+            <PasswordField id="ap-password" name="password" minLength={8}
               autoComplete="new-password" className={field + ' w-full'} />
           </Labelled>
           <p className="text-xs leading-relaxed text-muted sm:col-span-2">

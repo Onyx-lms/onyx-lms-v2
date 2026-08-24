@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { PasswordField } from '@/components/onyx-password-field';
 
 const field = 'mt-1.5 block min-h-[46px] w-full rounded-xl border border-line bg-white px-3.5 '
   + 'text-[15px] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-600/20';
@@ -189,7 +190,7 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
 
         <div>
           <label className={label} htmlFor="su-password">Choose a password</label>
-          <input id="su-password" name="password" type="password" required minLength={8}
+          <PasswordField id="su-password" name="password" required minLength={8}
             autoComplete="new-password" className={field} />
           <p className="mt-1.5 text-[12.5px] text-muted">At least 8 characters.</p>
         </div>

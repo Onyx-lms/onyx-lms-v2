@@ -64,6 +64,10 @@ export const ICONS = {
   mail: <><rect x="3" y="5.5" width="18" height="13" rx="2.5" /><path d="m3.5 7 8.5 6 8.5-6" /></>,
   lock: <><rect x="5" y="10.5" width="14" height="9.5" rx="2.5" /><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" /></>,
   eye: <><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="3" /></>,
+  // The same eye, struck through -- the pair a password toggle needs. Drawn
+  // as the open eye plus one stroke rather than a different shape, so the
+  // control does not appear to change into some other control when pressed.
+  'eye-off': <><path d="M2.5 12S6 5.5 12 5.5c1.6 0 3 .45 4.2 1.1" /><path d="M19.4 9.2c1.3 1.5 2.1 2.8 2.1 2.8s-3.5 6.5-9.5 6.5c-1.7 0-3.2-.5-4.5-1.2" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /><path d="m4 20 16-16" /></>,
   alert: <><path d="M12 4.5 21 19.5H3z" /><path d="M12 10v4" /><path d="M12 17v.1" /></>,
   x: <><path d="M6 6l12 12M18 6 6 18" /></>,
   arrow: <><path d="M4 12h15" /><path d="m14 7 5 5-5 5" /></>,
