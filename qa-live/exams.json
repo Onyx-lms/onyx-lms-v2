@@ -1,0 +1,477 @@
+{
+  "base": "https://onyx-lms-v2.vercel.app",
+  "slug": "qe-mt6nxrr8",
+  "run": "mt6nxrr8",
+  "passed": 67,
+  "failed": 11,
+  "results": [
+    {
+      "phase": "1. an institution to examine",
+      "label": "platform operator signs in",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "phase": "1. an institution to examine",
+      "label": "institution created",
+      "pass": true,
+      "detail": "200 Institution created."
+    },
+    {
+      "phase": "1. an institution to examine",
+      "label": "administrator signs in",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "phase": "1. an institution to examine",
+      "label": "a lecturer is added",
+      "pass": true,
+      "detail": "200 Member added."
+    },
+    {
+      "phase": "1. an institution to examine",
+      "label": "a candidate is added",
+      "pass": true,
+      "detail": "200 Member added."
+    },
+    {
+      "phase": "1. an institution to examine",
+      "label": "a course to examine",
+      "pass": true,
+      "detail": "200 Course created."
+    },
+    {
+      "phase": "1. an institution to examine",
+      "label": "the course is published",
+      "pass": true,
+      "detail": "200 Course is open."
+    },
+    {
+      "phase": "1. an institution to examine",
+      "label": "the candidate is enrolled",
+      "pass": true,
+      "detail": "200 Enrolled."
+    },
+    {
+      "phase": "1. an institution to examine",
+      "label": "the lecturer is given the course",
+      "pass": true,
+      "detail": "200 Assigned."
+    },
+    {
+      "phase": "1. an institution to examine",
+      "label": "lecturer and candidate sign in",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "phase": "2. a question bank, every type the product offers",
+      "label": "bank created",
+      "pass": true,
+      "detail": "200 Bank created."
+    },
+    {
+      "phase": "2. a question bank, every type the product offers",
+      "label": "single answer",
+      "pass": true,
+      "detail": "200 Question added."
+    },
+    {
+      "phase": "2. a question bank, every type the product offers",
+      "label": "several answers",
+      "pass": true,
+      "detail": "200 Question added."
+    },
+    {
+      "phase": "2. a question bank, every type the product offers",
+      "label": "true or false",
+      "pass": true,
+      "detail": "200 Question added."
+    },
+    {
+      "phase": "2. a question bank, every type the product offers",
+      "label": "short answer with alternatives",
+      "pass": true,
+      "detail": "200 Question added."
+    },
+    {
+      "phase": "2. a question bank, every type the product offers",
+      "label": "essay, which needs a person",
+      "pass": true,
+      "detail": "200 Question added."
+    },
+    {
+      "phase": "2. a question bank, every type the product offers",
+      "label": "a Code Lab problem",
+      "pass": true,
+      "detail": "200 Problem created."
+    },
+    {
+      "phase": "2. a question bank, every type the product offers",
+      "label": "its tests, one of them hidden",
+      "pass": true,
+      "detail": "200 Test cases saved."
+    },
+    {
+      "phase": "2. a question bank, every type the product offers",
+      "label": "the problem is published",
+      "pass": true,
+      "detail": "200 Published."
+    },
+    {
+      "phase": "2. a question bank, every type the product offers",
+      "label": "coding question bound to that problem",
+      "pass": true,
+      "detail": "200 Question added."
+    },
+    {
+      "phase": "2. a question bank, every type the product offers",
+      "label": "the coding question kept its problem",
+      "pass": true,
+      "detail": "problem_id=109"
+    },
+    {
+      "phase": "2. a question bank, every type the product offers",
+      "label": "a coding question with no problem is refused",
+      "pass": true,
+      "detail": "expected 422, got 422"
+    },
+    {
+      "phase": "2. a question bank, every type the product offers",
+      "label": "all six questions are in the bank",
+      "pass": true,
+      "detail": "6 present"
+    },
+    {
+      "phase": "2. a question bank, every type the product offers",
+      "label": "a candidate cannot read the bank",
+      "pass": true,
+      "detail": "expected 403, got 403"
+    },
+    {
+      "phase": "3. the paper",
+      "label": "paper drawn from the whole bank",
+      "pass": true,
+      "detail": "200 Assessment created."
+    },
+    {
+      "phase": "3. the paper",
+      "label": "instant results are on by default",
+      "pass": true,
+      "detail": "instant_results=true"
+    },
+    {
+      "phase": "3. the paper",
+      "label": "the paper is published",
+      "pass": true,
+      "detail": "200 Published."
+    },
+    {
+      "phase": "3. the paper",
+      "label": "staff can preview it",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "3. the paper",
+      "label": "the preview deals all six questions",
+      "pass": true,
+      "detail": "dealt 6"
+    },
+    {
+      "phase": "3. the paper",
+      "label": "a candidate sees the paper but not its sections",
+      "pass": true,
+      "detail": "sections=undefined"
+    },
+    {
+      "phase": "4. scheduling the sitting",
+      "label": "examination scheduled against the paper",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "4. scheduling the sitting",
+      "label": "it took the term from the course rather than asking",
+      "pass": true,
+      "detail": "semester_id=null"
+    },
+    {
+      "phase": "4. scheduling the sitting",
+      "label": "the paper took the sitting's window",
+      "pass": true,
+      "detail": "opens=2026-08-24T04:15:25.086+00:00 closes=2026-08-24T05:45:25.086+00:00"
+    },
+    {
+      "phase": "4. scheduling the sitting",
+      "label": "and the window is the sitting's length, not the paper's",
+      "pass": true,
+      "detail": "90 minutes"
+    },
+    {
+      "phase": "4. scheduling the sitting",
+      "label": "an examination cannot borrow another course's paper",
+      "pass": false,
+      "detail": "expected 422, got 404"
+    },
+    {
+      "phase": "4. scheduling the sitting",
+      "label": "a candidate cannot schedule an examination",
+      "pass": true,
+      "detail": "expected 403, got 403"
+    },
+    {
+      "phase": "4. scheduling the sitting",
+      "label": "a course belonging to no programme",
+      "pass": true,
+      "detail": "200 Course created."
+    },
+    {
+      "phase": "4. scheduling the sitting",
+      "label": "an examination on it is scheduled, with no term named",
+      "pass": true,
+      "detail": "200 semester_id=null"
+    },
+    {
+      "phase": "5. the sitting owns its slot on the timetable",
+      "label": "the week, as staff see it",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "5. the sitting owns its slot on the timetable",
+      "label": "the examination is on it",
+      "pass": false,
+      "detail": "absent"
+    },
+    {
+      "phase": "5. the sitting owns its slot on the timetable",
+      "label": "it carries its own start, not the day",
+      "pass": false,
+      "detail": "starts_at=undefined"
+    },
+    {
+      "phase": "5. the sitting owns its slot on the timetable",
+      "label": "and the ninety minutes it occupies",
+      "pass": false,
+      "detail": "duration=undefined"
+    },
+    {
+      "phase": "5. the sitting owns its slot on the timetable",
+      "label": "the candidate sees the sitting on their own week",
+      "pass": false,
+      "detail": "0 entries"
+    },
+    {
+      "phase": "6. sitting the paper",
+      "label": "the sitting is brought forward",
+      "pass": true,
+      "detail": "200 Updated."
+    },
+    {
+      "phase": "6. sitting the paper",
+      "label": "the paper followed it",
+      "pass": true,
+      "detail": "opens=2026-08-24T03:14:30.176+00:00"
+    },
+    {
+      "phase": "6. sitting the paper",
+      "label": "the candidate starts",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "6. sitting the paper",
+      "label": "six questions are dealt",
+      "pass": true,
+      "detail": "6 dealt"
+    },
+    {
+      "phase": "6. sitting the paper",
+      "label": "the coding question arrives with its problem, and no tests",
+      "pass": true,
+      "detail": "problem=109"
+    },
+    {
+      "phase": "6. sitting the paper",
+      "label": "every answer is saved, the code one included",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "phase": "6. sitting the paper",
+      "label": "the paper dealt what the bank holds",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "phase": "6. sitting the paper",
+      "label": "the paper is handed in",
+      "pass": true,
+      "detail": "200 Handed in."
+    },
+    {
+      "phase": "7. what comes back",
+      "label": "the candidate opens their attempt",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "7. what comes back",
+      "label": "their own answers are readable",
+      "pass": true,
+      "detail": "6/6 present"
+    },
+    {
+      "phase": "7. what comes back",
+      "label": "the objective questions are marked by machine",
+      "pass": false,
+      "detail": "multiple=null truefalse=null single=null short=null"
+    },
+    {
+      "phase": "7. what comes back",
+      "label": "the coding answer was marked by its tests, hidden case included",
+      "pass": false,
+      "detail": "awarded=null/10"
+    },
+    {
+      "phase": "7. what comes back",
+      "label": "the essay waits for a person rather than inventing a mark",
+      "pass": true,
+      "detail": "awarded=null"
+    },
+    {
+      "phase": "7. what comes back",
+      "label": "and is not called right or wrong",
+      "pass": true,
+      "detail": "correct=null"
+    },
+    {
+      "phase": "7. what comes back",
+      "label": "a paper with an essay on it is held for the marker",
+      "pass": true,
+      "detail": "status=submitted score=null"
+    },
+    {
+      "phase": "8. the marker, and the correction",
+      "label": "it is in the marking queue",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "8. the marker, and the correction",
+      "label": "the attempt is waiting there",
+      "pass": true,
+      "detail": "1 waiting"
+    },
+    {
+      "phase": "8. the marker, and the correction",
+      "label": "the marker awards the essay",
+      "pass": true,
+      "detail": "200 Marked."
+    },
+    {
+      "phase": "8. the marker, and the correction",
+      "label": "the total now includes the essay",
+      "pass": false,
+      "detail": "score=36/50"
+    },
+    {
+      "phase": "8. the marker, and the correction",
+      "label": "marking alone does not release it",
+      "pass": true,
+      "detail": "score=null"
+    },
+    {
+      "phase": "8. the marker, and the correction",
+      "label": "the course’s own lecturer releases it",
+      "pass": true,
+      "detail": "200 1 results published."
+    },
+    {
+      "phase": "8. the marker, and the correction",
+      "label": "the candidate sees the mark once it is out",
+      "pass": false,
+      "detail": "score=36"
+    },
+    {
+      "phase": "8. the marker, and the correction",
+      "label": "and the marker's comment reaches them",
+      "pass": true,
+      "detail": "comment=\"The tilt is right; say more about why the angle matters.\""
+    },
+    {
+      "phase": "8. the marker, and the correction",
+      "label": "the answer key appears now there is no resit left",
+      "pass": true,
+      "detail": "expected=\"a\""
+    },
+    {
+      "phase": "8. the marker, and the correction",
+      "label": "a marker may still correct a released result",
+      "pass": true,
+      "detail": "200 Marked."
+    },
+    {
+      "phase": "8. the marker, and the correction",
+      "label": "the correction lands",
+      "pass": false,
+      "detail": "score=38"
+    },
+    {
+      "phase": "8. the marker, and the correction",
+      "label": "and the result does not vanish while it is improved",
+      "pass": false,
+      "detail": "score=38"
+    },
+    {
+      "phase": "9. the mark sheet",
+      "label": "marks are pulled through from the paper",
+      "pass": true,
+      "detail": "200 Pulled 1 mark from the online paper."
+    },
+    {
+      "phase": "9. the mark sheet",
+      "label": "the sheet reads",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "9. the mark sheet",
+      "label": "the candidate is on it with their mark",
+      "pass": true,
+      "detail": "marks=1"
+    },
+    {
+      "phase": "9. the mark sheet",
+      "label": "the sitting is published",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "9. the mark sheet",
+      "label": "a candidate cannot read the whole mark sheet",
+      "pass": true,
+      "detail": "expected 403, got 403"
+    },
+    {
+      "phase": "9. the mark sheet",
+      "label": "nor edit the examination",
+      "pass": true,
+      "detail": "expected 403, got 403"
+    },
+    {
+      "phase": "9. the mark sheet",
+      "label": "their own results list",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "9. the mark sheet",
+      "label": "the paper shows there with a mark",
+      "pass": true,
+      "detail": "1 listed"
+    }
+  ]
+}

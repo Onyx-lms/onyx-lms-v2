@@ -1159,3 +1159,79 @@ test('with no sandbox wired, a code answer waits for a person rather than scorin
   // mark, not a missing one.
   assert.equal(done.score, null, 'an ungradable code answer was scored instead of queued');
 });
+
+test('a code answer the sandbox cannot run is refused, not silently marked zero', async () => {
+  /*
+   * Found against the deployed site. A client that sent the candidate's
+   * program as a bare string -- reasonable-looking, and what every other
+   * question type takes -- had it written to the answer row with no
+   * submission behind it and was told "saved". It was: as a blob nothing
+   * could run. The paper then went to a marker with that question at zero and
+   * nothing anywhere saying why, so a candidate who had answered correctly
+   * lost ten marks unless a human noticed.
+   *
+   * Refusing costs nothing: the attempt is not spent, the clock is unchanged,
+   * and the client can send the same work in the shape the sandbox runs.
+   */
+  const grader = fakeGrader();
+  const w = world();
+  const withCode = new (Object.getPrototypeOf(w.assess).constructor)(
+    w.db, new AcademicsService(w.db as never), w.clock.now, grader);
+
+  const bank = Number((await withCode.createBank(T, ACTOR, { name: 'Code bank' })).id);
+  // Two languages, so a bare string names nothing: picking one for the
+  // candidate would compile Python as C++ and score the same honest zero.
+  const problem = aProblem(w, { languages: ['python', 'cpp'] });
+  await withCode.addQuestion(T, bank, ACTOR,
+    { type: 'code', prompt: 'Write it', points: 10, problem_id: problem });
+  const paper = await withCode.createAssessment(T, ACTOR, {
+    title: 'Coding test', course_id: 1, duration_minutes: 60,
+    sections: [{ id: 's1', title: 'Code', bank_id: bank, take: 1 }],
+  });
+  await withCode.publishAssessment(T, Number(paper.id));
+
+  const attempt = await withCode.start(T, Number(paper.id), 'user-10');
+  const questionId = attempt.questions[0]!.question_id;
+
+  await assert.rejects(
+    withCode.saveAnswer(T, attempt.id, 'user-10', { question_id: questionId, response: 'print(5)' }),
+    (e: HttpError) => e.status === 422 && /code submission/i.test(e.message));
+  assert.equal(grader.calls.submitted, 0, 'an unrunnable answer reached the sandbox');
+
+  // Nothing was written, so the candidate has lost nothing by being refused.
+  const stored = w.db.tables.onyx_assessment_answers
+    .filter((a: Record<string, unknown>) => Number(a.attempt_id) === Number(attempt.id));
+  assert.equal(stored.length, 0, 'the unrunnable answer was stored anyway');
+
+  // The shape the sitting screen sends has always worked and still does.
+  await withCode.saveAnswer(T, attempt.id, 'user-10', {
+    question_id: questionId, response: { language: 'python', source: 'print(5)' },
+  });
+  assert.equal(grader.calls.submitted, 1);
+});
+
+test('where a problem allows one language, the program alone is enough', async () => {
+  // Generous where it can be: there is nothing to guess at when the problem
+  // accepts exactly one language, so a client that sends only the source is
+  // taken at its word rather than refused on a technicality.
+  const grader = fakeGrader();
+  const w = world();
+  const withCode = new (Object.getPrototypeOf(w.assess).constructor)(
+    w.db, new AcademicsService(w.db as never), w.clock.now, grader);
+
+  const bank = Number((await withCode.createBank(T, ACTOR, { name: 'Code bank' })).id);
+  const problem = aProblem(w);                    // python only
+  await withCode.addQuestion(T, bank, ACTOR,
+    { type: 'code', prompt: 'Write it', points: 10, problem_id: problem });
+  const paper = await withCode.createAssessment(T, ACTOR, {
+    title: 'Coding test', course_id: 1, duration_minutes: 60,
+    sections: [{ id: 's1', title: 'Code', bank_id: bank, take: 1 }],
+  });
+  await withCode.publishAssessment(T, Number(paper.id));
+
+  const attempt = await withCode.start(T, Number(paper.id), 'user-10');
+  await withCode.saveAnswer(T, attempt.id, 'user-10', {
+    question_id: attempt.questions[0]!.question_id, response: 'print(5)',
+  });
+  assert.equal(grader.calls.submitted, 1, 'a single-language problem refused its own language');
+});

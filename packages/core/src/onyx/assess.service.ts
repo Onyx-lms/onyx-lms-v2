@@ -68,6 +68,37 @@ export const hasKey = (answer: unknown): boolean => !(
   || (typeof answer === 'string' && answer.trim() === '')
 );
 
+/**
+ * A code answer in the one shape the sandbox can run, or nothing.
+ *
+ * The sitting screen sends `{ language, source }` and always has. Anything
+ * else reaching this method is a client that has misunderstood the question
+ * type, and the honest answers are "run it" or "refuse it" -- never "store it
+ * and mark it zero", which is what happened before this existed.
+ *
+ * A bare string is accepted where the problem allows exactly one language,
+ * because there is then nothing to guess: the language is the only one the
+ * problem has. Where a problem accepts several, picking one for the candidate
+ * would compile Python as C++ and score the honest zero the old path scored,
+ * so it is refused with a message saying what is missing instead.
+ */
+export function normaliseCodeAnswer(
+  response: unknown, languages: readonly string[],
+): { language: string; source: string } | null {
+  if (typeof response === 'string') {
+    return languages.length === 1 ? { language: languages[0]!, source: response } : null;
+  }
+  if (!response || typeof response !== 'object') return null;
+  const given = response as { language?: unknown; source?: unknown };
+  if (typeof given.source !== 'string') return null;
+  const language = typeof given.language === 'string' && given.language.trim()
+    ? given.language
+    : languages[0];
+  // A problem with no languages at all cannot be compiled against anything.
+  if (!language) return null;
+  return { language, source: given.source };
+}
+
 export type MarkRole = 'first' | 'second' | 'moderation';
 
 /** One entry of a dealt paper, as stored on the attempt. */
@@ -878,11 +909,34 @@ export class AssessService {
     // what the candidate can already see.
     let submissionId: number | null = existing ? Number(existing.submission_id ?? 0) || null : null;
     if (entry.type === 'code' && entry.problem?.id && this.#code && input.response) {
-      const given = input.response as { language?: string; source?: string };
-      if (given.source && String(given.source).trim()) {
+      const given = normaliseCodeAnswer(input.response, entry.problem.languages ?? []);
+      /*
+       * A code answer that cannot be graded is refused, not stored.
+       *
+       * This branch used to test `given.source` and fall through when there
+       * was none -- so a response of the wrong shape (a bare string from a
+       * client that thought code was text, say) was written to the answer
+       * row with no submission behind it, and the candidate was told their
+       * answer was saved. It was: as an ungradeable blob. `#finalise` then
+       * sent the attempt to a marker with that question at zero and nothing
+       * anywhere saying why, which is the worst of the three possible
+       * outcomes -- worse than refusing, and worse than guessing.
+       *
+       * So it is refused, and the message names the shape. The candidate's
+       * client can retry with their work intact; nothing about their attempt
+       * is spent. `normaliseCodeAnswer` is generous first: a bare string is
+       * accepted whole where the problem allows exactly one language, because
+       * there is nothing to guess at then.
+       */
+      if (!given) {
+        throw new HttpError(422,
+          'That is not a code submission. Send the language you are writing in '
+          + 'and your program, and it will be run against the tests.');
+      }
+      if (given.source.trim()) {
         const made = await this.#code.submit(tenantId, entry.problem.id, userId, {
-          language: String(given.language ?? entry.problem.languages[0] ?? 'python'),
-          source: String(given.source),
+          language: given.language,
+          source: given.source,
           mode: 'submit',
         });
         submissionId = Number(made.id);

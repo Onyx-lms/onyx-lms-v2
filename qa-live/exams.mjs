@@ -250,13 +250,33 @@ const windowMinutes = synced.opens_at && synced.closes_at
 check('and the window is the sitting\'s length, not the paper\'s',
   windowMinutes === 90, windowMinutes + ' minutes');
 
-await refuse('an examination cannot borrow another course\'s paper', 422, '/api/onyx/exams', {
+// A real paper on a real other course, because "no such assessment" is a
+// different refusal (404) from "that paper is not on this course" (422), and
+// only the second one is the invariant worth holding.
+const otherCourse = await step('a second course', '/api/onyx/courses', {
+  method: 'POST', token: at,
+  body: { code: 'OT' + RUN.slice(-4), title: 'Another subject', credits: 3, access: 'open' },
+});
+const otherPaper = await step('with a paper of its own', '/api/onyx/assessments', {
+  method: 'POST', token: at,
+  body: {
+    title: 'Other paper ' + RUN, course_id: otherCourse.data?.id, duration_minutes: 30,
+    sections: [{ id: 's1', title: 'All', bank_id: bankId, take: 1 }],
+  },
+});
+await refuse('an examination cannot borrow another course\u2019s paper', 422, '/api/onyx/exams', {
   method: 'POST', token: at,
   body: {
     course_id: courseId, title: 'Mismatched', starts_at: iso(2 * 3600_000),
-    assessment_id: 999_999,
+    assessment_id: otherPaper.data?.id,
   },
 });
+await refuse('and an examination on a paper that does not exist is not found', 404,
+  '/api/onyx/exams', {
+    method: 'POST', token: at,
+    body: { course_id: courseId, title: 'Nothing', starts_at: iso(2 * 3600_000),
+      assessment_id: 999_999 },
+  });
 await refuse('a candidate cannot schedule an examination', 403, '/api/onyx/exams', {
   method: 'POST', token: st,
   body: { course_id: courseId, title: 'Free marks', starts_at: iso(3600_000) },
@@ -283,26 +303,31 @@ startPhase('5. the sitting owns its slot on the timetable');
 const week = await step('the week, as staff see it',
   '/api/onyx/calendar?from=' + encodeURIComponent(iso(-3600_000))
   + '&to=' + encodeURIComponent(iso(7 * 86_400_000)), { token: ft });
-const entries = Array.isArray(week.data) ? week.data : (week.data?.entries ?? []);
-const mine = entries.find((e) => String(e.title ?? '').includes(RUN));
+// The calendar answers with the two things it holds, kept apart: the sittings
+// and the papers. An examination is not an assessment window, and the screen
+// draws them differently.
+const examsOn = week.data?.exams ?? [];
+const papersOn = week.data?.assessments ?? [];
+const mine = examsOn.find((e) => String(e.title ?? '').includes(RUN));
 check('the examination is on it', Boolean(mine), mine ? mine.title : 'absent');
 check('it carries its own start, not the day',
   Boolean(mine?.starts_at) && Math.abs(Date.parse(mine.starts_at) - Date.parse(startsAt)) < 60_000,
   'starts_at=' + mine?.starts_at);
-check('and the ninety minutes it occupies',
-  Number(mine?.duration_minutes ?? mine?.minutes) === 90
-  || (mine?.ends_at
-    && Math.round((Date.parse(mine.ends_at) - Date.parse(mine.starts_at)) / 60000) === 90),
-  'duration=' + (mine?.duration_minutes ?? mine?.ends_at));
+check('and the ninety minutes it occupies, so it owns a slot rather than a day',
+  Number(mine?.duration_minutes) === 90, 'duration=' + mine?.duration_minutes);
+check('the paper it is sat on is on the calendar too',
+  papersOn.some((a) => Number(a.id) === Number(paperId)), papersOn.length + ' papers');
 
 const studentWeek = await call('/api/onyx/calendar?from='
   + encodeURIComponent(iso(-3600_000)) + '&to=' + encodeURIComponent(iso(7 * 86_400_000)),
 { token: st });
-const studentEntries = Array.isArray(studentWeek.data)
-  ? studentWeek.data : (studentWeek.data?.entries ?? []);
+const studentExams = studentWeek.data?.exams ?? [];
 check('the candidate sees the sitting on their own week',
-  studentEntries.some((e) => String(e.title ?? '').includes(RUN)),
-  studentEntries.length + ' entries');
+  studentExams.some((e) => String(e.title ?? '').includes(RUN)),
+  studentExams.length + ' sittings');
+check('and not the other course, which they are not enrolled on',
+  !studentExams.some((e) => Number(e.course_id) === Number(otherCourse.data?.id)),
+  studentExams.map((e) => e.course_id).join(','));
 
 // ---------------------------------------------------------------------------
 
@@ -341,10 +366,22 @@ await answer(idOf(q2), ['a', 'c']);
 await answer(idOf(q3), 'true');
 await answer(idOf(q4), 'Pacific');
 await answer(idOf(q5), 'Because the earth is tilted on its axis.');
-const codeAnswer = await answer(idOf(q6),
-  'a, b = map(int, input().split())\nprint(a + b)');
+// The shape the sitting screen sends: a language and a program, which is
+// what the sandbox runs. A response that is neither is refused just below,
+// rather than stored as something nothing can mark.
+const codeAnswer = await answer(idOf(q6), {
+  language: 'python',
+  source: 'a, b = map(int, input().split())\nprint(a + b)',
+});
 check('every answer is saved, the code one included',
   codeAnswer.status === 200 || codeAnswer.status === 201, codeAnswer.status);
+
+const shapeless = await call('/api/onyx/attempts/' + attemptId + '/answer', {
+  method: 'POST', token: st,
+  body: { question_id: idOf(q6), response: { note: 'not a program' } },
+});
+check('a code answer the sandbox cannot run is refused rather than stored',
+  shapeless.status === 422, 'got ' + shapeless.status + ' ' + (shapeless.message ?? ''));
 check('the paper dealt what the bank holds', Object.keys(byId).length === 6);
 
 const submitted = await step('the paper is handed in',
@@ -362,27 +399,33 @@ check('their own answers are readable',
   rq.filter((q) => q.response !== null && q.response !== '').length === 6,
   rq.filter((q) => q.response !== null && q.response !== '').length + '/6 present');
 
-const objective = rq.filter((q) => ['single', 'multiple', 'truefalse', 'short'].includes(q.type));
-check('the objective questions are marked by machine',
-  objective.length === 4 && objective.every((q) => q.awarded !== null),
-  objective.map((q) => q.type + '=' + q.awarded).join(' '));
-
-const codeRow = rq.find((q) => q.type === 'code');
-check('the coding answer was marked by its tests, hidden case included',
-  Number(codeRow?.awarded) === 10, 'awarded=' + codeRow?.awarded + '/10');
-
-const essayRow = rq.find((q) => q.type === 'essay');
-check('the essay waits for a person rather than inventing a mark',
-  essayRow?.awarded === null || essayRow?.awarded === 0,
-  'awarded=' + essayRow?.awarded);
-check('and is not called right or wrong', essayRow?.correct === null,
-  'correct=' + String(essayRow?.correct));
+check('the coding answer went to the sandbox as written',
+  String(rq.find((q) => q.type === 'code')?.response?.source ?? '').includes('input'),
+  'response=' + JSON.stringify(rq.find((q) => q.type === 'code')?.response).slice(0, 40));
 
 // A paper carrying an essay must NOT release instantly -- that is the whole
 // rule, and the check that would have caught it going wrong.
 check('a paper with an essay on it is held for the marker',
   review.data?.status !== 'published' && review.data?.score === null,
   'status=' + review.data?.status + ' score=' + String(review.data?.score));
+check('and the marks are held with it, every one of them',
+  rq.every((q) => q.awarded === null),
+  rq.map((q) => q.type + '=' + q.awarded).join(' '));
+
+// What the machine DID mark is visible to the marker straight away, which is
+// where "the coding question is broken" would show first.
+const markerView = await step('the marker opens the paper',
+  '/api/onyx/attempts/' + attemptId + '/paper', { token: ft });
+const mq = markerView.data?.questions ?? [];
+const autoOf = (type) => mq.find((q) => q.type === type)?.auto_points;
+check('the objective questions were marked by machine at hand-in',
+  ['single', 'multiple', 'truefalse', 'short'].every((t) => Number(autoOf(t)) === 5),
+  ['single', 'multiple', 'truefalse', 'short'].map((t) => t + '=' + autoOf(t)).join(' '));
+check('the coding answer was marked by its tests, hidden case included',
+  Number(autoOf('code')) === 10, 'awarded=' + autoOf('code') + '/10');
+check('and only the essay is left for a person',
+  autoOf('essay') === null || autoOf('essay') === undefined,
+  'essay auto=' + String(autoOf('essay')));
 
 startPhase('8. the marker, and the correction');
 
@@ -409,14 +452,18 @@ const stillHeld = await call('/api/onyx/attempts/' + attemptId, { token: st });
 check('marking alone does not release it', stillHeld.data?.score === null,
   'score=' + String(stillHeld.data?.score));
 
-await step('the course's own lecturer releases it',
+await step('the course’s own lecturer releases it',
   '/api/onyx/assessments/' + paperId + '/results/publish',
   { method: 'POST', token: ft, body: {} });
 
 const afterMark = await call('/api/onyx/attempts/' + attemptId, { token: st });
 check('the candidate sees the mark once it is out',
   Number(afterMark.data?.score) === 46, 'score=' + String(afterMark.data?.score));
-const essayAfter = (afterMark.data?.questions ?? []).find((q) => q.type === 'essay');
+const releasedQ = afterMark.data?.questions ?? [];
+check('every question now carries the mark it earned',
+  releasedQ.every((q) => q.awarded !== null),
+  releasedQ.map((q) => q.type + '=' + q.awarded).join(' '));
+const essayAfter = releasedQ.find((q) => q.type === 'essay');
 check('and the marker\'s comment reaches them',
   typeof essayAfter?.comment === 'string' && essayAfter.comment.includes('tilt'),
   'comment=' + JSON.stringify(essayAfter?.comment));
