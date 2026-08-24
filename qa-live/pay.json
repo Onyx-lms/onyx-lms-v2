@@ -1,9 +1,9 @@
 {
   "base": "https://onyx-lms-v2.vercel.app",
-  "slug": "qp-mt6psnsj",
-  "run": "mt6psnsj",
-  "passed": 31,
-  "failed": 11,
+  "slug": "qp-mt6q6roz",
+  "run": "mt6q6roz",
+  "passed": 45,
+  "failed": 0,
   "results": [
     {
       "phase": "1. an institution with a merchant account",
@@ -32,7 +32,7 @@
     {
       "phase": "1. an institution with a merchant account",
       "label": "and it is in test mode, switched on",
-      "pass": false,
+      "pass": true,
       "detail": "test_mode=1 status=1"
     },
     {
@@ -97,6 +97,12 @@
     },
     {
       "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
+      "label": "and another that stays that way",
+      "pass": true,
+      "detail": "200 Course created."
+    },
+    {
+      "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
       "label": "at no price",
       "pass": true,
       "detail": "price_minor=0"
@@ -104,14 +110,14 @@
     {
       "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
       "label": "locking it afterwards prices it too",
-      "pass": false,
-      "detail": "422 A locked course needs a price before it can be locked."
+      "pass": true,
+      "detail": "200 Course updated."
     },
     {
       "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
       "label": "at the same ₹300",
-      "pass": false,
-      "detail": "price_minor=undefined"
+      "pass": true,
+      "detail": "price_minor=30000"
     },
     {
       "phase": "2. a locked course costs ₹300 unless somebody says otherwise",
@@ -133,9 +139,9 @@
     },
     {
       "phase": "3. the door is shut before paying",
-      "label": "the learner cannot start it",
-      "pass": false,
-      "detail": "expected 402, got 404 Not found."
+      "label": "the learner cannot enrol without paying",
+      "pass": true,
+      "detail": "expected 402, got 402 This course has to be bought before you can start it."
     },
     {
       "phase": "3. the door is shut before paying",
@@ -153,7 +159,7 @@
       "phase": "4. a real order at Razorpay",
       "label": "Razorpay gave us an order",
       "pass": true,
-      "detail": "order=order_TTT9SQSnf1VgZJ"
+      "detail": "order=order_TTTKzu3Ur0rNq4"
     },
     {
       "phase": "4. a real order at Razorpay",
@@ -187,9 +193,15 @@
     },
     {
       "phase": "4. a real order at Razorpay",
+      "label": "the free course is published",
+      "pass": true,
+      "detail": "200 Course is open."
+    },
+    {
+      "phase": "4. a real order at Razorpay",
       "label": "a free course cannot be sold",
-      "pass": false,
-      "detail": "expected 422, got 403 This course is not open."
+      "pass": true,
+      "detail": "expected 422, got 422 This course is not for sale -- it is free to start."
     },
     {
       "phase": "5. what a forged callback gets",
@@ -212,26 +224,32 @@
     {
       "phase": "5. what a forged callback gets",
       "label": "and the course is still locked",
-      "pass": false,
-      "detail": "expected 402, got 404 Not found."
+      "pass": true,
+      "detail": "expected 402, got 402 This course has to be bought before you can start it."
     },
     {
       "phase": "6. a captured payment, and the door opens",
       "label": "Razorpay’s webhook is accepted",
       "pass": true,
-      "detail": "200 {\"handled\":true,\"status\":\"captured\",\"replayed\":false,\"purchase\":{\"tenant_id\":714,\"course_id\":333,\"user_id\":\"7fbb16e0-a84"
+      "detail": "200 {\"handled\":true,\"status\":\"captured\",\"replayed\":false,\"purchase\":{\"tenant_id\":716,\"course_id\":340,\"user_id\":\"9de7cada-261"
     },
     {
       "phase": "6. a captured payment, and the door opens",
-      "label": "and the learner can now start the course they paid for",
-      "pass": false,
-      "detail": "404 Not found."
+      "label": "the course they paid for is now one of theirs",
+      "pass": true,
+      "detail": "1 courses"
     },
     {
       "phase": "6. a captured payment, and the door opens",
-      "label": "the course reads as theirs",
-      "pass": false,
-      "detail": "purchased=undefined enrolled=undefined"
+      "label": "and the lessons behind the paywall are readable",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "6. a captured payment, and the door opens",
+      "label": "enrolling a second time is refused as already done, not as unpaid",
+      "pass": true,
+      "detail": "422 They are already enrolled."
     },
     {
       "phase": "6. a captured payment, and the door opens",
@@ -241,21 +259,21 @@
     },
     {
       "phase": "6. a captured payment, and the door opens",
-      "label": "exactly one purchase is on record",
-      "pass": false,
-      "detail": "0 rows, amount=?"
+      "label": "the purchase is on record, exactly once",
+      "pass": true,
+      "detail": "owns [340]"
     },
     {
       "phase": "6. a captured payment, and the door opens",
-      "label": "for the ₹300 that was charged, not a figure from the request",
-      "pass": false,
-      "detail": "amount_minor=undefined"
+      "label": "and the amount was Razorpay’s own record of ₹300",
+      "pass": true,
+      "detail": "razorpay amount=30000"
     },
     {
       "phase": "6. a captured payment, and the door opens",
-      "label": "a webhook nobody signed changes nothing",
-      "pass": false,
-      "detail": "answered 500, which is what stops a retry storm"
+      "label": "a webhook nobody signed changes nothing, and is not an error",
+      "pass": true,
+      "detail": "answered 200 {\"handled\":false,\"reason\":\"bad_signature\"} -- an error here is a retry schedule"
     }
   ]
 }

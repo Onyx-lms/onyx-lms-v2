@@ -20,6 +20,7 @@ import {
 } from '@/components/onyx-ui';
 import { ShareLink } from '@/components/onyx-share';
 import { ConfirmPayment } from '@/components/onyx-pay-return';
+import { BuyCourseButton } from '@/components/onyx-buy';
 
 export const metadata: Metadata = { title: 'Course' };
 
@@ -45,12 +46,31 @@ export default async function OnyxCoursePage(
   const { id } = await params;
   const { ref: paymentRef, cancelled } = (await searchParams) ?? {};
 
-  const [me, outline, members] = await Promise.all([
+  const [me, outline, members, purchases, gateways] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
     onyxApi<Outline>('/api/onyx/courses/' + id + '/outline'),
     onyxApiSafe<{ user: { id: string; name: string; email: string } | null; role: string }[]>(
       '/api/onyx/members'),
+    /*
+     * What this learner owns, and how the institution takes money.
+     *
+     * The catalogue has asked both of these since locked courses landed. This
+     * page had not, and offered every unenrolled learner the same "Join this
+     * course" button -- on a locked course too, because buying IS the
+     * enrolment and so `self_enroll` is 1 on one. A learner who followed a
+     * link straight to a paid course saw a free-looking button, pressed it,
+     * and got a 402 with no price anywhere on the screen. The catalogue got
+     * this right and the course's own page, which is where a shared link
+     * lands, did not.
+     *
+     * Both are read safely: no gateway configured means the mock, which is
+     * what a deployment without a merchant account has always used.
+     */
+    onyxApiSafe<number[]>('/api/onyx/my/purchases'),
+    onyxApiSafe<{ identifier: string; title?: string | null }[]>('/api/onyx/gateways'),
   ]);
+  const owned = (purchases ?? []).map(Number).includes(Number(id));
+  const gateway = gateways?.[0]?.identifier ?? null;
   const teachers = (members ?? []).filter((m) => m.role === 'faculty' || m.role === 'admin');
   const students = (members ?? []).filter((m) => m.role === 'student');
   const nameOf = new Map((members ?? []).map((m) => [m.user?.id, m.user?.name ?? 'Unknown']));
@@ -197,11 +217,25 @@ export default async function OnyxCoursePage(
             </Hero>
           ) : (
             <Banner tone="info" icon="lock"
-              action={outline.course.self_enroll && me.role === 'student' ? (
-                <ActionButton endpoint={'courses/' + id + '/enroll'} label="Join this course" />
-              ) : undefined}
+              /* The same three doors the catalogue offers, because this is the
+                 page a shared link lands on: buy it, join it, or be told the
+                 programme office handles it. */
+              action={me.role !== 'student' ? undefined
+                : outline.course.access === 'locked' && !owned ? (
+                  <BuyCourseButton courseId={Number(id)} title={outline.course.title}
+                    price={Number(outline.course.price_minor ?? 0)}
+                    currency={String(outline.course.currency ?? 'INR')}
+                    gateway={gateway} compact />
+                ) : outline.course.self_enroll || outline.course.access === 'open' || owned ? (
+                  <ActionButton endpoint={'courses/' + id + '/enroll'}
+                    label={owned ? 'Start — you own this' : 'Join this course'} />
+                ) : undefined}
             >
-              You are not enrolled in this course. Preview lessons are open; the rest is not.
+              {outline.course.access === 'locked' && !owned
+                ? 'This course is bought rather than joined. Preview lessons are open; '
+                  + 'the rest opens as soon as it is paid for.'
+                : 'You are not enrolled in this course. Preview lessons are open; '
+                  + 'the rest is not.'}
             </Banner>
           )}
 
