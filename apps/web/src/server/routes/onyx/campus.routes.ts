@@ -415,9 +415,10 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
        *
        * The form used to ask for it, and a person scheduling "CS101 Final"
        * has no reason to think about which semester row it belongs to -- the
-       * course already knows. The column stays NOT NULL because the calendar
-       * index is `(tenant_id, semester_id, starts_at)` and every existing
-       * exam has one; what changed is who has to supply it.
+       * course already knows, so it is taken from there. And where the course
+       * has none either, the exam simply has none: migration 0037 dropped the
+       * NOT NULL, because a resit or a certification sitting on a course
+       * outside any programme is still an exam.
        */
       semester_id: z.number().int().positive().optional(),
       course_id: z.number().int().positive(),

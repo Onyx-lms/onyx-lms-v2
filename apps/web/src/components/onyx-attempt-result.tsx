@@ -27,9 +27,11 @@ import type { Assessment, CandidateAttempt } from '@/lib/onyx-assess';
  * while somebody can still resit makes the resit meaningless, and banks are
  * shared between papers.
  *
- * Marker comments are still missing, and that is a gap rather than a decision —
- * `marker_comment` is written by the staff marking form and served to nobody.
- * Rendering it needs `attemptForCandidate` to return it first.
+ * The marker's comment travels with the marks. It is written per question by
+ * the staff marking form and was served to nobody for as long as marking has
+ * existed — a marker explaining why an essay lost four marks was writing into
+ * the void. It is released on the same condition as the score, because a
+ * comment is a mark in prose.
  */
 export function OnyxAttemptResult({ assessment, attempt }: {
   assessment: Assessment;

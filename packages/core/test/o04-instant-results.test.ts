@@ -447,3 +447,59 @@ test('nothing about the marking leaks before the result is out', async () => {
     assert.equal(q.response, 'b');
   }
 });
+
+test('the marker\'s comment reaches the candidate with the marks', async () => {
+  /*
+   * It never had. `marker_comment` has been written per question by the
+   * marking form for as long as marking has existed and served by nothing, so
+   * a marker explaining why an essay lost four marks was writing into the
+   * void. It is the one part of a result somebody can learn from, and it was
+   * the part being withheld.
+   */
+  const w = world();
+  const id = await paperWithEssay(w);
+  const attemptId = await sitAndSubmit(w, id);
+
+  const paper = await w.assess.attemptForMarker(T, attemptId);
+  const essayId = paper.questions.find((q) => q.type === 'essay')!.question_id;
+  await w.assess.mark(T, attemptId, 'user-20', {
+    role: 'first',
+    marks: [{ question_id: essayId, points: 3, comment: 'Say more about the base case.' }],
+  });
+  // A paper with an essay on it is released by a person, not by submit -- so
+  // the comment is read at the point the mark itself becomes readable.
+  await w.assess.publishResults(T, id);
+
+  const seen = await w.assess.attemptForCandidate(T, attemptId, LEARNER);
+  const essay = seen.questions.find((q) => q.type === 'essay')!;
+  assert.equal(essay.comment, 'Say more about the base case.',
+    'the marker wrote to nobody');
+  // And a question nobody wrote on says nothing rather than an empty string,
+  // so the screen can decide by presence.
+  const objective = seen.questions.find((q) => q.type === 'single')!;
+  assert.equal(objective.comment, null);
+});
+
+test('a comment is a mark in prose, and waits with the marks', async () => {
+  /*
+   * "You have misread the question" before the paper is out tells a candidate
+   * their score early, and does it in a form no moderation pass can quietly
+   * revise first. So it is gated on exactly what the score is gated on.
+   */
+  const w = world();
+  const id = await paperWithEssay(w, { moderation_required: true });
+  const attemptId = await sitAndSubmit(w, id);
+
+  const paper = await w.assess.attemptForMarker(T, attemptId);
+  const essayId = paper.questions.find((q) => q.type === 'essay')!.question_id;
+  await w.assess.mark(T, attemptId, 'user-20', {
+    role: 'first',
+    marks: [{ question_id: essayId, points: 3, comment: 'Not yours to read yet.' }],
+  });
+
+  const seen = await w.assess.attemptForCandidate(T, attemptId, LEARNER);
+  assert.equal(seen.score, null, 'fixture: this result should still be held');
+  for (const q of seen.questions) {
+    assert.equal(q.comment, null, 'a marker comment leaked before the result');
+  }
+});

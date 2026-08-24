@@ -45,6 +45,8 @@ export interface PaperQuestion {
   /** The correct answer, once the candidate has no sitting left to spoil. */
   expected?: unknown;
   explanation?: string | null;
+  /** What the marker wrote against this answer. Released with the marks. */
+  comment?: string | null;
   /** `code` only: what the candidate needs in order to answer. Never the tests. */
   problem?: {
     id: number; title: string; statement: string | null;

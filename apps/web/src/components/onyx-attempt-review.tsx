@@ -20,7 +20,9 @@ import type { PaperQuestion } from '@/lib/onyx-assess';
  * over the key while a candidate can still resit makes the resit meaningless,
  * and banks are shared between papers, so a key given away early leaks into
  * other papers drawn from the same bank. The service decides — see
- * `attemptForCandidate` — and this renders whatever it is given.
+ * `attemptForCandidate` — and this renders whatever it is given. The same is
+ * true of the marker's comment: served only with the marks, shown only when
+ * a marker actually wrote one.
  */
 
 /** An option id as the candidate would recognise it: the text they clicked. */
@@ -128,6 +130,28 @@ export function OnyxAttemptReview({ question, index }: {
 
           {question.explanation ? (
             <p className="text-[13px] leading-relaxed text-muted">{question.explanation}</p>
+          ) : null}
+
+          {/*
+            * The marker's own words, attributed as such.
+            *
+            * Distinguished from the explanation above it, which is the
+            * author's note on the question and reads the same for everybody
+            * who sat it. This one is about this answer, and a candidate
+            * reading "you have inverted the condition" needs to know a person
+            * wrote it — so it is labelled rather than dropped in as more grey
+            * prose.
+            */}
+          {question.comment ? (
+            <div className="space-y-1.5">
+              <p className="text-[12px] font-semibold uppercase tracking-wide text-muted">
+                Marker’s comment
+              </p>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2
+                              text-[13.5px] leading-relaxed text-amber-900">
+                {question.comment}
+              </div>
+            </div>
           ) : null}
         </div>
 

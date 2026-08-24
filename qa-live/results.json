@@ -1,0 +1,846 @@
+[
+  {
+    "phase": "1. platform operator",
+    "status": "PASS",
+    "what": "the platform operator signs in",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": null
+    }
+  },
+  {
+    "phase": "1. platform operator",
+    "status": "PASS",
+    "what": "creates an institution with its first administrator",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Institution created."
+    }
+  },
+  {
+    "phase": "1. platform operator",
+    "status": "PASS",
+    "what": "sees every institution on the platform",
+    "detail": "14 institutions",
+    "evidence": {
+      "status": 200,
+      "message": null
+    }
+  },
+  {
+    "phase": "1. platform operator",
+    "status": "PASS",
+    "what": "creates a course inside that institution",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Course created."
+    }
+  },
+  {
+    "phase": "1. platform operator",
+    "status": "PASS",
+    "what": "reads that institution’s academics",
+    "detail": "1 courses",
+    "evidence": {
+      "status": 200,
+      "message": null
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "adds a lecturer to the roster",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Member added."
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "adds a student",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Member added."
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "adds a second student",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Member added."
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "reads the roster",
+    "detail": "4 members",
+    "evidence": {
+      "status": 200,
+      "message": null
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "creates a programme",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Programme created."
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "creates a semester",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Semester created."
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "creates an OPEN course",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Course created."
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "publishes it",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Course is open."
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "creates a LOCKED course priced at ₹1,499",
+    "detail": "price_minor=149900",
+    "evidence": {
+      "status": 200,
+      "message": "Course created."
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "publishes it",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Course is open."
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "edits a course",
+    "detail": "Quality Assurance (revised)",
+    "evidence": {
+      "status": 200,
+      "message": "Course updated."
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "enrols the student",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Enrolled."
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "assigns the lecturer to the course",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Assigned."
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "opens student registration",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Updated."
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "sets the community link",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Community link saved."
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "refuses a javascript: community link",
+    "detail": "",
+    "evidence": {
+      "status": 422,
+      "message": "A community link has to be an http or https address. \"javascript:\" is not one."
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "reads one lecturer's permissions",
+    "detail": "43 capabilities",
+    "evidence": {
+      "status": 200,
+      "message": null
+    }
+  },
+  {
+    "phase": "2. administrator",
+    "status": "PASS",
+    "what": "a never-delegable capability is not offered for a person",
+    "detail": "grantable=false",
+    "evidence": null
+  },
+  {
+    "phase": "3. assessment and examination",
+    "status": "PASS",
+    "what": "creates a question bank",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Bank created."
+    }
+  },
+  {
+    "phase": "3. assessment and examination",
+    "status": "PASS",
+    "what": "adds a single question",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Question added."
+    }
+  },
+  {
+    "phase": "3. assessment and examination",
+    "status": "PASS",
+    "what": "adds a truefalse question",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Question added."
+    }
+  },
+  {
+    "phase": "3. assessment and examination",
+    "status": "PASS",
+    "what": "adds a essay question",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Question added."
+    }
+  },
+  {
+    "phase": "3. assessment and examination",
+    "status": "PASS",
+    "what": "authors a Code Lab problem",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Problem created."
+    }
+  },
+  {
+    "phase": "3. assessment and examination",
+    "status": "PASS",
+    "what": "gives it test cases",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Test cases saved."
+    }
+  },
+  {
+    "phase": "3. assessment and examination",
+    "status": "PASS",
+    "what": "publishes the problem",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Published."
+    }
+  },
+  {
+    "phase": "3. assessment and examination",
+    "status": "PASS",
+    "what": "adds a CODE question against it",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Question added."
+    }
+  },
+  {
+    "phase": "3. assessment and examination",
+    "status": "PASS",
+    "what": "creates an assessment drawing from the bank",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Assessment created."
+    }
+  },
+  {
+    "phase": "3. assessment and examination",
+    "status": "PASS",
+    "what": "instant results are on by default",
+    "detail": "instant_results=true",
+    "evidence": null
+  },
+  {
+    "phase": "3. assessment and examination",
+    "status": "PASS",
+    "what": "publishes the paper",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Published."
+    }
+  },
+  {
+    "phase": "3. assessment and examination",
+    "status": "PASS",
+    "what": "schedules an examination without naming a semester",
+    "detail": "semester_id=165",
+    "evidence": {
+      "status": 200,
+      "message": null
+    }
+  },
+  {
+    "phase": "4. lecturer",
+    "status": "PASS",
+    "what": "adds a module to the course they teach",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Module added."
+    }
+  },
+  {
+    "phase": "4. lecturer",
+    "status": "PASS",
+    "what": "adds a video lesson with a description",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Lesson added."
+    }
+  },
+  {
+    "phase": "4. lecturer",
+    "status": "PASS",
+    "what": "adds a document lesson with a description",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Lesson added."
+    }
+  },
+  {
+    "phase": "4. lecturer",
+    "status": "PASS",
+    "what": "adds a text lesson with a description",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Lesson added."
+    }
+  },
+  {
+    "phase": "4. lecturer",
+    "status": "PASS",
+    "what": "adds a link lesson with a description",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Lesson added."
+    }
+  },
+  {
+    "phase": "4. lecturer",
+    "status": "PASS",
+    "what": "cannot add to a course they do not teach",
+    "detail": "",
+    "evidence": {
+      "status": 403,
+      "message": "You do not teach this course."
+    }
+  },
+  {
+    "phase": "4. lecturer",
+    "status": "PASS",
+    "what": "opens the invigilation queue",
+    "detail": "0 attempts in progress",
+    "evidence": {
+      "status": 200,
+      "message": null
+    }
+  },
+  {
+    "phase": "4. lecturer",
+    "status": "PASS",
+    "what": "cannot read the fee structures",
+    "detail": "",
+    "evidence": {
+      "status": 403,
+      "message": "This action is unauthorized."
+    }
+  },
+  {
+    "phase": "4. lecturer",
+    "status": "PASS",
+    "what": "cannot read the merchant configuration",
+    "detail": "",
+    "evidence": {
+      "status": 403,
+      "message": "This action is unauthorized."
+    }
+  },
+  {
+    "phase": "5. learner",
+    "status": "PASS",
+    "what": "reads their own record",
+    "detail": "role=student roll=QA-001",
+    "evidence": {
+      "status": 200,
+      "message": null
+    }
+  },
+  {
+    "phase": "5. learner",
+    "status": "PASS",
+    "what": "reads the course outline",
+    "detail": "4 lessons in the first module",
+    "evidence": {
+      "status": 200,
+      "message": null
+    }
+  },
+  {
+    "phase": "5. learner",
+    "status": "PASS",
+    "what": "cannot start a locked course without paying",
+    "detail": "",
+    "evidence": {
+      "status": 402,
+      "message": "This course has to be bought before you can start it."
+    }
+  },
+  {
+    "phase": "5. learner",
+    "status": "PASS",
+    "what": "buys the locked course",
+    "detail": "",
+    "evidence": {
+      "status": 200,
+      "message": "Paid. You are enrolled."
+    }
+  },
+  {
+    "phase": "5. learner",
+    "status": "PASS",
+    "what": "the locked course opens after paying",
+    "detail": "",
+    "evidence": null
+  },
+  {
+    "phase": "5. learner",
+    "status": "PASS",
+    "what": "starts the assessment",
+    "detail": "2 questions dealt",
+    "evidence": {
+      "status": 200,
+      "message": null
+    }
+  },
+  {
+    "phase": "5. learner",
+    "status": "PASS",
+    "what": "hands the paper in",
+    "detail": "score=null/15",
+    "evidence": {
+      "status": 200,
+      "message": "Handed in."
+    }
+  },
+  {
+    "phase": "5. learner",
+    "status": "PASS",
+    "what": "the review screen carries what they answered",
+    "detail": "2 of 2 answered",
+    "evidence": null
+  },
+  {
+    "phase": "5. learner",
+    "status": "PASS",
+    "what": "reads their own papers",
+    "detail": "1 sat, 0 with results",
+    "evidence": null
+  },
+  {
+    "phase": "5. learner",
+    "status": "PASS",
+    "what": "reads the week's examinations and papers",
+    "detail": "1 exams, 0 papers",
+    "evidence": {
+      "status": 200,
+      "message": null
+    }
+  },
+  {
+    "phase": "5. learner",
+    "status": "PASS",
+    "what": "cannot read the roster",
+    "detail": "",
+    "evidence": {
+      "status": 403,
+      "message": "This action is unauthorized."
+    }
+  },
+  {
+    "phase": "5. learner",
+    "status": "PASS",
+    "what": "cannot read teaching allocations",
+    "detail": "",
+    "evidence": {
+      "status": 403,
+      "message": "This action is unauthorized."
+    }
+  },
+  {
+    "phase": "5. learner",
+    "status": "PASS",
+    "what": "cannot read placement drives",
+    "detail": "",
+    "evidence": {
+      "status": 403,
+      "message": "This action is unauthorized."
+    }
+  },
+  {
+    "phase": "5. learner",
+    "status": "PASS",
+    "what": "cannot read fee structures",
+    "detail": "",
+    "evidence": {
+      "status": 403,
+      "message": "This action is unauthorized."
+    }
+  },
+  {
+    "phase": "5. learner",
+    "status": "PASS",
+    "what": "cannot create a course",
+    "detail": "",
+    "evidence": {
+      "status": 403,
+      "message": "This action is unauthorized."
+    }
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "administrator signs in through the form",
+    "detail": "",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "administrator opens dashboard",
+    "detail": "/onyx/dashboard",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "administrator opens courses",
+    "detail": "/onyx/courses",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "administrator opens people",
+    "detail": "/onyx/people",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "administrator opens timetable",
+    "detail": "/onyx/timetable",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "administrator opens permissions",
+    "detail": "/onyx/permissions",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "administrator opens settings",
+    "detail": "/onyx/settings",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "administrator opens finance",
+    "detail": "/onyx/finance",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "administrator opens audit",
+    "detail": "/onyx/audit",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "administrator opens examinations",
+    "detail": "/onyx/exams",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "administrator opens assessments",
+    "detail": "/onyx/assessments",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "lecturer signs in through the form",
+    "detail": "",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "lecturer opens dashboard",
+    "detail": "/onyx/dashboard",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "lecturer opens courses",
+    "detail": "/onyx/courses",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "lecturer opens assessments",
+    "detail": "/onyx/assessments",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "lecturer opens invigilate",
+    "detail": "/onyx/invigilate",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "lecturer opens timetable",
+    "detail": "/onyx/timetable",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "lecturer opens people",
+    "detail": "/onyx/people",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "learner signs in through the form",
+    "detail": "",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "learner opens dashboard",
+    "detail": "/onyx/dashboard",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "learner opens courses",
+    "detail": "/onyx/courses",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "learner opens results",
+    "detail": "/onyx/results",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "learner opens timetable",
+    "detail": "/onyx/timetable",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "learner opens jobs",
+    "detail": "/onyx/jobs",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "learner opens resume",
+    "detail": "/onyx/resume",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "learner opens profile",
+    "detail": "/onyx/profile",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "a learner is not offered Fees in the navigation",
+    "detail": "",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "a learner is not offered Interviews in the navigation",
+    "detail": "",
+    "evidence": null
+  },
+  {
+    "phase": "6. the screens",
+    "status": "PASS",
+    "what": "the community link reaches the learner on Jobs",
+    "detail": "",
+    "evidence": null
+  },
+  {
+    "phase": "7. hardening",
+    "status": "PASS",
+    "what": "response header x-content-type-options",
+    "detail": "nosniff",
+    "evidence": null
+  },
+  {
+    "phase": "7. hardening",
+    "status": "PASS",
+    "what": "response header x-frame-options",
+    "detail": "SAMEORIGIN",
+    "evidence": null
+  },
+  {
+    "phase": "7. hardening",
+    "status": "PASS",
+    "what": "response header content-security-policy",
+    "detail": "frame-ancestors 'self'",
+    "evidence": null
+  },
+  {
+    "phase": "7. hardening",
+    "status": "PASS",
+    "what": "response header referrer-policy",
+    "detail": "strict-origin-when-cross-origin",
+    "evidence": null
+  },
+  {
+    "phase": "7. hardening",
+    "status": "PASS",
+    "what": "response header permissions-policy",
+    "detail": "camera=(self), microphone=(), geolocation=(), payment=(self), interest-cohort=()",
+    "evidence": null
+  },
+  {
+    "phase": "7. hardening",
+    "status": "PASS",
+    "what": "response header strict-transport-security",
+    "detail": "max-age=63072000; includeSubDomains; preload",
+    "evidence": null
+  },
+  {
+    "phase": "7. hardening",
+    "status": "PASS",
+    "what": "the camera policy still permits live invigilation",
+    "detail": "camera=(self), microphone=(), geolocation=(), payment=(self), interest-cohort=()",
+    "evidence": null
+  },
+  {
+    "phase": "7. hardening",
+    "status": "PASS",
+    "what": "anonymous callers are refused",
+    "detail": "me=401 members=401 calendar=401",
+    "evidence": null
+  },
+  {
+    "phase": "7. hardening",
+    "status": "PASS",
+    "what": "another institution cannot read this one's course",
+    "detail": "",
+    "evidence": {
+      "status": 404,
+      "message": "Course not found."
+    }
+  }
+]

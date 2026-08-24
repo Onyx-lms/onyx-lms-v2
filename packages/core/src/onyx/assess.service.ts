@@ -821,6 +821,23 @@ export class AssessService {
           ? Number(byQuestion.get(q.question_id)?.auto_points ?? 0)
             + Number(byQuestion.get(q.question_id)?.manual_points ?? 0)
           : null,
+        /*
+         * What the marker wrote against this answer.
+         *
+         * The marking form has written `marker_comment` per question since
+         * marking existed, and nothing has ever served it -- so a marker
+         * explaining why an essay lost four marks was writing to nobody. It
+         * is the one part of a result somebody can actually learn from, and
+         * it was the part being withheld.
+         *
+         * Gated on `released` with the marks, because a comment is a mark in
+         * prose: "you have misread the question" before the paper is out
+         * tells a candidate their score early, and does it in a form no
+         * moderation pass can quietly revise first.
+         */
+        comment: released
+          ? byQuestion.get(q.question_id)?.marker_comment ?? null
+          : null,
       })),
     };
   }
