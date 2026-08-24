@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
-import { attempt, Unavailable, money } from '@/lib/onyx-platform-tenant';
+import { attempt, Unavailable, money, AccessPill } from '@/lib/onyx-platform-tenant';
 import {
   AddModuleForm, ModuleRowActions, AddLessonForm, LessonRemoveButton,
   ConsoleEnrolForm, ConsoleWithdrawButton,
@@ -98,12 +98,14 @@ export default async function OnyxPlatformCoursePage(
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {course.access === 'locked' ? (
-              <Pill tone="brand">
-                {money(Number(course.price_minor ?? 0), course.currency ?? 'INR')}
-              </Pill>
-            ) : null}
-            {course.status === 1 ? <State tone="on">Open</State> : <State tone="idle">Draft</State>}
+            {/* How it is joined, and separately whether it is visible at all.
+                The second used to read "Open", which is the word the first one
+                needs. */}
+            <AccessPill access={String(course.access ?? 'batch')}
+              priceMinor={course.price_minor} currency={course.currency} />
+            {course.status === 1
+              ? <State tone="on">Published</State>
+              : <State tone="idle">Draft</State>}
           </div>
         </div>
       </Card>

@@ -25,6 +25,7 @@ import { gradeFor } from './examinations.service.ts';
 // an href is stored XSS with extra steps. Two implementations of that check
 // is one implementation and one hole waiting to be found.
 import { normaliseCurriculumUrl } from './domains.service.ts';
+import { resolveCourseAccess, type CourseAccess } from './academics.service.ts';
 
 const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, created_at, updated_at';
 const ADMIN_COLUMNS = 'id, user_id, granted_by, created_at';
@@ -475,7 +476,7 @@ export class PlatformService {
 
     const [courseQ, assignmentQ, assessmentQ, examQ] = await Promise.all([
       this.#db.from('onyx_courses')
-        .select('id, code, title, credits, status, program_id, semester_id, self_enroll, created_at')
+        .select('id, code, title, credits, status, program_id, semester_id, self_enroll, access, price_minor, currency, created_at')
         .eq('tenant_id', id).order('code', { ascending: true }).limit(limit + 1),
       this.#db.from('onyx_assignments')
         .select('id, course_id, title, due_at, total_points, status, created_at')
@@ -548,6 +549,12 @@ export class PlatformService {
       credits: num(c.credits),
       status: num(c.status),
       self_enroll: num(c.self_enroll) === 1,
+      // How a learner joins, and what it costs them. The console listed
+      // neither, so an operator could not tell a course anybody could start
+      // from one nobody could.
+      access: String(c.access ?? 'batch'),
+      price_minor: num(c.price_minor),
+      currency: String(c.currency ?? 'INR'),
       programme: c.program_id == null ? null : programmes.get(num(c.program_id)) ?? null,
       enrollment_count: enrolBy.get(num(c.id)) ?? 0,
       faculty_count: facBy.get(num(c.id)) ?? 0,
@@ -1433,16 +1440,33 @@ export class PlatformService {
    * shape, called with the service-role client like everything else in this
    * file.
    */
+  /**
+   * A course, from the console.
+   *
+   * `access` is the part this route used to drop on the floor. Every course an
+   * operator created landed on the column default -- `batch`, the institution
+   * enrols you -- so a customer being set up from the console got courses no
+   * learner could join and no learner could buy, and the only way to make one
+   * open or paid was to sign in as that institution's own administrator.
+   *
+   * The rule lives in `resolveCourseAccess` rather than here: access,
+   * self_enroll and price_minor are one decision, and a second copy of that
+   * decision is how a course comes to say "open" on the catalogue and refuse
+   * the learner who clicks it.
+   */
   async createCourse(tenantId: number, actorId: string | null, input: {
     code: string; title: string; credits?: number; self_enroll?: boolean; status?: number;
+    access?: CourseAccess; price_minor?: number; currency?: string;
   }) {
     const slug = slugify(input.title);
     if (!slug) throw new HttpError(422, 'That title does not make a usable address.');
     const { data, error } = await this.#db.from('onyx_courses').insert({
       tenant_id: tenantId, code: input.code.trim().toUpperCase(), title: input.title.trim(),
-      slug, credits: input.credits ?? 0, self_enroll: input.self_enroll ? 1 : 0,
+      slug, credits: input.credits ?? 0,
+      ...resolveCourseAccess(input),
       status: input.status ?? 0, created_by: actorId,
-    }).select('id, code, title, credits, status, created_at').maybeSingle();
+    }).select('id, code, title, credits, status, access, price_minor, currency, created_at')
+      .maybeSingle();
     if (error?.code === '23505') {
       throw new HttpError(422, 'That course code or address is already in use.');
     }
@@ -1454,9 +1478,11 @@ export class PlatformService {
 
   async updateCourse(tenantId: number, courseId: number, actorId: string | null, patch: {
     title?: string; code?: string; credits?: number; status?: number;
+    access?: CourseAccess; price_minor?: number; currency?: string;
   }) {
     const { data: course } = await this.#db.from('onyx_courses')
-      .select('id, tenant_id, title, code, credits, status').eq('id', courseId).maybeSingle();
+      .select('id, tenant_id, title, code, credits, status, access, price_minor, currency')
+      .eq('id', courseId).maybeSingle();
     if (!course || Number(course.tenant_id) !== tenantId) throw new HttpError(404, 'No such course.');
 
     const before: Record<string, unknown> = {};
@@ -1464,6 +1490,14 @@ export class PlatformService {
     for (const key of ['title', 'code', 'credits', 'status'] as const) {
       const value = patch[key];
       if (value !== undefined && value !== course[key]) { before[key] = course[key]; after[key] = value; }
+    }
+    // Read against the course as it stands, so a price somebody already chose
+    // survives a change of access -- see resolveCourseAccess.
+    for (const [key, value] of Object.entries(resolveCourseAccess(patch, course))) {
+      if (value !== course[key as keyof typeof course]) {
+        before[key] = course[key as keyof typeof course];
+        after[key] = value;
+      }
     }
     if (!Object.keys(after).length) return course;
     await this.#db.from('onyx_courses')

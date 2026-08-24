@@ -1007,14 +1007,74 @@ export function AssignmentSubmissionsToggle({ tenantId, assignmentId }: {
 }
 
 /** Edit a course's title, code, credits or status directly. */
+/**
+ * How a learner gets onto a course, as one choice.
+ *
+ * The console had no such choice at all: every course it created landed on the
+ * column default, `batch`, so a customer set up from here got courses nobody
+ * could join and nobody could buy. The wording matches the institution's own
+ * form word for word, because these are the same three options and a customer
+ * reading one screen and then the other should not have to work that out.
+ */
+const ACCESS_OPTIONS = [
+  ['open', 'Open — anyone here may start it, free'],
+  ['locked', 'Locked — they buy it first'],
+  ['batch', 'The institution enrols them'],
+] as const;
+
+/** The house price for a locked course, in rupees. Matches the API's default. */
+const LOCKED_PRICE_RUPEES = 300;
+
+/**
+ * The fields for access and price, shared by the create and edit forms.
+ *
+ * Price is only rendered when "locked" is chosen, because a price on a free
+ * course is a number that does nothing — and a field that does nothing is a
+ * field somebody fills in and then wonders about.
+ */
+function AccessFields({ idPrefix, access, setAccess, priceRupees, setPriceRupees,
+  labelClass, fieldClass }: {
+  idPrefix: string;
+  access: string; setAccess: (v: string) => void;
+  priceRupees: string; setPriceRupees: (v: string) => void;
+  labelClass: string; fieldClass: string;
+}) {
+  return (
+    <>
+      <div>
+        <label className={labelClass} htmlFor={idPrefix + '-access'}>How learners get on</label>
+        <select id={idPrefix + '-access'} name="access" value={access}
+          onChange={(e) => setAccess(e.target.value)} className={fieldClass}>
+          {ACCESS_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      </div>
+      {access === 'locked' ? (
+        <div>
+          <label className={labelClass} htmlFor={idPrefix + '-price'}>Price (₹)</label>
+          {/* Rupees, not paise. The database stores minor units and the form
+              converts: nobody setting a price should have to multiply by a
+              hundred, and a slip of two zeroes is ₹300 against ₹30,000. */}
+          <input id={idPrefix + '-price'} name="price" type="number" min={1} step="1"
+            value={priceRupees} onChange={(e) => setPriceRupees(e.target.value)}
+            className={fieldClass} />
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 export function CourseEditToggle({ tenantId, course }: {
   tenantId: number;
-  course: { id: number; title: string; code: string; credits: number; status: number };
+  course: { id: number; title: string; code: string; credits: number; status: number;
+    access?: string | null; price_minor?: number | null };
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [access, setAccess] = useState(course.access ?? 'batch');
+  const [priceRupees, setPriceRupees] = useState(
+    String(Math.round(Number(course.price_minor ?? 0) / 100) || LOCKED_PRICE_RUPEES));
 
   if (!open) {
     return <button type="button" onClick={() => setOpen(true)} className={linkButton}>Edit</button>;
@@ -1033,6 +1093,13 @@ export function CourseEditToggle({ tenantId, course }: {
               code: String(data.get('code') ?? ''),
               credits: Number(data.get('credits')),
               status: Number(data.get('status')),
+              access,
+              // Sent only when it means something. A price on a free course is
+              // a number nobody reads, and the API prices a locked course at
+              // the house rate when none is given.
+              ...(access === 'locked'
+                ? { price_minor: Math.round((Number(priceRupees) || LOCKED_PRICE_RUPEES) * 100) }
+                : {}),
             });
             if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
             setOpen(false);
@@ -1057,13 +1124,21 @@ export function CourseEditToggle({ tenantId, course }: {
             defaultValue={course.credits} required className={smallField} />
         </div>
         <div>
+          {/* "Published", not "Open". `status` is whether the course exists for
+              anybody to see; `access` below is whether they can join it for
+              nothing. Calling the first one "Open" put two different meanings
+              on one word, on the same screen, and left an operator setting a
+              course "Open" and wondering why nobody could join it. */}
           <label className={smallLabel} htmlFor={'c-status-' + course.id}>Status</label>
           <select id={'c-status-' + course.id} name="status" defaultValue={course.status}
             className={smallField}>
-            <option value={1}>Open</option>
+            <option value={1}>Published</option>
             <option value={0}>Draft</option>
           </select>
         </div>
+        <AccessFields idPrefix={'c-' + course.id} access={access} setAccess={setAccess}
+          priceRupees={priceRupees} setPriceRupees={setPriceRupees}
+          labelClass={smallLabel} fieldClass={smallField} />
         <div className="col-span-full flex gap-2">
           <button type="submit" disabled={pending} className={saveButton}>
             {pending ? 'Saving…' : 'Save'}
@@ -1492,6 +1567,10 @@ export function CreateCourseForm({ tenantId }: { tenantId: number }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // Open by default: a course somebody can join is the common case, and it was
+  // the one the console could not produce at all.
+  const [access, setAccess] = useState('open');
+  const [priceRupees, setPriceRupees] = useState(String(LOCKED_PRICE_RUPEES));
 
   if (!open) {
     return <button type="button" onClick={() => setOpen(true)} className={button}>Add a course</button>;
@@ -1509,6 +1588,10 @@ export function CreateCourseForm({ tenantId }: { tenantId: number }) {
             code: String(data.get('code') ?? ''),
             title: String(data.get('title') ?? ''),
             credits: Number(data.get('credits') || 0),
+            access,
+            ...(access === 'locked'
+              ? { price_minor: Math.round((Number(priceRupees) || LOCKED_PRICE_RUPEES) * 100) }
+              : {}),
           });
           if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
           setOpen(false);
@@ -1531,6 +1614,13 @@ export function CreateCourseForm({ tenantId }: { tenantId: number }) {
         <input id="cc-credits" name="credits" type="number" min={0} defaultValue={3}
           className={field} />
       </div>
+      <AccessFields idPrefix="cc" access={access} setAccess={setAccess}
+        priceRupees={priceRupees} setPriceRupees={setPriceRupees}
+        labelClass={label} fieldClass={field} />
+      <p className="col-span-full -mt-1 text-[12px] text-muted">
+        Created as a draft either way — publishing is a separate step. A locked course costs
+        ₹{LOCKED_PRICE_RUPEES} unless you change it.
+      </p>
       <div className="col-span-full flex gap-2">
         <button type="submit" disabled={pending} className={button}>
           {pending ? 'Creating…' : 'Create'}

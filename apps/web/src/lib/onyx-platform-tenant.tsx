@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { platformApi } from '@/lib/onyx-platform-session';
 import { Banner, Icon, Pill, State, relativeDue } from '@/components/onyx-ui';
+// Imported as well as re-exported below: AccessPill formats a price here.
+import { money } from '@/lib/onyx-money';
 
 /**
  * Shared shapes and small presentational pieces for the tenant-scoped
@@ -41,7 +43,31 @@ export interface PeoplePayload {
 export interface CourseRow {
   id: number; code: string; title: string; credits: number; status: number;
   self_enroll: boolean; programme: string | null;
+  /** How a learner joins: 'open' (free), 'locked' (paid), 'batch' (enrolled). */
+  access: string; price_minor: number; currency: string;
   enrollment_count: number; faculty_count: number;
+}
+
+/**
+ * How a course is joined, said in words with the price in it.
+ *
+ * Kept beside the type rather than in a page, because the console shows it in
+ * two places -- the list and the course itself -- and a course that reads
+ * "Locked · ₹300" on one and "Paid" on the other is two answers to one
+ * question.
+ */
+export function AccessPill({ access, priceMinor, currency }: {
+  access: string; priceMinor?: number | null; currency?: string | null;
+}) {
+  if (access === 'locked') {
+    return (
+      <Pill tone="brand">
+        Locked · {money(Number(priceMinor ?? 0), currency ?? 'INR')}
+      </Pill>
+    );
+  }
+  if (access === 'open') return <Pill tone="good">Open · free</Pill>;
+  return <Pill tone="neutral">By the institution</Pill>;
 }
 export interface AssignmentRow {
   id: number; title: string; course: { code: string; title: string } | null; course_id: number;
@@ -328,7 +354,7 @@ export const SCROLLER = 'min-w-0';
 
 // The shared one, so the console does not print "INR 300.00" while every
 // other screen in the product says "₹300.00".
-export { money } from '@/lib/onyx-money';
+export { money };
 
 
 /**

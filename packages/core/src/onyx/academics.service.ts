@@ -36,6 +36,64 @@ const ENROLLMENT_COLUMNS = 'id, tenant_id, course_id, user_id, batch_id, status,
  */
 export const DEFAULT_LOCKED_PRICE_MINOR = 30_000;
 
+/** How a learner gets onto a course. */
+export type CourseAccess = 'batch' | 'open' | 'locked';
+export const COURSE_ACCESS: CourseAccess[] = ['batch', 'open', 'locked'];
+
+/**
+ * The three columns that decide how somebody joins a course, resolved together.
+ *
+ * They cannot be set independently and it is not obvious why, which is exactly
+ * the kind of rule that gets half-copied into a second caller:
+ *
+ *   * **`access` and `self_enroll` travel together.** `access` is what every
+ *     read asks about; `self_enroll` is what `selfEnroll()` has read since
+ *     0002. Writing one without the other is how a course comes to say "open"
+ *     on the catalogue and then refuse the learner who clicks it.
+ *   * **A locked course must carry a price.** `onyx_courses_locked_price_check`
+ *     (0024) refuses `access = 'locked'` with a price of zero, and rightly: a
+ *     locked course nobody can buy is a course nobody can ever enter. Left to
+ *     the database, that refusal arrives as a raw constraint violation naming
+ *     no field. So choosing "locked" IS choosing to charge, and the house price
+ *     is what it costs when nobody says otherwise.
+ *   * **An existing price is never overwritten by the house price.** Somebody
+ *     chose 1,499; switching that course from open to locked must not quietly
+ *     make it 300.
+ *
+ * `current` is the course as it stands, or undefined when it is being created.
+ * That is the only difference between the two callers: on create a non-locked
+ * course is priced at zero, on update a price nobody mentioned is left alone.
+ */
+export function resolveCourseAccess(
+  input: { access?: CourseAccess; price_minor?: number; currency?: string;
+    self_enroll?: boolean },
+  current?: { price_minor?: number | null },
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const creating = current === undefined;
+
+  if (input.access !== undefined) {
+    out.access = input.access;
+    out.self_enroll = input.access === 'batch' ? 0 : 1;
+  } else if (creating) {
+    out.access = 'batch';
+    out.self_enroll = input.self_enroll ? 1 : 0;
+  } else if (input.self_enroll !== undefined) {
+    out.self_enroll = input.self_enroll ? 1 : 0;
+  }
+
+  if (input.price_minor !== undefined) {
+    out.price_minor = input.price_minor;
+  } else if (creating) {
+    out.price_minor = input.access === 'locked' ? DEFAULT_LOCKED_PRICE_MINOR : 0;
+  } else if (input.access === 'locked' && Number(current?.price_minor ?? 0) <= 0) {
+    out.price_minor = DEFAULT_LOCKED_PRICE_MINOR;
+  }
+
+  if (input.currency !== undefined) out.currency = input.currency.toUpperCase();
+  return out;
+}
+
 /**
  * Who is allowed to see a course that is not published yet. The same two
  * roles `courses()` lets past its `status: 1` filter -- they are the ones
@@ -387,24 +445,9 @@ export class AcademicsService {
        * how a course comes to say "open" on the catalogue and then refuse the
        * learner who clicks it.
        */
-      access: input.access ?? 'batch',
-      self_enroll: input.access !== undefined
-        ? (input.access === 'batch' ? 0 : 1)
-        : (input.self_enroll ? 1 : 0),
-      /*
-       * A locked course priced at nothing cannot exist, so it is priced.
-       *
-       * `onyx_courses_locked_price_check` (0024) refuses `access = 'locked'`
-       * with a price of zero, and rightly: a locked course nobody can buy is
-       * a course nobody can ever enter. But the refusal arrived as a raw
-       * constraint violation from Postgres, which told whoever left the price
-       * blank nothing they could act on. So the two facts are joined here
-       * instead -- choosing "locked" IS choosing to charge, and the house
-       * price is what it costs when nobody says otherwise.
-       */
-      price_minor: input.price_minor
-        ?? (input.access === 'locked' ? DEFAULT_LOCKED_PRICE_MINOR : 0),
-      ...(input.currency ? { currency: input.currency.toUpperCase() } : {}),
+      // access, self_enroll and price_minor are one decision, resolved in one
+      // place -- see resolveCourseAccess for why they cannot be set apart.
+      ...resolveCourseAccess(input),
       // Courses start unpublished: an empty course visible to a cohort is worse
       // than no course at all.
       status: input.status ?? 0,
@@ -427,27 +470,9 @@ export class AcademicsService {
     if (input.credits !== undefined) patch.credits = input.credits;
     if (input.program_id !== undefined) patch.program_id = input.program_id;
     if (input.semester_id !== undefined) patch.semester_id = input.semester_id;
-    if (input.self_enroll !== undefined) patch.self_enroll = input.self_enroll ? 1 : 0;
-    if (input.access !== undefined) {
-      patch.access = input.access;
-      // The two travel together: `access` is what every read asks about, and
-      // `self_enroll` is what selfEnroll() has read since 0002. Setting one
-      // and not the other is how a course comes to say "open" on the catalogue
-      // and refuse the learner who clicks it.
-      patch.self_enroll = input.access === 'batch' ? 0 : 1;
-    }
-    if (input.price_minor !== undefined) patch.price_minor = input.price_minor;
-    /*
-     * Locking a course that was free prices it, for the same reason create
-     * does. Read rather than assumed: a course already carrying a price keeps
-     * the price it has, because somebody chose that number and switching a
-     * ₹1,499 course from open to locked must not quietly make it ₹300.
-     */
-    if (input.access === 'locked' && patch.price_minor === undefined) {
-      const current = Number((await this.course(tenantId, id)).price_minor ?? 0);
-      if (current <= 0) patch.price_minor = DEFAULT_LOCKED_PRICE_MINOR;
-    }
-    if (input.currency !== undefined) patch.currency = input.currency.toUpperCase();
+    // The same one decision as on create, read against the course as it stands
+    // so a price somebody already chose survives a change of access.
+    Object.assign(patch, resolveCourseAccess(input, await this.course(tenantId, id)));
     if (input.status !== undefined) patch.status = input.status;
 
     const { error } = await this.#db.from('onyx_courses')
@@ -653,7 +678,23 @@ export class AcademicsService {
     // and sends the learner to a different place.
     if (course.access === 'locked') {
       const paid = await this.hasPurchased(tenantId, courseId, userId);
-      if (!paid) throw new HttpError(402, 'This course has to be bought before you can start it.');
+      if (!paid) {
+        /*
+         * The price is in the refusal.
+         *
+         * A learner reaching this is usually on a stale link or a shared one,
+         * with no catalogue row in front of them -- "this has to be bought"
+         * then tells them the one thing they already suspected and not the one
+         * thing they need. The amount is read off the course, not passed in.
+         */
+        const minor = Number(course.price_minor ?? 0);
+        const code = String(course.currency ?? 'INR').toUpperCase();
+        const amount = code === 'INR'
+          ? '₹' + (minor / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })
+          : code + ' ' + (minor / 100).toFixed(2);
+        throw new HttpError(402,
+          'This course has to be bought before you can start it — ' + amount + '.');
+      }
       return this.enroll(tenantId, courseId, userId, { enrolledBy: userId });
     }
 

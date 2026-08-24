@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import {
-  attempt, SCROLLER, RosterHeader, Unavailable, type AcademicsPayload,
+  attempt, SCROLLER, RosterHeader, Unavailable, AccessPill, type AcademicsPayload,
 } from '@/lib/onyx-platform-tenant';
 import { CreateCourseForm, CourseEditToggle } from '@/components/onyx-platform-forms';
 import { DataTable, EmptyRow, Icon, State } from '@/components/onyx-ui';
@@ -47,6 +47,7 @@ export default async function OnyxPlatformCoursesPage(
                 <th scope="col">Credits</th>
                 <th scope="col">Enrolled</th>
                 <th scope="col">Faculty</th>
+                <th scope="col">Joining</th>
                 <th scope="col">Status</th>
                 <th scope="col">&nbsp;</th>
               </>
@@ -77,7 +78,18 @@ export default async function OnyxPlatformCoursesPage(
                 <td className="tabular-nums">{c.enrollment_count}</td>
                 <td className="tabular-nums">{c.faculty_count}</td>
                 <td>
-                  {c.status === 1 ? <State tone="on">Open</State> : <State tone="idle">Draft</State>}
+                  <AccessPill access={c.access} priceMinor={c.price_minor}
+                    currency={c.currency} />
+                </td>
+                <td>
+                  {/* "Published", not "Open": status is whether the course is
+                      visible at all, and access beside it is whether joining is
+                      free. One word for both meanings, on one row, is what made
+                      an operator set a course "Open" and then find nobody could
+                      join it. */}
+                  {c.status === 1
+                    ? <State tone="on">Published</State>
+                    : <State tone="idle">Draft</State>}
                 </td>
                 <td className="text-right">
                   <CourseEditToggle tenantId={tenantId} course={c} />

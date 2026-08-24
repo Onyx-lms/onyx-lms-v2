@@ -244,6 +244,11 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       credits: z.number().int().min(0).optional(),
       self_enroll: z.boolean().optional(),
       status: z.number().int().min(0).max(1).optional(),
+      // How a learner gets on. Without these the console could only ever make
+      // a `batch` course -- one nobody can join and nobody can buy.
+      access: z.enum(['batch', 'open', 'locked']).optional(),
+      price_minor: z.number().int().min(0).max(10_000_000).optional(),
+      currency: z.string().length(3).optional(),
     }), req.body);
     return ok(await ctx.onyxPlatform.createCourse(idOf(req), claims.user_id, body), 'Course created.');
   });
@@ -479,6 +484,9 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       code: z.string().min(1).max(50).optional(),
       credits: z.number().int().min(0).optional(),
       status: z.number().int().min(0).max(1).optional(),
+      access: z.enum(['batch', 'open', 'locked']).optional(),
+      price_minor: z.number().int().min(0).max(10_000_000).optional(),
+      currency: z.string().length(3).optional(),
     }), req.body);
     return ok(await ctx.onyxPlatform.updateCourse(
       idOf(req), subIdOf(req, 'courseId'), claims.user_id, body), 'Updated.');
