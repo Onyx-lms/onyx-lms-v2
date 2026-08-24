@@ -460,15 +460,14 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
     if (!semesterId) {
       const course = await ctx.onyxAcademics.course(claims.tenant_id, body.course_id);
       semesterId = course.semester_id ? Number(course.semester_id) : undefined;
-      if (!semesterId) {
-        throw new HttpError(422,
-          'That course is not attached to a semester, so this exam has nowhere to sit. '
-          + 'Put the course in a semester first, or name one here.');
-      }
     }
 
+    // A null term is a real answer, not a failure (0037). Better than a
+    // quarter of the courses here belong to no programme, and refusing them
+    // made scheduling an examination on those courses impossible from the
+    // product -- the form had stopped asking, so there was nothing to fill in.
     const exam = await ctx.onyxExams.schedule(claims.tenant_id, viewer,
-      { ...body, semester_id: semesterId });
+      { ...body, semester_id: semesterId ?? null });
     if (body.assessment_id && exam) {
       await syncExamAssessmentWindow(claims.tenant_id, body.assessment_id, exam, viewer);
     }

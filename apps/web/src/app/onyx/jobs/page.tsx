@@ -122,8 +122,10 @@ export default async function OnyxJobsPage() {
           href={me.tenant.community_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="mb-6 inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5
-                     text-[14px] font-bold text-white hover:bg-green-700"
+          /* green-700, not green-600: white on 600 measures 3.30:1 against a
+             4.5 minimum and axe caught it on this page. 700 is 5.02. */
+          className="mb-6 inline-flex items-center gap-2 rounded-xl bg-green-700 px-4 py-2.5
+                     text-[14px] font-bold text-white hover:bg-green-800"
         >
           <Icon name="users" className="h-4 w-4" />
           {me.tenant.community_label || 'Join our WhatsApp community'}

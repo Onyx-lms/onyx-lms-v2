@@ -88,11 +88,20 @@ test('scheduling an exam no longer asks which semester', async () => {
   });
 });
 
-test('a course with no term is told so, rather than guessed at', async () => {
-  // The one case that still needs a person. Picking "the newest semester"
-  // would file exams under a term nobody chose, which is worse than asking.
+test('a course in no term still gets its exam, with no term on it', async () => {
+  /*
+   * This first REFUSED, and that was the wrong call.
+   *
+   * Deriving the term from the course is right for courses that have one, and
+   * better than a quarter of the courses in this database have none -- so
+   * refusing meant the form had stopped asking for something the API still
+   * demanded, and scheduling an examination on those courses became impossible
+   * from the product. `semester_id` was NOT NULL because every exam happened
+   * to have one, not because an exam without a term is meaningless: a resit or
+   * a certification exam on a course outside any programme is still an exam.
+   */
   const token = await adminToken(adminEmail);
-  const refused = await api('/api/onyx/exams', {
+  const made = await api('/api/onyx/exams', {
     method: 'POST', token,
     body: {
       course_id: w.looseCourseId, title: 'Nowhere Final',
@@ -100,8 +109,15 @@ test('a course with no term is told so, rather than guessed at', async () => {
       duration_minutes: 90, max_marks: 100, pass_marks: 40,
     },
   });
-  expect(refused.status).toBe(422);
-  expect(String(refused.message)).toMatch(/not attached to a semester/i);
+  expect(made.status, 'a course with no term could not be examined: ' + made.message).toBe(200);
+
+  await withDb(async (c) => {
+    const { rows } = await c.query(
+      'SELECT semester_id FROM public."onyx_exams" WHERE id = $1',
+      [(made.data as { id: number }).id]);
+    expect(rows[0].semester_id ?? null,
+      'a term was invented for a course that has none').toBeNull();
+  });
 
   // Naming one explicitly still works: the field went from the form, not from
   // the API.

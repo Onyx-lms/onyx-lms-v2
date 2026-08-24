@@ -103,7 +103,14 @@ export class ExaminationsService {
   }
 
   async schedule(tenantId: number, actor: { userId: string; role: Role }, input: {
-    semester_id: number; course_id: number; title: string; starts_at: string;
+    /**
+     * The term, where there is one (0037).
+     *
+     * Taken from the course by the route rather than typed on the form, and
+     * null for a course that belongs to no programme -- a resit or a
+     * certification exam is still an exam.
+     */
+    semester_id: number | null; course_id: number; title: string; starts_at: string;
     duration_minutes?: number; max_marks?: number; pass_marks?: number;
     assessment_id?: number | null;
   }) {
