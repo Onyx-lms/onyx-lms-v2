@@ -540,6 +540,18 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
   // late for anybody to do something about it.
   // ===========================================================================
 
+  app.delete('/api/onyx/platform/tenants/:id/assessments/:assessmentId', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxPlatform.deleteAssessment(
+      idOf(req), subIdOf(req, 'assessmentId'), claims.user_id), 'Removed.');
+  });
+
+  app.delete('/api/onyx/platform/tenants/:id/exams/:examId', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxPlatform.deleteExam(
+      idOf(req), subIdOf(req, 'examId'), claims.user_id), 'Removed.');
+  });
+
   app.get('/api/onyx/platform/tenants/:id/banks', async (req) => {
     await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     return ok(await ctx.onyxPlatform.questionBanks(idOf(req)));

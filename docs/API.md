@@ -393,6 +393,8 @@ docs:check` fails the build if it has.
 | `POST` | `/api/onyx/platform/tenants/:id/modules/:moduleId/lessons` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/lessons/:lessonId` | platform admin |
 | `PATCH` | `/api/onyx/platform/tenants/:id/lessons/:lessonId` | platform admin |
+| `DELETE` | `/api/onyx/platform/tenants/:id/assessments/:assessmentId` | platform admin |
+| `DELETE` | `/api/onyx/platform/tenants/:id/exams/:examId` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/banks` | platform admin |
 | `PUT` | `/api/onyx/platform/tenants/:id/assessments/:assessmentId/sections` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/assessments/:assessmentId/publish` | platform admin |
@@ -442,4 +444,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_356 endpoints across 9 route files._
+_358 endpoints across 9 route files._

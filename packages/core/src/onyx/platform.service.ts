@@ -2165,6 +2165,67 @@ export class PlatformService {
     return { id: assessmentId, status: 'published' };
   }
 
+  /**
+   * Cancel a paper.
+   *
+   * Refused once anybody has sat it. An attempt is a person's work and their
+   * mark; deleting the paper takes both with it, and an operator two levels
+   * away from the candidate should not be able to do that with one click. The
+   * way to stop a paper nobody should sit any more is to close it, which is
+   * what the window is for.
+   */
+  async deleteAssessment(tenantId: number, assessmentId: number, actorId: string | null) {
+    const { data: assessment } = await this.#db.from('onyx_assessments')
+      .select('id, title, status').eq('tenant_id', tenantId).eq('id', assessmentId).maybeSingle();
+    if (!assessment) throw new HttpError(404, 'No such assessment.');
+
+    const { data: attempts } = await this.#db.from('onyx_assessment_attempts')
+      .select('id').eq('tenant_id', tenantId).eq('assessment_id', assessmentId);
+    const sat = (attempts ?? []).length;
+    if (sat) {
+      throw new HttpError(422, sat + (sat === 1 ? ' candidate has' : ' candidates have')
+        + ' sat this paper. Close its window instead — deleting it would take their '
+        + 'answers and their marks with it.');
+    }
+
+    const { error } = await this.#db.from('onyx_assessments')
+      .delete().eq('tenant_id', tenantId).eq('id', assessmentId);
+    if (error) throw new HttpError(500, 'Could not remove that paper: ' + error.message);
+    await this.#log(actorId, 'assessment.deleted', 'assessment', assessmentId,
+      { title: assessment.title, status: assessment.status }, null);
+    return { id: assessmentId, removed: true };
+  }
+
+  /**
+   * Cancel a sitting.
+   *
+   * Refused once marks have been entered against it, for the reason above: a
+   * mark is a record of what somebody scored, and it does not belong to
+   * whoever is tidying the calendar.
+   */
+  async deleteExam(tenantId: number, examId: number, actorId: string | null) {
+    const { data: exam } = await this.#db.from('onyx_exams')
+      .select('id, title, status').eq('tenant_id', tenantId).eq('id', examId).maybeSingle();
+    if (!exam) throw new HttpError(404, 'No such examination.');
+
+    const { data: marks } = await this.#db.from('onyx_exam_marks')
+      .select('id').eq('tenant_id', tenantId).eq('exam_id', examId);
+    const entered = (marks ?? []).length;
+    if (entered) {
+      throw new HttpError(422, entered + (entered === 1 ? ' mark has' : ' marks have')
+        + ' been entered for this sitting. Removing it would take them with it.');
+    }
+
+    // Seat allocations are this sitting's own and go with it.
+    await this.#db.from('onyx_exam_seats').delete().eq('tenant_id', tenantId).eq('exam_id', examId);
+    const { error } = await this.#db.from('onyx_exams')
+      .delete().eq('tenant_id', tenantId).eq('id', examId);
+    if (error) throw new HttpError(500, 'Could not remove that examination: ' + error.message);
+    await this.#log(actorId, 'exam.deleted', 'exam', examId,
+      { title: exam.title, status: exam.status }, null);
+    return { id: examId, removed: true };
+  }
+
   async #courseModule(tenantId: number, moduleId: number) {
     const { data } = await this.#db.from('onyx_modules')
       .select('id, course_id, title, summary, sort')

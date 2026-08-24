@@ -261,7 +261,152 @@ check('and the module cannot be removed while it holds them', stillHeld.status =
 
 // ---------------------------------------------------------------------------
 
-startPhase('5. putting ABC Institution back as it was');
+startPhase('5. opening what was uploaded');
+
+const opened = await step('the document lesson opens',
+  '/api/onyx/platform/tenants/' + tid + '/lessons/' + doc.data?.id, { token: pt });
+check('with a signed URL to the file itself',
+  String(opened.data?.url ?? '').startsWith('http'),
+  String(opened.data?.url ?? '').slice(0, 60) + '…');
+
+const fetched = await fetch(opened.data?.url);
+const body = await fetched.text().catch(() => '');
+check('and the file that comes back is the one that was uploaded',
+  fetched.ok && body.includes('qa-live/console.mjs'),
+  'status ' + fetched.status + ', ' + body.length + ' bytes');
+
+const openedLink = await step('the link lesson opens',
+  '/api/onyx/platform/tenants/' + tid + '/lessons/' + link.data?.id, { token: pt });
+check('carrying its own address rather than a signed one',
+  openedLink.data?.url === 'https://example.com/reading', openedLink.data?.url);
+
+const openedText = await step('the written lesson opens',
+  '/api/onyx/platform/tenants/' + tid + '/lessons/' + text.data?.id, { token: pt });
+check('with the words in it', String(openedText.data?.body ?? '').includes('set out on the page'),
+  String(openedText.data?.body ?? '').slice(0, 40));
+
+const renamedLesson = await step('a lesson can be renamed',
+  '/api/onyx/platform/tenants/' + tid + '/lessons/' + text.data?.id,
+  { method: 'PATCH', token: pt, body: { title: 'Console QA reading (edited)' } });
+check('and the new name sticks', String(renamedLesson.data?.title).includes('edited'),
+  renamedLesson.data?.title);
+
+const badBody = await call('/api/onyx/platform/tenants/' + tid + '/lessons/' + doc.data?.id,
+  { method: 'PATCH', token: pt, body: { body: 'text on a document' } });
+check('text cannot be set on a lesson that is not written', badBody.status === 422,
+  badBody.status + ' ' + (badBody.message ?? ''));
+
+const anonLesson = await call('/api/onyx/platform/tenants/' + tid + '/lessons/' + doc.data?.id);
+check('and a lesson is not open to an anonymous caller',
+  anonLesson.status === 401 || anonLesson.status === 403, 'status ' + anonLesson.status);
+
+// ---------------------------------------------------------------------------
+
+startPhase('6. a paper that can actually be sat');
+
+const banks = await step('the operator reads the question banks',
+  '/api/onyx/platform/tenants/' + tid + '/banks', { token: pt });
+const bank = (banks.data ?? []).find((b) => Number(b.question_count) > 0);
+check('at least one holds questions', Boolean(bank),
+  (banks.data ?? []).map((b) => b.name + '=' + b.question_count).join(', ').slice(0, 90));
+
+const paper = await step('a paper is created', '/api/onyx/platform/tenants/' + tid
+  + '/assessments', {
+  method: 'POST', token: pt,
+  body: { title: 'Console QA paper ' + RUN, course_id: course.id, duration_minutes: 30 },
+});
+const paperId = paper.data?.id;
+
+// The gap this phase exists for: a paper with no sections draws nothing, and
+// the engine only says so when a candidate presses Start.
+const tooEarly = await call('/api/onyx/platform/tenants/' + tid
+  + '/assessments/' + paperId + '/publish', { method: 'POST', token: pt, body: {} });
+check('publishing one that draws nothing is refused', tooEarly.status === 422,
+  tooEarly.status + ' ' + (tooEarly.message ?? ''));
+
+const tooMany = await call('/api/onyx/platform/tenants/' + tid
+  + '/assessments/' + paperId + '/sections', {
+  method: 'PUT', token: pt,
+  body: { sections: [{ id: 's1', title: 'All', bank_id: bank.id, take: 50 }] },
+});
+check('drawing more than a bank holds is refused, and says how many it holds',
+  tooMany.status === 422 && String(tooMany.message).includes(String(bank.question_count)),
+  tooMany.status + ' ' + (tooMany.message ?? ''));
+
+const foreign = await call('/api/onyx/platform/tenants/' + tid
+  + '/assessments/' + paperId + '/sections', {
+  method: 'PUT', token: pt,
+  body: { sections: [{ id: 's1', title: 'All', bank_id: 999_999, take: 1 }] },
+});
+check('a bank from somewhere else is refused', foreign.status === 422,
+  foreign.status + ' ' + (foreign.message ?? ''));
+
+const take = Math.min(2, Number(bank.question_count));
+await step('sections are set from a real bank', '/api/onyx/platform/tenants/' + tid
+  + '/assessments/' + paperId + '/sections', {
+  method: 'PUT', token: pt,
+  body: { sections: [{ id: 's1', title: 'All of it', bank_id: bank.id, take }] },
+});
+
+const paperLive = await step('and now it publishes', '/api/onyx/platform/tenants/' + tid
+  + '/assessments/' + paperId + '/publish', { method: 'POST', token: pt, body: {} });
+check('reading as published', paperLive.data?.status === 'published',
+  'status=' + paperLive.data?.status);
+
+const listedPapers = await call('/api/onyx/platform/tenants/' + tid
+  + '/academics?limit=200', { token: pt });
+const mineNow = (listedPapers.data?.assessments ?? []).find((a) => Number(a.id) === Number(paperId));
+check('the console list shows what it draws',
+  (mineNow?.sections ?? []).reduce((n, sec) => n + Number(sec.take), 0) === take,
+  JSON.stringify(mineNow?.sections));
+
+// ---------------------------------------------------------------------------
+
+startPhase('7. scheduling an examination on it');
+
+const semesters = await call('/api/onyx/platform/tenants/' + tid + '/semesters', { token: pt });
+const semesterId = (semesters.data ?? [])[0]?.id ?? null;
+
+const exam = await step('an examination is scheduled', '/api/onyx/platform/tenants/' + tid
+  + '/exams', {
+  method: 'POST', token: pt,
+  body: {
+    course_id: course.id, title: 'Console QA sitting ' + RUN,
+    starts_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    duration_minutes: 90, max_marks: 100, pass_marks: 40,
+    ...(semesterId ? { semester_id: semesterId } : {}),
+  },
+});
+const examId = exam.data?.id;
+
+const examList = await call('/api/onyx/platform/tenants/' + tid + '/academics?limit=200',
+  { token: pt });
+const scheduled = (examList.data?.exams ?? []).find((e) => Number(e.id) === Number(examId));
+check('and appears on the institution’s calendar', Boolean(scheduled),
+  scheduled?.title);
+
+const edited = await call('/api/onyx/platform/tenants/' + tid + '/exams/' + examId, {
+  method: 'PATCH', token: pt, body: { max_marks: 120 },
+});
+check('an operator can correct it afterwards', edited.status === 200,
+  edited.status + ' ' + (edited.message ?? ''));
+
+// ---------------------------------------------------------------------------
+
+startPhase('8. putting ABC Institution back as it was');
+
+if (examId) {
+  const goneExam = await call('/api/onyx/platform/tenants/' + tid + '/exams/' + examId,
+    { method: 'DELETE', token: pt });
+  check('the examination is removed', goneExam.status === 200 || goneExam.status === 404,
+    goneExam.status + ' ' + (goneExam.message ?? ''));
+}
+if (paperId) {
+  const gonePaper = await call('/api/onyx/platform/tenants/' + tid + '/assessments/' + paperId,
+    { method: 'DELETE', token: pt });
+  check('the paper is removed', gonePaper.status === 200 || gonePaper.status === 404,
+    gonePaper.status + ' ' + (gonePaper.message ?? ''));
+}
 
 for (const lessonId of lessonIds) {
   const gone = await call('/api/onyx/platform/tenants/' + tid + '/lessons/' + lessonId,
