@@ -1,0 +1,49 @@
+<!--
+  The mail a learner gets when they register.
+
+  GoTrue calls this the "Magic Link" template and sends it for every
+  `signInWithOtp` call -- which is what `startSignUp` makes. The default
+  template Supabase ships contains a LINK and nothing else, and this product
+  asks for a CODE: the registration form has a box for digits, and the mail
+  had none in it. Signing up was impossible, and the failure looked like a
+  learner mistyping something they had never been given.
+
+  `{{ .Token }}` is the whole point of this file. The link is kept underneath
+  because a mail client that mangles the digits still leaves somebody a way
+  through, and because GoTrue sends the same template for other flows.
+-->
+<div style="font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+            max-width: 480px; margin: 0 auto; padding: 24px; color: #1a1a18;">
+
+  <h2 style="margin: 0 0 8px; font-size: 20px; font-weight: 700;">
+    Your registration code
+  </h2>
+
+  <p style="margin: 0 0 20px; font-size: 15px; line-height: 1.6; color: #57574f;">
+    Type this into the form to finish setting up your account. It expires in an
+    hour and can only be used once.
+  </p>
+
+  <!--
+    Letter-spaced and monospaced because it is going to be copied by eye,
+    digit by digit, from a phone. Selectable text rather than an image, which
+    is the other reason this is not a picture of a number.
+  -->
+  <p style="margin: 0 0 24px; font-family: 'SF Mono', Menlo, Consolas, monospace;
+            font-size: 32px; font-weight: 700; letter-spacing: 6px;
+            background: #f4f2ec; border-radius: 10px; padding: 18px 12px;
+            text-align: center; color: #1a1a18;">
+    {{ .Token }}
+  </p>
+
+  <p style="margin: 0 0 6px; font-size: 13px; line-height: 1.6; color: #57574f;">
+    Or open this link instead:
+    <a href="{{ .ConfirmationURL }}" style="color: #9d2b1f;">sign in</a>
+  </p>
+
+  <p style="margin: 24px 0 0; padding-top: 16px; border-top: 1px solid #ddd9d0;
+            font-size: 12px; line-height: 1.6; color: #8a8a80;">
+    If you did not ask to register, you can ignore this message — nothing was
+    created and nobody can use this code but you.
+  </p>
+</div>

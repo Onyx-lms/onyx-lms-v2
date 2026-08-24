@@ -15,13 +15,17 @@
 project_id = "pnhsnpxrxxphgjmrqoia"
 
 [auth]
-# The app signs in with email+password through its own routes and never relies
-# on a magic-link or OAuth redirect, so site_url is not load-bearing here. It is
-# set to the local web origin the app actually runs on (port 5175) so any link
-# GoTrue does generate points somewhere real rather than at a default port
-# nothing is listening on.
-site_url = "http://localhost:5175"
-additional_redirect_urls = ["http://localhost:5175"]
+# Where a link in a GoTrue email points.
+#
+# This said localhost:5175 on the grounds that the app signs in through its own
+# routes and never relies on a redirect. That was true until student
+# registration shipped: GoTrue now sends a real person a real email, and every
+# one of them carried `redirect_to=http://localhost:5175` -- a link to a dev
+# server on the recipient's own machine. Nothing broke, because the product
+# reads the CODE rather than the link, but the mail was telling somebody to
+# visit their own laptop.
+site_url = "https://onyx-lms-v2.vercel.app"
+additional_redirect_urls = ["https://onyx-lms-v2.vercel.app", "http://localhost:5175"]
 
 # Institutions are provisioned by the platform team, never self-served -- the
 # signup page says so and is deliberately inert. Leaving GoTrue's own signup
@@ -57,6 +61,78 @@ secure_password_change = false
 max_frequency = "1m0s"
 otp_length = 8
 otp_expiry = 3600
+
+# The mail a learner actually receives when they register.
+#
+# GoTrue sends this template for `signInWithOtp`, which is what startSignUp
+# calls. Supabase's default contains a LINK AND NOTHING ELSE, and this product
+# asks for a CODE -- so the registration form had a box for digits and the mail
+# had no digits in it. Registration was impossible on a deployment that
+# otherwise reported everything as working: the API said "we have sent a code",
+# GoTrue sent one, and the message it composed left the code out.
+#
+# Verified by registering to a readable mailbox and reading the message, which
+# is the only way this class of fault can be caught. "Sent" and "usable" are
+# different claims about an email.
+# BLOCKED, and this is the block:
+#
+#   Email template modification is not available for free tier projects using
+#   the default email provider. Please upgrade your plan or configure a custom
+#   SMTP provider.
+#
+# That is Supabase's answer to `config push`, verbatim, and it rejects the
+# WHOLE auth patch -- rate limits and site_url included -- so the block is
+# commented out rather than left to fail. Uncomment it the moment custom SMTP
+# is configured (see [auth.email.smtp] below) and push again; the template
+# itself is correct and sitting in supabase/templates/magic-link.html.
+#
+# Until then student registration cannot complete: the form asks for a code and
+# the shared sender's template contains only a link.
+#
+# [auth.email.template.magic_link]
+# subject = "Your registration code"
+# content_path = "./supabase/templates/magic-link.html"
+
+# NOT CONFIGURED, and it is the thing to configure next.
+#
+# Mail currently leaves from noreply@mail.app.supabase.io -- Supabase's shared
+# built-in sender. It is rate-limited to a handful of messages an hour, is
+# explicitly not for production, and is the reason the template above is
+# refused. A cohort registering on results day would exhaust it in under a
+# minute.
+#
+# Filling this in fixes both problems at once. Left commented rather than
+# half-written: a partial SMTP block would take mail delivery down entirely,
+# which is worse than the shared sender.
+#
+# [auth.email.smtp]
+# enabled = true
+# host = "smtp.example.com"
+# port = 587
+# user = "..."
+# pass = "env(SENDGRID_API_KEY)"
+# admin_email = "noreply@your-domain.example"
+# sender_name = "Onyx LMS"
+
+# What an institution can do at once.
+#
+# Signing in costs TWO calls to GoTrue -- the password grant, then the refresh
+# that scopes the session to an institution -- so the default of 30 sign-ins
+# per five minutes is really 15 people, and a hall of forty starting an exam
+# together walks into it. They are told to wait rather than accused of a wrong
+# password, but they still do not get in, and an institution behind one NAT is
+# one IP address as far as this limit is concerned.
+#
+# `email_sent` is raised with it because registration mail is subject to the
+# same arithmetic on the day a cohort signs up -- though the binding limit
+# there is the SENDER, not this number: Supabase's built-in SMTP is a shared,
+# heavily-rate-limited service that is explicitly not for production. Custom
+# SMTP is the real fix and is not configured on this project.
+[auth.rate_limit]
+sign_in_sign_ups = 300
+token_refresh = 300
+token_verifications = 300
+email_sent = 100
 
 # The reason this file exists.
 #
