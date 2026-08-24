@@ -89,29 +89,79 @@ otp_expiry = 3600
 # Until then student registration cannot complete: the form asks for a code and
 # the shared sender's template contains only a link.
 #
+# UNBLOCKED THE MOMENT the SMTP block below is live: the refusal above applies
+# to projects on the DEFAULT sender. Uncomment these three lines in the same
+# edit that uncomments the SMTP block, and push once.
+#
 # [auth.email.template.magic_link]
 # subject = "Your registration code"
 # content_path = "./supabase/templates/magic-link.html"
 
-# NOT CONFIGURED, and it is the thing to configure next.
+# ZeptoMail (Zoho), India data centre.
 #
-# Mail currently leaves from noreply@mail.app.supabase.io -- Supabase's shared
+# Mail used to leave from noreply@mail.app.supabase.io -- Supabase's shared
 # built-in sender. It is rate-limited to a handful of messages an hour, is
-# explicitly not for production, and is the reason the template above is
-# refused. A cohort registering on results day would exhaust it in under a
-# minute.
+# explicitly not for production, and it is why the registration template above
+# was refused. A cohort registering on results day exhausted it in under a
+# minute; worse, the shared sender's template carries a LINK and this product
+# asks for a CODE, so registration could not complete at all.
 #
-# Filling this in fixes both problems at once. Left commented rather than
-# half-written: a partial SMTP block would take mail delivery down entirely,
-# which is worse than the shared sender.
+# Both problems are the same problem, and this block is the fix for both.
+#
+# Why `.in` and not `.com`: the bounce CNAME issued for this domain points at
+# cluster89.zeptomail.in, which is ZeptoMail's Indian DC. Sending through the
+# wrong region's host authenticates against an account that does not exist
+# there.
+#
+# `user` really is the literal string `emailapikey` -- ZeptoMail's SMTP
+# username is fixed and the token goes in `pass`. Getting these the wrong way
+# round produces an authentication failure that reads like a bad password.
+#
+# The token is an env reference, never a literal: this file is committed, and
+# `config push` resolves the reference at push time from the environment.
+#
+# `admin_email` MUST be on the domain verified in ZeptoMail -- the one carrying
+# the DKIM TXT at <selector>._domainkey and the bounce CNAME. ZeptoMail refuses
+# to send From an unverified domain, and the refusal arrives as an SMTP error
+# GoTrue reports as a generic send failure.
+# READY, NOT LIVE. Two things are missing and both are outside this repository:
+#
+#   1. A verified sending domain. It cannot be onyx-lms-v2.vercel.app -- that
+#      zone is served by ns1..4.vercel-dns-3.com, which is Vercel's, so the
+#      DKIM TXT and the bounce CNAME ZeptoMail asks for cannot be created there
+#      by anybody. It has to be a domain whose DNS we control.
+#   2. The ZeptoMail Send Mail token, as ZEPTOMAIL_SMTP_TOKEN in the
+#      environment `supabase config push` runs in.
+#
+# Left commented until both exist, for the reason the previous version of this
+# comment gave and which still holds: `config push` resolves a missing `env()`
+# to an EMPTY STRING rather than refusing, so an uncommented block without the
+# token pushes "SMTP enabled, no credentials" and takes registration mail down
+# entirely -- worse than the shared sender it replaces.
+#
+# When both are in hand: uncomment this block AND the magic_link template
+# block above, then `supabase config push`. One push, because the template is
+# only accepted once the project is off the default sender.
 #
 # [auth.email.smtp]
 # enabled = true
-# host = "smtp.example.com"
+# host = "smtp.zeptomail.in"          # .in, not .com -- the bounce CNAME issued
+#                                      # for this account points at
+#                                      # cluster89.zeptomail.in, ZeptoMail's
+#                                      # Indian DC. The wrong region's host
+#                                      # authenticates against an account that
+#                                      # does not exist there.
 # port = 587
-# user = "..."
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "noreply@your-domain.example"
+# user = "emailapikey"                # A literal, not a placeholder. ZeptoMail's
+#                                      # SMTP username is fixed; only the token
+#                                      # varies. Swapping these two produces an
+#                                      # auth failure that reads like a bad
+#                                      # password.
+# pass = "env(ZEPTOMAIL_SMTP_TOKEN)"
+# admin_email = "noreply@<verified-domain>"   # MUST be on the domain verified in
+#                                      # ZeptoMail. It refuses any other From,
+#                                      # and the refusal reaches a learner as
+#                                      # "we could not send your code".
 # sender_name = "Onyx LMS"
 
 # What an institution can do at once.
@@ -125,9 +175,10 @@ otp_expiry = 3600
 #
 # `email_sent` is raised with it because registration mail is subject to the
 # same arithmetic on the day a cohort signs up -- though the binding limit
-# there is the SENDER, not this number: Supabase's built-in SMTP is a shared,
-# heavily-rate-limited service that is explicitly not for production. Custom
-# SMTP is the real fix and is not configured on this project.
+# there is still the SENDER, not this number: Supabase's built-in SMTP is a
+# shared, heavily-rate-limited service that is explicitly not for production.
+# Custom SMTP is the real fix; the block above is written and waiting on a
+# verified domain and a token.
 [auth.rate_limit]
 sign_in_sign_ups = 300
 token_refresh = 300
