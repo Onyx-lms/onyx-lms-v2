@@ -49,6 +49,17 @@ function mean(values: number[]): number | null {
 
 interface PersonRow {
   membership_id: number; user_id: string; name: string; email: string; phone: string | null;
+  /**
+   * The institution's own number for this person.
+   *
+   * It was missing from this payload entirely, so the platform console could
+   * neither show it nor search by it -- and a roll number is the thing staff
+   * most often have in front of them, off a register, a script or a hall
+   * ticket. Looking somebody up by the one identifier you are holding and
+   * being told nobody matches is a convincing way to conclude they are not
+   * enrolled.
+   */
+  roll_number: string | null;
   role: string; membership_status: number; account_status: number; joined_at: string;
   batch: { id: number; name: string; code: string } | null;
   programme: { id: number; name: string; code: string } | null;
@@ -350,7 +361,7 @@ export class PlatformService {
     const limit = clampLimit(opts.limit);
 
     const scoped = this.#db.from('onyx_memberships')
-      .select('id, user_id, role, status, created_at').eq('tenant_id', id);
+      .select('id, user_id, role, status, roll_number, created_at').eq('tenant_id', id);
 
     // limit + 1 so "there is more" is a fact, not a guess from a full page.
     const listing = opts.role ? scoped.eq('role', opts.role as Role) : scoped;
@@ -424,6 +435,7 @@ export class PlatformService {
         name: user?.name ?? 'Unknown',
         email: user?.email ?? '',
         phone: user?.phone ?? null,
+        roll_number: m.roll_number ? String(m.roll_number) : null,
         role: String(m.role),
         membership_status: num(m.status),
         account_status: user?.status ?? 0,

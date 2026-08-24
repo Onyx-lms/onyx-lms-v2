@@ -26,6 +26,8 @@ export interface TenantDetail {
 
 export interface Person {
   membership_id: number; user_id: string; name: string; email: string; phone: string | null;
+  /** The institution's own number for them. Searchable; see matchesPerson. */
+  roll_number: string | null;
   role: string; membership_status: number; account_status: number; joined_at: string;
   batch: { id: number; name: string; code: string } | null;
   programme: { id: number; name: string; code: string } | null;
@@ -312,10 +314,16 @@ export function matchesPerson(p: Person, q: string): boolean {
   if (!q) return true;
   const needle = q.trim().toLowerCase();
   if (!needle) return true;
-  return [p.name, p.email, p.role, p.batch?.code, p.batch?.name, p.programme?.name]
+  // Roll number included, and it is the reason this function was wrong: staff
+  // search by the identifier they are holding, which is far more often a roll
+  // number off a register than an email address.
+  return [p.name, p.email, p.roll_number, p.role,
+    p.batch?.code, p.batch?.name, p.programme?.name]
     .some((v) => typeof v === 'string' && v.toLowerCase().includes(needle));
 }
 
 export const SCROLLER = 'min-w-0';
 
-export const money = (minor: number, currency = 'INR') => currency + ' ' + (minor / 100).toFixed(2);
+// The shared one, so the console does not print "INR 300.00" while every
+// other screen in the product says "₹300.00".
+export { money } from '@/lib/onyx-money';

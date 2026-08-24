@@ -113,10 +113,16 @@ export function OnyxPeople({ members, canEdit, initialRole, tenantName }: {
 
   const needle = search.trim().toLowerCase();
   const byRole = roleFilter ? members.filter((m) => m.role === roleFilter) : members;
+  // Roll number too. The API has searched by it since the roster existed --
+  // `TenancyService.members` says so in a comment about registers and hall
+  // tickets -- and this filter, which is the one a person actually types into,
+  // did not. So the same search behaved differently depending on whether it
+  // ran here or on the server.
   const shown = needle
     ? byRole.filter((m) =>
       (m.user?.name ?? '').toLowerCase().includes(needle)
-      || (m.user?.email ?? '').toLowerCase().includes(needle))
+      || (m.user?.email ?? '').toLowerCase().includes(needle)
+      || String(m.roll_number ?? '').toLowerCase().includes(needle))
     : byRole;
 
   return (
@@ -141,8 +147,8 @@ export function OnyxPeople({ members, canEdit, initialRole, tenantName }: {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name or email"
-          aria-label="Search people"
+          placeholder="Search by name, roll number or email"
+          aria-label="Search people by name, roll number or email"
           className={field + ' w-full sm:max-w-xs'}
         />
         <select

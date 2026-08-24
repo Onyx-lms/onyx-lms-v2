@@ -33,7 +33,7 @@ export default async function OnyxPlatformStudentsPage(
         <>
           <RosterHeader
             count={q ? students.length : people.total} noun="student"
-            aside={<RosterSearch q={q} placeholder="Name, email or batch" />}
+            aside={<RosterSearch q={q} placeholder="Name, roll number, email or batch" />}
             action={<CreateProfileForm lockedTenant={{ id: tenantId }} only="student" />}
           />
           <div tabIndex={0} role="region" aria-label="Students" className={SCROLLER}>
@@ -42,6 +42,10 @@ export default async function OnyxPlatformStudentsPage(
               head={
                 <>
                   <th scope="col">Student</th>
+                  {/* Beside the name, because it identifies the same person
+                      and is what somebody holding a register is reading
+                      from. */}
+                  <th scope="col">Roll no.</th>
                   <th scope="col">Batch</th>
                   {/* Least essential above sm -- a phone reads Student, Batch,
                       Enrolments, Account and the actions without them. */}
@@ -54,7 +58,7 @@ export default async function OnyxPlatformStudentsPage(
               }
             >
               {students.length === 0 ? (
-                <EmptyRow colSpan={7} icon="users">
+                <EmptyRow colSpan={8} icon="users">
                   {q
                     ? 'Nobody on this roll matches “' + q + '”.'
                     : 'No students yet. A new institution starts with its administrator and nobody else — students arrive once someone invites or imports them.'}
@@ -64,6 +68,9 @@ export default async function OnyxPlatformStudentsPage(
                   <td>
                     <div className="font-semibold">{p.name}</div>
                     <div className="break-all text-[12.5px] text-muted">{p.email}</div>
+                  </td>
+                  <td className="font-mono text-[13px] tabular-nums">
+                    {p.roll_number ?? <span className="text-muted">—</span>}
                   </td>
                   <td>{p.batch
                     ? <Pill tone="brand">{p.batch.code}</Pill>
