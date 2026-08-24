@@ -384,6 +384,7 @@ docs:check` fails the build if it has.
 | `PATCH` | `/api/onyx/platform/tenants/:id/courses/:courseId` | platform admin |
 | `DELETE` | `/api/onyx/platform/tenants/:id/courses/:courseId` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/domains` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/domains/uploads/sign` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/domains` | platform admin |
 | `PATCH` | `/api/onyx/platform/tenants/:id/domains/:domainId` | platform admin |
 | `DELETE` | `/api/onyx/platform/tenants/:id/domains/:domainId` | platform admin |
@@ -452,4 +453,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_366 endpoints across 9 route files._
+_367 endpoints across 9 route files._

@@ -1891,12 +1891,15 @@ export class PlatformService {
     title: string; summary?: string | null; curriculum_url?: string | null;
     certificate?: string | null; duration_label?: string | null;
     price_minor?: number; sort?: number; status?: number;
+    /** A storage KEY from the sign route, never a URL. See DomainsService. */
+    image_path?: string | null;
   }) {
     const { data, error } = await this.#db.from('onyx_domains').insert({
       tenant_id: tenantId,
       title: input.title.trim(),
       summary: input.summary ?? '',
       curriculum_url: normaliseCurriculumUrl(input.curriculum_url),
+      image_path: input.image_path ?? null,
       certificate: input.certificate ?? '',
       duration_label: input.duration_label ?? '',
       price_minor: input.price_minor ?? 0,
@@ -1917,6 +1920,7 @@ export class PlatformService {
     title?: string; summary?: string | null; curriculum_url?: string | null;
     certificate?: string | null; duration_label?: string | null;
     price_minor?: number; sort?: number; status?: number;
+    image_path?: string | null;
   }) {
     const before = await this.#domainRow(tenantId, domainId);
     const next: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -1925,6 +1929,7 @@ export class PlatformService {
     if (patch.curriculum_url !== undefined) {
       next.curriculum_url = normaliseCurriculumUrl(patch.curriculum_url);
     }
+    if (patch.image_path !== undefined) next.image_path = patch.image_path ?? null;
     if (patch.certificate !== undefined) next.certificate = patch.certificate ?? '';
     if (patch.duration_label !== undefined) next.duration_label = patch.duration_label ?? '';
     if (patch.price_minor !== undefined) next.price_minor = patch.price_minor;
@@ -2429,8 +2434,8 @@ export class PlatformService {
    * Who registered is the only thing anybody wants from this screen, and the
    * console listed the class without it.
    */
-  async domainDetail(tenantId: number, domainId: number) {
-    const domain = await this.#domainRow(tenantId, domainId);
+  async domainRegistrations(tenantId: number, domainId: number) {
+    await this.#domainRow(tenantId, domainId);
     const { data: registrations } = await this.#db.from('onyx_domain_registrations')
       // eslint-disable-next-line max-len -- one literal, same reason as above.
       .select('id, user_id, name, email, phone, amount_minor, currency, gateway, reference, status, created_at')
@@ -2441,7 +2446,6 @@ export class PlatformService {
       rows.map((r) => String(r.user_id)).filter((x) => x && x !== 'null'));
     const paid = rows.filter((r) => ['paid', 'captured'].includes(String(r.status)));
     return {
-      domain,
       registrations: rows.map((r) => ({
         ...r, student: r.user_id ? users.get(String(r.user_id)) ?? null : null,
       })),

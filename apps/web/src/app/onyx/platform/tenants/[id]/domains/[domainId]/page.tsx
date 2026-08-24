@@ -19,6 +19,7 @@ interface DomainDetail {
     id: number; title: string; summary: string; curriculum_url: string;
     certificate: string; duration_label: string; price_minor: number;
     currency: string; status: number;
+    image_url?: string | null;
   };
   registrations: Registration[];
   summary: { total: number; paid: number; taken_minor: number };
@@ -58,6 +59,13 @@ export default async function OnyxPlatformDomainPage(
       </Link>
 
       <Card className="p-4">
+        {/* The banner as a learner sees it, at the top, because that is what
+            it is for. */}
+        {domain.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element -- see the list page.
+          <img src={domain.image_url} alt=""
+            className="mb-3.5 h-40 w-full rounded-xl object-cover" />
+        ) : null}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-[19px] font-bold text-ink">{domain.title}</h2>

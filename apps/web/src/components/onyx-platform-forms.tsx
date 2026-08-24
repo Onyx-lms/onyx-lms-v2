@@ -2165,7 +2165,13 @@ export interface ConsoleDomain {
   id: number; title: string; summary: string; curriculum_url: string;
   certificate: string; duration_label: string; price_minor: number;
   currency: string; sort: number; status: number;
+  /** The stored key, and the URL a browser can load. Resolved by the API. */
+  image_path?: string | null;
+  image_url?: string | null;
 }
+
+/** A tile only needs a small image, and a 40 MB photograph helps nobody. */
+const MAX_BANNER_BYTES = 5 * 1024 * 1024;
 
 /**
  * Add a Live Class from the console.
@@ -2182,7 +2188,39 @@ export function CreateDomainForm({ tenantId }: { tenantId: number }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stage, setStage] = useState<string | null>(null);
   const [pending, start] = useTransition();
+
+  /**
+   * Ticket, then PUT, then the key -- the same three steps the institution's
+   * own composer takes, and for the same reason: Vercel rejects request bodies
+   * over about 4.5 MB, so the file goes to storage directly and only the key
+   * comes back to us.
+   *
+   * Failures are reported against the step that failed. "Could not be
+   * uploaded" and "could not be saved" send somebody to two different places,
+   * and one "something went wrong" sends them nowhere.
+   */
+  async function uploadBanner(picked: File): Promise<string> {
+    setStage('Preparing…');
+    const ticketRes = await fetch('/api/proxy/onyx/platform/tenants/' + tenantId
+      + '/domains/uploads/sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: picked.name }),
+    });
+    const ticket = await ticketRes.json().catch(() => ({ ok: false }));
+    if (!ticket.ok) throw new Error(ticket.message ?? 'Could not start the upload.');
+
+    setStage('Uploading ' + picked.name + '…');
+    const put = await fetch(ticket.data.signedUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': picked.type || 'application/octet-stream' },
+      body: picked,
+    });
+    if (!put.ok) throw new Error('The image could not be uploaded. Check your connection.');
+    return ticket.data.path as string;
+  }
 
   if (!open) {
     return (
@@ -2199,17 +2237,28 @@ export function CreateDomainForm({ tenantId }: { tenantId: number }) {
         const data = new FormData(e.currentTarget);
         setError(null);
         start(async () => {
-          const res = await post('onyx/platform/tenants/' + tenantId + '/domains', {
-            title: String(data.get('title') ?? ''),
-            summary: String(data.get('summary') ?? ''),
-            curriculum_url: String(data.get('curriculum_url') ?? ''),
-            certificate: String(data.get('certificate') ?? ''),
-            duration_label: String(data.get('duration_label') ?? ''),
-            price_minor: Math.round(Number(data.get('price_rupees') || 0) * 100),
-          });
-          if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
-          setOpen(false);
-          router.refresh();
+          try {
+            const picked = (data.get('banner') as File | null) ?? null;
+            const imagePath = picked && picked.size ? await uploadBanner(picked) : null;
+
+            setStage('Saving…');
+            const res = await post('onyx/platform/tenants/' + tenantId + '/domains', {
+              title: String(data.get('title') ?? ''),
+              summary: String(data.get('summary') ?? ''),
+              curriculum_url: String(data.get('curriculum_url') ?? ''),
+              certificate: String(data.get('certificate') ?? ''),
+              duration_label: String(data.get('duration_label') ?? ''),
+              price_minor: Math.round(Number(data.get('price_rupees') || 0) * 100),
+              ...(imagePath ? { image_path: imagePath } : {}),
+            });
+            if (!res.ok) throw new Error(res.message ?? 'That did not work.');
+            setStage(null);
+            setOpen(false);
+            router.refresh();
+          } catch (err) {
+            setStage(null);
+            setError(err instanceof Error ? err.message : 'That did not work.');
+          }
         });
       }}
     >
@@ -2219,6 +2268,32 @@ export function CreateDomainForm({ tenantId }: { tenantId: number }) {
         <input id="cd-title" name="title" required maxLength={200}
           placeholder="Cloud and DevOps — evening cohort" className={field} />
       </div>
+      {/* The banner. It was missing entirely, so a Live Class made from the
+          console could never have the picture every learner-facing tile is
+          built around -- the institution's own composer has asked for one
+          since Live Classes shipped. */}
+      <div className="sm:col-span-2">
+        <label className={label} htmlFor="cd-banner">Banner image</label>
+        <input
+          id="cd-banner" name="banner" type="file" accept="image/*"
+          onChange={(e) => {
+            const picked = e.target.files?.[0] ?? null;
+            if (picked && picked.size > MAX_BANNER_BYTES) {
+              setError('That image is larger than 5 MB. A tile only needs a small one.');
+              e.target.value = '';
+              return;
+            }
+            setError(null);
+          }}
+          className="mt-1.5 block w-full text-[13.5px] file:mr-3 file:rounded-lg file:border-0
+                     file:bg-brand-50 file:px-3 file:py-2 file:text-[13px] file:font-semibold
+                     file:text-brand-700"
+        />
+        <p className="mt-1 text-[12px] text-muted">
+          Optional. Shown on the tile — a wide image works best. Up to 5 MB.
+        </p>
+      </div>
+
       <div className="sm:col-span-2">
         <label className={label} htmlFor="cd-summary">Summary</label>
         <textarea id="cd-summary" name="summary" maxLength={4000} rows={3} className={field} />
@@ -2251,7 +2326,7 @@ export function CreateDomainForm({ tenantId }: { tenantId: number }) {
       </div>
       <div className="col-span-full flex gap-2">
         <button type="submit" disabled={pending} className={button}>
-          {pending ? 'Adding…' : 'Add it as a draft'}
+          {stage ?? (pending ? 'Adding…' : 'Add it as a draft')}
         </button>
         <button type="button" onClick={() => setOpen(false)}
           className="rounded-lg border border-slate-300 px-4 py-2 text-sm">

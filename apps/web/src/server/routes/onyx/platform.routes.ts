@@ -410,7 +410,25 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
 
   app.get('/api/onyx/platform/tenants/:id/domains', async (req) => {
     await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
-    return ok(await ctx.onyxPlatform.domains(idOf(req)));
+    // Through DomainsService, which resolves the stored image KEY into a URL
+    // a browser can actually load. PlatformService has no storage and would
+    // hand back a bucket path that renders as a broken image.
+    return ok(await ctx.onyxDomains.list(idOf(req), { includeHidden: true }));
+  });
+
+  /**
+   * A ticket to upload one Live Class banner, for the console.
+   *
+   * The same seam the institution's own composer uses -- the browser PUTs
+   * straight to storage and sends back only the key, which is minted from the
+   * tenant in the path and never from anything the caller supplies.
+   */
+  app.post('/api/onyx/platform/tenants/:id/domains/uploads/sign', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      filename: z.string().min(1).max(255),
+    }), req.body);
+    return ok(await ctx.onyxDomains.signUpload(idOf(req), body.filename));
   });
 
   app.post('/api/onyx/platform/tenants/:id/domains', async (req) => {
@@ -421,6 +439,9 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       // Checked by name on the way in -- see normaliseCurriculumUrl. This
       // ends up in an anchor's href.
       curriculum_url: z.string().max(500).nullish(),
+      // A storage key from the sign route above, never a URL: the bucket can
+      // move, and a URL written into a row outlives the host it names.
+      image_path: z.string().max(500).nullish(),
       certificate: z.string().max(200).nullish(),
       duration_label: z.string().max(80).nullish(),
       // Minor units, capped like every other price in this API.
@@ -438,6 +459,7 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       title: z.string().min(1).max(200).optional(),
       summary: z.string().max(4000).nullish(),
       curriculum_url: z.string().max(500).nullish(),
+      image_path: z.string().max(500).nullish(),
       certificate: z.string().max(200).nullish(),
       duration_label: z.string().max(80).nullish(),
       price_minor: z.number().int().min(0).max(100_000_000).optional(),
@@ -578,7 +600,11 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
 
   app.get('/api/onyx/platform/tenants/:id/domains/:domainId', async (req) => {
     await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
-    return ok(await ctx.onyxPlatform.domainDetail(idOf(req), subIdOf(req, 'domainId')));
+    const [domain, rest] = await Promise.all([
+      ctx.onyxDomains.domain(idOf(req), subIdOf(req, 'domainId')),
+      ctx.onyxPlatform.domainRegistrations(idOf(req), subIdOf(req, 'domainId')),
+    ]);
+    return ok({ domain, ...rest });
   });
 
   /**

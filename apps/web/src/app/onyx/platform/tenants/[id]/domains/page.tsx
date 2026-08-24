@@ -62,15 +62,35 @@ export default async function OnyxPlatformDomainsPage(
             ) : rows.map((d) => (
               <tr key={d.id} className="align-top">
                 <td>
-                  {/* The row opens: who registered is the question somebody
-                      came here to ask, and it was not on this table. */}
-                  <Link href={'/onyx/platform/tenants/' + tenantId + '/domains/' + d.id}
-                    className="font-semibold hover:underline">
-                    {d.title}
-                  </Link>
-                  {d.summary ? (
-                    <div className="mt-0.5 line-clamp-2 text-[12.5px] text-muted">{d.summary}</div>
-                  ) : null}
+                  <div className="flex items-start gap-2.5">
+                    {/* The banner, small. An operator who has just uploaded one
+                        needs to see that the right image went up, and a row of
+                        text is not evidence of anything. */}
+                    {d.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- the storage host is not in next.config's remotePatterns, and a signed URL is not a stable one to add.
+                      <img src={d.image_url} alt=""
+                        className="h-9 w-14 shrink-0 rounded-md object-cover" />
+                    ) : (
+                      <span aria-hidden
+                        className="flex h-9 w-14 shrink-0 items-center justify-center rounded-md
+                                   border border-dashed border-line text-[10px] text-muted">
+                        none
+                      </span>
+                    )}
+                    <div className="min-w-0">
+                      {/* The row opens: who registered is the question somebody
+                          came here to ask. */}
+                      <Link href={'/onyx/platform/tenants/' + tenantId + '/domains/' + d.id}
+                        className="font-semibold hover:underline">
+                        {d.title}
+                      </Link>
+                      {d.summary ? (
+                        <div className="mt-0.5 line-clamp-2 text-[12.5px] text-muted">
+                          {d.summary}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
                 </td>
                 <td className="text-[13px]">
                   {d.duration_label || <span className="text-muted">—</span>}
