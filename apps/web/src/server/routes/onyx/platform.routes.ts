@@ -500,6 +500,71 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       idOf(req), subIdOf(req, 'moduleId'), claims.user_id, body), 'Lesson added.');
   });
 
+  /**
+   * One lesson, opened.
+   *
+   * `ContentService.lesson` is reused rather than reimplemented: it mints the
+   * signed URL, resolves a `link` to its own address, and gathers the lesson's
+   * resources. Its enrolment gate is skipped for staff, and an operator asking
+   * for a lesson through a platform-guarded route is exactly that case -- so
+   * the role passed is 'admin', which is what the method already understands.
+   *
+   * The alternative was a second copy of the signing logic in
+   * PlatformService, and two places that decide who may read a file is one
+   * place too many.
+   */
+  app.get('/api/onyx/platform/tenants/:id/lessons/:lessonId', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxContent.lesson(
+      idOf(req), subIdOf(req, 'lessonId'), claims.user_id, 'admin'));
+  });
+
+  app.patch('/api/onyx/platform/tenants/:id/lessons/:lessonId', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      title: z.string().min(1).max(255).optional(),
+      body: z.string().max(200_000).nullish(),
+      is_preview: z.boolean().optional(),
+      sort: z.number().int().min(0).max(9999).optional(),
+    }), req.body);
+    return ok(await ctx.onyxPlatform.updateCourseLesson(
+      idOf(req), subIdOf(req, 'lessonId'), claims.user_id, body), 'Updated.');
+  });
+
+  // ===========================================================================
+  // Making a paper sittable
+  //
+  // `createAssessment` writes a paper with no sections, so it draws no
+  // questions -- and `start()` refuses it with "this assessment has no
+  // questions" at the moment a candidate presses the button, which is far too
+  // late for anybody to do something about it.
+  // ===========================================================================
+
+  app.get('/api/onyx/platform/tenants/:id/banks', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxPlatform.questionBanks(idOf(req)));
+  });
+
+  app.put('/api/onyx/platform/tenants/:id/assessments/:assessmentId/sections', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      sections: z.array(z.object({
+        id: z.string().min(1).max(50),
+        title: z.string().min(1).max(255),
+        bank_id: z.number().int().positive(),
+        take: z.number().int().min(1).max(500),
+      })).max(20),
+    }), req.body);
+    return ok(await ctx.onyxPlatform.setAssessmentSections(
+      idOf(req), subIdOf(req, 'assessmentId'), claims.user_id, body.sections), 'Sections saved.');
+  });
+
+  app.post('/api/onyx/platform/tenants/:id/assessments/:assessmentId/publish', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxPlatform.publishAssessment(
+      idOf(req), subIdOf(req, 'assessmentId'), claims.user_id), 'Published.');
+  });
+
   app.delete('/api/onyx/platform/tenants/:id/lessons/:lessonId', async (req) => {
     const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     return ok(await ctx.onyxPlatform.removeCourseLesson(

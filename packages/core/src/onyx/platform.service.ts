@@ -484,7 +484,7 @@ export class PlatformService {
       this.#db.from('onyx_assessments')
         // One literal, not a concatenation: supabase-js infers the row type
         // from the select string as a literal type, and `a + b` is just string.
-        .select('id, course_id, title, opens_at, closes_at, status, pass_mark, duration_minutes, attempts_allowed, created_at')
+        .select('id, course_id, title, opens_at, closes_at, status, pass_mark, duration_minutes, attempts_allowed, sections, created_at')
         .eq('tenant_id', id).order('created_at', { ascending: false }).limit(limit + 1),
       // Examinations (CMP-02): scheduled papers, not the marks off them --
       // those are still tenantGrades()'s job, audited the same as ever.
@@ -632,6 +632,17 @@ export class PlatformService {
         duration_minutes: num(a.duration_minutes),
         attempt_count: attTotal.get(num(a.id)) ?? 0,
         submitted_count: attDone.get(num(a.id)) ?? 0,
+        /*
+         * What this paper draws, and from where.
+         *
+         * Carried so the console can say "this paper has no questions" on the
+         * list rather than leaving a candidate to discover it at the moment
+         * they press Start -- which is where `start()` refuses it, and far too
+         * late for anybody to do something about it.
+         */
+        sections: (a.sections ?? []) as {
+          id: string; title: string; bank_id: number; take: number;
+        }[],
       })),
     };
   }
@@ -2036,6 +2047,122 @@ export class PlatformService {
     if (error) throw new HttpError(500, 'Could not remove that lesson: ' + error.message);
     await this.#log(actorId, 'lesson.deleted', 'lesson', lessonId, { title: lesson.title }, null);
     return { id: lessonId, removed: true };
+  }
+
+  /** Rename a lesson, or change whether it is open before enrolment. */
+  async updateCourseLesson(tenantId: number, lessonId: number, actorId: string | null, patch: {
+    title?: string; body?: string | null; is_preview?: boolean; sort?: number;
+  }) {
+    const { data: before } = await this.#db.from('onyx_lessons')
+      .select('id, title, type, is_preview').eq('tenant_id', tenantId)
+      .eq('id', lessonId).maybeSingle();
+    if (!before) throw new HttpError(404, 'No such lesson.');
+
+    const next: Record<string, unknown> = {};
+    if (patch.title !== undefined) next.title = patch.title.trim();
+    if (patch.sort !== undefined) next.sort = patch.sort;
+    if (patch.is_preview !== undefined) next.is_preview = patch.is_preview ? 1 : 0;
+    if (patch.body !== undefined) {
+      // Only a written lesson has a body. Setting one on a video would leave a
+      // lesson whose text nothing renders.
+      if (before.type !== 'text') throw new HttpError(422, 'Only a written lesson has text.');
+      if (!String(patch.body ?? '').trim()) {
+        throw new HttpError(422, 'A text lesson needs some text.');
+      }
+      next.body = patch.body;
+    }
+    if (!Object.keys(next).length) return before;
+
+    const { error } = await this.#db.from('onyx_lessons')
+      .update(next).eq('tenant_id', tenantId).eq('id', lessonId);
+    if (error) throw new HttpError(500, 'Could not update that lesson: ' + error.message);
+    await this.#log(actorId, 'lesson.updated', 'lesson', lessonId,
+      { title: before.title }, next);
+    return { ...before, ...next };
+  }
+
+  /**
+   * The question banks an institution has, and how much is in each.
+   *
+   * A paper drawn from a bank needs the bank to exist, and the console had no
+   * way to see whether one did -- so "add sections" would have been a form
+   * with nothing to choose from and no explanation.
+   */
+  async questionBanks(tenantId: number) {
+    const { data: banks } = await this.#db.from('onyx_question_banks')
+      .select('id, name, course_id, description, created_at').eq('tenant_id', tenantId)
+      .order('id');
+    if (!(banks ?? []).length) return [];
+    const { data: questions } = await this.#db.from('onyx_questions')
+      .select('id, bank_id, status').eq('tenant_id', tenantId);
+    const counts = new Map<number, number>();
+    for (const q of questions ?? []) {
+      if (Number(q.status) === 0) continue;      // retired questions are not drawable
+      const key = Number(q.bank_id);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return (banks ?? []).map((b) => ({ ...b, question_count: counts.get(Number(b.id)) ?? 0 }));
+  }
+
+  /**
+   * Which questions a paper draws, and from where.
+   *
+   * `createAssessment` deliberately made a paper with no sections -- "course
+   * faculty add sections once a bank exists" -- which left an operator able to
+   * create a paper nobody could ever sit, with nothing on the screen saying
+   * so. A paper with no questions is refused at `start()` with "this
+   * assessment has no questions", at the moment a candidate presses the
+   * button. That is far too late to find out.
+   */
+  async setAssessmentSections(tenantId: number, assessmentId: number, actorId: string | null,
+    sections: { id: string; title: string; bank_id: number; take: number }[]) {
+    const { data: assessment } = await this.#db.from('onyx_assessments')
+      .select('id, title, sections, status').eq('tenant_id', tenantId)
+      .eq('id', assessmentId).maybeSingle();
+    if (!assessment) throw new HttpError(404, 'No such assessment.');
+
+    // Every bank named has to belong to this institution, and hold enough to
+    // draw from. Both are checked here rather than discovered at sitting time.
+    const banks = await this.questionBanks(tenantId);
+    const byId = new Map(banks.map((b) => [Number(b.id), b]));
+    for (const section of sections) {
+      const bank = byId.get(Number(section.bank_id));
+      if (!bank) throw new HttpError(422, 'That question bank is not at this institution.');
+      if (section.take > Number(bank.question_count)) {
+        throw new HttpError(422, '“' + bank.name + '” holds ' + bank.question_count
+          + ' question(s); a section cannot draw ' + section.take + '.');
+      }
+    }
+
+    const { error } = await this.#db.from('onyx_assessments')
+      .update({ sections: sections as never, updated_at: new Date().toISOString() })
+      .eq('tenant_id', tenantId).eq('id', assessmentId);
+    if (error) throw new HttpError(500, 'Could not save those sections: ' + error.message);
+    await this.#log(actorId, 'assessment.sections_set', 'assessment', assessmentId,
+      { sections: assessment.sections }, { sections });
+    return { id: assessmentId, sections };
+  }
+
+  async publishAssessment(tenantId: number, assessmentId: number, actorId: string | null) {
+    const { data: assessment } = await this.#db.from('onyx_assessments')
+      .select('id, title, sections, status').eq('tenant_id', tenantId)
+      .eq('id', assessmentId).maybeSingle();
+    if (!assessment) throw new HttpError(404, 'No such assessment.');
+
+    const sections = (assessment.sections ?? []) as { take?: number }[];
+    const drawn = sections.reduce((n, sec) => n + Number(sec.take ?? 0), 0);
+    if (!drawn) {
+      throw new HttpError(422, 'This paper draws no questions yet. '
+        + 'Add a section from a question bank before publishing it.');
+    }
+
+    const { error } = await this.#db.from('onyx_assessments')
+      .update({ status: 'published', updated_at: new Date().toISOString() })
+      .eq('tenant_id', tenantId).eq('id', assessmentId);
+    if (error) throw new HttpError(500, 'Could not publish that paper: ' + error.message);
+    await this.#log(actorId, 'assessment.published', 'assessment', assessmentId,
+      { status: assessment.status }, { status: 'published' });
+    return { id: assessmentId, status: 'published' };
   }
 
   async #courseModule(tenantId: number, moduleId: number) {

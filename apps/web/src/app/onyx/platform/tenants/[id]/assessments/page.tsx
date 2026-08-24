@@ -3,8 +3,11 @@ import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import {
   attempt, RosterHeader, WhenCell, SCROLLER, Unavailable, Workflow, type AcademicsPayload,
 } from '@/lib/onyx-platform-tenant';
-import { CreateAssessmentForm, AssessmentEditToggle } from '@/components/onyx-platform-forms';
-import { DataTable, EmptyRow } from '@/components/onyx-ui';
+import {
+  CreateAssessmentForm, AssessmentEditToggle, AssessmentSectionsForm,
+  AssessmentPublishButton, type ConsoleBank,
+} from '@/components/onyx-platform-forms';
+import { Banner, DataTable, EmptyRow, Pill } from '@/components/onyx-ui';
 
 export const metadata: Metadata = { title: 'Assessments' };
 
@@ -18,11 +21,32 @@ export default async function OnyxPlatformAssessmentsPage(
     '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/academics?limit=200');
   const assessments = academics?.assessments ?? [];
   const courses = academics?.courses ?? [];
+  // What there is to draw from. A paper needs a bank with questions in it, and
+  // an institution that has none is the reason a paper stays unsittable.
+  const banks = (await attempt<ConsoleBank[]>(
+    '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/banks')) ?? [];
+  const drawable = banks.filter((b) => b.question_count > 0);
+  const drawsNothing = assessments.filter((a) => !(a.sections ?? []).length);
 
   return (
     <div className="min-w-0 space-y-4">
       <RosterHeader count={assessments.length} noun="assessment"
         action={<CreateAssessmentForm tenantId={tenantId} courses={courses} />} />
+
+      {/* Said on the list, where somebody can act on it -- not at the moment a
+          candidate presses Start, which is where the engine refuses it. */}
+      {drawsNothing.length ? (
+        <Banner tone="warn" icon="alert">
+          <span className="font-bold">
+            {drawsNothing.length} {drawsNothing.length === 1 ? 'paper draws' : 'papers draw'}
+          </span>{' '}
+          no questions yet, so {drawsNothing.length === 1 ? 'it cannot' : 'they cannot'} be sat.
+          {drawable.length
+            ? ' Use “Add questions” to draw from a bank.'
+            : ' This institution has no question bank with questions in it yet — one has to be'
+              + ' authored from the institution before a paper can draw from it.'}
+        </Banner>
+      ) : null}
 
       {academics === null ? <Unavailable what="assessment list" /> : (
         <div tabIndex={0} role="region" aria-label="Assessments" className={SCROLLER}>
@@ -47,9 +71,17 @@ export default async function OnyxPlatformAssessmentsPage(
               <tr key={a.id} className="align-top">
                 <td>
                   <div className="font-semibold">{a.title}</div>
-                  <div className="text-[12.5px] text-muted">
-                    {a.duration_minutes} min{a.pass_mark == null ? '' : ' · pass ' + a.pass_mark}
+                  <div className="flex flex-wrap items-center gap-1.5 text-[12.5px] text-muted">
+                    <span>
+                      {a.duration_minutes} min{a.pass_mark == null ? '' : ' · pass ' + a.pass_mark}
+                    </span>
+                    {(a.sections ?? []).length ? (
+                      <span>
+                        · draws {(a.sections ?? []).reduce((n, sec) => n + Number(sec.take), 0)}
+                      </span>
+                    ) : <Pill tone="late">No questions</Pill>}
                   </div>
+                  <AssessmentSectionsForm tenantId={tenantId} assessment={a} banks={banks} />
                 </td>
                 <td className="font-mono text-[12.5px]">
                   {a.course?.code ?? <span className="font-sans text-muted">—</span>}
@@ -60,7 +92,12 @@ export default async function OnyxPlatformAssessmentsPage(
                   <span className="text-[12.5px] text-muted"> ({a.submitted_count} sat)</span>
                 </td>
                 <td><Workflow status={a.status} /></td>
-                <td className="text-right"><AssessmentEditToggle tenantId={tenantId} assessment={a} /></td>
+                <td className="text-right">
+                  <div className="flex flex-col items-end gap-1.5">
+                    <AssessmentEditToggle tenantId={tenantId} assessment={a} />
+                    <AssessmentPublishButton tenantId={tenantId} assessment={a} />
+                  </div>
+                </td>
               </tr>
             ))}
           </DataTable>

@@ -2655,3 +2655,232 @@ export function LessonRemoveButton({ tenantId, lesson }: {
     </>
   );
 }
+
+
+/** Rename a lesson, retitle its text, and decide who may see it. */
+export function LessonEditForm({ tenantId, lesson }: {
+  tenantId: number;
+  lesson: { id: number; title: string; type: string; body: string | null; is_preview: number };
+}) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  return (
+    <form
+      className="grid gap-3 rounded-2xl border border-line bg-slate-50 p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        setError(null);
+        setNote(null);
+        start(async () => {
+          const payload: Record<string, unknown> = {
+            title: String(data.get('title') ?? ''),
+            is_preview: data.get('is_preview') === 'on',
+          };
+          // Only a written lesson has text to send. Sending `body` for a video
+          // is refused by the API, and rightly -- it would be text nothing
+          // renders.
+          if (lesson.type === 'text') payload.body = String(data.get('body') ?? '');
+
+          const res = await post('onyx/platform/tenants/' + tenantId + '/lessons/' + lesson.id,
+            payload, 'PATCH');
+          if (!res.ok) { setError(res.message ?? 'That did not save.'); return; }
+          setNote('Saved.');
+          router.refresh();
+        });
+      }}
+    >
+      {error ? <p role="alert" className="text-[13px] text-red-700">{error}</p> : null}
+      {note ? <p role="status" className="text-[13px] text-green-700">{note}</p> : null}
+
+      <div>
+        <label className={label} htmlFor="le-title">Title</label>
+        <input id="le-title" name="title" required maxLength={255}
+          defaultValue={lesson.title} className={field} />
+      </div>
+
+      {lesson.type === 'text' ? (
+        <div>
+          <label className={label} htmlFor="le-body">The reading itself</label>
+          <textarea id="le-body" name="body" required rows={8} maxLength={200_000}
+            defaultValue={lesson.body ?? ''} className={field} />
+        </div>
+      ) : (
+        <p className="text-[12.5px] leading-relaxed text-muted">
+          The file itself is not replaced here. Remove this lesson and add it again with the
+          new file — that way nothing points at a file that has quietly changed underneath it.
+        </p>
+      )}
+
+      <label className="flex items-center gap-2 text-[13px] font-semibold text-slate-700">
+        <input type="checkbox" name="is_preview" defaultChecked={Boolean(lesson.is_preview)}
+          className="h-4 w-4 rounded border-slate-300" />
+        Open to anyone browsing the course, before they enrol
+      </label>
+
+      <div>
+        <button type="submit" disabled={pending} className={button}>
+          {pending ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Making a paper sittable
+// ---------------------------------------------------------------------------
+
+export interface ConsoleBank {
+  id: number; name: string; course_id: number | null; question_count: number;
+}
+
+/**
+ * Which questions a paper draws, and how many of each.
+ *
+ * A paper created from the console had no sections at all, so it drew nothing
+ * — and the refusal arrived at `start()`, in front of a candidate who had just
+ * pressed the button. This is where that gets decided instead, with the size
+ * of each bank shown so nobody asks for twenty questions from a bank of six.
+ */
+export function AssessmentSectionsForm({ tenantId, assessment, banks }: {
+  tenantId: number;
+  assessment: { id: number; title: string; status: string;
+    sections?: { id: string; title: string; bank_id: number; take: number }[] | null };
+  banks: ConsoleBank[];
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState(() =>
+    (assessment.sections ?? []).map((sec) => ({ ...sec }))
+    || []);
+  const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  const usable = banks.filter((b) => b.question_count > 0);
+  const drawn = rows.reduce((n, r) => n + Number(r.take || 0), 0);
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} disabled={!usable.length}
+        title={usable.length ? undefined : 'This institution has no question bank with questions in it yet'}
+        className="rounded-lg border border-slate-300 px-3 py-1.5 text-[13px] font-semibold
+                   disabled:opacity-40">
+        {drawn ? 'Questions (' + drawn + ')' : 'Add questions'}
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 w-full space-y-3 rounded-xl border border-line bg-slate-50 p-3.5">
+      {error ? <p role="alert" className="text-[13px] text-red-700">{error}</p> : null}
+      {note ? <p role="status" className="text-[13px] text-green-700">{note}</p> : null}
+
+      {rows.length === 0 ? (
+        <p className="text-[13px] text-muted">
+          This paper draws nothing yet, so nobody can sit it. Add a section below.
+        </p>
+      ) : null}
+
+      <ul className="space-y-2">
+        {rows.map((row, i) => (
+          <li key={row.id} className="grid gap-2 sm:grid-cols-[1fr,auto,auto]">
+            <select
+              aria-label={'Question bank for section ' + (i + 1)}
+              value={row.bank_id}
+              onChange={(e) => setRows(rows.map((r, j) =>
+                (j === i ? { ...r, bank_id: Number(e.target.value) } : r)))}
+              className={field + ' mt-0'}
+            >
+              {usable.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name} ({b.question_count} question{b.question_count === 1 ? '' : 's'})
+                </option>
+              ))}
+            </select>
+            <input
+              type="number" min={1} max={500} value={row.take}
+              aria-label={'How many to draw for section ' + (i + 1)}
+              onChange={(e) => setRows(rows.map((r, j) =>
+                (j === i ? { ...r, take: Number(e.target.value) } : r)))}
+              className={field + ' mt-0 w-24'}
+            />
+            <button type="button" onClick={() => setRows(rows.filter((_, j) => j !== i))}
+              className="rounded-lg border border-slate-300 px-3 text-[13px] font-semibold
+                         text-red-700">
+              Remove
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setRows([...rows, {
+            id: 's' + (rows.length + 1),
+            title: 'Section ' + (rows.length + 1),
+            bank_id: usable[0]!.id,
+            take: 1,
+          }])}
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-[13px] font-semibold"
+        >
+          Add a section
+        </button>
+        <button
+          type="button" disabled={pending}
+          onClick={() => start(async () => {
+            setError(null);
+            setNote(null);
+            const res = await post('onyx/platform/tenants/' + tenantId
+              + '/assessments/' + assessment.id + '/sections', { sections: rows }, 'PUT');
+            if (!res.ok) { setError(res.message ?? 'That did not save.'); return; }
+            setNote('Saved — this paper draws ' + drawn + ' question'
+              + (drawn === 1 ? '' : 's') + '.');
+            router.refresh();
+          })}
+          className={button}
+        >
+          {pending ? 'Saving…' : 'Save the sections'}
+        </button>
+        <button type="button" onClick={() => setOpen(false)}
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-[13px]">
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Publish a paper, once it draws something. */
+export function AssessmentPublishButton({ tenantId, assessment }: {
+  tenantId: number; assessment: { id: number; status: string };
+}) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  if (assessment.status === 'published') return null;
+  return (
+    <div className="flex flex-col items-end gap-1">
+      {error ? <span role="alert" className="text-[12px] text-red-700">{error}</span> : null}
+      <button
+        type="button" disabled={pending}
+        onClick={() => start(async () => {
+          setError(null);
+          const res = await post('onyx/platform/tenants/' + tenantId
+            + '/assessments/' + assessment.id + '/publish', {});
+          if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+          router.refresh();
+        })}
+        className="rounded-lg border border-slate-300 px-3 py-1.5 text-[13px] font-semibold"
+      >
+        {pending ? 'Publishing…' : 'Publish'}
+      </button>
+    </div>
+  );
+}

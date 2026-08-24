@@ -141,7 +141,15 @@ export default async function OnyxPlatformCoursePage(
                       <li key={l.id} className="flex items-center gap-2.5 py-2 text-[13px]">
                         <Icon name={ICON_OF[l.type] ?? 'file'}
                           className="h-3.5 w-3.5 shrink-0 text-muted" />
-                        <span className="min-w-0 flex-1 truncate text-ink">{l.title}</span>
+                        {/* The lesson opens. An operator who has just
+                            uploaded a file needs to see that the right one
+                            went up, and a row saying "document" is not
+                            evidence of anything. */}
+                        <Link
+                          href={'/onyx/platform/tenants/' + tenantId + '/lessons/' + l.id}
+                          className="min-w-0 flex-1 truncate text-ink hover:underline">
+                          {l.title}
+                        </Link>
                         <span className="shrink-0 text-[12px] text-muted">{l.type}</span>
                         {l.is_preview ? <Pill tone="neutral">Preview</Pill> : null}
                         <LessonRemoveButton tenantId={tenantId} lesson={l} />

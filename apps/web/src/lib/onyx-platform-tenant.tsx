@@ -53,6 +53,8 @@ export interface AssessmentRow {
   course_id: number | null;
   closes_at: string | null; opens_at: string | null; status: string; pass_mark: number | null;
   duration_minutes: number; attempt_count: number; submitted_count: number;
+  /** What the paper draws. Empty means nobody can sit it. */
+  sections?: { id: string; title: string; bank_id: number; take: number }[] | null;
 }
 export interface ExamRow {
   id: number; title: string; course: { code: string; title: string } | null;
