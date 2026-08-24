@@ -61,10 +61,14 @@ const login = async (email) => (await api('/api/onyx/auth/login',
 const at = await login(adminEmail);
 
 await api('/api/onyx/members', { method: 'POST', token: at,
-  body: { name: 'Sam Student', email: studentEmail, role: 'student', password: PW,
-    // On their record, so Razorpay's contact screen is skipped -- which is
-    // what a learner whose institution already holds their number should get.
-    phone: '9876543210' } });
+  body: { name: 'Sam Student', email: studentEmail, role: 'student', password: PW } });
+
+// Their own number, on their own record. Razorpay's contact screen is skipped
+// for a learner who has one -- which is the point of sending it -- so this is
+// also what makes the card steps below reachable without typing it again.
+const studentToken = await login(studentEmail);
+await api('/api/onyx/my/profile-details', { method: 'PATCH', token: studentToken,
+  body: { phone: '9845127384' } });
 
 await api('/api/onyx/admin/gateways', { method: 'PUT', token: at,
   body: {
@@ -167,7 +171,7 @@ try {
     await mobile.click();
     await page.keyboard.press('Control+A');
     await page.keyboard.press('Backspace');
-    await mobile.pressSequentially('9876543210', { delay: 80 });
+    await mobile.pressSequentially('9845127384', { delay: 80 });
     await page.keyboard.press('Tab');
     await page.waitForTimeout(1_000);
     const complaint = (await Promise.all(page.frames().map((f) =>
@@ -199,9 +203,44 @@ try {
   if (holder) await holder.pressSequentially('Sam Student', { delay: 30 });
   say(true, 'the test card is entered');
 
-  const pay = await anyFrame((f) => f.getByRole('button', { name: /^pay/i }), 20_000);
+  // Their card form says "Continue", and the amount button says "Pay ₹300".
+  // Both are the same step depending on which layout they serve.
+  const pay = await anyFrame((f) =>
+    f.getByRole('button', { name: /^(continue|pay.*)$/i }), 20_000);
   await pay.click();
-  say(true, 'paid');
+  say(true, 'the card is submitted');
+
+  // "Save your card for future payments?" -- declined, because saving a card
+  // is a decision a person makes and not one a test should make for them.
+  const maybeLater = await anyFrame((f) =>
+    f.getByRole('button', { name: /maybe later|skip/i }), 15_000).catch(() => null);
+  if (maybeLater) {
+    await maybeLater.click();
+    say(true, 'declined to save the card');
+  }
+
+  /*
+   * A fee breakup, on this merchant account: ₹300 plus a convenience charge
+   * the BUYER pays. That is an account setting of the client's rather than
+   * anything this product decides -- but it means a learner buying a ₹300
+   * course is charged more than ₹300, and the course page says ₹300. Recorded
+   * here so the number is on the record either way.
+   */
+  const feeBreakup = await anyFrame((f) => f.locator('text=/Fee Breakup/i'), 10_000)
+    .catch(() => null);
+  if (feeBreakup) {
+    const text = (await Promise.all(page.frames().map((f) =>
+      f.locator('body').innerText().catch(() => '')))).join(' ');
+    const total = (text.match(/Total Charges\s*₹\s?([\d,.]+)/i) ?? [])[1];
+    say(true, 'the merchant account adds a convenience charge',
+      '₹300 course → ₹' + (total ?? '?') + ' charged');
+    // By its exact words. A looser match also finds the card form's own
+    // "Continue" sitting behind this dialog -- visible to the DOM, covered on
+    // screen, and a click on it goes nowhere.
+    const proceed = await anyFrame((f) =>
+      f.getByRole('button', { name: /continue\s*&\s*pay/i }), 15_000);
+    await proceed.click();
+  }
 
   // Razorpay's test mode then asks whether this payment should succeed.
   const success = await anyFrame((f) =>
