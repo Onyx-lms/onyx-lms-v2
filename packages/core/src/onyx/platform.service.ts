@@ -1357,7 +1357,8 @@ export class PlatformService {
   /** One assessment attempt, with the candidate's actual answers -- the "view submission" for CBT. */
   async assessmentAttempt(tenantId: number, attemptId: number) {
     const { data: row } = await this.#db.from('onyx_assessment_attempts')
-      .select('id, tenant_id, assessment_id, user_id, attempt, status, started_at, submitted_at, auto_score, manual_score, score, max_score')
+      // eslint-disable-next-line max-len -- one literal: a concatenated select collapses the client's row type.
+      .select('id, tenant_id, assessment_id, user_id, attempt, status, started_at, submitted_at, auto_score, manual_score, score, max_score, paper')
       .eq('id', attemptId).maybeSingle();
     if (!row || Number(row.tenant_id) !== tenantId) throw new HttpError(404, 'No such attempt.');
     const [{ data: assessment }, { data: answers }, users] = await Promise.all([
@@ -1368,9 +1369,49 @@ export class PlatformService {
         .eq('tenant_id', tenantId).eq('attempt_id', attemptId),
       this.#usersById([String(row.user_id)]),
     ]);
+    /*
+     * The paper the candidate was dealt, joined to their answers.
+     *
+     * The answers alone are marks against bare question ids -- readable by a
+     * database, useless to a person checking a result. `paper` is the snapshot
+     * taken when the attempt started, so it carries the prompt and the options
+     * exactly as THIS candidate saw them, which is the only version worth
+     * showing: a question edited since is a different question.
+     */
+    const dealt = (row.paper ?? []) as unknown as {
+      question_id: number; type: string; prompt: string; points: number;
+      options?: { id: string; text: string }[];
+    }[];
+    const byQuestion = new Map((answers ?? []).map((a) => [Number(a.question_id), a]));
+
+    // What the invigilator's console saw for the same attempt.
+    const { data: events } = await this.#db.from('onyx_proctor_events')
+      .select('id, kind, weight, detail, created_at')
+      .eq('tenant_id', tenantId).eq('attempt_id', attemptId).order('created_at');
+
     return {
-      ...row, student: users.get(String(row.user_id)) ?? null,
-      assessment: assessment ?? null, answers: answers ?? [],
+      ...row,
+      student: users.get(String(row.user_id)) ?? null,
+      assessment: assessment ?? null,
+      answers: answers ?? [],
+      questions: dealt.map((q) => {
+        const answer = byQuestion.get(Number(q.question_id));
+        return {
+          question_id: q.question_id,
+          type: q.type,
+          prompt: q.prompt,
+          points: q.points,
+          options: q.options ?? [],
+          response: answer?.response ?? null,
+          auto_points: answer?.auto_points ?? null,
+          manual_points: answer?.manual_points ?? null,
+          marker_comment: answer?.marker_comment ?? null,
+        };
+      }),
+      proctor_events: events ?? [],
+      // One number an invigilator can sort by: informational events weigh 0,
+      // and the ones somebody should look at weigh more.
+      integrity_score: (events ?? []).reduce((n, e) => n + Number(e.weight ?? 0), 0),
     };
   }
 
@@ -2224,6 +2265,151 @@ export class PlatformService {
     await this.#log(actorId, 'exam.deleted', 'exam', examId,
       { title: exam.title, status: exam.status }, null);
     return { id: examId, removed: true };
+  }
+
+  /**
+   * One paper, and everybody who sat it.
+   *
+   * The console could list papers, and could open a single attempt if somebody
+   * already had its id -- which nothing on any screen gave them. So a paper's
+   * results were unreachable from the platform side even though every row was
+   * already in the database.
+   */
+  async assessmentDetail(tenantId: number, assessmentId: number) {
+    const { data: assessment } = await this.#db.from('onyx_assessments')
+      // eslint-disable-next-line max-len -- one literal, same reason as above.
+      .select('id, tenant_id, course_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, pass_mark, status, sections, proctoring, moderation_required, results_published_at, created_at')
+      .eq('tenant_id', tenantId).eq('id', assessmentId).maybeSingle();
+    if (!assessment) throw new HttpError(404, 'No such assessment.');
+
+    const { data: attempts } = await this.#db.from('onyx_assessment_attempts')
+      // eslint-disable-next-line max-len -- one literal, same reason as above.
+      .select('id, user_id, attempt, status, started_at, submitted_at, auto_score, manual_score, score, max_score')
+      .eq('tenant_id', tenantId).eq('assessment_id', assessmentId).order('id');
+
+    const rows = attempts ?? [];
+    const users = await this.#usersById(rows.map((a) => String(a.user_id)));
+
+    // Integrity in one query rather than one per attempt.
+    const { data: events } = rows.length
+      ? await this.#db.from('onyx_proctor_events').select('attempt_id, weight')
+        .eq('tenant_id', tenantId).in('attempt_id', rows.map((a) => Number(a.id)))
+      : { data: [] as { attempt_id: number; weight: number }[] };
+    const flagged = new Map<number, number>();
+    for (const e of events ?? []) {
+      const key = Number(e.attempt_id);
+      flagged.set(key, (flagged.get(key) ?? 0) + Number(e.weight ?? 0));
+    }
+
+    const { data: course } = assessment.course_id
+      ? await this.#db.from('onyx_courses').select('id, code, title')
+        .eq('tenant_id', tenantId).eq('id', Number(assessment.course_id)).maybeSingle()
+      : { data: null };
+
+    const scored = rows.filter((a) => a.score != null).map((a) => Number(a.score));
+    return {
+      assessment: { ...assessment, course: course ?? null },
+      attempts: rows.map((a) => ({
+        ...a,
+        student: users.get(String(a.user_id)) ?? null,
+        integrity_score: flagged.get(Number(a.id)) ?? 0,
+      })),
+      summary: {
+        sat: rows.filter((a) => a.status !== 'in_progress').length,
+        in_progress: rows.filter((a) => a.status === 'in_progress').length,
+        marked: scored.length,
+        mean: mean(scored),
+        passed: assessment.pass_mark == null
+          ? null
+          : scored.filter((v) => v >= Number(assessment.pass_mark)).length,
+      },
+    };
+  }
+
+  /**
+   * One sitting, with everything hanging off it.
+   *
+   * The marks entered by hand, the seat allocations, the online paper it is
+   * tied to, and every attempt on that paper -- which is where the responses
+   * and the invigilation record actually live. "How did this exam go" was
+   * previously answered with a row on a list.
+   */
+  async examDetail(tenantId: number, examId: number) {
+    const { data: exam } = await this.#db.from('onyx_exams')
+      // eslint-disable-next-line max-len -- one literal, same reason as above.
+      .select('id, tenant_id, course_id, semester_id, assessment_id, title, starts_at, duration_minutes, max_marks, pass_marks, status, created_at')
+      .eq('tenant_id', tenantId).eq('id', examId).maybeSingle();
+    if (!exam) throw new HttpError(404, 'No such examination.');
+
+    const [{ data: marks }, { data: seats }, { data: course }] = await Promise.all([
+      this.#db.from('onyx_exam_marks')
+        // eslint-disable-next-line max-len -- one literal, same reason as above.
+        .select('id, user_id, raw_marks, moderation_delta, final_marks, grade, grade_points, status')
+        .eq('tenant_id', tenantId).eq('exam_id', examId),
+      this.#db.from('onyx_exam_seats')
+        .select('id, user_id, room_id, seat_no').eq('tenant_id', tenantId).eq('exam_id', examId),
+      exam.course_id
+        ? this.#db.from('onyx_courses').select('id, code, title')
+          .eq('tenant_id', tenantId).eq('id', Number(exam.course_id)).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    // The online paper, where this sitting has one -- and everybody who sat
+    // it, because that is where responses and invigilation are.
+    const paper = exam.assessment_id
+      ? await this.assessmentDetail(tenantId, Number(exam.assessment_id)).catch(() => null)
+      : null;
+
+    const users = await this.#usersById([
+      ...(marks ?? []).map((m) => String(m.user_id)),
+      ...(seats ?? []).map((x) => String(x.user_id)),
+    ]);
+
+    const finals = (marks ?? []).map((m) => Number(m.final_marks ?? 0));
+    return {
+      exam: { ...exam, course: course ?? null },
+      marks: (marks ?? []).map((m) => ({ ...m, student: users.get(String(m.user_id)) ?? null })),
+      seats: (seats ?? []).map((x) => ({ ...x, student: users.get(String(x.user_id)) ?? null })),
+      paper,
+      summary: {
+        entered: (marks ?? []).length,
+        seated: (seats ?? []).length,
+        mean: mean(finals),
+        passed: exam.pass_marks == null
+          ? null
+          : finals.filter((v) => v >= Number(exam.pass_marks)).length,
+      },
+    };
+  }
+
+  /**
+   * One Live Class, and who signed up for it.
+   *
+   * Who registered is the only thing anybody wants from this screen, and the
+   * console listed the class without it.
+   */
+  async domainDetail(tenantId: number, domainId: number) {
+    const domain = await this.#domainRow(tenantId, domainId);
+    const { data: registrations } = await this.#db.from('onyx_domain_registrations')
+      // eslint-disable-next-line max-len -- one literal, same reason as above.
+      .select('id, user_id, name, email, phone, amount_minor, currency, gateway, reference, status, created_at')
+      .eq('tenant_id', tenantId).eq('domain_id', domainId).order('id', { ascending: false });
+
+    const rows = registrations ?? [];
+    const users = await this.#usersById(
+      rows.map((r) => String(r.user_id)).filter((x) => x && x !== 'null'));
+    const paid = rows.filter((r) => ['paid', 'captured'].includes(String(r.status)));
+    return {
+      domain,
+      registrations: rows.map((r) => ({
+        ...r, student: r.user_id ? users.get(String(r.user_id)) ?? null : null,
+      })),
+      summary: {
+        total: rows.length,
+        paid: paid.length,
+        taken_minor: paid.reduce((n, r) => n + Number(r.amount_minor ?? 0), 0),
+      },
+    };
   }
 
   async #courseModule(tenantId: number, moduleId: number) {

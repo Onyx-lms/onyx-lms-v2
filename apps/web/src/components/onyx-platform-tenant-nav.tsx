@@ -84,7 +84,19 @@ const LABEL_OF = new Map(GROUPS.flatMap((g) => g.items).map((i) => [i.seg, i.lab
  * "Overview", with a breadcrumb to match, on a page you can only get to by
  * clicking something called "All assignments".
  */
-const OFF_MENU: Record<string, string> = { assignments: 'Assignments' };
+const OFF_MENU: Record<string, string> = {
+  assignments: 'Assignments',
+  /*
+   * A lesson and an attempt are only ever reached one at a time -- from a
+   * course and from a paper -- and neither has an index route. They are named
+   * in the singular and kept OUT of DETAIL_OF deliberately: a detail label
+   * comes with a crumb linking back to its section, and for these two that
+   * link would point at a page that does not exist. The page's own "back"
+   * link goes where somebody actually came from.
+   */
+  lessons: 'Lesson',
+  attempts: 'Attempt',
+};
 
 /**
  * Sections whose detail page is worth naming in its own right.
@@ -96,7 +108,10 @@ const OFF_MENU: Record<string, string> = { assignments: 'Assignments' };
  * underneath. Naming it "Course" and linking "Courses" back to the list is
  * what the trail is for.
  */
-const DETAIL_OF: Record<string, string> = { courses: 'Course' };
+const DETAIL_OF: Record<string, string> = {
+  courses: 'Course', domains: 'Live Class', assessments: 'Assessment',
+  examinations: 'Examination',
+};
 
 export function sectionOf(pathname: string, tenantId: number): {
   seg: string; label: string;

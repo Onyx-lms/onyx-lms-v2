@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import { attempt, SCROLLER, RosterHeader, Unavailable, money } from '@/lib/onyx-platform-tenant';
 import {
@@ -61,7 +62,12 @@ export default async function OnyxPlatformDomainsPage(
             ) : rows.map((d) => (
               <tr key={d.id} className="align-top">
                 <td>
-                  <div className="font-semibold">{d.title}</div>
+                  {/* The row opens: who registered is the question somebody
+                      came here to ask, and it was not on this table. */}
+                  <Link href={'/onyx/platform/tenants/' + tenantId + '/domains/' + d.id}
+                    className="font-semibold hover:underline">
+                    {d.title}
+                  </Link>
                   {d.summary ? (
                     <div className="mt-0.5 line-clamp-2 text-[12.5px] text-muted">{d.summary}</div>
                   ) : null}

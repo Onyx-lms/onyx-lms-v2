@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import {
   attempt, RosterHeader, WhenCell, SCROLLER, Unavailable, Workflow, type AcademicsPayload,
@@ -70,7 +71,12 @@ export default async function OnyxPlatformAssessmentsPage(
             ) : assessments.map((a) => (
               <tr key={a.id} className="align-top">
                 <td>
-                  <div className="font-semibold">{a.title}</div>
+                  {/* Opens onto every attempt, every score and the
+                      invigilation record. */}
+                  <Link href={'/onyx/platform/tenants/' + tenantId + '/assessments/' + a.id}
+                    className="font-semibold hover:underline">
+                    {a.title}
+                  </Link>
                   <div className="flex flex-wrap items-center gap-1.5 text-[12.5px] text-muted">
                     <span>
                       {a.duration_minutes} min{a.pass_mark == null ? '' : ' · pass ' + a.pass_mark}

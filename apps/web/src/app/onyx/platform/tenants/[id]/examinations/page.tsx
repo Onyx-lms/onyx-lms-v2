@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import {
   attempt, RosterHeader, WhenCell, SCROLLER, Unavailable, Workflow,
@@ -52,7 +53,15 @@ export default async function OnyxPlatformExamsPage(
               </EmptyRow>
             ) : exams.map((e) => (
               <tr key={e.id} className="align-top">
-                <td className="font-semibold">{e.title}</td>
+                <td>
+                  {/* Opens onto the mark sheet, the seating, and -- where the
+                      sitting is tied to an online paper -- every attempt on
+                      it, with responses and the invigilation record. */}
+                  <Link href={'/onyx/platform/tenants/' + tenantId + '/examinations/' + e.id}
+                    className="font-semibold hover:underline">
+                    {e.title}
+                  </Link>
+                </td>
                 <td className="font-mono text-[12.5px]">
                   {e.course?.code ?? <span className="font-sans text-muted">—</span>}
                 </td>

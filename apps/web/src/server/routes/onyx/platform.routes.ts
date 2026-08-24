@@ -552,6 +552,29 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       idOf(req), subIdOf(req, 'examId'), claims.user_id), 'Removed.');
   });
 
+  /**
+   * The three "open the row" reads.
+   *
+   * Everything an operator needs about one paper, one sitting or one Live
+   * Class -- who sat it, what they answered, what the invigilator's console
+   * recorded, who registered and what was taken. All of it was already in the
+   * database and none of it was reachable from the console.
+   */
+  app.get('/api/onyx/platform/tenants/:id/assessments/:assessmentId', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxPlatform.assessmentDetail(idOf(req), subIdOf(req, 'assessmentId')));
+  });
+
+  app.get('/api/onyx/platform/tenants/:id/exams/:examId', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxPlatform.examDetail(idOf(req), subIdOf(req, 'examId')));
+  });
+
+  app.get('/api/onyx/platform/tenants/:id/domains/:domainId', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxPlatform.domainDetail(idOf(req), subIdOf(req, 'domainId')));
+  });
+
   app.get('/api/onyx/platform/tenants/:id/banks', async (req) => {
     await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     return ok(await ctx.onyxPlatform.questionBanks(idOf(req)));

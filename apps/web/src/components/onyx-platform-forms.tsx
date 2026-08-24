@@ -2262,13 +2262,23 @@ export function CreateDomainForm({ tenantId }: { tenantId: number }) {
   );
 }
 
-/** Publish or withdraw one Live Class, and remove it. */
+/**
+ * Publish or withdraw one Live Class, and remove it.
+ *
+ * Both controls are BUTTONS the same size in a single row, and the destructive
+ * one is a modal rather than a panel that unfolds where it stands. It used to
+ * be a `DangerPanel` inline in a table cell: opening it pushed a paragraph of
+ * red prose and a confirm field into the row, which trebled the row's height,
+ * shoved every column out of line and left "Withdraw" stranded in a tall empty
+ * box beside it. A table row is not somewhere a form can grow.
+ */
 export function DomainRowActions({ tenantId, domain }: {
   tenantId: number; domain: ConsoleDomain;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const published = domain.status === 1;
 
   const setStatus = (status: number) => start(async () => {
@@ -2279,30 +2289,65 @@ export function DomainRowActions({ tenantId, domain }: {
     router.refresh();
   });
 
+  const rowButton = 'min-h-[34px] whitespace-nowrap rounded-lg border px-3 text-[12.5px] '
+    + 'font-semibold disabled:opacity-40';
+
   return (
-    <div className="flex flex-col items-end gap-1.5">
-      {error ? <span role="alert" className="text-[12px] text-red-700">{error}</span> : null}
-      <div className="flex justify-end gap-1.5">
+    <>
+      <div className="flex items-center justify-end gap-1.5">
         <button type="button" disabled={pending} onClick={() => setStatus(published ? 0 : 1)}
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-[13px] font-semibold">
+          className={rowButton + ' border-line bg-white text-slate-700 hover:bg-brand-50'}>
           {published ? 'Withdraw' : 'Publish'}
         </button>
-        <DangerPanel
-          heading="Remove this Live Class"
-          confirmWith={domain.title}
-          what={'“' + domain.title + '” disappears from every learner’s Live Classes. '
-            + 'Anyone already registered keeps their registration record, but the class '
-            + 'itself is gone, and this cannot be undone.'}
-          cta="Remove it"
-          onConfirm={async () => {
-            const res = await post(
-              'onyx/platform/tenants/' + tenantId + '/domains/' + domain.id, undefined, 'DELETE');
-            if (res.ok) router.refresh();
-            return res;
-          }}
-        />
+        <button type="button" disabled={pending} onClick={() => setConfirming(true)}
+          className={rowButton + ' border-line bg-white text-red-700 hover:bg-red-50'}>
+          Remove
+        </button>
       </div>
-    </div>
+      {error ? (
+        <p role="alert" className="mt-1 text-right text-[12px] text-red-700">{error}</p>
+      ) : null}
+
+      {/* Portalled to <body>, so the confirmation is a dialog rather than
+          something that grows inside a cell. */}
+      {confirming ? (
+        <Modal title="Remove this Live Class" onClose={() => setConfirming(false)}>
+          <div className="space-y-3.5">
+            <p className="text-[13.5px] leading-relaxed text-muted">
+              <span className="font-bold text-ink">{domain.title}</span> disappears from every
+              learner’s Live Classes. Anyone already registered keeps their registration
+              record, but the class itself is gone — and this cannot be undone.
+            </p>
+            {error ? (
+              <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-[13px] text-red-700">
+                {error}
+              </p>
+            ) : null}
+            <div className="flex gap-2">
+              <button
+                type="button" disabled={pending}
+                onClick={() => start(async () => {
+                  setError(null);
+                  const res = await post('onyx/platform/tenants/' + tenantId
+                    + '/domains/' + domain.id, undefined, 'DELETE');
+                  if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+                  setConfirming(false);
+                  router.refresh();
+                })}
+                className="min-h-[42px] flex-1 rounded-xl bg-red-700 px-4 text-sm font-bold
+                           text-white hover:bg-red-800 disabled:opacity-50"
+              >
+                {pending ? 'Removing…' : 'Remove it'}
+              </button>
+              <button type="button" disabled={pending} onClick={() => setConfirming(false)}
+                className="min-h-[42px] rounded-xl border border-line px-4 text-sm font-semibold">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
+    </>
   );
 }
 
