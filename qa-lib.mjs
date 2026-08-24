@@ -79,7 +79,10 @@ const ERROR_PATTERNS = [
   /Internal Server Error/i,
   /This page could not be found/i,
   /Unhandled Runtime Error/i,
-  /500\s*[-|:]\s*/,
+  // Anchored to the start of a line. Unanchored, this matched any text
+  // containing "500-" -- including a uuid like d9b7afce-3500-4dd5 in the
+  // audit log, which failed a page that had rendered perfectly at 200.
+  /(^|\n)\s*500\s*[-|:]\s*[A-Za-z]/,
 ];
 
 /** Visit a path, return a verdict record. */

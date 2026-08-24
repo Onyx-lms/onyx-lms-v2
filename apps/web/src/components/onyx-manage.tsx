@@ -1242,12 +1242,17 @@ const QUESTION_TYPES = [
  * An essay carries no key at all: it is marked by a person.
  */
 /**
- * The picker's "write one here" option.
+ * "Write the problem here", which is what a coding question starts as.
  *
  * A sentinel rather than a separate toggle, because the question being asked
  * is one question -- which problem marks this? -- and its answer is either one
  * that exists or one that does not yet. A checkbox beside the menu would let
  * both be set at once, and something would have to decide which wins.
+ *
+ * It is the DEFAULT: somebody adding a coding question is thinking of the
+ * question, and the problem behind it usually does not exist yet. Opening on a
+ * list of stock problems made the common case the one that took an extra
+ * decision.
  */
 const NEW_PROBLEM = '__new__';
 
@@ -1266,10 +1271,9 @@ export function AddQuestion({ bankId, problems = [] }: {
   ]);
   const [correct, setCorrect] = useState<string[]>([]);
   const [answer, setAnswer] = useState('false');
-  const [problemId, setProblemId] = useState('');
-  // '' means "use the picker". NEW means author one here and now -- see
-  // onyx-code-problem.tsx for why the picker keeps its place rather than being
-  // replaced by this.
+  // A coding question starts as one you write; the picker underneath is for
+  // reusing something the bank already has.
+  const [problemId, setProblemId] = useState(NEW_PROBLEM);
   const [draft, setDraft] = useState<ProblemDraft>(blankProblemDraft);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -1336,7 +1340,7 @@ export function AddQuestion({ bankId, problems = [] }: {
         setOptions([{ id: 'a', text: '' }, { id: 'b', text: '' }]);
         setCorrect([]);
         setAnswer('false');
-        setProblemId('');
+        setProblemId(NEW_PROBLEM);
         setDraft(blankProblemDraft());
         setOpen(false);
         router.refresh();
@@ -1428,30 +1432,27 @@ export function AddQuestion({ bankId, problems = [] }: {
             <select id="q-problem" value={problemId}
               onChange={(e) => setProblemId(e.target.value)}
               className={input + ' mt-1 w-full'}>
-              <option value="">
-                {problems.length ? 'Choose a published problem…' : 'Choose…'}
-              </option>
-              {problems.map((p) => (
-                <option key={p.id} value={p.id}>{p.title} ({p.difficulty})</option>
-              ))}
-              {/* Last on the menu, not first. An existing problem is the better
-                  answer where there is one: it has been practised, its tests
-                  are trusted, and a candidate's history with it stays in one
-                  place. Writing a new one is for when there is nothing to
-                  reuse -- which, on an institution's first coding paper, is
-                  every question. */}
-              <option value={NEW_PROBLEM}>+ Write a new problem…</option>
+              {/* First, and selected. Reuse sits underneath: it is the better
+                  answer whenever the bank already has the problem -- practised,
+                  trusted, and the learner's history with it stays in one place
+                  -- but it is not what somebody writing a new question needs
+                  first. */}
+              <option value={NEW_PROBLEM}>Write the problem here</option>
+              {problems.length ? (
+                <optgroup label="Or reuse a published problem">
+                  {problems.map((p) => (
+                    <option key={p.id} value={p.id}>{p.title} ({p.difficulty})</option>
+                  ))}
+                </optgroup>
+              ) : null}
             </select>
             <p className="mt-1 text-xs text-muted">
               {authoring
-                ? 'It is created, given its test cases and published when you save this '
-                  + 'question — all three, because a code question can only be marked by a '
-                  + 'published problem.'
-                : problems.length
-                  ? 'Its test cases mark the answer, hidden ones included — there is no key '
-                    + 'to type here, because the tests are the key.'
-                  : 'No published problems yet — write one here, or author it in Practice '
-                    + 'and come back.'}
+                ? 'Write the problem below. It is created, given its test cases and '
+                  + 'published when you save this question — all three, because a code '
+                  + 'question can only be marked by a published problem.'
+                : 'Its test cases mark the answer, hidden ones included — there is no key '
+                  + 'to type here, because the tests are the key.'}
             </p>
             {authoring ? (
               <div className="mt-3">

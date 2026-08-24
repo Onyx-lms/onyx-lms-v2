@@ -72,11 +72,16 @@ await page.getByPlaceholder('The question').first()
 const problemSelect = page.locator('#cp-prob-0');
 ok('the code question has a problem picker', await problemSelect.count() > 0);
 const options = await problemSelect.locator('option').allInnerTexts();
-ok('the picker offers writing a new problem',
-  options.some((t) => /write a new problem/i.test(t)), options.slice(-3).join(' / '));
-
-await problemSelect.selectOption({ label: '+ Write a new problem…' });
-await page.waitForTimeout(600);
+ok('writing the problem here is the first thing offered',
+  /write the problem here/i.test(options[0] ?? ''), options.slice(0, 3).join(' / '));
+// The point of the change: choosing Code shows the description and the test
+// cases immediately. Nobody should have to pick "write a new one" off a menu
+// of stock problems before they can type the question they came to set.
+ok('and it is already selected, so the fields are on screen',
+  await page.locator('#np-title').isVisible());
+ok('reusing a published problem is still available underneath',
+  await problemSelect.locator('optgroup').count() > 0);
+await page.waitForTimeout(300);
 await page.screenshot({ path: 'qa-inline-problem-form.png', fullPage: true });
 
 ok('the inline authoring block appears', await page.locator('#np-title').isVisible());

@@ -248,6 +248,46 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
     return ok(await ctx.onyxPlatform.createCourse(idOf(req), claims.user_id, body), 'Course created.');
   });
 
+  /*
+   * ------------------------------------------------------------------------
+   * Who is ON a course, from the console.
+   *
+   * The console could CREATE a course and never put anybody on it. That is not
+   * a missing convenience: a course with an empty roster is a course whose
+   * examination nobody can sit, whose register has no names and whose paper
+   * deals to no one -- so an operator standing an institution up built the
+   * teaching and then had to sign in as that institution's own administrator
+   * to make any of it reachable by a learner.
+   *
+   * Same AcademicsService calls the institution's own route makes, so the
+   * duplicate check, the capacity rule and the audit line are one
+   * implementation rather than two.
+   * ------------------------------------------------------------------------
+   */
+
+  app.get('/api/onyx/platform/tenants/:id/courses/:courseId/roster', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxAcademics.roster(idOf(req), subIdOf(req, 'courseId')));
+  });
+
+  app.post('/api/onyx/platform/tenants/:id/courses/:courseId/enroll', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      user_id: z.string().uuid(),
+    }), req.body);
+    const enrolled = await ctx.onyxAcademics.enroll(
+      idOf(req), subIdOf(req, 'courseId'), body.user_id, { enrolledBy: claims.user_id });
+    return ok(enrolled, 'Enrolled.');
+  });
+
+  app.delete('/api/onyx/platform/tenants/:id/courses/:courseId/enroll/:userId', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const userId = String((req.params as Record<string, string>).userId ?? '');
+    return ok(
+      await ctx.onyxAcademics.withdraw(idOf(req), subIdOf(req, 'courseId'), userId),
+      'Withdrawn.');
+  });
+
   app.post('/api/onyx/platform/tenants/:id/assignments', async (req) => {
     const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     const body = validate(z.object({

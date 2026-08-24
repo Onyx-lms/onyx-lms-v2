@@ -2527,6 +2527,110 @@ export function DomainRowActions({ tenantId, domain }: {
 // ---------------------------------------------------------------------------
 
 /** Add a module to a course, from the console. */
+/**
+ * Putting somebody on a course, from the console.
+ *
+ * The console could create a course and never enrol anybody onto it, which is
+ * not a missing convenience but a dead end: an empty roster is an examination
+ * nobody can sit, a register with no names and a paper that deals to no one.
+ * An operator standing an institution up built the teaching and then had to
+ * sign in as that institution's own administrator to make any of it reachable.
+ *
+ * A picker of this institution's learners rather than a free-text id: the id is
+ * a uuid, and asking anybody to paste one is asking for the wrong course to
+ * gain the wrong person.
+ */
+export function ConsoleEnrolForm({ tenantId, courseId, students }: {
+  tenantId: number; courseId: number;
+  students: { user_id: string; name: string; roll_number: string | null }[];
+}) {
+  const router = useRouter();
+  const [userId, setUserId] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  if (!students.length) {
+    return (
+      <p className="text-[12.5px] text-muted">
+        This institution has no learners yet — add one under Students first.
+      </p>
+    );
+  }
+
+  return (
+    <form
+      className="flex flex-wrap items-end gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError(null);
+        start(async () => {
+          if (!userId) { setError('Choose a learner.'); return; }
+          const res = await post(
+            'onyx/platform/tenants/' + tenantId + '/courses/' + courseId + '/enroll',
+            { user_id: userId });
+          if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+          setUserId('');
+          router.refresh();
+        });
+      }}
+    >
+      <div className="min-w-[16rem]">
+        <label className={label} htmlFor="ce-student">Enrol a learner</label>
+        <select id="ce-student" value={userId} onChange={(e) => setUserId(e.target.value)}
+          className={field}>
+          <option value="">Choose a learner…</option>
+          {students.map((p) => (
+            <option key={p.user_id} value={p.user_id}>
+              {p.roll_number ? p.roll_number + ' · ' : ''}{p.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <button type="submit" disabled={pending} className={button}>
+        {pending ? 'Enrolling…' : 'Enrol'}
+      </button>
+      {error ? (
+        <p role="alert" className="w-full text-[13px] text-rose-700">{error}</p>
+      ) : null}
+    </form>
+  );
+}
+
+/** Take somebody off a course. Asked once, like every other row-scoped act here. */
+export function ConsoleWithdrawButton({ tenantId, courseId, userId, name }: {
+  tenantId: number; courseId: number; userId: string; name: string;
+}) {
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
+  const [pending, start] = useTransition();
+
+  if (!confirming) {
+    return (
+      <button type="button" onClick={() => setConfirming(true)}
+        className="text-[12.5px] font-semibold text-rose-700 hover:underline">
+        Withdraw
+      </button>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[12.5px]">
+      <span className="max-w-[12rem] truncate text-muted">Withdraw {name}?</span>
+      <button type="button" disabled={pending}
+        onClick={() => start(async () => {
+          await post('onyx/platform/tenants/' + tenantId + '/courses/' + courseId
+            + '/enroll/' + userId, undefined, 'DELETE');
+          setConfirming(false);
+          router.refresh();
+        })}
+        className="font-bold text-rose-700 hover:underline disabled:opacity-50">
+        {pending ? 'Working…' : 'Yes'}
+      </button>
+      <button type="button" onClick={() => setConfirming(false)}
+        className="text-muted hover:underline">No</button>
+    </span>
+  );
+}
+
 export function AddModuleForm({ tenantId, courseId }: {
   tenantId: number; courseId: number;
 }) {
@@ -3128,11 +3232,14 @@ interface DraftQuestion {
 }
 
 /**
- * The picker's "write one here" option.
+ * "Write the problem here", which is what a coding question starts as.
  *
  * A sentinel on the same menu rather than a toggle beside it: which problem
  * marks this question is one question, and its answer is either one that
- * exists or one that does not yet.
+ * exists or one that does not yet. It is the DEFAULT because somebody setting
+ * a paper is thinking of the question they want to ask -- the problem usually
+ * does not exist yet, and opening on a list of stock problems asks them to go
+ * shopping before they can write anything down.
  */
 const NEW_CONSOLE_PROBLEM = '__new__';
 
@@ -3146,7 +3253,10 @@ const NEW_CONSOLE_PROBLEM = '__new__';
  */
 const blankQuestion = (): DraftQuestion => ({
   type: 'single', prompt: '', points: '10', options: ['', '', '', ''],
-  correct: '', manualOnly: false, problemId: '', draft: blankProblemDraft(),
+  correct: '', manualOnly: false,
+  // A coding question starts as one you WRITE. See the note on
+  // NEW_CONSOLE_PROBLEM: the picker is the fallback, not the front door.
+  problemId: NEW_CONSOLE_PROBLEM, draft: blankProblemDraft(),
 });
 
 /**
@@ -3497,17 +3607,22 @@ export function ConsoleCreatePaper({ tenantId, courses, problems = [] }: {
                       </label>
                       <select id={'cp-prob-' + i} value={q.problemId} className={field}
                         onChange={(e) => setQuestion(i, { problemId: e.target.value })}>
-                        <option value="">Choose a problem</option>
-                        {usableProblems.map((x) => (
-                          <option key={x.id} value={x.id}>{x.title}</option>
-                        ))}
-                        {/* Last on the menu. An existing problem is the better
-                            answer where there is one -- practised, trusted, and
-                            the candidate's history with it stays in one place.
-                            Writing one here is for when there is nothing to
-                            reuse, which on a first coding paper is every
-                            question. */}
-                        <option value={NEW_CONSOLE_PROBLEM}>+ Write a new problem…</option>
+                        {/* First, and selected by default: the problem for a
+                            question being written now usually does not exist
+                            yet. Reuse stays available underneath, which is the
+                            better answer whenever the bank already has it --
+                            it has been practised, its tests are trusted, and a
+                            candidate's history with it stays in one place. */}
+                        <option value={NEW_CONSOLE_PROBLEM}>
+                          Write the problem here
+                        </option>
+                        {usableProblems.length ? (
+                          <optgroup label="Or reuse a published problem">
+                            {usableProblems.map((x) => (
+                              <option key={x.id} value={x.id}>{x.title}</option>
+                            ))}
+                          </optgroup>
+                        ) : null}
                       </select>
                       {q.problemId === NEW_CONSOLE_PROBLEM ? (
                         <div className="mt-2.5">

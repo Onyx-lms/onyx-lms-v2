@@ -61,10 +61,13 @@ await page.locator('#q-type').selectOption('code');
 await page.waitForTimeout(400);
 await page.locator('#q-points').fill('10');
 
-await page.locator('#q-problem').selectOption({ label: '+ Write a new problem…' });
-await page.waitForTimeout(600);
-ok('the inline authoring block appears in the bank builder',
+// No menu step: choosing Code puts the description and the test cases on
+// screen straight away, which is what somebody adding a coding question came
+// to fill in.
+ok('choosing Code shows the authoring block without picking anything',
   await page.locator('#np-title').isVisible());
+ok('reusing a published problem is still offered underneath',
+  await page.locator('#q-problem optgroup').count() > 0);
 
 await page.locator('#np-title').fill(NAME);
 await page.locator('#np-statement').fill('Read two integers on one line and print the larger.');

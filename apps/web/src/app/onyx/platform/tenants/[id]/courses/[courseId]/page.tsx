@@ -4,7 +4,9 @@ import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import { attempt, Unavailable, money } from '@/lib/onyx-platform-tenant';
 import {
   AddModuleForm, ModuleRowActions, AddLessonForm, LessonRemoveButton,
+  ConsoleEnrolForm, ConsoleWithdrawButton,
 } from '@/components/onyx-platform-forms';
+import type { PeoplePayload } from '@/lib/onyx-platform-tenant';
 import {
   Card, Icon, Pill, SectionHead, State, type IconName,
 } from '@/components/onyx-ui';
@@ -19,6 +21,11 @@ const ICON_OF: Record<string, IconName> = {
 interface Lesson {
   id: number; module_id: number; title: string; type: string;
   duration_seconds: number | null; sort: number; is_preview: number;
+}
+/** One enrolled learner, as AcademicsService.roster returns them. */
+interface RosterRow {
+  id: number; user_id: string; status: number;
+  user: { id: string; name: string; email: string } | null;
 }
 interface Outline {
   course: {
@@ -51,9 +58,12 @@ export default async function OnyxPlatformCoursePage(
   await requirePlatformSession();
   const { id, courseId } = await params;
   const tenantId = Number(id);
-  const outline = await attempt<Outline>(
-    '/api/onyx/platform/tenants/' + encodeURIComponent(id)
-    + '/courses/' + encodeURIComponent(courseId) + '/outline');
+  const base = '/api/onyx/platform/tenants/' + encodeURIComponent(id);
+  const [outline, roster, people] = await Promise.all([
+    attempt<Outline>(base + '/courses/' + encodeURIComponent(courseId) + '/outline'),
+    attempt<RosterRow[]>(base + '/courses/' + encodeURIComponent(courseId) + '/roster'),
+    attempt<PeoplePayload>(base + '/people?role=student&limit=200'),
+  ]);
 
   if (outline === null) return <Unavailable what="course" />;
   const { course, modules } = outline;
@@ -97,6 +107,45 @@ export default async function OnyxPlatformCoursePage(
           </div>
         </div>
       </Card>
+
+      {/* Who is on it, before what is in it. A course with an empty roster is
+          an examination nobody can sit, and that is worth seeing on the way
+          past rather than discovering when a paper deals to no one. */}
+      <section>
+        <SectionHead title={'Enrolled · ' + (roster ?? []).length} />
+        <Card className="p-4">
+          <ConsoleEnrolForm tenantId={tenantId} courseId={course.id}
+            students={(people?.people ?? []).map((p) => ({
+              user_id: p.user_id, name: p.name, roll_number: p.roll_number,
+            }))} />
+
+          {roster === null ? (
+            <p className="mt-3 text-[13px] text-muted">The roster could not be loaded.</p>
+          ) : roster.length === 0 ? (
+            <p className="mt-3 text-[13px] text-muted">
+              Nobody is on this course yet. Until somebody is, an examination on it has no
+              candidates and its paper deals to no one.
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y divide-line">
+              {roster.map((r) => (
+                <li key={r.id} className="flex flex-wrap items-center gap-3 py-2">
+                  <span className="min-w-0 flex-1">
+                    <span className="text-[13.5px] font-semibold">
+                      {r.user?.name ?? 'Unknown'}
+                    </span>
+                    {r.user?.email ? (
+                      <span className="ml-2 text-[12.5px] text-muted">{r.user.email}</span>
+                    ) : null}
+                  </span>
+                  <ConsoleWithdrawButton tenantId={tenantId} courseId={course.id}
+                    userId={r.user_id} name={r.user?.name ?? 'this learner'} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </section>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SectionHead title="Modules" />

@@ -24,6 +24,16 @@ async function checkField(page, path, fieldId, label) {
 
   ok(label + ' starts masked', await input.getAttribute('type') === 'password');
 
+  // Wait for React to attach before pressing anything. Both sign-in forms keep
+  // their submit button disabled until hydration (see useHydrated), which is
+  // the honest signal that the page is live -- and on a real origin the gap is
+  // long enough that a test clicking immediately measures the network, not the
+  // control.
+  const submit = page.getByRole('button', { name: /sign in|add|save|create/i }).first();
+  if (await submit.count()) {
+    for (let i = 0; i < 60 && !(await submit.isEnabled()); i += 1) await page.waitForTimeout(500);
+  }
+
   const toggle = page.locator('button[aria-controls="' + fieldId + '"]');
   ok(label + ' has a toggle beside it', await toggle.count() === 1);
   ok(label + ' toggle is a button, not a submit',
