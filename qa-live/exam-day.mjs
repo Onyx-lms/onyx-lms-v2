@@ -302,13 +302,16 @@ check('and the invigilation record beside it',
   Array.isArray(script.data?.proctor_events),
   (script.data?.proctor_events ?? []).length + ' events');
 
+// Downwards, which is the correction a marker actually makes -- and the only
+// direction available here, since this candidate scored full marks and the
+// route rightly refuses anything above the paper's maximum.
 const before = Number(mine.data?.score);
-const corrected = await step('the operator corrects the total',
+await step('the operator corrects the total',
   '/api/onyx/platform/tenants/' + tid + '/attempts/' + attemptId,
-  { method: 'PATCH', token: pt, body: { score: before + 1 } });
+  { method: 'PATCH', token: pt, body: { score: before - 1 } });
 const afterEdit = await call('/api/onyx/attempts/' + attemptId, { token: st });
 check('and the candidate sees the corrected mark, not a vanished one',
-  Number(afterEdit.data?.score) === before + 1,
+  Number(afterEdit.data?.score) === before - 1,
   'was ' + before + ', now ' + afterEdit.data?.score);
 
 const tooHigh = await call('/api/onyx/platform/tenants/' + tid + '/attempts/' + attemptId,
