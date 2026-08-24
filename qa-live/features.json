@@ -1,0 +1,417 @@
+{
+  "base": "https://onyx-lms-v2.vercel.app",
+  "slug": "qf-mt6xd5tk",
+  "run": "mt6xd5tk",
+  "passed": 68,
+  "failed": 0,
+  "results": [
+    {
+      "phase": "1. an institution with people in it",
+      "label": "institution created",
+      "pass": true,
+      "detail": "200 Institution created."
+    },
+    {
+      "phase": "1. an institution with people in it",
+      "label": "a lecturer",
+      "pass": true,
+      "detail": "200 Member added."
+    },
+    {
+      "phase": "1. an institution with people in it",
+      "label": "a learner, with a roll number",
+      "pass": true,
+      "detail": "200 Member added."
+    },
+    {
+      "phase": "1. an institution with people in it",
+      "label": "the roll number is on their membership",
+      "pass": true,
+      "detail": "roll=CS-2026-D5TK"
+    },
+    {
+      "phase": "2. finding a student by name or roll number",
+      "label": "an administrator finds them by name",
+      "pass": true,
+      "detail": "1 matched"
+    },
+    {
+      "phase": "2. finding a student by name or roll number",
+      "label": "and by roll number, which is what staff are holding",
+      "pass": true,
+      "detail": "1 matched"
+    },
+    {
+      "phase": "2. finding a student by name or roll number",
+      "label": "a partial roll number matches, case-insensitively",
+      "pass": true,
+      "detail": "1 matched"
+    },
+    {
+      "phase": "2. finding a student by name or roll number",
+      "label": "and a search for nobody finds nobody rather than everybody",
+      "pass": true,
+      "detail": "0 matched"
+    },
+    {
+      "phase": "2. finding a student by name or roll number",
+      "label": "filtering by role returns only that role",
+      "pass": true,
+      "detail": "1 students"
+    },
+    {
+      "phase": "2. finding a student by name or roll number",
+      "label": "the platform console reads the roll",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "2. finding a student by name or roll number",
+      "label": "and it carries the roll number, so it can be shown and searched",
+      "pass": true,
+      "detail": "roll_number=CS-2026-D5TK"
+    },
+    {
+      "phase": "2. finding a student by name or roll number",
+      "label": "a learner cannot search the roster",
+      "pass": true,
+      "detail": "expected 403, got 403 This action is unauthorized."
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "a programme",
+      "pass": true,
+      "detail": "200 Programme created."
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "a semester",
+      "pass": true,
+      "detail": "200 Semester created."
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "a batch",
+      "pass": true,
+      "detail": "200 Batch created."
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "a room to teach in",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "a course",
+      "pass": true,
+      "detail": "200 Course created."
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "published",
+      "pass": true,
+      "detail": "200 Course is open."
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "the lecturer teaches it",
+      "pass": true,
+      "detail": "200 Assigned."
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "the learner is enrolled",
+      "pass": true,
+      "detail": "200 Enrolled."
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "the learner joins the batch",
+      "pass": true,
+      "detail": "200 1 added to the batch."
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "a class is put on the grid",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "the same room at the same hour is refused",
+      "pass": true,
+      "detail": "expected 409/422, got 409 RD5TK already has Timetabled Subject with Fay Faculty on Tuesday 09:00-10:00. Fay Faculty is already teaching Timetabled Subject in RD5TK on Tuesday 09:00-10:00. That batch is already in Timetabled Subject in RD5TK on Tuesday 09:00-10:00."
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "and a clash can be asked about before committing",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "the check reports the conflict rather than staying silent",
+      "pass": true,
+      "detail": "{\"clear\":false,\"clashes\":[{\"resource\":\"room\",\"slot_id\":41,\"description\":\"RD5TK already has"
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "a learner sees nothing until it is published",
+      "pass": true,
+      "detail": "0 slots"
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "the registry publishes the grid",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "and then sees their own class on it",
+      "pass": true,
+      "detail": "1 slots"
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "the lecturer sees what they teach",
+      "pass": true,
+      "detail": "1 slots"
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "a learner cannot schedule a class",
+      "pass": true,
+      "detail": "expected 403, got 403 This action is unauthorized."
+    },
+    {
+      "phase": "3. the timetable",
+      "label": "the slot carries a real start and end, not just a day",
+      "pass": true,
+      "detail": "09:00:00–10:00:00"
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "a problem is authored",
+      "pass": true,
+      "detail": "200 Problem created."
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "with tests, one of them hidden",
+      "pass": true,
+      "detail": "200 Test cases saved."
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "and a hint",
+      "pass": true,
+      "detail": "200 Hints saved."
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "a draft problem is not visible to a learner",
+      "pass": true,
+      "detail": 404
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "published",
+      "pass": true,
+      "detail": "200 Published."
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "the learner opens it",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "the statement is there and the hidden test is not",
+      "pass": true,
+      "detail": "hidden expected_stdout leaked: false"
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "a wrong answer is submitted",
+      "pass": true,
+      "detail": "200 Queued."
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "and scores nothing, because the tests say so",
+      "pass": true,
+      "detail": "score=0"
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "then a correct one",
+      "pass": true,
+      "detail": "200 Queued."
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "which passes every case, the hidden one included",
+      "pass": true,
+      "detail": "score=2/2"
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "both attempts are on their record",
+      "pass": true,
+      "detail": "2 submissions"
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "a hint can be asked for",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "and it says something useful",
+      "pass": true,
+      "detail": "{\"id\":24,\"body\":\"Slicing with a negative step reverses a sequence.\",\"p"
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "a learner cannot author a problem",
+      "pass": true,
+      "detail": "expected 403, got 403 This action is unauthorized."
+    },
+    {
+      "phase": "4. practice, and the sandbox behind it",
+      "label": "nor rewrite its tests",
+      "pass": true,
+      "detail": "expected 403, got 403 This action is unauthorized."
+    },
+    {
+      "phase": "5. workspaces",
+      "label": "a learner makes a workspace",
+      "pass": true,
+      "detail": "200 Workspace created."
+    },
+    {
+      "phase": "5. workspaces",
+      "label": "and opens it again",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "5. workspaces",
+      "label": "the file they wrote is still in it",
+      "pass": true,
+      "detail": "1 files"
+    },
+    {
+      "phase": "5. workspaces",
+      "label": "the files are edited",
+      "pass": true,
+      "detail": "200 Saved."
+    },
+    {
+      "phase": "5. workspaces",
+      "label": "and it runs",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "5. workspaces",
+      "label": "printing what the code prints",
+      "pass": true,
+      "detail": "saw 42"
+    },
+    {
+      "phase": "5. workspaces",
+      "label": "it is on their list",
+      "pass": true,
+      "detail": "1 workspaces"
+    },
+    {
+      "phase": "5. workspaces",
+      "label": "another learner cannot open it",
+      "pass": true,
+      "detail": "expected 403/404, got 403 This is not your workspace."
+    },
+    {
+      "phase": "5. workspaces",
+      "label": "nor run it",
+      "pass": true,
+      "detail": "expected 403/404, got 403 This is not your workspace."
+    },
+    {
+      "phase": "6. contests",
+      "label": "a contest is set",
+      "pass": true,
+      "detail": "200 Contest created."
+    },
+    {
+      "phase": "6. contests",
+      "label": "and published",
+      "pass": true,
+      "detail": "200 Published."
+    },
+    {
+      "phase": "6. contests",
+      "label": "its leaderboard reads",
+      "pass": true,
+      "detail": "200 "
+    },
+    {
+      "phase": "6. contests",
+      "label": "starting empty rather than erroring",
+      "pass": true,
+      "detail": "{\"frozen\":false,\"frozen_after_minute\":null,\"rows\":[]}"
+    },
+    {
+      "phase": "7. the screens these features live on",
+      "label": "a signed-out visitor is sent away from timetable",
+      "pass": true,
+      "detail": "status 307"
+    },
+    {
+      "phase": "7. the screens these features live on",
+      "label": "a signed-out visitor is sent away from practice",
+      "pass": true,
+      "detail": "status 307"
+    },
+    {
+      "phase": "7. the screens these features live on",
+      "label": "a signed-out visitor is sent away from workspaces",
+      "pass": true,
+      "detail": "status 307"
+    },
+    {
+      "phase": "7. the screens these features live on",
+      "label": "a signed-out visitor is sent away from contests",
+      "pass": true,
+      "detail": "status 307"
+    },
+    {
+      "phase": "7. the screens these features live on",
+      "label": "a signed-out visitor is sent away from people",
+      "pass": true,
+      "detail": "status 307"
+    },
+    {
+      "phase": "7. the screens these features live on",
+      "label": "a signed-out visitor is sent away from assessments",
+      "pass": true,
+      "detail": "status 307"
+    },
+    {
+      "phase": "7. the screens these features live on",
+      "label": "a signed-out visitor is sent away from examinations",
+      "pass": true,
+      "detail": "status 307"
+    },
+    {
+      "phase": "7. the screens these features live on",
+      "label": "a signed-out visitor is sent away from courses",
+      "pass": true,
+      "detail": "status 307"
+    }
+  ]
+}

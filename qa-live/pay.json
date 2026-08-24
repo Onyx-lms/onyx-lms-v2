@@ -1,7 +1,7 @@
 {
   "base": "https://onyx-lms-v2.vercel.app",
-  "slug": "qp-mt6q6roz",
-  "run": "mt6q6roz",
+  "slug": "qp-mt6xfhj7",
+  "run": "mt6xfhj7",
   "passed": 45,
   "failed": 0,
   "results": [
@@ -159,7 +159,7 @@
       "phase": "4. a real order at Razorpay",
       "label": "Razorpay gave us an order",
       "pass": true,
-      "detail": "order=order_TTTKzu3Ur0rNq4"
+      "detail": "order=order_TTWn91DsY4jPeO"
     },
     {
       "phase": "4. a real order at Razorpay",
@@ -231,7 +231,7 @@
       "phase": "6. a captured payment, and the door opens",
       "label": "Razorpay’s webhook is accepted",
       "pass": true,
-      "detail": "200 {\"handled\":true,\"status\":\"captured\",\"replayed\":false,\"purchase\":{\"tenant_id\":716,\"course_id\":340,\"user_id\":\"9de7cada-261"
+      "detail": "200 {\"handled\":true,\"status\":\"captured\",\"replayed\":false,\"purchase\":{\"tenant_id\":739,\"course_id\":365,\"user_id\":\"d03113f6-126"
     },
     {
       "phase": "6. a captured payment, and the door opens",
@@ -261,7 +261,7 @@
       "phase": "6. a captured payment, and the door opens",
       "label": "the purchase is on record, exactly once",
       "pass": true,
-      "detail": "owns [340]"
+      "detail": "owns [365]"
     },
     {
       "phase": "6. a captured payment, and the door opens",

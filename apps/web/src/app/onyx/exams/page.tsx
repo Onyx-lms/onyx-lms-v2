@@ -217,14 +217,35 @@ export default async function OnyxExamsPage() {
                    when the course already knows -- the API takes it from
                    there. One less thing to get wrong, and nothing about the
                    record changed. */
-                { name: 'starts_at', label: 'Starts', type: 'datetime', required: true },
-                { name: 'duration_minutes', label: 'Minutes', type: 'number', min: 5,
-                  max: 600, fallback: 180 },
-                { name: 'max_marks', label: 'Out of', type: 'number', min: 1, max: 1000,
-                  fallback: 100 },
+                { name: 'starts_at', label: 'Starts', type: 'datetime', required: true,
+                  help: 'Nobody is scheduled for two exams at once — a clash is refused, '
+                    + 'naming who it caught.' },
+                /*
+                 * The three numbers are SHOWN rather than merely defaulted.
+                 *
+                 * They carried `fallback`, which is invisible: somebody saw
+                 * three empty boxes, and 180 minutes out of 100 with a pass at
+                 * 40 was chosen for them silently. `initial` puts the same
+                 * figures in the fields, where they can be read and changed
+                 * before anything is scheduled -- and the duration is what
+                 * decides how long the sitting occupies on everybody's
+                 * timetable, so it is not a number to hide.
+                 *
+                 * `fallback` stays beside it for the case `initial` cannot
+                 * cover: somebody clearing the box entirely. Visible default
+                 * and safe default are different jobs.
+                 *
+                 * The labels match the paper composer's, because these two
+                 * forms create the two halves of the same thing and should not
+                 * name the same field differently.
+                 */
+                { name: 'duration_minutes', label: 'Duration (minutes)', type: 'number', min: 5,
+                  max: 600, initial: 180, fallback: 180 },
+                { name: 'max_marks', label: 'Total marks', type: 'number', min: 1, max: 1000,
+                  initial: 100, fallback: 100 },
                 { name: 'pass_marks', label: 'Pass mark', type: 'number', min: 0, max: 1000,
-                  fallback: 40,
-                  help: 'Nobody is scheduled for two exams at once — a clash is refused, naming who it caught.' },
+                  initial: 40, fallback: 40,
+                  help: 'The mark a candidate needs to pass this paper.' },
                 { name: 'assessment_id', label: 'Online paper', type: 'select', numeric: true,
                   wide: true,
                   options: [{ value: '', label: 'Offline — marks entered by hand' },
