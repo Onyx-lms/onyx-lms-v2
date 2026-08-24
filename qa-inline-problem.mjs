@@ -8,7 +8,7 @@
  */
 import { chromium } from '@playwright/test';
 
-const BASE = 'http://localhost:5199';
+const BASE = process.env.QA_BASE ?? 'http://localhost:5199';
 const TENANT = 1;
 const STAMP = Date.now().toString(36);
 

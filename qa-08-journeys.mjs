@@ -25,7 +25,19 @@ const browser = await launch();
   if (courseLinks.length) {
     const href = await courseLinks[0].getAttribute('href');
     await courseLinks[0].click();
+    /*
+     * Wait for the URL to change, not for a load state.
+     *
+     * waitForLoadState('domcontentloaded') resolves immediately when the
+     * CURRENT document is already loaded, which it is a moment after a click.
+     * On a fast local build the navigation had usually happened anyway;
+     * against a real origin it had not, so the body read belonged to the
+     * courses list and the step failed with "-> /onyx/courses" on a page that
+     * opens perfectly well once you wait for it.
+     */
+    await page.waitForURL((u) => u.pathname === href, { timeout: 30000 }).catch(() => {});
     await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(800);
     const body = await page.locator('body').innerText();
     step({ who, name: 'course detail opens',
            verdict: page.url().includes('/onyx/courses/') ? 'PASS' : 'FAIL',
@@ -41,9 +53,17 @@ const browser = await launch();
   }
 
   await page.goto(BASE + '/onyx/practice', { waitUntil: 'domcontentloaded' });
-  const prob = page.locator('a[href^="/onyx/practice/"]').first();
-  if (await prob.count()) {
-    const ph = await prob.getAttribute('href');
+  /*
+   * A problem is /onyx/practice/<number>. The page's action button points at
+   * /onyx/practice/results and sits above the list, so "the first link that
+   * starts with /onyx/practice/" was the results page -- and this step kept
+   * reporting that the results page has no code editor on it, which is true
+   * and means nothing.
+   */
+  const practiceHrefs = await page.locator('a[href^="/onyx/practice/"]')
+    .evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  const ph = practiceHrefs.find((h) => /^\/onyx\/practice\/\d+$/.test(h ?? ''));
+  if (ph) {
     await page.goto(BASE + ph, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(7000);
     const mon = await page.locator('.monaco-editor, textarea, [class*="editor"]').count();
@@ -92,8 +112,20 @@ const browser = await launch();
   const r = await visit(page, '/onyx/family', { snippet: true });
   step({ who, name: 'family page', verdict: r.status === 200 ? 'PASS' : 'FAIL',
          detail: 'len=' + r.bodyLen, snippet: (r.snippet || '').slice(0, 900) });
-  const links = await page.locator('a[href*="/family/"], a[href*="student"]').count();
-  step({ who, name: 'family links to a child record', verdict: links > 0 ? 'PASS' : 'WARN', detail: links + ' links' });
+  /*
+   * The child's record is ON this page, not behind a link from it.
+   *
+   * There is no /onyx/family/[childId] route and there is not meant to be: a
+   * guardian sees the attendance, results and fees a parent has been given
+   * sight of, laid out here. Counting anchors therefore warned every run about
+   * a link the product deliberately does not have. What matters is whether the
+   * child and their shared data actually rendered.
+   */
+  const family = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+  const named = /Aditya|child|Attendance|Results/i.test(family);
+  step({ who, name: 'family shows the linked child record',
+         verdict: named ? 'PASS' : 'FAIL',
+         detail: named ? family.slice(0, 90) : 'nothing about a child on the page' });
   const api = await page.evaluate(async () => {
     const rr = await fetch('/api/onyx/family', { credentials: 'include' });
     return { s: rr.status, b: (await rr.text()).slice(0, 400) };

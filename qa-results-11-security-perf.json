@@ -120,45 +120,45 @@
   "perf": [
     {
       "path": "/onyx/dashboard",
-      "wall": 1211,
+      "wall": 1291,
       "ttfb": 37,
-      "dcl": 1150,
-      "load": 1205
+      "dcl": 1277,
+      "load": 1278
     },
     {
       "path": "/onyx/courses",
-      "wall": 635,
-      "ttfb": 28,
-      "dcl": 579,
-      "load": 631
+      "wall": 920,
+      "ttfb": 32,
+      "dcl": 817,
+      "load": 915
     },
     {
       "path": "/onyx/people?role=student",
-      "wall": 496,
-      "ttfb": 26,
-      "dcl": 431,
-      "load": 490
+      "wall": 543,
+      "ttfb": 38,
+      "dcl": 528,
+      "load": 538
     },
     {
       "path": "/onyx/finance",
-      "wall": 1391,
-      "ttfb": 27,
-      "dcl": 1361,
-      "load": 1387
+      "wall": 1370,
+      "ttfb": 28,
+      "dcl": 1366,
+      "load": 1366
     },
     {
       "path": "/onyx/audit",
-      "wall": 961,
-      "ttfb": 33,
-      "dcl": 954,
-      "load": 957
+      "wall": 867,
+      "ttfb": 30,
+      "dcl": 856,
+      "load": 864
     },
     {
       "path": "/onyx/settings",
-      "wall": 514,
+      "wall": 535,
       "ttfb": 28,
-      "dcl": 462,
-      "load": 510
+      "dcl": 493,
+      "load": 529
     }
   ],
   "headers": {
@@ -167,7 +167,7 @@
     "content-encoding": "br",
     "content-security-policy": "frame-ancestors 'self'",
     "content-type": "text/html; charset=utf-8",
-    "date": "Mon, 24 Aug 2026 16:03:39 GMT",
+    "date": "Mon, 24 Aug 2026 16:37:11 GMT",
     "link": "</_next/static/media/636a5ac981f94f8b-s.p.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/media/af4bf8399d1aacdf-s.p.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/css/379a2a50da590dea.css>; rel=preload; as=\"style\", </_next/static/css/6a5f97146766caf5.css>; rel=preload; as=\"style\"",
     "permissions-policy": "camera=(self), microphone=(), geolocation=(), payment=(self), interest-cohort=()",
     "referrer-policy": "strict-origin-when-cross-origin",
@@ -179,7 +179,7 @@
     "x-matched-path": "/onyx/login",
     "x-powered-by": "Next.js",
     "x-vercel-cache": "MISS",
-    "x-vercel-id": "bom1::sin1::mck4c-1787587419822-94f4e998351a"
+    "x-vercel-id": "bom1::sin1::g5xts-1787589431326-aceaf58c8a0e"
   },
   "cookies": [
     {
@@ -188,7 +188,7 @@
       "secure": true,
       "sameSite": "Lax",
       "path": "/",
-      "expires": 1787588321.079777
+      "expires": 1787590332.538042
     }
   ]
 }

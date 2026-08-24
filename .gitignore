@@ -53,3 +53,6 @@ _s_*
 # Razorpay test credentials handed over by the client. Never committed:
 # a key in a repository is a key on every laptop that clones it.
 rzp*.csv
+
+# QA screenshots, written by the qa-*.mjs drivers on every run.
+qa-*.png

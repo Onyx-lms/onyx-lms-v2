@@ -18,20 +18,20 @@
     {
       "who": "student",
       "name": "course detail opens",
-      "verdict": "FAIL",
-      "detail": "/onyx/courses/54 -> /onyx/courses len=1126"
+      "verdict": "PASS",
+      "detail": "/onyx/courses/54 -> /onyx/courses/54 len=1770"
     },
     {
       "who": "student",
       "name": "lesson page opens",
-      "verdict": "SKIP",
-      "detail": "no lesson links on course"
+      "verdict": "PASS",
+      "detail": "/onyx/courses/54/lessons/108 status=200 len=1181"
     },
     {
       "who": "student",
       "name": "practice problem + code editor",
-      "verdict": "WARN",
-      "detail": "/onyx/practice/results editor-nodes=0 len=683"
+      "verdict": "PASS",
+      "detail": "/onyx/practice/18 editor-nodes=4 len=844"
     },
     {
       "who": "student",
@@ -102,9 +102,9 @@
     },
     {
       "who": "guardian",
-      "name": "family links to a child record",
-      "verdict": "WARN",
-      "detail": "0 links"
+      "name": "family shows the linked child record",
+      "verdict": "PASS",
+      "detail": "Skip to the main content Onyx LMS SU INSTITUTION Meridian Institute of Technology Parent o"
     },
     {
       "who": "guardian",

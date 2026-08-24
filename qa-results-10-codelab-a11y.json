@@ -15,7 +15,7 @@
     {
       "name": "codelab: Run returns execution output",
       "verdict": "PASS",
-      "detail": "Onyx LMS | 5 | AN | INSTITUTION | Meridian Institute of Technology | Student | Dashboard | Courses | Live Classes | Practice | Workspaces | ASSESSMENT | Assessments | Examinations | Results | Contests | CAMPUS | Timetable | Help | CAREER | Jobs | Resume | Your profile | Inbox | ananya.krishnan@meridian.edu | Sign out | Sum two numbers | Easy, basics, 2,000ms and 256MB per case · 7 attempts, solved"
+      "detail": "Onyx LMS | 5 | AN | INSTITUTION | Meridian Institute of Technology | Student | Dashboard | Courses | Live Classes | Practice | Workspaces | ASSESSMENT | Assessments | Examinations | Results | Contests | CAMPUS | Timetable | Help | CAREER | Jobs | Resume | Your profile | Inbox | ananya.krishnan@meridian.edu | Sign out | Sum two numbers | Easy, basics, 2,000ms and 256MB per case · 9 attempts, solved"
     },
     {
       "name": "codelab: Submit is judged",
@@ -25,7 +25,7 @@
     {
       "name": "codelab: submission persisted",
       "verdict": "PASS",
-      "detail": "200 {\"ok\":true,\"data\":[{\"id\":132,\"tenant_id\":190,\"problem_id\":18,\"user_id\":\"c239bbf2-5b1c-4b92-b2ff-6a372d97732b\",\"language\":\"python\",\"source\":\"a()n,nput)p))\\r\\nprit(a+b)\",\"mode\":\"submit\",\"status\":\"done\",\"score\":0,\"max_score"
+      "detail": "200 {\"ok\":true,\"data\":[{\"id\":134,\"tenant_id\":190,\"problem_id\":18,\"user_id\":\"c239bbf2-5b1c-4b92-b2ff-6a372d97732b\",\"language\":\"python\",\"source\":\"ab=map(i)inp().split()\\r\\nprint(a+b)\",\"mode\":\"submit\",\"status\":\"done\",\"score\":0,"
     }
   ],
   "a11y": [
