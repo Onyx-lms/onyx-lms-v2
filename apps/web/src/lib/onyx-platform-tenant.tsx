@@ -329,3 +329,39 @@ export const SCROLLER = 'min-w-0';
 // The shared one, so the console does not print "INR 300.00" while every
 // other screen in the product says "₹300.00".
 export { money } from '@/lib/onyx-money';
+
+
+/**
+ * A clock time, in the institution's own day.
+ *
+ * `ago()` answers "when, roughly" and that is the wrong question for an
+ * attempt: an operator checking whether somebody started late, or finished
+ * suspiciously fast, needs the actual time on the actual day. "2 hours ago"
+ * cannot be compared with a sitting scheduled for 10:00.
+ */
+export function clockTime(at: string | null | undefined): string {
+  if (!at) return '—';
+  const d = new Date(at);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
+    timeZone: 'Asia/Kolkata',
+  });
+}
+
+/**
+ * How long they were in it, from the two timestamps.
+ *
+ * Worth its own cell rather than left for the reader to subtract: a candidate
+ * who handed a ninety-minute paper in after four minutes is the single most
+ * visible thing on a results table, and nobody spots it by comparing two
+ * columns of dates.
+ */
+export function tookFor(from: string | null | undefined, to: string | null | undefined): string {
+  if (!from || !to) return '—';
+  const ms = new Date(to).getTime() - new Date(from).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return '—';
+  const mins = Math.round(ms / 60_000);
+  if (mins < 60) return mins + ' min';
+  return Math.floor(mins / 60) + 'h ' + String(mins % 60).padStart(2, '0') + 'm';
+}

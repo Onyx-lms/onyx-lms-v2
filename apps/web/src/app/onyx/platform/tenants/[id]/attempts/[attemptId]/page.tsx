@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
-import { attempt as read, Unavailable, ago } from '@/lib/onyx-platform-tenant';
+import { attempt as read, Unavailable, clockTime, tookFor, ago } from '@/lib/onyx-platform-tenant';
 import { Card, Icon, Pill, SectionHead } from '@/components/onyx-ui';
 
 export const metadata: Metadata = { title: 'Attempt' };
@@ -98,7 +98,25 @@ export default async function OnyxPlatformAttemptPage(
               <span>attempt {a.attempt}</span>
               <span>·</span>
               <span>{a.status}</span>
-              {a.submitted_at ? <><span>·</span><span>handed in {ago(a.submitted_at)}</span></> : null}
+            </div>
+            {/* The three times on their own line, because this is the record
+                somebody opens an attempt to check. */}
+            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px]">
+              <span className="text-muted">
+                started <span className="font-semibold tabular-nums text-ink">
+                  {clockTime(a.started_at)}
+                </span>
+              </span>
+              <span className="text-muted">
+                handed in <span className="font-semibold tabular-nums text-ink">
+                  {a.submitted_at ? clockTime(a.submitted_at) : 'still sitting'}
+                </span>
+              </span>
+              <span className="text-muted">
+                took <span className="font-semibold tabular-nums text-ink">
+                  {tookFor(a.started_at, a.submitted_at)}
+                </span>
+              </span>
             </div>
           </div>
           <div className="text-right">

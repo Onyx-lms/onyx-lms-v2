@@ -11,7 +11,7 @@
 import type { Router, ReqLike } from '../../router.ts';
 import { z } from 'zod';
 import {
-  validate, ok, requirePlatformAdmin, ROLES,
+  validate, ok, requirePlatformAdmin, ROLES, HttpError,
   CAPABILITIES, CAPABILITY_AREAS, holdersOf, normaliseOverrides,
   type PermissionOverrides,
 } from '@onyx/core';
@@ -643,6 +643,18 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
   app.get('/api/onyx/platform/tenants/:id/problems', async (req) => {
     await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     return ok(await ctx.onyxCodeLab.problems(idOf(req), 'admin'));
+  });
+
+  /** The week a candidate would see: examinations and paper windows. */
+  app.get('/api/onyx/platform/tenants/:id/exam-week', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const query = req.query as { from?: string; to?: string };
+    const from = query.from ?? new Date(Date.now() - 7 * 86_400_000).toISOString();
+    const to = query.to ?? new Date(Date.now() + 21 * 86_400_000).toISOString();
+    if (Number.isNaN(Date.parse(from)) || Number.isNaN(Date.parse(to))) {
+      throw new HttpError(422, 'That is not a date range.');
+    }
+    return ok(await ctx.onyxPlatform.examWeek(idOf(req), from, to));
   });
 
   app.get('/api/onyx/platform/tenants/:id/banks', async (req) => {

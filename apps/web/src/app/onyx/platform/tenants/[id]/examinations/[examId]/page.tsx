@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
-import { attempt as read, SCROLLER, Unavailable, ago, Workflow } from '@/lib/onyx-platform-tenant';
+import {
+  attempt as read, SCROLLER, Unavailable, ago, Workflow, clockTime, tookFor,
+} from '@/lib/onyx-platform-tenant';
 import { Card, DataTable, EmptyRow, Icon, Pill, SectionHead } from '@/components/onyx-ui';
 import type { ConsoleAttempt } from '../../assessments/[assessmentId]/page';
 
@@ -139,12 +141,14 @@ export default async function OnyxPlatformExamPage(
                   <th scope="col">State</th>
                   <th scope="col">Score</th>
                   <th scope="col">Flags</th>
+                  <th scope="col">Started</th>
                   <th scope="col">Handed in</th>
+                  <th scope="col">Took</th>
                 </>
               }
             >
               {paper.attempts.length === 0 ? (
-                <EmptyRow colSpan={5} icon="edit">Nobody has sat it yet.</EmptyRow>
+                <EmptyRow colSpan={7} icon="edit">Nobody has sat it yet.</EmptyRow>
               ) : paper.attempts.map((t) => (
                 <tr key={t.id} className="align-top">
                   <td>
@@ -165,8 +169,16 @@ export default async function OnyxPlatformExamPage(
                       ? <Pill tone="late">{t.integrity_score}</Pill>
                       : <span className="text-[12.5px] text-muted">clean</span>}
                   </td>
-                  <td className="whitespace-nowrap text-[12.5px] text-muted">
-                    {t.submitted_at ? ago(t.submitted_at) : '—'}
+                  <td className="whitespace-nowrap text-[12.5px] tabular-nums text-muted">
+                    {clockTime(t.started_at)}
+                  </td>
+                  <td className="whitespace-nowrap text-[12.5px] tabular-nums text-muted">
+                    {t.submitted_at
+                      ? clockTime(t.submitted_at)
+                      : <span className="italic">still sitting</span>}
+                  </td>
+                  <td className="whitespace-nowrap text-[12.5px] tabular-nums">
+                    {tookFor(t.started_at, t.submitted_at)}
                   </td>
                 </tr>
               ))}

@@ -2453,6 +2453,44 @@ export class PlatformService {
     };
   }
 
+  /**
+   * The examinations and paper windows in a date range, for the console grid.
+   *
+   * The console's timetable was a flat table of recurring CLASS slots, with
+   * rooms and lecturers in it -- the institution's own operational view. An
+   * operator does not allocate rooms; they want the week a candidate would
+   * see, which in this product is examinations and papers. This is that week.
+   *
+   * Drafts are included and marked. A learner's own calendar hides them, which
+   * is right there and wrong here: an operator watching a build-out needs to
+   * see the sitting that exists but has not been announced.
+   */
+  async examWeek(tenantId: number, from: string, to: string) {
+    const [{ data: exams }, { data: papers }, { data: courses }] = await Promise.all([
+      this.#db.from('onyx_exams')
+        // eslint-disable-next-line max-len -- one literal: a concatenated select collapses the client's row type.
+        .select('id, course_id, assessment_id, title, starts_at, duration_minutes, max_marks, pass_marks, status')
+        .eq('tenant_id', tenantId).gte('starts_at', from).lte('starts_at', to)
+        .order('starts_at'),
+      this.#db.from('onyx_assessments')
+        // eslint-disable-next-line max-len -- one literal, same reason as above.
+        .select('id, course_id, title, opens_at, closes_at, duration_minutes, attempts_allowed, pass_mark, status')
+        .eq('tenant_id', tenantId).not('closes_at', 'is', null)
+        .gte('closes_at', from).lte('closes_at', to),
+      this.#db.from('onyx_courses').select('id, code, title').eq('tenant_id', tenantId),
+    ]);
+
+    const byId = new Map((courses ?? []).map((c) => [Number(c.id), c]));
+    const label = (id: unknown) => {
+      const c = byId.get(Number(id));
+      return c ? { id: Number(c.id), code: String(c.code), title: String(c.title) } : null;
+    };
+    return {
+      exams: (exams ?? []).map((e) => ({ ...e, course: label(e.course_id) })),
+      assessments: (papers ?? []).map((a) => ({ ...a, course: label(a.course_id) })),
+    };
+  }
+
   async #courseModule(tenantId: number, moduleId: number) {
     const { data } = await this.#db.from('onyx_modules')
       .select('id, course_id, title, summary, sort')

@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
-import { attempt, SCROLLER, Unavailable, ago, Workflow } from '@/lib/onyx-platform-tenant';
+import {
+  attempt, SCROLLER, Unavailable, Workflow, clockTime, tookFor,
+} from '@/lib/onyx-platform-tenant';
 import { Card, DataTable, EmptyRow, Icon, Pill, SectionHead } from '@/components/onyx-ui';
 
 export const metadata: Metadata = { title: 'Assessment' };
@@ -131,12 +133,17 @@ export default async function OnyxPlatformAssessmentPage(
                 <th scope="col">State</th>
                 <th scope="col">Score</th>
                 <th scope="col">Flags</th>
+                {/* When they started and when they finished, not "2 hours
+                    ago": an operator checking whether somebody began late
+                    needs a time they can hold against the scheduled one. */}
+                <th scope="col">Started</th>
                 <th scope="col">Handed in</th>
+                <th scope="col">Took</th>
               </>
             }
           >
             {attempts.length === 0 ? (
-              <EmptyRow colSpan={6} icon="edit">
+              <EmptyRow colSpan={8} icon="edit">
                 Nobody has sat this paper yet.
               </EmptyRow>
             ) : attempts.map((t) => (
@@ -166,8 +173,16 @@ export default async function OnyxPlatformAssessmentPage(
                     ? <Pill tone="late">{t.integrity_score}</Pill>
                     : <span className="text-[12.5px] text-muted">clean</span>}
                 </td>
-                <td className="whitespace-nowrap text-[12.5px] text-muted">
-                  {t.submitted_at ? ago(t.submitted_at) : '—'}
+                <td className="whitespace-nowrap text-[12.5px] tabular-nums text-muted">
+                  {clockTime(t.started_at)}
+                </td>
+                <td className="whitespace-nowrap text-[12.5px] tabular-nums text-muted">
+                  {t.submitted_at
+                    ? clockTime(t.submitted_at)
+                    : <span className="italic">still sitting</span>}
+                </td>
+                <td className="whitespace-nowrap text-[12.5px] tabular-nums">
+                  {tookFor(t.started_at, t.submitted_at)}
                 </td>
               </tr>
             ))}
