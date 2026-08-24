@@ -416,6 +416,12 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/platform/tenants/:id/code-submissions` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/workspaces` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/exam-week` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/members/:memberId/permissions` | platform admin |
+| `PUT` | `/api/onyx/platform/tenants/:id/members/:memberId/permissions` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/tickets` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/tickets/:ticketId` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/tickets/:ticketId/respond` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/tickets/:ticketId/resolve` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/banks` | platform admin |
 | `PUT` | `/api/onyx/platform/tenants/:id/assessments/:assessmentId/sections` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/assessments/:assessmentId/publish` | platform admin |
@@ -465,4 +471,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_379 endpoints across 9 route files._
+_385 endpoints across 9 route files._

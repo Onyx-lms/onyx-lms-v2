@@ -1894,6 +1894,20 @@ export class PlatformService {
     };
   }
 
+  /**
+   * Write a platform audit row for work another service did.
+   *
+   * Most methods here log their own act. A few platform ROUTES delegate to a
+   * tenant-side service -- setting one person's permissions, say -- and still
+   * owe the record: an operator changing a customer's institution is an act of
+   * the platform, and it belongs in the platform's log rather than the
+   * institution's.
+   */
+  async recordAction(actorId: string | null, action: string, entityType: string,
+    entityId: number | null, before: unknown, after: unknown) {
+    await this.#log(actorId, action, entityType, entityId, before, after);
+  }
+
   async #log(actorId: string | null, action: string, entityType: string, entityId: number | null,
     before: unknown, after: unknown) {
     // Never throw: an audit row describes work that already happened.

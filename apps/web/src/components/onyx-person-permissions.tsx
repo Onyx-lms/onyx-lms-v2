@@ -47,7 +47,20 @@ interface CapabilityRow {
   grantable: boolean;
 }
 
-export function PersonPermissions({ people }: { people: PersonRow[] }) {
+export function PersonPermissions({ people, basePath = '/api/proxy/onyx/members' }: {
+  people: PersonRow[];
+  /**
+   * Where a member's permissions live.
+   *
+   * The institution's own screen reads `/onyx/members/:id/permissions`; the
+   * platform console reads the same shape under its own tenant-scoped path.
+   * Parameterised rather than copied: this component is the only place that
+   * knows a grant is three-way rather than a checkbox, and a second copy is
+   * where the two consoles start disagreeing about what "follow their role"
+   * means.
+   */
+  basePath?: string;
+}) {
   const [query, setQuery] = useState('');
   const [chosen, setChosen] = useState<PersonRow | null>(null);
   const [caps, setCaps] = useState<CapabilityRow[] | null>(null);
@@ -77,7 +90,7 @@ export function PersonPermissions({ people }: { people: PersonRow[] }) {
     setCaps(null);
     setNote(null);
     setError(null);
-    const res = await fetch('/api/proxy/onyx/members/' + person.id + '/permissions');
+    const res = await fetch(basePath + '/' + person.id + '/permissions');
     const body = await res.json().catch(() => ({}));
     if (!body.ok) { setError(body.message ?? 'Could not read that person.'); return; }
     setCaps(body.data.capabilities as CapabilityRow[]);
@@ -98,7 +111,7 @@ export function PersonPermissions({ people }: { people: PersonRow[] }) {
       for (const [key, value] of Object.entries(draft)) {
         if (typeof value === 'boolean') permissions[key] = value;
       }
-      const res = await fetch('/api/proxy/onyx/members/' + chosen.id + '/permissions', {
+      const res = await fetch(basePath + '/' + chosen.id + '/permissions', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ permissions }),

@@ -12,7 +12,7 @@ import type { Router, ReqLike } from '../../router.ts';
 import { z } from 'zod';
 import {
   validate, ok, requirePlatformAdmin, ROLES, HttpError,
-  CAPABILITIES, CAPABILITY_AREAS, holdersOf, normaliseOverrides,
+  CAPABILITIES, CAPABILITY_AREAS, holdersOf, normaliseOverrides, normalisePersonal, can,
   type PermissionOverrides,
 } from '@onyx/core';
 import type { Role } from '@onyx/types';
@@ -905,6 +905,120 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       throw new HttpError(422, 'That is not a date range.');
     }
     return ok(await ctx.onyxPlatform.examWeek(idOf(req), from, to));
+  });
+
+  // ===========================================================================
+  // One person's permissions, and the institution's support queue
+  //
+  // Both existed on the institution's own side and neither was reachable from
+  // the console -- so an operator taking a support call about either had to
+  // sign in as that institution to act on it.
+  // ===========================================================================
+
+  /**
+   * What one member may do, and why.
+   *
+   * The whole shape the institution's own screen reads, so the two consoles
+   * render from one contract: what their ROLE gives them, what has been
+   * decided about them BY NAME, what actually applies, and whether the
+   * capability may be delegated to that role at all.
+   */
+  app.get('/api/onyx/platform/tenants/:id/members/:memberId/permissions', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const tenantId = idOf(req);
+    const member = await ctx.onyxTenancy.memberById(tenantId, subIdOf(req, 'memberId'));
+    const tenant = await ctx.onyxTenancy.tenant(tenantId);
+    const overrides = (tenant?.permissions ?? {}) as PermissionOverrides;
+    const personal = (member.permissions ?? {}) as Record<string, boolean>;
+    const role = String(member.role) as Role;
+
+    return ok({
+      member: {
+        id: member.id, user_id: member.user_id, role,
+        name: member.user?.name ?? null, email: member.user?.email ?? null,
+        roll_number: member.roll_number ?? null,
+      },
+      capabilities: CAPABILITIES.map((cap) => ({
+        key: cap.key, area: cap.area, label: cap.label, detail: cap.detail,
+        by_role: holdersOf(cap.key, overrides).includes(role),
+        personal: Object.prototype.hasOwnProperty.call(personal, cap.key)
+          ? personal[cap.key] : null,
+        effective: can(role, cap.key, overrides,
+          personal as Parameters<typeof can>[3]),
+        // Several capabilities are deliberately never delegable. Naming a
+        // person is not a way round that, and a screen should not offer a
+        // switch the API will drop.
+        grantable: role === 'admin' || cap.holders.includes(role),
+      })),
+      areas: CAPABILITY_AREAS,
+    });
+  });
+
+  app.put('/api/onyx/platform/tenants/:id/members/:memberId/permissions', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const tenantId = idOf(req);
+    const memberId = subIdOf(req, 'memberId');
+    const body = validate(z.object({
+      permissions: z.record(z.boolean()),
+    }), req.body);
+
+    const before = await ctx.onyxTenancy.memberById(tenantId, memberId);
+    // `normalisePersonal` drops any GRANT the capability may never carry for
+    // that role, so a hand-written request cannot give a student the fee
+    // ledger -- the same guard the institution's own route relies on.
+    const cleaned = normalisePersonal(body.permissions, String(before.role) as Role);
+    await ctx.onyxTenancy.setMemberPermissions(tenantId, memberId, cleaned);
+
+    // The PLATFORM log, not the institution's: an operator changing a
+    // customer's permissions is an act of the platform and should read as one.
+    await ctx.onyxPlatform.recordAction(claims.user_id, 'member.permissions',
+      'membership', memberId,
+      { permissions: before.permissions ?? {} }, { permissions: cleaned });
+    return ok({ id: memberId, permissions: cleaned }, 'Permissions saved.');
+  });
+
+  /**
+   * The institution's support queue.
+   *
+   * A learner raises a question from Help and it lands here. The console had
+   * no view of it at all, so a platform operator could be told "nobody has
+   * answered my ticket" and had no way to look, let alone answer.
+   *
+   * Read as an administrator of that institution -- which is what an operator
+   * is with respect to it -- so the queue is the whole institution's rather
+   * than one person's.
+   */
+  app.get('/api/onyx/platform/tenants/:id/tickets', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const query = validate(z.object({
+      status: z.enum(['open', 'assigned', 'answered', 'resolved', 'closed']).optional(),
+    }), req.query ?? {});
+    return ok(await ctx.onyxSupport.queue(idOf(req),
+      { userId: claims.user_id, role: 'admin' }, query));
+  });
+
+  app.get('/api/onyx/platform/tenants/:id/tickets/:ticketId', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxSupport.ticket(idOf(req), subIdOf(req, 'ticketId'),
+      { userId: claims.user_id, role: 'admin' }));
+  });
+
+  app.post('/api/onyx/platform/tenants/:id/tickets/:ticketId/respond', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      body: z.string().min(1).max(20_000),
+    }), req.body);
+    return ok(await ctx.onyxSupport.respond(idOf(req), subIdOf(req, 'ticketId'),
+      { userId: claims.user_id, role: 'admin' }, body.body), 'Reply sent.');
+  });
+
+  app.post('/api/onyx/platform/tenants/:id/tickets/:ticketId/resolve', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      body: z.string().max(20_000).optional(),
+    }), req.body);
+    return ok(await ctx.onyxSupport.resolve(idOf(req), subIdOf(req, 'ticketId'),
+      { userId: claims.user_id, role: 'admin' }, body.body), 'Marked as resolved.');
   });
 
   app.get('/api/onyx/platform/tenants/:id/banks', async (req) => {

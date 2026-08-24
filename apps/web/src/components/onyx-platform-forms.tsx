@@ -4570,3 +4570,108 @@ export function EditDomainForm({ tenantId, domain }: {
     </>
   );
 }
+
+
+/**
+ * Answer one learner's question, from the console.
+ *
+ * The reply is the whole point: a queue an operator can read and not answer is
+ * a queue that tells them about a problem they cannot do anything about.
+ *
+ * Resolving is a SEPARATE button rather than a tickbox on the reply, because
+ * they are different claims. "Here is your answer" and "this is finished" are
+ * often the same act and often are not, and a form that assumes they are is
+ * one that closes a thread the learner was still in.
+ */
+export function TicketReply({ tenantId, ticket }: {
+  tenantId: number;
+  ticket: { id: number; subject: string; body: string; status: string };
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const settled = ticket.status === 'resolved' || ticket.status === 'closed';
+
+  const send = (path: string, body: unknown, done: string) => start(async () => {
+    setError(null);
+    setNote(null);
+    const res = await post('onyx/platform/tenants/' + tenantId + '/tickets/'
+      + ticket.id + path, body);
+    if (!res.ok) { setError(res.message ?? 'That did not send.'); return; }
+    setNote(done);
+    router.refresh();
+  });
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}
+        className="min-h-[34px] whitespace-nowrap rounded-lg border border-line bg-white px-3
+                   text-[12.5px] font-semibold text-slate-700 hover:bg-brand-50">
+        {settled ? 'Read' : 'Answer'}
+      </button>
+
+      {open ? (
+        <Modal title="Answer this question" onClose={() => setOpen(false)} wide>
+          <div className="space-y-3.5">
+            <div>
+              <h3 className="text-[15px] font-bold text-ink">{ticket.subject}</h3>
+              {/* Kept as written: a learner describing a problem uses
+                  paragraphs, and running them together loses the steps. */}
+              <p className="mt-1.5 whitespace-pre-wrap rounded-xl bg-slate-50 px-3 py-2.5
+                            text-[13.5px] leading-relaxed text-slate-800">
+                {ticket.body}
+              </p>
+            </div>
+
+            {error ? (
+              <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-[13px] text-red-700">
+                {error}
+              </p>
+            ) : null}
+            {note ? (
+              <p role="status" className="rounded-xl bg-green-50 px-3 py-2 text-[13px]
+                                          text-green-800">{note}</p>
+            ) : null}
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const data = new FormData(e.currentTarget);
+                send('/respond', { body: String(data.get('reply') ?? '') }, 'Reply sent.');
+              }}
+              className="space-y-2.5"
+            >
+              <div>
+                <label className={label} htmlFor="tr-reply">Your answer</label>
+                <textarea id="tr-reply" name="reply" required rows={5} maxLength={20_000}
+                  placeholder="Answer the question as you would to their face."
+                  className={field} />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="submit" disabled={pending} className={button}>
+                  {pending ? 'Sending…' : 'Send the answer'}
+                </button>
+                {!settled ? (
+                  <button
+                    type="button" disabled={pending}
+                    onClick={() => send('/resolve', {}, 'Marked as resolved.')}
+                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm
+                               font-semibold"
+                  >
+                    Mark resolved
+                  </button>
+                ) : null}
+                <button type="button" disabled={pending} onClick={() => setOpen(false)}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+                  Close
+                </button>
+              </div>
+            </form>
+          </div>
+        </Modal>
+      ) : null}
+    </>
+  );
+}

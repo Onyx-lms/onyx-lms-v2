@@ -59,6 +59,12 @@ const GROUPS: TenantNavGroup[] = [
     // Beside Code Lab because it is the same feature read from the other end.
     { seg: 'practice', label: 'Practice activity', icon: 'layers' },
   ] },
+  { label: 'Support', items: [
+    // Where a learner's question from Help arrives. The console had no view of
+    // the queue at all, so an operator hearing "nobody has answered me" could
+    // not look, let alone answer.
+    { seg: 'support', label: 'Help', icon: 'help' },
+  ] },
   { label: 'Governance', items: [
     { seg: 'permissions', label: 'Permissions', icon: 'shield' },
   ] },
