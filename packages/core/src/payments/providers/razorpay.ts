@@ -58,7 +58,13 @@ export const razorpayProvider: PaymentProvider = {
         amount: json.amount,
         currency: json.currency,
         name: 'Onyx LMS',
-        prefill: { email: order.userEmail },
+        prefill: {
+          email: order.userEmail,
+          // Razorpay's own key for it. Absent rather than empty when there is
+          // no number, because an empty string is a value their form treats as
+          // one the buyer typed.
+          ...(order.userPhone ? { contact: order.userPhone } : {}),
+        },
       },
     };
   },

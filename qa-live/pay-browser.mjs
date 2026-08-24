@@ -61,7 +61,10 @@ const login = async (email) => (await api('/api/onyx/auth/login',
 const at = await login(adminEmail);
 
 await api('/api/onyx/members', { method: 'POST', token: at,
-  body: { name: 'Sam Student', email: studentEmail, role: 'student', password: PW } });
+  body: { name: 'Sam Student', email: studentEmail, role: 'student', password: PW,
+    // On their record, so Razorpay's contact screen is skipped -- which is
+    // what a learner whose institution already holds their number should get.
+    phone: '9876543210' } });
 
 await api('/api/onyx/admin/gateways', { method: 'PUT', token: at,
   body: {
@@ -97,8 +100,19 @@ try {
   await buy.waitFor({ timeout: 20_000 });
   say(true, 'the course offers to be bought', (await buy.textContent())?.trim());
 
-  await buy.click();
+  /*
+   * Clicked until it takes, because the first click may land before React has
+   * hydrated the page -- the markup arrives from the server with the button
+   * already drawn, and a click on it before the handler is attached does
+   * nothing at all and reports no error. A person hitting the same window
+   * simply clicks again, and so does this.
+   */
+  await page.waitForLoadState('networkidle').catch(() => {});
   const dialog = page.getByRole('dialog');
+  for (let attempt = 1; attempt <= 4 && !(await dialog.count()); attempt += 1) {
+    await buy.click({ timeout: 10_000 }).catch(() => {});
+    await page.waitForTimeout(1_500);
+  }
   await dialog.waitFor({ timeout: 15_000 });
   say(true, 'the buy dialog opened',
     (await dialog.innerText()).replace(/\s+/g, ' ').slice(0, 90));
@@ -106,45 +120,115 @@ try {
   await dialog.getByRole('button', { name: /^Pay/i }).first().click();
 
   /*
-   * Razorpay's window is an iframe of theirs, and everything below is their
-   * markup rather than ours. It is addressed by role and accessible name so
-   * a class rename on their side does not break it, and every wait is
-   * generous: a test-mode bank page is still a network round trip.
+   * Everything below is Razorpay's own interface, not ours.
+   *
+   * It is addressed by what a person sees -- a heading, a placeholder, a
+   * button's words -- rather than by their class names, so a restyle on their
+   * side does not break it. It is still somebody else's UI: if they change the
+   * steps, this fails while the product is perfectly sound, which is why the
+   * checks that must never go quiet live in pay.mjs.
+   *
+   * Their checkout nests frames several deep, so each field is looked for
+   * across every frame on the page rather than in one named iframe.
    */
-  const rzpFrame = page.frameLocator('iframe.razorpay-checkout-frame');
-  await rzpFrame.locator('body').waitFor({ timeout: 40_000 });
+  const anyFrame = async (find, timeoutMs = 30_000) => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      for (const frame of page.frames()) {
+        const locator = find(frame);
+        if (await locator.count().catch(() => 0)) {
+          if (await locator.first().isVisible().catch(() => false)) return locator.first();
+        }
+      }
+      await page.waitForTimeout(500);
+    }
+    throw new Error('never appeared: ' + find.toString().slice(0, 80));
+  };
+
+  await anyFrame((f) => f.locator('text=/Price Summary|Payment Options/i'), 45_000);
   say(true, 'Razorpay’s checkout window opened');
 
-  const amountShown = await rzpFrame.locator('body').innerText().catch(() => '');
-  say(/300/.test(amountShown), 'and it is asking for ₹300',
-    (amountShown.match(/₹\s?[\d,.]+/) ?? ['(not found)'])[0]);
+  const shown = (await Promise.all(page.frames().map((f) =>
+    f.locator('body').innerText().catch(() => '')))).join(' ');
+  say(/₹\s?300/.test(shown), 'and it is asking for ₹300',
+    (shown.match(/₹\s?[\d,]+/) ?? ['(not found)'])[0]);
+  say(/test mode/i.test(shown), 'in test mode, which it says on the window');
 
-  const card = rzpFrame.getByText(/^Card$/).first();
-  await card.click({ timeout: 30_000 });
-  await rzpFrame.getByPlaceholder(/card number/i).fill('4111 1111 1111 1111');
-  await rzpFrame.getByPlaceholder(/MM ?\/ ?YY/i).fill('12/30');
-  await rzpFrame.getByPlaceholder(/CVV/i).fill('123');
-  const holder = rzpFrame.getByPlaceholder(/name on card|card holder/i).first();
-  if (await holder.count()) await holder.fill('Sam Student');
+  // Contact details first: a mobile number, and the email it already has.
+  const mobile = await anyFrame((f) => f.getByPlaceholder(/mobile number/i), 30_000)
+    .catch(() => null);
+  if (mobile) {
+    /*
+     * Typed, not filled. `fill()` sets the value and fires one input event;
+     * their validator listens for the keystrokes, so a filled field stayed
+     * "Please enter a valid mobile number" with a perfectly valid number
+     * sitting in it. Typing is also what a person does.
+     */
+    await mobile.click();
+    await page.keyboard.press('Control+A');
+    await page.keyboard.press('Backspace');
+    await mobile.pressSequentially('9876543210', { delay: 80 });
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(1_000);
+    const complaint = (await Promise.all(page.frames().map((f) =>
+      f.locator('body').innerText().catch(() => '')))).join(' ');
+    say(!/valid mobile number/i.test(complaint), 'the number was accepted',
+      /valid mobile number/i.test(complaint) ? 'still complaining' : '');
+    const proceed = await anyFrame((f) =>
+      f.getByRole('button', { name: /continue|proceed|next/i }), 10_000).catch(() => null);
+    if (proceed) await proceed.click();
+    say(true, 'contact details given');
+  }
+
+  const cards = await anyFrame((f) => f.locator('text=/^Cards?$/i'), 30_000);
+  await cards.click();
+  say(true, 'Cards chosen as the method');
+
+  const number = await anyFrame((f) => f.getByPlaceholder(/card number/i), 30_000);
+  // Razorpay's published test card. It charges nothing and exists for this.
+  await number.click();
+  await number.pressSequentially('4111111111111111', { delay: 40 });
+  const expiry = await anyFrame((f) => f.getByPlaceholder(/MM ?\/ ?YY/i), 15_000);
+  await expiry.click();
+  await expiry.pressSequentially('1230', { delay: 60 });
+  const cvv = await anyFrame((f) => f.getByPlaceholder(/CVV/i), 15_000);
+  await cvv.click();
+  await cvv.pressSequentially('123', { delay: 60 });
+  const holder = await anyFrame((f) =>
+    f.getByPlaceholder(/name on card|card holder|cardholder/i), 5_000).catch(() => null);
+  if (holder) await holder.pressSequentially('Sam Student', { delay: 30 });
   say(true, 'the test card is entered');
 
-  await rzpFrame.getByRole('button', { name: /pay|continue/i }).first().click();
+  const pay = await anyFrame((f) => f.getByRole('button', { name: /^pay/i }), 20_000);
+  await pay.click();
+  say(true, 'paid');
 
-  // The simulated bank page: Razorpay's test mode asks whether this payment
-  // should succeed. It is a separate frame or a new page depending on flow.
-  const success = page.frameLocator('iframe').getByRole('button', { name: /^success$/i }).first();
-  await success.click({ timeout: 60_000 });
+  // Razorpay's test mode then asks whether this payment should succeed.
+  const success = await anyFrame((f) =>
+    f.getByRole('button', { name: /^success$/i }), 90_000);
+  await success.click();
   say(true, 'the simulated bank was told to approve it');
 
-  // Back on our page: the button is gone and the course is theirs.
-  await page.waitForTimeout(6_000);
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  const stillForSale = await page.getByRole('button', { name: /Buy for/i }).count();
-  say(stillForSale === 0, 'the course no longer asks to be bought');
+  // Back on our page. The widget's handler posts to our confirm route, so this
+  // waits for the product rather than for the browser.
+  const token = await login(studentEmail);
+  let owned = [];
+  for (let i = 0; i < 30 && !owned.includes(Number(courseId)); i += 1) {
+    await page.waitForTimeout(2_000);
+    owned = ((await api('/api/onyx/my/purchases', { token })).data ?? []).map(Number);
+  }
+  say(owned.includes(Number(courseId)), 'the purchase is on record',
+    'owns ' + JSON.stringify(owned));
 
-  const owned = await api('/api/onyx/my/purchases', { token: await login(studentEmail) });
-  say((owned.data ?? []).map(Number).includes(Number(courseId)),
-    'and the purchase is on record', JSON.stringify(owned.data));
+  const mine = await api('/api/onyx/my/courses', { token });
+  say((mine.data ?? []).some((c) => Number(c.id ?? c.course_id) === Number(courseId)),
+    'and the course is one of theirs now');
+
+  await page.goto(BASE + '/onyx/courses/' + courseId, { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('networkidle').catch(() => {});
+  say(await page.getByRole('button', { name: /Buy for/i }).count() === 0,
+    'the course no longer asks to be bought');
+  await page.screenshot({ path: 'qa-live/pay-browser-paid.png', fullPage: true }).catch(() => {});
 } catch (err) {
   say(false, 'the browser flow did not finish', String(err).split('\n')[0]);
   await page.screenshot({ path: 'qa-live/pay-browser-failure.png', fullPage: true })

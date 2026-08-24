@@ -360,7 +360,7 @@ export class OnyxCheckoutService {
    * they have already bought is how you take money twice.
    */
   async beginCourse(tenantId: number, courseId: number, viewer: { userId: string }, input: {
-    gateway: string; email?: string | null;
+    gateway: string; email?: string | null; phone?: string | null;
   }) {
     if (!this.#academics) {
       throw new HttpError(500, 'This deployment cannot sell a course.');
@@ -397,6 +397,7 @@ export class OnyxCheckoutService {
       reference,
       userId: 0,
       userEmail: input.email ?? '',
+      userPhone: input.phone ?? null,
       // A real course id at last: this field was built for one, and the invoice
       // path has always had to pass 0 to mean "not a course sale".
       items: [{ course_id: courseId, title: String(course.title), price: major }],

@@ -609,9 +609,18 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
     const body = validate(z.object({
       gateway: z.string().min(1).max(30),
     }), req.body);
+    // Their own number, so Razorpay's contact screen does not ask a learner
+    // for something their institution already holds. One read, on a path that
+    // is about to open a payment window -- and safe if it fails, because the
+    // absence of a phone is the case the widget has always handled.
+    const profile = await ctx.onyxTenancy.profileFor(claims.user_id).catch(() => null);
     return ok(await ctx.onyxCheckout.beginCourse(claims.tenant_id, idOf(req),
       { userId: claims.user_id },
-      { gateway: body.gateway, email: claims.email ?? null }));
+      {
+        gateway: body.gateway,
+        email: claims.email ?? null,
+        phone: (profile as { phone?: string | null } | null)?.phone ?? null,
+      }));
   });
 
   /** What this learner has bought, so a catalogue can mark it owned. */

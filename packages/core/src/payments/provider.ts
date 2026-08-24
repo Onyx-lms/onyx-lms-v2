@@ -31,6 +31,18 @@ export interface CheckoutOrder {
   reference: string;
   userId: number;
   userEmail: string;
+  /**
+   * The buyer's own number, where the institution holds one.
+   *
+   * Razorpay's checkout asks every buyer for a mobile number before it will
+   * show a payment method, and refuses to move on without one. A learner
+   * whose number is already on their record should not be made to type it
+   * again to buy something -- so it travels with the order, and the screen
+   * that asks for it is skipped. Optional because plenty of records have no
+   * phone, and then the buyer is asked, which is the behaviour there has
+   * always been.
+   */
+  userPhone?: string | null;
   items: CheckoutItem[];
   subtotal: number;
   discount: number;
