@@ -383,6 +383,14 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/platform/tenants/:id/assignments/:assignmentId/submissions` | platform admin |
 | `PATCH` | `/api/onyx/platform/tenants/:id/courses/:courseId` | platform admin |
 | `DELETE` | `/api/onyx/platform/tenants/:id/courses/:courseId` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/domains` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/domains` | platform admin |
+| `PATCH` | `/api/onyx/platform/tenants/:id/domains/:domainId` | platform admin |
+| `DELETE` | `/api/onyx/platform/tenants/:id/domains/:domainId` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/courses/:courseId/outline` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/courses/:courseId/modules` | platform admin |
+| `PATCH` | `/api/onyx/platform/tenants/:id/modules/:moduleId` | platform admin |
+| `DELETE` | `/api/onyx/platform/tenants/:id/modules/:moduleId` | platform admin |
 | `PATCH` | `/api/onyx/platform/tenants/:id/assignments/:assignmentId` | platform admin |
 | `PATCH` | `/api/onyx/platform/tenants/:id/exams/:examId` | platform admin |
 | `PATCH` | `/api/onyx/platform/tenants/:id/assessments/:assessmentId` | platform admin |
@@ -426,4 +434,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_340 endpoints across 9 route files._
+_348 endpoints across 9 route files._

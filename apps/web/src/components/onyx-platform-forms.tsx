@@ -2124,3 +2124,291 @@ export function RevokeAdminButton({ id, name, onDone }: {
     />
   );
 }
+
+
+// ---------------------------------------------------------------------------
+// Live Classes
+// ---------------------------------------------------------------------------
+
+export interface ConsoleDomain {
+  id: number; title: string; summary: string; curriculum_url: string;
+  certificate: string; duration_label: string; price_minor: number;
+  currency: string; sort: number; status: number;
+}
+
+/**
+ * Add a Live Class from the console.
+ *
+ * The price is typed in RUPEES and converted here, like every other money
+ * field in the product: the column stores integer minor units, and a person
+ * setting a price should not have to multiply by a hundred -- a slip of two
+ * zeroes is the difference between three hundred rupees and thirty thousand.
+ *
+ * It is created as a draft. A Live Class appearing on every learner's screen
+ * the instant somebody typed a title is not a default anybody would choose.
+ */
+export function CreateDomainForm({ tenantId }: { tenantId: number }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className={button}>
+        Add a Live Class
+      </button>
+    );
+  }
+  return (
+    <form
+      className="grid gap-3 rounded-2xl border border-line bg-slate-50 p-4 sm:grid-cols-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        setError(null);
+        start(async () => {
+          const res = await post('onyx/platform/tenants/' + tenantId + '/domains', {
+            title: String(data.get('title') ?? ''),
+            summary: String(data.get('summary') ?? ''),
+            curriculum_url: String(data.get('curriculum_url') ?? ''),
+            certificate: String(data.get('certificate') ?? ''),
+            duration_label: String(data.get('duration_label') ?? ''),
+            price_minor: Math.round(Number(data.get('price_rupees') || 0) * 100),
+          });
+          if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+          setOpen(false);
+          router.refresh();
+        });
+      }}
+    >
+      {error ? <p role="alert" className="col-span-full text-[13px] text-red-700">{error}</p> : null}
+      <div className="sm:col-span-2">
+        <label className={label} htmlFor="cd-title">Title</label>
+        <input id="cd-title" name="title" required maxLength={200}
+          placeholder="Cloud and DevOps — evening cohort" className={field} />
+      </div>
+      <div className="sm:col-span-2">
+        <label className={label} htmlFor="cd-summary">Summary</label>
+        <textarea id="cd-summary" name="summary" maxLength={4000} rows={3} className={field} />
+      </div>
+      <div>
+        <label className={label} htmlFor="cd-duration">Duration</label>
+        {/* Prose, not a number: "12 weeks" and "6 weekends" are both real, and
+            a number would be a lie for the part-time ones. */}
+        <input id="cd-duration" name="duration_label" maxLength={80} placeholder="12 weeks"
+          className={field} />
+      </div>
+      <div>
+        <label className={label} htmlFor="cd-cert">Certificate awarded</label>
+        <input id="cd-cert" name="certificate" maxLength={200}
+          placeholder="Leave empty if none" className={field} />
+      </div>
+      <div>
+        <label className={label} htmlFor="cd-price">Price</label>
+        <div className="relative">
+          <span aria-hidden className="pointer-events-none absolute left-3 top-1/2
+                                       -translate-y-1/2 text-[15px] font-semibold text-muted">₹</span>
+          <input id="cd-price" name="price_rupees" type="number" min={0} step="0.01"
+            defaultValue={0} className={field + ' pl-7'} />
+        </div>
+      </div>
+      <div>
+        <label className={label} htmlFor="cd-url">Curriculum link</label>
+        <input id="cd-url" name="curriculum_url" maxLength={500}
+          placeholder="example.com/curriculum" className={field} />
+      </div>
+      <div className="col-span-full flex gap-2">
+        <button type="submit" disabled={pending} className={button}>
+          {pending ? 'Adding…' : 'Add it as a draft'}
+        </button>
+        <button type="button" onClick={() => setOpen(false)}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** Publish or withdraw one Live Class, and remove it. */
+export function DomainRowActions({ tenantId, domain }: {
+  tenantId: number; domain: ConsoleDomain;
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const published = domain.status === 1;
+
+  const setStatus = (status: number) => start(async () => {
+    setError(null);
+    const res = await post('onyx/platform/tenants/' + tenantId + '/domains/' + domain.id,
+      { status }, 'PATCH');
+    if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+    router.refresh();
+  });
+
+  return (
+    <div className="flex flex-col items-end gap-1.5">
+      {error ? <span role="alert" className="text-[12px] text-red-700">{error}</span> : null}
+      <div className="flex justify-end gap-1.5">
+        <button type="button" disabled={pending} onClick={() => setStatus(published ? 0 : 1)}
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-[13px] font-semibold">
+          {published ? 'Withdraw' : 'Publish'}
+        </button>
+        <DangerPanel
+          heading="Remove this Live Class"
+          confirmWith={domain.title}
+          what={'“' + domain.title + '” disappears from every learner’s Live Classes. '
+            + 'Anyone already registered keeps their registration record, but the class '
+            + 'itself is gone, and this cannot be undone.'}
+          cta="Remove it"
+          onConfirm={async () => {
+            const res = await post(
+              'onyx/platform/tenants/' + tenantId + '/domains/' + domain.id, undefined, 'DELETE');
+            if (res.ok) router.refresh();
+            return res;
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// The modules inside a course
+// ---------------------------------------------------------------------------
+
+/** Add a module to a course, from the console. */
+export function AddModuleForm({ tenantId, courseId }: {
+  tenantId: number; courseId: number;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className={button}>
+        Add a module
+      </button>
+    );
+  }
+  return (
+    <form
+      className="grid gap-3 rounded-2xl border border-line bg-slate-50 p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        setError(null);
+        start(async () => {
+          const res = await post(
+            'onyx/platform/tenants/' + tenantId + '/courses/' + courseId + '/modules', {
+              title: String(data.get('title') ?? ''),
+              summary: String(data.get('summary') ?? ''),
+            });
+          if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+          setOpen(false);
+          router.refresh();
+        });
+      }}
+    >
+      {error ? <p role="alert" className="text-[13px] text-red-700">{error}</p> : null}
+      <div>
+        <label className={label} htmlFor="am-title">Module title</label>
+        <input id="am-title" name="title" required maxLength={255}
+          placeholder="Week 1 — Getting started" className={field} />
+      </div>
+      <div>
+        <label className={label} htmlFor="am-summary">What it covers</label>
+        <textarea id="am-summary" name="summary" maxLength={4000} rows={2} className={field} />
+      </div>
+      {/* Said before they press it, because the console cannot upload a video
+          and pretending otherwise wastes somebody's afternoon. */}
+      <p className="text-[12.5px] leading-relaxed text-muted">
+        A module is added empty. Lessons that carry a file — video, slides, a document — are
+        uploaded from the course itself, where the browser can send the file straight to
+        storage.
+      </p>
+      <div className="flex gap-2">
+        <button type="submit" disabled={pending} className={button}>
+          {pending ? 'Adding…' : 'Add the module'}
+        </button>
+        <button type="button" onClick={() => setOpen(false)}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** Rename a module, or remove it when it is empty. */
+export function ModuleRowActions({ tenantId, module: mod }: {
+  tenantId: number;
+  module: { id: number; title: string; summary: string | null; lessons: unknown[] };
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const empty = mod.lessons.length === 0;
+
+  if (editing) {
+    return (
+      <form
+        className="flex flex-wrap items-center justify-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const data = new FormData(e.currentTarget);
+          setError(null);
+          start(async () => {
+            const res = await post('onyx/platform/tenants/' + tenantId + '/modules/' + mod.id,
+              { title: String(data.get('title') ?? '') }, 'PATCH');
+            if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+            setEditing(false);
+            router.refresh();
+          });
+        }}
+      >
+        {error ? <span role="alert" className="text-[12px] text-red-700">{error}</span> : null}
+        <input name="title" defaultValue={mod.title} required maxLength={255}
+          aria-label="Module title"
+          className="min-h-[38px] rounded-lg border border-line px-3 text-[13px]" />
+        <button type="submit" disabled={pending}
+          className="rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-semibold text-white">
+          {pending ? 'Saving…' : 'Save'}
+        </button>
+        <button type="button" onClick={() => setEditing(false)}
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-[13px]">Cancel</button>
+      </form>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-end gap-1.5">
+      <button type="button" onClick={() => setEditing(true)}
+        className="rounded-lg border border-slate-300 px-3 py-1.5 text-[13px] font-semibold">
+        Rename
+      </button>
+      {/* A module holding lessons is somebody's teaching. The API refuses it
+          too -- this only saves the round trip and says why up front. */}
+      <button
+        type="button"
+        disabled={!empty || pending}
+        title={empty ? undefined : 'Remove its lessons from the course first'}
+        onClick={() => start(async () => {
+          const res = await post(
+            'onyx/platform/tenants/' + tenantId + '/modules/' + mod.id, undefined, 'DELETE');
+          if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+          router.refresh();
+        })}
+        className="rounded-lg border border-slate-300 px-3 py-1.5 text-[13px] font-semibold
+                   text-red-700 disabled:opacity-40"
+      >
+        Remove
+      </button>
+    </div>
+  );
+}

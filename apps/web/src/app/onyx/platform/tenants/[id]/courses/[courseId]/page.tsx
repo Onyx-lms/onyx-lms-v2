@@ -1,0 +1,156 @@
+import Link from 'next/link';
+import type { Metadata } from 'next';
+import { requirePlatformSession } from '@/lib/onyx-platform-session';
+import { attempt, Unavailable, money } from '@/lib/onyx-platform-tenant';
+import { AddModuleForm, ModuleRowActions } from '@/components/onyx-platform-forms';
+import { Card, Icon, Pill, SectionHead, State } from '@/components/onyx-ui';
+
+export const metadata: Metadata = { title: 'Course' };
+
+interface Lesson {
+  id: number; module_id: number; title: string; type: string;
+  duration_seconds: number | null; sort: number; is_preview: number;
+}
+interface Outline {
+  course: {
+    id: number; code: string; title: string; credits: number; status: number;
+    access: string | null; price_minor: number | null; currency: string | null; slug: string;
+  };
+  modules: { id: number; title: string; summary: string | null; sort: number;
+    lessons: Lesson[] }[];
+}
+
+/**
+ * One course, opened from the console.
+ *
+ * The console could create a course, rename it and delete it, and never look
+ * inside one -- so "add a module" had nowhere to happen, and an operator
+ * setting up an institution had to sign in as that institution to build its
+ * first course structure.
+ *
+ * Modules are editable here. Lessons are listed but not authored here, and the
+ * page says why: a lesson that carries a file needs the browser to send that
+ * file straight to storage, which is the course's own screen. Listing them
+ * read-only is still worth doing -- it is how somebody sees that a module is
+ * an empty heading rather than a week of teaching.
+ */
+export default async function OnyxPlatformCoursePage(
+  { params }: { params: Promise<{ id: string; courseId: string }> },
+) {
+  await requirePlatformSession();
+  const { id, courseId } = await params;
+  const tenantId = Number(id);
+  const outline = await attempt<Outline>(
+    '/api/onyx/platform/tenants/' + encodeURIComponent(id)
+    + '/courses/' + encodeURIComponent(courseId) + '/outline');
+
+  if (outline === null) return <Unavailable what="course" />;
+  const { course, modules } = outline;
+  const lessonCount = modules.reduce((n, m) => n + m.lessons.length, 0);
+
+  return (
+    <div className="min-w-0 space-y-5">
+      <Link href={'/onyx/platform/tenants/' + tenantId + '/courses'}
+        className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand-700
+                   hover:underline">
+        <Icon name="chevron" className="h-4 w-4 rotate-180" />
+        All courses
+      </Link>
+
+      <Card className="p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="font-mono text-[12.5px] font-semibold text-brand-700">
+              {course.code}
+            </div>
+            <h2 className="text-[19px] font-bold text-ink">{course.title}</h2>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[12.5px] text-muted">
+              <span className="tabular-nums">{course.credits} credits</span>
+              <span>·</span>
+              <span className="tabular-nums">
+                {modules.length} {modules.length === 1 ? 'module' : 'modules'}
+              </span>
+              <span>·</span>
+              <span className="tabular-nums">
+                {lessonCount} {lessonCount === 1 ? 'lesson' : 'lessons'}
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {course.access === 'locked' ? (
+              <Pill tone="brand">
+                {money(Number(course.price_minor ?? 0), course.currency ?? 'INR')}
+              </Pill>
+            ) : null}
+            {course.status === 1 ? <State tone="on">Open</State> : <State tone="idle">Draft</State>}
+          </div>
+        </div>
+      </Card>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SectionHead title="Modules" />
+        <AddModuleForm tenantId={tenantId} courseId={course.id} />
+      </div>
+
+      {modules.length === 0 ? (
+        <Card className="p-6 text-center">
+          <p className="text-[14px] font-semibold text-ink">Nothing has been built yet.</p>
+          <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-muted">
+            A course is a sequence of modules, and each module holds the lessons a learner
+            works through. Add the first one above.
+          </p>
+        </Card>
+      ) : (
+        <ol className="space-y-3">
+          {modules.map((m, i) => (
+            <li key={m.id}>
+              <Card className="p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-2.5">
+                      {/* Numbered, because a course IS an order -- "02" tells
+                          somebody where a module sits in a way a bare title
+                          does not. */}
+                      <span className="font-mono text-[13px] font-bold tabular-nums
+                                       text-accent-700">
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <span className="text-[15px] font-bold text-ink">{m.title}</span>
+                    </div>
+                    {m.summary ? (
+                      <p className="mt-1 text-[13px] leading-relaxed text-muted">{m.summary}</p>
+                    ) : null}
+                  </div>
+                  <ModuleRowActions tenantId={tenantId} module={m} />
+                </div>
+
+                {m.lessons.length ? (
+                  <ul className="mt-3 divide-y divide-line border-t border-line pt-1">
+                    {m.lessons.map((l) => (
+                      <li key={l.id} className="flex items-center gap-2.5 py-2 text-[13px]">
+                        <Icon name="play" className="h-3.5 w-3.5 shrink-0 text-muted" />
+                        <span className="min-w-0 flex-1 truncate text-ink">{l.title}</span>
+                        <span className="shrink-0 text-[12px] text-muted">{l.type}</span>
+                        {l.is_preview ? <Pill tone="neutral">Preview</Pill> : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-3 border-t border-line pt-3 text-[12.5px] text-muted">
+                    No lessons in this module yet.
+                  </p>
+                )}
+              </Card>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      <p className="text-[12.5px] leading-relaxed text-muted">
+        Lessons are added from the course itself, signed in at the institution — a lesson
+        carrying a video or a document needs the browser to send that file straight to
+        storage, which this console cannot do on its behalf.
+      </p>
+    </div>
+  );
+}

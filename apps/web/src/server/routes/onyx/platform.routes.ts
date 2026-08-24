@@ -394,6 +394,102 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
     return ok({}, 'Removed.');
   });
 
+  // ===========================================================================
+  // Live Classes
+  //
+  // The institution side has had these since domains shipped; the console had
+  // no route to any of them, so the section could not exist. An operator
+  // setting an institution up had to sign in as that institution to add one.
+  // ===========================================================================
+
+  app.get('/api/onyx/platform/tenants/:id/domains', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxPlatform.domains(idOf(req)));
+  });
+
+  app.post('/api/onyx/platform/tenants/:id/domains', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      title: z.string().min(1).max(200),
+      summary: z.string().max(4000).nullish(),
+      // Checked by name on the way in -- see normaliseCurriculumUrl. This
+      // ends up in an anchor's href.
+      curriculum_url: z.string().max(500).nullish(),
+      certificate: z.string().max(200).nullish(),
+      duration_label: z.string().max(80).nullish(),
+      // Minor units, capped like every other price in this API.
+      price_minor: z.number().int().min(0).max(100_000_000).optional(),
+      sort: z.number().int().min(0).max(9999).optional(),
+      status: z.number().int().min(0).max(1).optional(),
+    }), req.body);
+    return ok(await ctx.onyxPlatform.createDomain(idOf(req), claims.user_id, body),
+      'Live Class created.');
+  });
+
+  app.patch('/api/onyx/platform/tenants/:id/domains/:domainId', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      title: z.string().min(1).max(200).optional(),
+      summary: z.string().max(4000).nullish(),
+      curriculum_url: z.string().max(500).nullish(),
+      certificate: z.string().max(200).nullish(),
+      duration_label: z.string().max(80).nullish(),
+      price_minor: z.number().int().min(0).max(100_000_000).optional(),
+      sort: z.number().int().min(0).max(9999).optional(),
+      status: z.number().int().min(0).max(1).optional(),
+    }), req.body);
+    return ok(await ctx.onyxPlatform.updateDomain(
+      idOf(req), subIdOf(req, 'domainId'), claims.user_id, body), 'Updated.');
+  });
+
+  app.delete('/api/onyx/platform/tenants/:id/domains/:domainId', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxPlatform.removeDomain(
+      idOf(req), subIdOf(req, 'domainId'), claims.user_id), 'Removed.');
+  });
+
+  // ===========================================================================
+  // Inside a course
+  //
+  // The console could create a course and rename it and never open it, so
+  // there was nowhere for "add a module" to happen.
+  // ===========================================================================
+
+  app.get('/api/onyx/platform/tenants/:id/courses/:courseId/outline', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxPlatform.courseOutline(idOf(req), subIdOf(req, 'courseId')));
+  });
+
+  app.post('/api/onyx/platform/tenants/:id/courses/:courseId/modules', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      title: z.string().min(1).max(255),
+      summary: z.string().max(4000).nullish(),
+      // Omitted means "put it last", which is what somebody adding a module
+      // to the end of a course means. See createCourseModule.
+      sort: z.number().int().min(0).max(9999).optional(),
+    }), req.body);
+    return ok(await ctx.onyxPlatform.createCourseModule(
+      idOf(req), subIdOf(req, 'courseId'), claims.user_id, body), 'Module added.');
+  });
+
+  app.patch('/api/onyx/platform/tenants/:id/modules/:moduleId', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      title: z.string().min(1).max(255).optional(),
+      summary: z.string().max(4000).nullish(),
+      sort: z.number().int().min(0).max(9999).optional(),
+    }), req.body);
+    return ok(await ctx.onyxPlatform.updateCourseModule(
+      idOf(req), subIdOf(req, 'moduleId'), claims.user_id, body), 'Updated.');
+  });
+
+  app.delete('/api/onyx/platform/tenants/:id/modules/:moduleId', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxPlatform.removeCourseModule(
+      idOf(req), subIdOf(req, 'moduleId'), claims.user_id), 'Removed.');
+  });
+
   app.patch('/api/onyx/platform/tenants/:id/assignments/:assignmentId', async (req) => {
     const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     const body = validate(z.object({

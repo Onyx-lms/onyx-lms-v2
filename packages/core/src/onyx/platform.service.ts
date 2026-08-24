@@ -20,6 +20,11 @@ import { HttpError } from '../http/errors.ts';
 import { slugify } from '../authoring/slug.ts';
 import { ROLES } from './tenancy.service.ts';
 import { gradeFor } from './examinations.service.ts';
+// The same guard the institution-side service uses, imported rather than
+// copied: a curriculum link becomes an anchor's href, and `javascript:` in
+// an href is stored XSS with extra steps. Two implementations of that check
+// is one implementation and one hole waiting to be found.
+import { normaliseCurriculumUrl } from './domains.service.ts';
 
 const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, created_at, updated_at';
 const ADMIN_COLUMNS = 'id, user_id, granted_by, created_at';
@@ -1770,4 +1775,206 @@ export class PlatformService {
       before: before as never, after: after as never,
     });
   }
+
+  // -------------------------------------------------------------------------
+  // Live Classes, and the modules inside a course
+  //
+  // Both exist on the institution side and neither was reachable from the
+  // platform console, so an operator standing an institution up had to sign in
+  // AS that institution to finish the job. For Live Classes there was no
+  // console route at all -- the section simply was not there.
+  // -------------------------------------------------------------------------
+
+  /** Every Live Class, published or not: the console is the operator's view. */
+  async domains(tenantId: number) {
+    const { data } = await this.#db.from('onyx_domains')
+      // eslint-disable-next-line max-len -- one literal: a concatenated select collapses the client's row type to an error type.
+      .select('id, tenant_id, title, summary, curriculum_url, image_path, certificate, duration_label, price_minor, currency, sort, status, created_at')
+      .eq('tenant_id', tenantId).order('sort').order('id');
+    return data ?? [];
+  }
+
+  async createDomain(tenantId: number, actorId: string | null, input: {
+    title: string; summary?: string | null; curriculum_url?: string | null;
+    certificate?: string | null; duration_label?: string | null;
+    price_minor?: number; sort?: number; status?: number;
+  }) {
+    const { data, error } = await this.#db.from('onyx_domains').insert({
+      tenant_id: tenantId,
+      title: input.title.trim(),
+      summary: input.summary ?? '',
+      curriculum_url: normaliseCurriculumUrl(input.curriculum_url),
+      certificate: input.certificate ?? '',
+      duration_label: input.duration_label ?? '',
+      price_minor: input.price_minor ?? 0,
+      sort: input.sort ?? 0,
+      // Draft by default, exactly as a course is. A Live Class appearing on
+      // every learner's screen the instant somebody typed a title is not a
+      // default anyone would choose deliberately.
+      status: input.status ?? 0,
+      created_by: actorId,
+    }).select('id, title, status, price_minor').maybeSingle();
+    if (error) throw new HttpError(500, 'Could not create that Live Class: ' + error.message);
+    await this.#log(actorId, 'domain.created', 'domain', Number(data!.id), null,
+      { title: data!.title });
+    return data;
+  }
+
+  async updateDomain(tenantId: number, domainId: number, actorId: string | null, patch: {
+    title?: string; summary?: string | null; curriculum_url?: string | null;
+    certificate?: string | null; duration_label?: string | null;
+    price_minor?: number; sort?: number; status?: number;
+  }) {
+    const before = await this.#domainRow(tenantId, domainId);
+    const next: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.title !== undefined) next.title = patch.title.trim();
+    if (patch.summary !== undefined) next.summary = patch.summary ?? '';
+    if (patch.curriculum_url !== undefined) {
+      next.curriculum_url = normaliseCurriculumUrl(patch.curriculum_url);
+    }
+    if (patch.certificate !== undefined) next.certificate = patch.certificate ?? '';
+    if (patch.duration_label !== undefined) next.duration_label = patch.duration_label ?? '';
+    if (patch.price_minor !== undefined) next.price_minor = patch.price_minor;
+    if (patch.sort !== undefined) next.sort = patch.sort;
+    if (patch.status !== undefined) next.status = patch.status;
+
+    const { error } = await this.#db.from('onyx_domains')
+      .update(next).eq('tenant_id', tenantId).eq('id', domainId);
+    if (error) throw new HttpError(500, 'Could not update that Live Class: ' + error.message);
+    await this.#log(actorId, 'domain.updated', 'domain', domainId,
+      { title: before.title, status: before.status }, next);
+    return this.#domainRow(tenantId, domainId);
+  }
+
+  async removeDomain(tenantId: number, domainId: number, actorId: string | null) {
+    const before = await this.#domainRow(tenantId, domainId);
+    const { error } = await this.#db.from('onyx_domains')
+      .delete().eq('tenant_id', tenantId).eq('id', domainId);
+    if (error) throw new HttpError(500, 'Could not remove that Live Class: ' + error.message);
+    await this.#log(actorId, 'domain.deleted', 'domain', domainId,
+      { title: before.title }, null);
+    return { id: domainId, removed: true };
+  }
+
+  async #domainRow(tenantId: number, domainId: number) {
+    const { data } = await this.#db.from('onyx_domains')
+      // eslint-disable-next-line max-len -- one literal, same reason as above.
+      .select('id, tenant_id, title, summary, curriculum_url, certificate, duration_label, price_minor, currency, sort, status')
+      .eq('tenant_id', tenantId).eq('id', domainId).maybeSingle();
+    if (!data) throw new HttpError(404, 'No Live Class at that address.');
+    return data;
+  }
+
+  /**
+   * One course as an operator needs to see it: its modules, and the lessons
+   * inside each.
+   *
+   * The console could create a course and rename it and never open it, so
+   * "add a module" had nowhere to happen.
+   */
+  async courseOutline(tenantId: number, courseId: number) {
+    const { data: course } = await this.#db.from('onyx_courses')
+      .select('id, code, title, credits, status, access, price_minor, currency, slug')
+      .eq('tenant_id', tenantId).eq('id', courseId).maybeSingle();
+    if (!course) throw new HttpError(404, 'No such course.');
+
+    const { data: modules } = await this.#db.from('onyx_modules')
+      .select('id, course_id, title, summary, sort')
+      .eq('tenant_id', tenantId).eq('course_id', courseId).order('sort').order('id');
+    const { data: lessons } = await this.#db.from('onyx_lessons')
+      .select('id, module_id, title, type, duration_seconds, sort, is_preview')
+      .eq('tenant_id', tenantId).eq('course_id', courseId).order('sort').order('id');
+
+    const byModule = new Map<number, Record<string, unknown>[]>();
+    for (const l of lessons ?? []) {
+      const key = Number(l.module_id);
+      byModule.set(key, [...(byModule.get(key) ?? []), l as Record<string, unknown>]);
+    }
+    return {
+      course,
+      modules: (modules ?? []).map((m) => ({
+        ...m, lessons: byModule.get(Number(m.id)) ?? [],
+      })),
+    };
+  }
+
+  async createCourseModule(tenantId: number, courseId: number, actorId: string | null, input: {
+    title: string; summary?: string | null; sort?: number;
+  }) {
+    const { data: course } = await this.#db.from('onyx_courses')
+      .select('id').eq('tenant_id', tenantId).eq('id', courseId).maybeSingle();
+    if (!course) throw new HttpError(404, 'No such course.');
+
+    // Appended, not stacked at zero. Every module created from here would
+    // otherwise share sort 0, and the order a learner reads them in would be
+    // whatever the database felt like that day.
+    let sort = input.sort;
+    if (sort === undefined) {
+      const { data: existing } = await this.#db.from('onyx_modules')
+        .select('sort').eq('tenant_id', tenantId).eq('course_id', courseId);
+      sort = (existing ?? []).reduce((max, m) => Math.max(max, Number(m.sort ?? 0)), -1) + 1;
+    }
+
+    const { data, error } = await this.#db.from('onyx_modules').insert({
+      tenant_id: tenantId, course_id: courseId,
+      title: input.title.trim(), summary: input.summary ?? null, sort,
+    }).select('id, course_id, title, summary, sort').maybeSingle();
+    if (error) throw new HttpError(500, 'Could not create that module: ' + error.message);
+    await this.#log(actorId, 'module.created', 'module', Number(data!.id), null,
+      { course_id: courseId, title: data!.title });
+    return data;
+  }
+
+  async updateCourseModule(tenantId: number, moduleId: number, actorId: string | null, patch: {
+    title?: string; summary?: string | null; sort?: number;
+  }) {
+    const before = await this.#courseModule(tenantId, moduleId);
+    const next: Record<string, unknown> = {};
+    if (patch.title !== undefined) next.title = patch.title.trim();
+    if (patch.summary !== undefined) next.summary = patch.summary ?? null;
+    if (patch.sort !== undefined) next.sort = patch.sort;
+    if (!Object.keys(next).length) return before;
+
+    const { error } = await this.#db.from('onyx_modules')
+      .update(next).eq('tenant_id', tenantId).eq('id', moduleId);
+    if (error) throw new HttpError(500, 'Could not update that module: ' + error.message);
+    await this.#log(actorId, 'module.updated', 'module', moduleId,
+      { title: before.title }, next);
+    return this.#courseModule(tenantId, moduleId);
+  }
+
+  async removeCourseModule(tenantId: number, moduleId: number, actorId: string | null) {
+    const before = await this.#courseModule(tenantId, moduleId);
+    /*
+     * Refused while it still holds lessons, rather than cascading in silence.
+     *
+     * A module with lessons in it is somebody's teaching, and this console sits
+     * two levels away from the person who wrote it. The database would happily
+     * take the whole subtree; making it a deliberate second step is the
+     * difference between deleting a heading and deleting a term's work.
+     */
+    const { data: lessons } = await this.#db.from('onyx_lessons')
+      .select('id').eq('tenant_id', tenantId).eq('module_id', moduleId);
+    const count = (lessons ?? []).length;
+    if (count) {
+      throw new HttpError(422, 'That module still holds ' + count
+        + (count === 1 ? ' lesson' : ' lessons')
+        + '. Remove them from the course itself first.');
+    }
+    const { error } = await this.#db.from('onyx_modules')
+      .delete().eq('tenant_id', tenantId).eq('id', moduleId);
+    if (error) throw new HttpError(500, 'Could not remove that module: ' + error.message);
+    await this.#log(actorId, 'module.deleted', 'module', moduleId,
+      { title: before.title }, null);
+    return { id: moduleId, removed: true };
+  }
+
+  async #courseModule(tenantId: number, moduleId: number) {
+    const { data } = await this.#db.from('onyx_modules')
+      .select('id, course_id, title, summary, sort')
+      .eq('tenant_id', tenantId).eq('id', moduleId).maybeSingle();
+    if (!data) throw new HttpError(404, 'No such module.');
+    return data;
+  }
 }
+

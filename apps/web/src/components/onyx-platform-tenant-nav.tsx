@@ -41,6 +41,12 @@ const GROUPS: TenantNavGroup[] = [
   // Courses below, where the real feature actually lives.
   { label: 'Academics', items: [
     { seg: 'courses', label: 'Courses', icon: 'book' },
+    // Beside Courses because that is what it sits beside on the institution's
+    // own nav, and because the two are the same question asked twice: what
+    // does this institution teach. It was missing entirely -- the feature had
+    // no console route at all, so an operator could not see, let alone add,
+    // a single Live Class without signing in as the institution.
+    { seg: 'domains', label: 'Live Classes', icon: 'video' },
     { seg: 'timetable', label: 'Timetable', icon: 'calendar' },
     { seg: 'examinations', label: 'Examinations', icon: 'award' },
     { seg: 'assessments', label: 'Assessments', icon: 'target' },

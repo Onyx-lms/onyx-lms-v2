@@ -60,8 +60,17 @@ export default async function OnyxPlatformCoursesPage(
             ) : courses.map((c) => (
               <tr key={c.id} className="align-top">
                 <td>
-                  <div className="font-mono text-[12.5px] font-semibold text-brand-700">{c.code}</div>
-                  <div className="font-semibold">{c.title}</div>
+                  {/* The course opens. It did not before: the console could
+                      make one, rename it and delete it, and never look
+                      inside -- so there was nowhere for "add a module" to
+                      happen. */}
+                  <Link href={'/onyx/platform/tenants/' + tenantId + '/courses/' + c.id}
+                    className="group inline-block">
+                    <div className="font-mono text-[12.5px] font-semibold text-brand-700">
+                      {c.code}
+                    </div>
+                    <div className="font-semibold group-hover:underline">{c.title}</div>
+                  </Link>
                 </td>
                 <td className="text-[13px]">{c.programme ?? <span className="text-muted">—</span>}</td>
                 <td className="tabular-nums">{c.credits}</td>
