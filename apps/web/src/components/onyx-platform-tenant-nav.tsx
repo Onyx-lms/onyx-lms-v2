@@ -86,11 +86,35 @@ const LABEL_OF = new Map(GROUPS.flatMap((g) => g.items).map((i) => [i.seg, i.lab
  */
 const OFF_MENU: Record<string, string> = { assignments: 'Assignments' };
 
-export function sectionOf(pathname: string, tenantId: number): { seg: string; label: string } {
+/**
+ * Sections whose detail page is worth naming in its own right.
+ *
+ * A page showing ONE course was headed "Courses", because the label is read
+ * off the first path segment and `/courses/60` starts with `courses`. The
+ * breadcrumb said the same, so the trail read Institutions / ABC / Courses on
+ * a page about a single course, with the course's own name in a card
+ * underneath. Naming it "Course" and linking "Courses" back to the list is
+ * what the trail is for.
+ */
+const DETAIL_OF: Record<string, string> = { courses: 'Course' };
+
+export function sectionOf(pathname: string, tenantId: number): {
+  seg: string; label: string;
+  /** Set on a detail page: the section it belongs under, for the crumb. */
+  parent?: { seg: string; label: string };
+} {
   const after = pathname.split('/tenants/' + tenantId + '/')[1];
-  const seg = after ? (after.split('/')[0] ?? '') : '';
+  const parts = after ? after.split('/').filter(Boolean) : [];
+  const seg = parts[0] ?? '';
   const label = LABEL_OF.get(seg) ?? OFF_MENU[seg];
-  return { seg: label ? seg : '', label: label ?? 'Overview' };
+  if (!label) return { seg: '', label: 'Overview' };
+
+  // A numeric second segment is a record, not a sub-section. Anything else --
+  // there is none today -- keeps the section's own name rather than guessing.
+  const detail = parts.length > 1 && /^\d+$/.test(parts[1] ?? '') ? DETAIL_OF[seg] : undefined;
+  return detail
+    ? { seg, label: detail, parent: { seg, label } }
+    : { seg, label };
 }
 
 /**
@@ -117,13 +141,15 @@ export function TenantHeader({ tenantId, tenantName, subtitle, badge }: {
 }) {
   const pathname = usePathname();
   const base = '/onyx/platform/tenants/' + tenantId;
-  const { seg, label } = sectionOf(pathname, tenantId);
+  const { seg, label, parent } = sectionOf(pathname, tenantId);
 
   const crumbs: { href?: string; label: string }[] = [
     { href: '/onyx/platform', label: 'Institutions' },
     // The institution links to its own overview -- except while you are on it,
     // where a link to the page you are reading is noise.
     seg ? { href: base, label: tenantName } : { label: tenantName },
+    // The section, linked, when the page below it is a single record.
+    ...(parent ? [{ href: base + '/' + parent.seg, label: parent.label }] : []),
     ...(seg ? [{ label }] : []),
   ];
 
