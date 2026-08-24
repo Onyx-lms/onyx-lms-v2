@@ -59,7 +59,10 @@ test.afterAll(async () => {
 
 test('the matrix covers every part of the institution, not just examinations', async ({ page }) => {
   await signIn(page, ADMIN);
-  await page.goto('/onyx/settings');
+  // The matrix has its own screen now. It was a section on Settings, which put
+  // "how this institution runs" and "who is allowed to run it" under one
+  // heading -- different questions, asked by different people.
+  await page.goto('/onyx/permissions');
 
   // The areas an institution actually delegates across.
   for (const area of ['People', 'Academic structure', 'Courses', 'Assessment',

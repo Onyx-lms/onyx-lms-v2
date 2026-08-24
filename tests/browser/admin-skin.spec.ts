@@ -69,6 +69,9 @@ test('the skin changes nothing an administrator can do', async ({ page }) => {
   // And the screens behind them still render their own content.
   await page.goto('/onyx/people?role=student');
   await expect(page.getByRole('button', { name: 'Add a student' })).toBeVisible();
+  // Settings keeps the settings; the permission matrix has its own screen.
   await page.goto('/onyx/settings');
+  await expect(page.getByRole('heading', { name: 'Student registration' })).toBeVisible();
+  await page.goto('/onyx/permissions');
   await expect(page.getByRole('heading', { name: 'People', exact: true }).first()).toBeVisible();
 });

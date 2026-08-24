@@ -64,7 +64,11 @@ test.describe('Live Classes', () => {
     await dialog.getByLabel('Curriculum link').fill('https://onyxedutech.com/curriculum/test');
     await dialog.getByLabel('Certificate').fill('Certificate in Testing');
     await dialog.getByLabel('Duration').fill('8 weeks');
-    await dialog.getByLabel('Price in paise').fill('250000');
+    // Rupees, with the ₹ in the field. This asked for paise and explained the
+    // conversion underneath, which is a form asking somebody to do arithmetic
+    // it can do itself -- 2,500 typed here is stored as 250000 minor units,
+    // and the assertion further down reads the stored figure.
+    await dialog.getByLabel('Price').fill('2500');
     await dialog.getByRole('button', { name: /add the domain/i }).click();
 
     await expect(dialog).toBeHidden({ timeout: 20_000 });

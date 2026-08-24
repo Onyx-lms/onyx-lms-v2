@@ -349,14 +349,18 @@ test('a learner is offered neither Interviews nor Fees', async ({ page }) => {
   // their inbox. The route keeps its own page guard -- this hides an entrance,
   // it is not pretending to be a permission.
   await signInViaForm(page, learnerEmail);
-  await expect(page.getByRole('link', { name: 'Jobs' })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole('link', { name: 'Interviews' })).toHaveCount(0);
+  const mainNav = page.getByRole('navigation', { name: 'Main' });
+  await expect(mainNav.getByRole('link', { name: 'Jobs' })).toBeVisible({ timeout: 20_000 });
+  await expect(mainNav.getByRole('link', { name: 'Interviews' })).toHaveCount(0);
 
   // Fees goes for a related reason: what a learner pays for here is a course,
   // and that has its own screen on the catalogue. Institution fee invoices are
   // the office's ledger. Asserted beside Timetable, which is in the same nav
   // group -- so a group that had quietly stopped rendering would fail here
   // rather than pass by absence.
-  await expect(page.getByRole('link', { name: 'Timetable' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Fees' })).toHaveCount(0);
+  // Scoped to the sidebar: every nav item also appears in the phone tab bar,
+  // so an unscoped role locator resolves to two and fails strict mode.
+  const nav = page.getByRole('navigation', { name: 'Main' });
+  await expect(nav.getByRole('link', { name: 'Timetable' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Fees' })).toHaveCount(0);
 });
