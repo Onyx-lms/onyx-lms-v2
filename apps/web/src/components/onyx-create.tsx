@@ -59,6 +59,15 @@ export interface Field {
   numeric?: boolean;
   /** Sent when the box is left empty, so a caller can supply a default. */
   fallback?: string | number | boolean;
+  /**
+   * What the box starts with, which is not the same thing as `fallback`.
+   *
+   * `fallback` is invisible: the person sees an empty field and something
+   * else is sent. `initial` is a value they can read and change before they
+   * submit -- which is what a default price has to be, because the number
+   * being charged is the whole point of the field.
+   */
+  initial?: string | number;
   /** Full width in the two-column grid. */
   wide?: boolean;
 }
@@ -299,7 +308,10 @@ export function CreatePanel({
             <div className="grid gap-3 sm:grid-cols-2">
               {fields.map((f) => {
                 const id = endpoint.replace(/[^a-z0-9]/gi, '-') + '-' + f.name;
-                const common = { id, name: f.name, required: f.required, className: input };
+                const common = {
+                  id, name: f.name, required: f.required, className: input,
+                  ...(f.initial !== undefined ? { defaultValue: String(f.initial) } : {}),
+                };
                 return (
                   <div key={f.name}
                     className={f.wide || f.type === 'textarea' ? 'sm:col-span-2' : ''}>

@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { FakeDb } from './fake-db.ts';
-import { AcademicsService } from '../src/onyx/academics.service.ts';
+import { AcademicsService, DEFAULT_LOCKED_PRICE_MINOR } from '../src/onyx/academics.service.ts';
 import { ContentService, onyxStorageKey, ONYX_LESSON_TYPES } from '../src/onyx/content.service.ts';
 import { AttendanceService } from '../src/onyx/attendance.service.ts';
 import { AssignmentsService } from '../src/onyx/assignments.service.ts';
@@ -963,4 +963,61 @@ test('someone not enrolled cannot submit at all', async () => {
     (e: HttpError) => e.status === 403);
   await assert.rejects(assignments.saveDraft(T, id, 'user-999', 'let me in'),
     (e: HttpError) => e.status === 403);
+});
+
+test('a locked course created with no price costs the house price, not nothing', async () => {
+  /*
+   * `onyx_courses_locked_price_check` (0024) refuses a locked course priced at
+   * zero, and rightly: a locked course nobody can buy is a course nobody can
+   * ever enter. But the refusal arrived as a raw constraint violation, which
+   * told whoever left the price blank nothing they could act on. Choosing
+   * "locked" IS choosing to charge, so the price comes with the choice.
+   */
+  const { academics } = world();
+  const course = await academics.createCourse(T, 1, {
+    code: 'PAY1', title: 'Paid course', access: 'locked',
+  });
+  assert.equal(Number(course.price_minor), DEFAULT_LOCKED_PRICE_MINOR);
+  assert.equal(Number(course.price_minor), 30_000, 'the house price is ₹300');
+  // The other half of the pair: a locked course is self-enrollable, because
+  // buying it IS the enrolment.
+  assert.equal(Number(course.self_enroll), 1);
+});
+
+test('a price somebody typed always wins, including a smaller one', async () => {
+  // A DEFAULT, never a floor. An institution selling a ₹49 taster is not
+  // overruled by a number this codebase picked.
+  const { academics } = world();
+  const dear = await academics.createCourse(T, 1, {
+    code: 'PAY2', title: 'Dearer', access: 'locked', price_minor: 149_900,
+  });
+  assert.equal(Number(dear.price_minor), 149_900);
+
+  const cheap = await academics.createCourse(T, 1, {
+    code: 'PAY3', title: 'Taster', access: 'locked', price_minor: 4_900,
+  });
+  assert.equal(Number(cheap.price_minor), 4_900);
+});
+
+test('an open course is still free, and locking it later prices it', async () => {
+  const { academics } = world();
+  const free = await academics.createCourse(T, 1, {
+    code: 'PAY4', title: 'Free course', access: 'open',
+  });
+  assert.equal(Number(free.price_minor), 0, 'an open course was given a price');
+
+  const locked = await academics.updateCourse(T, Number(free.id), { access: 'locked' });
+  assert.equal(Number(locked.price_minor), DEFAULT_LOCKED_PRICE_MINOR);
+});
+
+test('locking a course that already has a price leaves the price alone', async () => {
+  // Somebody chose that number. Switching a ₹1,499 course from open to locked
+  // must not quietly make it ₹300 -- that is a price cut nobody asked for, and
+  // it would happen on a screen that says nothing about price at all.
+  const { academics } = world();
+  const priced = await academics.createCourse(T, 1, {
+    code: 'PAY5', title: 'Priced already', access: 'open', price_minor: 149_900,
+  });
+  const locked = await academics.updateCourse(T, Number(priced.id), { access: 'locked' });
+  assert.equal(Number(locked.price_minor), 149_900);
 });

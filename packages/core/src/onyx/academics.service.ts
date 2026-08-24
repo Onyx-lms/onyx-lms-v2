@@ -24,6 +24,19 @@ const COURSE_COLUMNS = 'id, tenant_id, program_id, semester_id, code, title, slu
 const ENROLLMENT_COLUMNS = 'id, tenant_id, course_id, user_id, batch_id, status, enrolled_by, created_at';
 
 /**
+ * What a locked course costs when nobody says otherwise: ₹300.
+ *
+ * Minor units, like every other amount in this codebase -- integer paise,
+ * because floating-point rupees is how a ledger ends up a paisa out. Exported
+ * so the course form can show the same figure it is going to send: a default
+ * the screen and the server disagree about is worse than no default at all.
+ *
+ * It is a DEFAULT and never a floor. Any price a person types wins, including
+ * a higher one, and a course that already carries a price keeps it.
+ */
+export const DEFAULT_LOCKED_PRICE_MINOR = 30_000;
+
+/**
  * Who is allowed to see a course that is not published yet. The same two
  * roles `courses()` lets past its `status: 1` filter -- they are the ones
  * who have to finish the thing.
@@ -378,7 +391,19 @@ export class AcademicsService {
       self_enroll: input.access !== undefined
         ? (input.access === 'batch' ? 0 : 1)
         : (input.self_enroll ? 1 : 0),
-      price_minor: input.price_minor ?? 0,
+      /*
+       * A locked course priced at nothing cannot exist, so it is priced.
+       *
+       * `onyx_courses_locked_price_check` (0024) refuses `access = 'locked'`
+       * with a price of zero, and rightly: a locked course nobody can buy is
+       * a course nobody can ever enter. But the refusal arrived as a raw
+       * constraint violation from Postgres, which told whoever left the price
+       * blank nothing they could act on. So the two facts are joined here
+       * instead -- choosing "locked" IS choosing to charge, and the house
+       * price is what it costs when nobody says otherwise.
+       */
+      price_minor: input.price_minor
+        ?? (input.access === 'locked' ? DEFAULT_LOCKED_PRICE_MINOR : 0),
       ...(input.currency ? { currency: input.currency.toUpperCase() } : {}),
       // Courses start unpublished: an empty course visible to a cohort is worse
       // than no course at all.
@@ -412,6 +437,16 @@ export class AcademicsService {
       patch.self_enroll = input.access === 'batch' ? 0 : 1;
     }
     if (input.price_minor !== undefined) patch.price_minor = input.price_minor;
+    /*
+     * Locking a course that was free prices it, for the same reason create
+     * does. Read rather than assumed: a course already carrying a price keeps
+     * the price it has, because somebody chose that number and switching a
+     * ₹1,499 course from open to locked must not quietly make it ₹300.
+     */
+    if (input.access === 'locked' && patch.price_minor === undefined) {
+      const current = Number((await this.course(tenantId, id)).price_minor ?? 0);
+      if (current <= 0) patch.price_minor = DEFAULT_LOCKED_PRICE_MINOR;
+    }
     if (input.currency !== undefined) patch.currency = input.currency.toUpperCase();
     if (input.status !== undefined) patch.status = input.status;
 

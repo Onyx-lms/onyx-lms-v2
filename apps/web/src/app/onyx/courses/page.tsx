@@ -6,6 +6,7 @@ import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-se
 import { BuyCourseButton } from '@/components/onyx-buy';
 import { isStaff, type Course, type Outline, type Program } from '@/lib/onyx-learn';
 import { CreatePanel, ActionButton } from '@/components/onyx-create';
+import { DEFAULT_LOCKED_PRICE_MINOR } from '@onyx/core';
 import {
   Card, CardGrid, Empty, Icon, Meter, Pill, SectionHead,
 } from '@/components/onyx-ui';
@@ -127,8 +128,13 @@ export default async function OnyxCoursesPage() {
             // field converts -- but nobody setting a price should have to
             // multiply by a hundred, and a slip of two zeroes here is the
             // difference between ₹1,499 and ₹149,900.
+            // Pre-filled with the house price, and the same figure the server
+            // would supply if this were left empty -- a default the screen and
+            // the API disagree about is worse than no default at all.
             { name: 'price_minor', label: 'Price', type: 'money', min: 0,
-              help: 'What a learner pays to unlock it. Only used for a locked course.' },
+              initial: DEFAULT_LOCKED_PRICE_MINOR / 100,
+              help: 'What a learner pays to unlock it. Only used for a locked course; '
+                + '₹' + (DEFAULT_LOCKED_PRICE_MINOR / 100) + ' unless you change it.' },
           ]}
           // Created as a draft, then opened -- a course nobody can see is not
           // much use, and publishing is a separate right the API checks.
