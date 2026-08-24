@@ -305,6 +305,33 @@ export function createContext(): AppContext {
       // at 127.0.0.1:5173, which is a payer being sent back to a page on
       // their own machine.
       baseUrl: process.env.WEB_URL || process.env.WEB_ORIGIN,   // || not ??: blank means unset
+      /*
+       * The platform's own merchant account, used by every institution that
+       * has not configured one of its own.
+       *
+       * Onyx sells on behalf of the institutions rather than as them, so there
+       * is one Razorpay account and not nine. From the environment rather than
+       * a row, because a live secret in a table is a live secret in every
+       * backup of that table -- and because an institution created tomorrow
+       * has to be able to sell without anybody remembering to paste a key in.
+       *
+       * Unset in a deployment that sells nothing, and then every Buy button
+       * opens the mock dialog and says on it that no money moved.
+       */
+      defaults: process.env.RAZORPAY_KEY_ID ? [{
+        identifier: 'razorpay',
+        title: 'Razorpay',
+        currency: process.env.RAZORPAY_CURRENCY || 'INR',
+        keys: {
+          razorpay_key: process.env.RAZORPAY_KEY_ID,
+          razorpay_secret: process.env.RAZORPAY_KEY_SECRET ?? '',
+          // Without this `parseWebhook` returns null at its first line and
+          // every webhook silently no-ops, which is only survivable because
+          // the redirect path also settles. Set it and both work.
+          ...(process.env.RAZORPAY_WEBHOOK_SECRET
+            ? { razorpay_webhook_secret: process.env.RAZORPAY_WEBHOOK_SECRET } : {}),
+        },
+      }] : [],
     }),
     onyxGuardians: new GuardianService(onyxDb, onyxAudit, onyxExams),
     onyxPlatform: new PlatformService(onyxDb),

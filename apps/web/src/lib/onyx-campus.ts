@@ -234,6 +234,12 @@ export interface PayableGateway {
 export interface GatewayConfigSummary {
   id: number; identifier: string; title: string; currency: string;
   test_mode: number; status: number; configured_keys: string[];
+  /**
+   * What the stored key ITSELF is, from its prefix — as opposed to `test_mode`,
+   * which is a flag somebody set beside it. `null` where the provider's keys
+   * carry no mode marker. See `keyMode` in the checkout service.
+   */
+  keys_are_live?: boolean | null;
 }
 
 export interface GuardianLink {

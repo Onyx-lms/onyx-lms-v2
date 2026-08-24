@@ -374,3 +374,104 @@ test('a webhook for a gateway nobody configured is refused the same way', async 
     assert.equal((result as { reason: string }).reason, reason);
   }
 });
+
+// ----------------------------------------------------- the platform's account
+
+/**
+ * One merchant account, shared.
+ *
+ * Onyx sells on behalf of the institutions rather than as them, so there is a
+ * single Razorpay account and an institution's own row is the exception rather
+ * than the requirement. Three things have to agree about that, and they are
+ * read in three different places: the payer's list of gateways, the
+ * administrator's settings screen, and the credentials the order is built with.
+ * Disagreement between the first and the third is the dangerous one -- an
+ * institution offered the mock dialog and then charged for real.
+ */
+const DEFAULTS = [{
+  identifier: 'testpay',
+  title: 'Onyx payments',
+  currency: 'INR',
+  keys: { razorpay_key: 'rzp_live_platform', razorpay_secret: 'shh' },
+}];
+
+function withDefaults(db: FakeDb) {
+  const finance = { recordPayment: async () => { throw new Error('not the course path'); } };
+  return new OnyxCheckoutService(
+    db as unknown as OnyxDb, finance as unknown as FinanceService,
+    { secret: SECRET, baseUrl: 'https://lms.example',
+      academics: new AcademicsService(db as unknown as OnyxDb), defaults: DEFAULTS },
+    () => NOW);
+}
+
+test('an institution with no gateway of its own inherits the platform account', async () => {
+  const db = seed();
+  // OTHER has no row at all -- the state every institution starts in, and the
+  // state five of the nine live ones were in.
+  const checkout = withDefaults(db);
+
+  const offered = await checkout.enabledGateways(OTHER);
+  assert.deepEqual(offered.map((g) => g.identifier), ['testpay'],
+    'a payer at an institution with no row was offered nothing, so the Buy button '
+    + 'opened the mock dialog while the settle path charged for real');
+
+  const seenByAdmin = await checkout.gateways(OTHER);
+  assert.equal(seenByAdmin.length, 1);
+  assert.equal(seenByAdmin[0]!.inherited, true);
+  assert.equal(seenByAdmin[0]!.keys_are_live, true,
+    'the badge follows the key, and this one is a live key');
+});
+
+test('an institution with its own gateway keeps it, and is not shown two', async () => {
+  const db = seed();
+  const checkout = withDefaults(db);
+
+  const offered = await checkout.enabledGateways(T);
+  assert.deepEqual(offered.map((g) => g.identifier), ['testpay'],
+    'the institution has its own testpay row; the default must not double it');
+
+  const seenByAdmin = await checkout.gateways(T);
+  assert.equal(seenByAdmin.length, 1);
+  assert.equal(seenByAdmin[0]!.inherited, false, 'their own row must win');
+  assert.equal(seenByAdmin[0]!.keys_are_live, false, 'their own row holds a test key');
+});
+
+test('switching a gateway off at an institution means off, not back to the default',
+  async () => {
+    // Otherwise "we do not take card payments here" would be silently overruled
+    // by the platform's account, which is the opposite of what was asked for.
+    const db = seed();
+    db.tables.onyx_payment_gateways[0]!.status = 0;
+    const offered = await withDefaults(db).enabledGateways(T);
+    assert.deepEqual(offered, [], 'a disabled gateway came back through the default');
+  });
+
+test('the order is built with the platform key when the institution has none', async () => {
+  const db = seed();
+  // A locked course at OTHER, so the whole path runs there.
+  db.tables.onyx_courses.push({
+    id: 20, tenant_id: OTHER, program_id: null, semester_id: null, code: 'OTH-1',
+    title: 'Elsewhere', slug: 'elsewhere', description: '', credits: 4,
+    self_enroll: 0, access: 'locked', price_minor: 300_00, currency: 'INR',
+    status: 1, created_by: 'u-admin', created_at: 'now',
+  });
+  lastOrder = null;
+  await withDefaults(db).beginCourse(OTHER, 20, LEARNER, { gateway: 'testpay' });
+  assert.ok(lastOrder, 'no order was built');
+  // The amount still comes from the course, never the caller -- inheriting an
+  // account must not quietly change where the number comes from. In rupees on
+  // the order, as `begin()` converts; minor units are ours, not the gateway's.
+  assert.equal(lastOrder!.total, 300);
+});
+
+test('no platform account configured means no gateway, and the mock dialog', async () => {
+  // The deployment that sells nothing. `defaults` is empty and every read has
+  // to agree that there is nothing to pay through, rather than half-offering it.
+  const db = seed();
+  const { checkout } = services(db);
+  assert.deepEqual(await checkout.enabledGateways(OTHER), []);
+  assert.deepEqual(await checkout.gateways(OTHER), []);
+  await assert.rejects(
+    () => checkout.beginCourse(OTHER, 10, LEARNER, { gateway: 'testpay' }),
+    (e: unknown) => e instanceof HttpError);
+});

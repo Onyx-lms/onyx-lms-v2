@@ -69,6 +69,57 @@ export interface OnyxGatewaySummary {
   status: number;
   /** The names of the credentials that are set. Never a value. */
   configured_keys: string[];
+  /**
+   * Whether the credentials themselves are live ones, read from the key's own
+   * prefix. `null` where the provider's keys carry no mode marker.
+   *
+   * `test_mode` is a flag somebody set; this is what the key actually is, and
+   * they are not the same fact. Nothing in the Razorpay path reads `test_mode`
+   * -- `pickKey` falls back to the plain name, so a gateway flagged "test"
+   * while holding an `rzp_live_` key charges real cards and displays a "Test
+   * mode" badge over the top of it. The screen needs to be able to say so.
+   */
+  keys_are_live: boolean | null;
+  /**
+   * True where this is the platform's shared account rather than a row of the
+   * institution's own. Saving over it creates their own row, which then
+   * shadows this one.
+   */
+  inherited: boolean;
+}
+
+/**
+ * Live or test, from the key rather than from a flag beside it.
+ *
+ * Razorpay and Stripe both mark the mode in the key id, which makes the key
+ * self-describing and impossible to mislabel. A provider that does not is
+ * `null` -- unknown, and said as unknown rather than guessed at.
+ */
+export function keyMode(keys: Record<string, unknown>): boolean | null {
+  const id = String(keys?.razorpay_key ?? keys?.key_id ?? keys?.stripe_key ?? '').trim();
+  if (/^rzp_live_/i.test(id) || /^pk_live_/i.test(id) || /^sk_live_/i.test(id)) return true;
+  if (/^rzp_test_/i.test(id) || /^pk_test_/i.test(id) || /^sk_test_/i.test(id)) return false;
+  return null;
+}
+
+/**
+ * One merchant account, shared by every institution that has not set up its own.
+ *
+ * Onyx sells on behalf of the institutions rather than as them: the money lands
+ * in the platform's Razorpay account and is settled onwards. Configuring that
+ * account per institution meant a key copied nine times, drifting nine ways,
+ * and an institution created tomorrow silently selling nothing until somebody
+ * remembered to paste it in a tenth.
+ *
+ * So it is configured once, from the environment, and an institution's own row
+ * SHADOWS it rather than being required — an institution that later brings its
+ * own merchant account keeps working exactly as before.
+ */
+export interface PlatformGatewayDefault {
+  identifier: string;
+  title: string;
+  currency: string;
+  keys: Record<string, string>;
 }
 
 /** A checkout older than this is stale, and its token stops verifying. */
@@ -165,6 +216,7 @@ export class OnyxCheckoutService {
   #finance: FinanceService;
   #academics: AcademicsService | null = null;
   #domains: DomainsService | null = null;
+  #defaults: PlatformGatewayDefault[] = [];
   #secret: string;
   #baseUrl: string;
   #now: () => number;
@@ -180,6 +232,8 @@ export class OnyxCheckoutService {
     opts: {
       secret: string; baseUrl?: string;
       academics?: AcademicsService; domains?: DomainsService;
+      /** See `PlatformGatewayDefault`. Absent in a deployment that sells nothing. */
+      defaults?: PlatformGatewayDefault[];
     },
     now: () => number = Date.now,
   ) {
@@ -187,6 +241,8 @@ export class OnyxCheckoutService {
     this.#finance = finance;
     this.#academics = opts.academics ?? null;
     this.#domains = opts.domains ?? null;
+    this.#defaults = (opts.defaults ?? []).filter((d) => hasProvider(d.identifier)
+      && Object.values(d.keys ?? {}).some((v) => String(v ?? '').trim() !== ''));
     this.#secret = opts.secret;
     this.#baseUrl = (opts.baseUrl ?? 'http://127.0.0.1:5173').replace(/\/+$/, '');
     this.#now = now;
@@ -201,7 +257,7 @@ export class OnyxCheckoutService {
     const { data } = await this.#db.from('onyx_payment_gateways')
       .select(GATEWAY_COLUMNS_WITH_KEYS)
       .eq('tenant_id', tenantId).order('identifier');
-    return (data ?? []).map((row) => {
+    const mine: OnyxGatewaySummary[] = (data ?? []).map((row) => {
       const r = row as unknown as Record<string, unknown> & { keys: Record<string, string> };
       return {
         id: Number(r.id),
@@ -217,16 +273,68 @@ export class OnyxCheckoutService {
         configured_keys: Object.entries(r.keys ?? {})
           .filter(([, v]) => String(v ?? '').trim() !== '')
           .map(([k]) => k),
+        keys_are_live: keyMode(r.keys ?? {}),
+        inherited: false,
       };
     });
+
+    /*
+     * The platform's account, shown as what it is.
+     *
+     * Without this the settings screen said "no payment gateway configured" at
+     * an institution that was taking money perfectly well through the shared
+     * account -- which reads as broken, and invites an administrator to paste
+     * in a key to "fix" it, shadowing the platform's with their own.
+     *
+     * `id: 0` because there is no row. Nothing edits by this id: saving from
+     * this screen creates the institution's own row, which is the correct
+     * outcome for somebody who genuinely wants their own merchant account.
+     */
+    const named = new Set(mine.map((g) => g.identifier));
+    const inherited = this.#defaults.filter((d) => !named.has(d.identifier)).map((d) => ({
+      id: 0,
+      identifier: d.identifier,
+      title: d.title,
+      currency: d.currency,
+      test_mode: keyMode(d.keys) === false ? 1 : 0,
+      status: 1,
+      configured_keys: Object.entries(d.keys)
+        .filter(([, v]) => String(v ?? '').trim() !== '').map(([k]) => k),
+      keys_are_live: keyMode(d.keys),
+      inherited: true,
+    }));
+
+    return [...mine, ...inherited].sort((a, b) => a.identifier.localeCompare(b.identifier));
   }
 
-  /** Only what a payer needs: which gateways they can actually pay through. */
+  /**
+   * Only what a payer needs: which gateways they can actually pay through.
+   *
+   * This list is also the mock-or-real switch. It is read on the server and
+   * never taken from the client, because a client that could choose would be a
+   * client that could choose to pay nothing — an empty list opens the mock
+   * dialog and says so on it.
+   *
+   * A platform default therefore has to appear here as well as in `#config`,
+   * or an institution with no row of its own would be offered the mock dialog
+   * and then charged for real when it settled.
+   */
   async enabledGateways(tenantId: number) {
     const { data } = await this.#db.from('onyx_payment_gateways')
       .select('identifier, title, currency').eq('tenant_id', tenantId).eq('status', 1)
       .order('identifier');
-    return (data ?? []).filter((g) => hasProvider(String(g.identifier)));
+    const own = (data ?? []).filter((g) => hasProvider(String(g.identifier)));
+    const named = new Set(own.map((g) => String(g.identifier)));
+    // An institution's own row shadows the default, switched off included:
+    // "we turned Razorpay off here" has to mean off.
+    const disabled = new Set(((await this.#db.from('onyx_payment_gateways')
+      .select('identifier').eq('tenant_id', tenantId).eq('status', 0)).data ?? [])
+      .map((g) => String(g.identifier)));
+    const inherited = this.#defaults
+      .filter((d) => !named.has(d.identifier) && !disabled.has(d.identifier))
+      .map((d) => ({ identifier: d.identifier, title: d.title, currency: d.currency }));
+    return [...own, ...inherited].sort((a, b) =>
+      String(a.identifier).localeCompare(String(b.identifier)));
   }
 
   async saveGateway(tenantId: number, input: {
@@ -720,7 +828,22 @@ export class OnyxCheckoutService {
       .select(GATEWAY_COLUMNS_WITH_KEYS)
       .eq('tenant_id', tenantId).eq('identifier', key).maybeSingle();
 
-    if (!data) throw new HttpError(422, 'This institution has not set up ' + key + '.');
+    if (!data) {
+      // No row of its own, so the platform's account. An institution that has
+      // never touched a settings screen can still sell.
+      const fallback = this.#defaults.find((d) => d.identifier === key);
+      if (!fallback) throw new HttpError(422, 'This institution has not set up ' + key + '.');
+      return {
+        identifier: key,
+        title: fallback.title,
+        // Read from the key rather than from a flag, for the reason `keyMode`
+        // gives: nothing in the Razorpay path consults `testMode`, so a wrong
+        // answer here is a label that lies about whose money is moving.
+        testMode: keyMode(fallback.keys) === false,
+        keys: fallback.keys,
+        currency: fallback.currency,
+      };
+    }
     const row = data as unknown as Record<string, unknown> & { keys: Record<string, string> };
     if (Number(row.status) !== 1) throw new HttpError(422, key + ' is switched off here.');
 

@@ -173,15 +173,39 @@ export function ConfigureGateways({ configured, tenantId }: {
             <li key={g.id} className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{g.title}</span>
               <span className="text-xs text-muted">{g.currency}</span>
-              {g.test_mode ? (
+              {/*
+                * The badge follows the KEY, not the flag beside it.
+                *
+                * Nothing in the Razorpay path reads `test_mode` — `pickKey`
+                * falls back to the plain credential name — so the flag decides
+                * what the screen says and the key decides whose money moves.
+                * A gateway flagged "test" while holding an `rzp_live_` key was
+                * therefore charging real cards under an amber "Test mode"
+                * badge, which is the one thing this badge exists to prevent.
+                */}
+              {(g.keys_are_live ?? !g.test_mode) ? (
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px]
+                                 text-emerald-800">
+                  Live
+                </span>
+              ) : (
                 <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-800">
                   Test mode
                 </span>
-              ) : (
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] text-emerald-800">
-                  Live
-                </span>
               )}
+              {g.keys_are_live != null && g.keys_are_live === Boolean(g.test_mode) ? (
+                <span
+                  role="alert"
+                  className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold
+                             text-red-800"
+                  title={'This gateway is flagged ' + (g.test_mode ? 'test' : 'live')
+                    + ' but its key is a ' + (g.keys_are_live ? 'live' : 'test')
+                    + ' one. The key is what decides whether real money moves.'}
+                >
+                  Flag says {g.test_mode ? 'test' : 'live'} — key says
+                  {' ' + (g.keys_are_live ? 'live' : 'test')}
+                </span>
+              ) : null}
               <span className={'text-xs ' + (g.status ? 'text-emerald-700' : 'text-muted')}>
                 {g.status ? 'enabled' : 'disabled'}
               </span>
