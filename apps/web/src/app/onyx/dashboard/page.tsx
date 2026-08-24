@@ -654,10 +654,20 @@ export default async function OnyxDashboard() {
             <section>
               <SectionHead title="Quick links" />
               <RowList label="Quick links">
+                {/*
+                  * Fees came off the learner's navigation and had to come off
+                  * here too. This list is a SECOND entrance, written
+                  * independently of `onyx-nav.ts`, so removing the nav item
+                  * left the link sitting on the first screen every learner
+                  * sees -- which is the one place it was most visible.
+                  *
+                  * Worth remembering the shape of that mistake: a navigation
+                  * change is not complete until the hand-written link lists
+                  * have been looked at too.
+                  */}
                 {([
                   ['/onyx/timetable', 'Timetable', 'calendar'],
                   ['/onyx/results', 'Results', 'award'],
-                  ['/onyx/fees', 'Fees', 'wallet'],
                   ['/onyx/support', 'Ask for help', 'help'],
                 ] as const).map(([href, label, icon]) => (
                   <li key={href}>
