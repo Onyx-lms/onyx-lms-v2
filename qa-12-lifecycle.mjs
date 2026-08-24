@@ -256,11 +256,11 @@ rec('faculty', 'preview the paper before publishing', { verdict: okv(r),
 
 // a student must NOT see it while it is a draft
 const stu = await session('student', people.s1.email, PASSWORD);
-r = await call(stu, 'GET', '/api/onyx/my/assessments');
+r = await call(stu, 'GET', '/api/onyx/assessments');
 const visibleBeforePublish = (r.data ?? []).some((a) => Number(a.id ?? a.assessment_id) === ASSESS_ID);
 rec('student', 'draft assessment hidden from learner', {
   verdict: visibleBeforePublish ? 'FAIL' : 'PASS',
-  detail: 'my/assessments count=' + (r.data ?? []).length + ' contains_draft=' + visibleBeforePublish });
+  detail: 'assessments count=' + (r.data ?? []).length + ' contains_draft=' + visibleBeforePublish });
 
 r = await call(fac, 'POST', '/api/onyx/assessments/' + ASSESS_ID + '/publish');
 rec('faculty', 'publish assessment', { verdict: okv(r), detail: brief(r) });
@@ -268,7 +268,7 @@ rec('faculty', 'publish assessment', { verdict: okv(r), detail: brief(r) });
 // =====================================================================
 // ACT 4 — STUDENT: sit the paper
 // =====================================================================
-r = await call(stu, 'GET', '/api/onyx/my/assessments');
+r = await call(stu, 'GET', '/api/onyx/assessments');
 const nowVisible = (r.data ?? []).some((a) => Number(a.id ?? a.assessment_id) === ASSESS_ID);
 rec('student', 'published assessment appears for learner', {
   verdict: nowVisible ? 'PASS' : 'FAIL', detail: 'count=' + (r.data ?? []).length });
@@ -349,11 +349,13 @@ rec('faculty', 'item analysis available', { verdict: okv(r), detail: brief(r) })
 // =====================================================================
 // ACT 6 — STUDENT: read the result
 // =====================================================================
-r = await call(stu, 'GET', '/api/onyx/results');
+r = await call(stu, 'GET', '/api/onyx/my/assessments');
 const mine = (r.data ?? []).find((x) => Number(x.assessment_id) === ASSESS_ID);
 rec('student', 'released result now visible', {
-  verdict: mine ? 'PASS' : 'FAIL',
-  detail: mine ? `score=${mine.score}/${mine.max_score ?? '?'}` : 'not found in ' + (r.data ?? []).length + ' rows' });
+  verdict: mine && mine.results_published ? 'PASS' : 'FAIL',
+  detail: mine
+    ? `score=${mine.score}/${mine.max_score ?? '?'} released=${mine.results_published}`
+    : 'not found in ' + (r.data ?? []).length + ' rows' });
 rec('student', 'score matches what was marked', {
   verdict: mine && Number(mine.score) === Number(markedScore) ? 'PASS' : 'WARN',
   detail: `student sees ${mine?.score}, marker recorded ${markedScore}` });

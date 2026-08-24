@@ -747,7 +747,7 @@
       "actualRole": "exams",
       "ep": "/api/onyx/banks",
       "status": 200,
-      "body": "{\"ok\":true,\"data\":[{\"id\":170,\"tenant_id\":1,\"course_id\":60,\"name\":\"UI Inline paper mt7elo4l — question bank\",\"description\":null,\"created_by\":\"157b33d3-377b-4c84-b4ce-8777eff3566c\",\"created_at\":\"2026-08-24T15:41:33.989472+",
+      "body": "{\"ok\":true,\"data\":[{\"id\":172,\"tenant_id\":1,\"course_id\":60,\"name\":\"UI Inline paper mt7gx5hh — question bank\",\"description\":null,\"created_by\":\"157b33d3-377b-4c84-b4ce-8777eff3566c\",\"created_at\":\"2026-08-24T16:46:32.655166+",
       "expected": "allow",
       "got": "allow",
       "verdict": "PASS"

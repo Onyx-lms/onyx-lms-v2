@@ -188,11 +188,23 @@ try {
     verdict: has(t, 'QA Certification College') ? 'PASS' : 'FAIL', detail: 'len=' + t.length });
 
   for (const [label, sub] of [['courses', '/courses'], ['students', '/students'],
-                              ['staff', '/staff'], ['assessments', '/assessments'],
-                              ['examinations', '/examinations'], ['grades', '/grades']]) {
+                              ['faculty', '/faculty'], ['staff', '/staff'],
+                              ['assessments', '/assessments'],
+                              ['examinations', '/examinations'], ['grades', '/grades'],
+                              // The sections added since the last report.
+                              ['code lab', '/problems'], ['practice activity', '/practice']]) {
     t = await text(page, '/onyx/platform/tenants/' + TENANT_ID + sub);
-    const marker = { courses: 'QE101', students: 'Sana', staff: 'Farah',
-                     assessments: 'Class Test', examinations: 'End-of-term', grades: 'QE101' }[label];
+    /*
+     * `staff` is the console's "Other roles" page -- exams, placement, employer,
+     * guardian. It was being checked for Dr. Farah Lecturer, who is FACULTY and
+     * has her own page, so it warned every run about somebody who was never
+     * meant to be on it. Faculty is now its own check, and staff looks for the
+     * examinations officer, who is what that page is for.
+     */
+    const marker = { courses: 'QE101', students: 'Sana', faculty: 'Farah',
+                     staff: 'Eshan', assessments: 'Class Test',
+                     examinations: 'End-of-term', grades: 'QE101',
+                     'code lab': 'problem', 'practice activity': 'submission' }[label];
     rec('superadmin', 'tenant ' + label + ' shows authored data', {
       verdict: has(t, marker) ? 'PASS' : 'WARN',
       detail: `looking for "${marker}" — ${has(t, marker) ? 'found' : 'absent; len=' + t.length}` });

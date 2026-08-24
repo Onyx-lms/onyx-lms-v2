@@ -1,12 +1,12 @@
 {
-  "stamp": "00810765",
+  "stamp": "90933141",
   "steps": [
     {
       "seq": 1,
       "act": "admin",
       "name": "dashboard names the institution",
       "verdict": "PASS",
-      "detail": "Skip to the main content Onyx LMS QA INSTITUTION QA Certification College 00810765 Administrator Dashboard Courses Live "
+      "detail": "Skip to the main content Onyx LMS QA INSTITUTION QA Certification College 90933141 Administrator Dashboard Courses Live "
     },
     {
       "seq": 2,
@@ -27,7 +27,7 @@
       "act": "admin",
       "name": "course page shows the lessons",
       "verdict": "PASS",
-      "detail": "len=1579"
+      "detail": "len=1631"
     },
     {
       "seq": 5,
@@ -48,7 +48,7 @@
       "act": "admin",
       "name": "audit screen shows the lifecycle actions",
       "verdict": "PASS",
-      "detail": "len=2652"
+      "detail": "len=2704"
     },
     {
       "seq": 8,
@@ -62,7 +62,7 @@
       "act": "faculty",
       "name": "assessment detail page",
       "verdict": "PASS",
-      "detail": "len=1105"
+      "detail": "len=1094"
     },
     {
       "seq": 10,
@@ -90,7 +90,7 @@
       "act": "student",
       "name": "dashboard renders for the new learner",
       "verdict": "PASS",
-      "detail": "len=1338"
+      "detail": "len=1317"
     },
     {
       "seq": 14,
@@ -124,22 +124,22 @@
       "seq": 18,
       "act": "student",
       "name": "results page shows the EXAMINATION result",
-      "verdict": "FAIL",
-      "detail": "title=false score78=true"
+      "verdict": "PASS",
+      "detail": "title=true score78=true"
     },
     {
       "seq": 19,
       "act": "student",
       "name": "scheduled examination on the timetable",
-      "verdict": "WARN",
-      "detail": "len=372"
+      "verdict": "PASS",
+      "detail": "8:00 19:00 20:00 21:00 22:00 23:00 24:00 Examination. Thursday, 22:33 to 24:33: QE101 End-of-term Examination 22:33–24:33 · QE101 — Fou"
     },
     {
       "seq": 20,
       "act": "exams",
       "name": "examination listed",
       "verdict": "PASS",
-      "detail": "marks COMPLETED Examinations already sat EXAM WHEN DURATION OUT OF STATUS QE101 End-of-term Examination QE101 · pass mark 40 3 days ago sat Wed, Aug 26"
+      "detail": "marks COMPLETED Examinations already sat EXAM WHEN DURATION OUT OF STATUS QE101 End-of-term Examination QE101 · pass mark 40 Thu, Aug 27, 05:03 PM mark"
     },
     {
       "seq": 21,
@@ -167,7 +167,7 @@
       "act": "superadmin",
       "name": "new institution on the console list",
       "verdict": "PASS",
-      "detail": "len=2075"
+      "detail": "len=2244"
     },
     {
       "seq": 25,
@@ -186,30 +186,51 @@
     {
       "seq": 27,
       "act": "superadmin",
-      "name": "tenant staff shows authored data",
-      "verdict": "WARN",
-      "detail": "looking for \"Farah\" — absent; len=923"
+      "name": "tenant faculty shows authored data",
+      "verdict": "PASS",
+      "detail": "looking for \"Farah\" — found"
     },
     {
       "seq": 28,
+      "act": "superadmin",
+      "name": "tenant staff shows authored data",
+      "verdict": "PASS",
+      "detail": "looking for \"Eshan\" — found"
+    },
+    {
+      "seq": 29,
       "act": "superadmin",
       "name": "tenant assessments shows authored data",
       "verdict": "PASS",
       "detail": "looking for \"Class Test\" — found"
     },
     {
-      "seq": 29,
+      "seq": 30,
       "act": "superadmin",
       "name": "tenant examinations shows authored data",
       "verdict": "PASS",
       "detail": "looking for \"End-of-term\" — found"
     },
     {
-      "seq": 30,
+      "seq": 31,
       "act": "superadmin",
       "name": "tenant grades shows authored data",
       "verdict": "PASS",
       "detail": "looking for \"QE101\" — found"
+    },
+    {
+      "seq": 32,
+      "act": "superadmin",
+      "name": "tenant code lab shows authored data",
+      "verdict": "PASS",
+      "detail": "looking for \"problem\" — found"
+    },
+    {
+      "seq": 33,
+      "act": "superadmin",
+      "name": "tenant practice activity shows authored data",
+      "verdict": "PASS",
+      "detail": "looking for \"submission\" — found"
     }
   ]
 }

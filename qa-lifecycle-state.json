@@ -1,33 +1,33 @@
 {
-  "stamp": "00810765",
-  "slug": "qa-cert-00810765",
+  "stamp": "90933141",
+  "slug": "qa-cert-90933141",
   "base": "https://onyx-lms-v2.vercel.app",
   "created": {
     "tenant": {
-      "id": 478,
-      "name": "QA Certification College 00810765",
-      "slug": "qa-cert-00810765",
+      "id": 755,
+      "name": "QA Certification College 90933141",
+      "slug": "qa-cert-90933141",
       "status": 1,
       "plan": "standard",
       "faculty_can_schedule_exams": true,
       "permissions": {},
-      "created_at": "2026-08-23T16:00:15.466717+00:00",
-      "updated_at": "2026-08-23T16:00:15.466717+00:00"
+      "created_at": "2026-08-24T17:02:16.842399+00:00",
+      "updated_at": "2026-08-24T17:02:16.842399+00:00"
     },
     "program": {
-      "id": 116,
-      "tenant_id": 478,
+      "id": 179,
+      "tenant_id": 755,
       "name": "B.Tech Quality Engineering",
       "code": "BTQE",
       "description": "Programme created by the QA lifecycle run.",
       "duration_semesters": 8,
       "status": 1,
-      "created_at": "2026-08-23T16:00:21.573963+00:00"
+      "created_at": "2026-08-24T17:02:23.348826+00:00"
     },
     "semester": {
-      "id": 116,
-      "tenant_id": 478,
-      "program_id": 116,
+      "id": 179,
+      "tenant_id": 755,
+      "program_id": 179,
       "name": "Semester 1",
       "number": 1,
       "starts_on": "2026-08-01",
@@ -37,90 +37,95 @@
     "members": {
       "faculty": {
         "user": {
-          "id": "87df7ff0-c79d-4f08-8203-b464deedde00",
-          "email": "qa.faculty.00810765@onyx.test",
+          "id": "cad95432-f20d-4f23-86a0-52026c5a8493",
+          "email": "qa.faculty.90933141@onyx.test",
           "name": "Dr. Farah Lecturer"
         },
         "membership": {
-          "id": 1532,
-          "tenant_id": 478,
-          "user_id": "87df7ff0-c79d-4f08-8203-b464deedde00",
+          "id": 2385,
+          "tenant_id": 755,
+          "user_id": "cad95432-f20d-4f23-86a0-52026c5a8493",
           "role": "faculty",
           "status": 1,
           "roll_number": null,
-          "created_at": "2026-08-23T16:00:22.90335+00:00"
+          "permissions": {},
+          "created_at": "2026-08-24T17:02:24.814684+00:00"
         }
       },
       "exams": {
         "user": {
-          "id": "f8618100-c404-4532-a38e-2b778f182889",
-          "email": "qa.exams.00810765@onyx.test",
+          "id": "815975ae-02ad-4b36-bfa3-29a54f8985f3",
+          "email": "qa.exams.90933141@onyx.test",
           "name": "Eshan Controller"
         },
         "membership": {
-          "id": 1533,
-          "tenant_id": 478,
-          "user_id": "f8618100-c404-4532-a38e-2b778f182889",
+          "id": 2386,
+          "tenant_id": 755,
+          "user_id": "815975ae-02ad-4b36-bfa3-29a54f8985f3",
           "role": "exams",
           "status": 1,
           "roll_number": null,
-          "created_at": "2026-08-23T16:00:24.060469+00:00"
+          "permissions": {},
+          "created_at": "2026-08-24T17:02:26.145043+00:00"
         }
       },
       "s1": {
         "user": {
-          "id": "49ee49e9-a6b1-48ce-b127-1635515dd5db",
-          "email": "qa.s1.00810765@onyx.test",
+          "id": "c198e4cb-d3bb-4274-bceb-a1f4fabed514",
+          "email": "qa.s1.90933141@onyx.test",
           "name": "Sana Learner"
         },
         "membership": {
-          "id": 1534,
-          "tenant_id": 478,
-          "user_id": "49ee49e9-a6b1-48ce-b127-1635515dd5db",
+          "id": 2387,
+          "tenant_id": 755,
+          "user_id": "c198e4cb-d3bb-4274-bceb-a1f4fabed514",
           "role": "student",
           "status": 1,
           "roll_number": "QE-001",
-          "created_at": "2026-08-23T16:00:25.196005+00:00"
+          "permissions": {},
+          "created_at": "2026-08-24T17:02:27.520576+00:00"
         }
       },
       "s2": {
         "user": {
-          "id": "84036803-8fa7-4915-a889-ac0b49229ae5",
-          "email": "qa.s2.00810765@onyx.test",
+          "id": "8ae6ba5a-d21b-44ec-b2c8-7dde971f4f00",
+          "email": "qa.s2.90933141@onyx.test",
           "name": "Rohit Learner"
         },
         "membership": {
-          "id": 1535,
-          "tenant_id": 478,
-          "user_id": "84036803-8fa7-4915-a889-ac0b49229ae5",
+          "id": 2388,
+          "tenant_id": 755,
+          "user_id": "8ae6ba5a-d21b-44ec-b2c8-7dde971f4f00",
           "role": "student",
           "status": 1,
           "roll_number": "QE-002",
-          "created_at": "2026-08-23T16:00:26.349828+00:00"
+          "permissions": {},
+          "created_at": "2026-08-24T17:02:28.862311+00:00"
         }
       },
       "s3": {
         "user": {
-          "id": "41bd7246-beef-4bd5-b207-5d0b526bb25f",
-          "email": "qa.s3.00810765@onyx.test",
+          "id": "8f2a5bfb-abf2-480c-b5e3-e8b1b9010b2c",
+          "email": "qa.s3.90933141@onyx.test",
           "name": "Meena Learner"
         },
         "membership": {
-          "id": 1536,
-          "tenant_id": 478,
-          "user_id": "41bd7246-beef-4bd5-b207-5d0b526bb25f",
+          "id": 2389,
+          "tenant_id": 755,
+          "user_id": "8f2a5bfb-abf2-480c-b5e3-e8b1b9010b2c",
           "role": "student",
           "status": 1,
           "roll_number": "QE-003",
-          "created_at": "2026-08-23T16:00:27.462877+00:00"
+          "permissions": {},
+          "created_at": "2026-08-24T17:02:30.163338+00:00"
         }
       }
     },
     "course": {
-      "id": 202,
-      "tenant_id": 478,
-      "program_id": 116,
-      "semester_id": 116,
+      "id": 486,
+      "tenant_id": 755,
+      "program_id": 179,
+      "semester_id": 179,
       "code": "QE101",
       "title": "Foundations of Software Quality",
       "slug": "foundations-of-software-quality",
@@ -131,22 +136,22 @@
       "price_minor": 0,
       "currency": "INR",
       "status": 0,
-      "created_by": "be1b9c01-3981-4bdd-a9d9-968150d0c043",
-      "created_at": "2026-08-23T16:00:28.765434+00:00"
+      "created_by": "6414705b-492d-40cc-9563-111856bfc057",
+      "created_at": "2026-08-24T17:02:31.515874+00:00"
     },
     "modules": [
       {
-        "id": 96,
-        "tenant_id": 478,
-        "course_id": 202,
+        "id": 137,
+        "tenant_id": 755,
+        "course_id": 486,
         "title": "Module 1 — Principles of Quality",
         "summary": null,
         "sort": 1
       },
       {
-        "id": 97,
-        "tenant_id": 478,
-        "course_id": 202,
+        "id": 138,
+        "tenant_id": 755,
+        "course_id": 486,
         "title": "Module 2 — Testing in Practice",
         "summary": null,
         "sort": 2
@@ -154,10 +159,10 @@
     ],
     "lessons": [
       {
-        "id": 319,
-        "tenant_id": 478,
-        "course_id": 202,
-        "module_id": 96,
+        "id": 433,
+        "tenant_id": 755,
+        "course_id": 486,
+        "module_id": 137,
         "title": "What quality means",
         "type": "text",
         "path": null,
@@ -167,10 +172,10 @@
         "is_preview": 0
       },
       {
-        "id": 320,
-        "tenant_id": 478,
-        "course_id": 202,
-        "module_id": 96,
+        "id": 434,
+        "tenant_id": 755,
+        "course_id": 486,
+        "module_id": 137,
         "title": "Cost of defects",
         "type": "text",
         "path": null,
@@ -180,10 +185,10 @@
         "is_preview": 0
       },
       {
-        "id": 321,
-        "tenant_id": 478,
-        "course_id": 202,
-        "module_id": 97,
+        "id": 435,
+        "tenant_id": 755,
+        "course_id": 486,
+        "module_id": 138,
         "title": "Test design techniques",
         "type": "text",
         "path": null,
@@ -193,10 +198,10 @@
         "is_preview": 0
       },
       {
-        "id": 322,
-        "tenant_id": 478,
-        "course_id": 202,
-        "module_id": 97,
+        "id": 436,
+        "tenant_id": 755,
+        "course_id": 486,
+        "module_id": 138,
         "title": "Automation strategy",
         "type": "text",
         "path": null,
@@ -207,19 +212,19 @@
       }
     ],
     "bank": {
-      "id": 64,
-      "tenant_id": 478,
-      "course_id": 202,
+      "id": 174,
+      "tenant_id": 755,
+      "course_id": 486,
       "name": "QE101 — Quality Fundamentals",
       "description": "Bank authored by the QA lifecycle run.",
-      "created_by": "87df7ff0-c79d-4f08-8203-b464deedde00",
-      "created_at": "2026-08-23T16:00:41.350698+00:00"
+      "created_by": "cad95432-f20d-4f23-86a0-52026c5a8493",
+      "created_at": "2026-08-24T17:02:44.704585+00:00"
     },
     "questions": [
       {
-        "id": 200,
-        "tenant_id": 478,
-        "bank_id": 64,
+        "id": 455,
+        "tenant_id": 755,
+        "bank_id": 174,
         "type": "single",
         "prompt": "Which of these is the cheapest stage at which to fix a defect?",
         "options": [
@@ -248,12 +253,12 @@
         "version": 1,
         "status": "active",
         "problem_id": null,
-        "created_at": "2026-08-23T16:00:42.198342+00:00"
+        "created_at": "2026-08-24T17:02:45.584931+00:00"
       },
       {
-        "id": 201,
-        "tenant_id": 478,
-        "bank_id": 64,
+        "id": 456,
+        "tenant_id": 755,
+        "bank_id": 174,
         "type": "single",
         "prompt": "Boundary value analysis primarily targets which class of defect?",
         "options": [
@@ -282,12 +287,12 @@
         "version": 1,
         "status": "active",
         "problem_id": null,
-        "created_at": "2026-08-23T16:00:42.915526+00:00"
+        "created_at": "2026-08-24T17:02:46.510851+00:00"
       },
       {
-        "id": 202,
-        "tenant_id": 478,
-        "bank_id": 64,
+        "id": 457,
+        "tenant_id": 755,
+        "bank_id": 174,
         "type": "multiple",
         "prompt": "Select every property of a good automated test.",
         "options": [
@@ -320,12 +325,12 @@
         "version": 1,
         "status": "active",
         "problem_id": null,
-        "created_at": "2026-08-23T16:00:43.603381+00:00"
+        "created_at": "2026-08-24T17:02:47.406123+00:00"
       },
       {
-        "id": 203,
-        "tenant_id": 478,
-        "bank_id": 64,
+        "id": 458,
+        "tenant_id": 755,
+        "bank_id": 174,
         "type": "short",
         "prompt": "In one sentence, state why a flaky test is worse than no test.",
         "options": [],
@@ -337,13 +342,13 @@
         "version": 1,
         "status": "active",
         "problem_id": null,
-        "created_at": "2026-08-23T16:00:44.317143+00:00"
+        "created_at": "2026-08-24T17:02:48.341306+00:00"
       }
     ],
     "assessment": {
-      "id": 101,
-      "tenant_id": 478,
-      "course_id": 202,
+      "id": 236,
+      "tenant_id": 755,
+      "course_id": 486,
       "title": "QE101 — Class Test 1",
       "instructions": "Answer every question. Written answers are marked by hand.",
       "opens_at": null,
@@ -355,7 +360,7 @@
           "id": "s1",
           "take": 4,
           "title": "All questions",
-          "bank_id": 64
+          "bank_id": 174
         }
       ],
       "shuffle_questions": 0,
@@ -364,21 +369,22 @@
       "require_camera": 0,
       "require_screen": 0,
       "watch_camera": false,
+      "instant_results": true,
       "anonymous_marking": 1,
       "moderation_required": 0,
       "pass_mark": 10,
       "status": "draft",
       "results_published_at": null,
-      "created_by": "87df7ff0-c79d-4f08-8203-b464deedde00",
-      "created_at": "2026-08-23T16:00:45.699453+00:00"
+      "created_by": "cad95432-f20d-4f23-86a0-52026c5a8493",
+      "created_at": "2026-08-24T17:02:50.018203+00:00"
     },
     "attempt": {
-      "id": 144,
-      "assessment_id": 101,
+      "id": 254,
+      "assessment_id": 236,
       "attempt": 1,
       "status": "in_progress",
-      "started_at": "2026-08-23T16:00:52.434+00:00",
-      "expires_at": "2026-08-23T16:30:52.434+00:00",
+      "started_at": "2026-08-24T17:02:56.288+00:00",
+      "expires_at": "2026-08-24T17:32:56.288+00:00",
       "submitted_at": null,
       "seconds_remaining": 1799,
       "max_score": 20,
@@ -386,7 +392,7 @@
       "pass_mark": null,
       "questions": [
         {
-          "question_id": 200,
+          "question_id": 455,
           "type": "single",
           "prompt": "Which of these is the cheapest stage at which to fix a defect?",
           "options": [
@@ -410,10 +416,14 @@
           "points": 5,
           "section_id": "s1",
           "response": null,
-          "awarded": null
+          "correct": null,
+          "expected": null,
+          "explanation": null,
+          "awarded": null,
+          "comment": null
         },
         {
-          "question_id": 201,
+          "question_id": 456,
           "type": "single",
           "prompt": "Boundary value analysis primarily targets which class of defect?",
           "options": [
@@ -437,10 +447,14 @@
           "points": 5,
           "section_id": "s1",
           "response": null,
-          "awarded": null
+          "correct": null,
+          "expected": null,
+          "explanation": null,
+          "awarded": null,
+          "comment": null
         },
         {
-          "question_id": 202,
+          "question_id": 457,
           "type": "multiple",
           "prompt": "Select every property of a good automated test.",
           "options": [
@@ -464,52 +478,60 @@
           "points": 6,
           "section_id": "s1",
           "response": null,
-          "awarded": null
+          "correct": null,
+          "expected": null,
+          "explanation": null,
+          "awarded": null,
+          "comment": null
         },
         {
-          "question_id": 203,
+          "question_id": 458,
           "type": "short",
           "prompt": "In one sentence, state why a flaky test is worse than no test.",
           "options": [],
           "points": 4,
           "section_id": "s1",
           "response": null,
-          "awarded": null
+          "correct": null,
+          "expected": null,
+          "explanation": null,
+          "awarded": null,
+          "comment": null
         }
       ]
     },
     "paperQuestionIds": [
-      200,
-      201,
-      202,
-      203
+      455,
+      456,
+      457,
+      458
     ],
     "hall": {
-      "id": 78,
-      "tenant_id": 478,
+      "id": 97,
+      "tenant_id": 755,
       "code": "H1",
       "name": "Main Hall",
       "row_count": 5,
       "col_count": 6,
       "capacity": 30,
       "status": 1,
-      "created_at": "2026-08-23T16:01:05.6958+00:00"
+      "created_at": "2026-08-24T17:03:09.547726+00:00"
     },
     "exam": {
-      "id": 125,
-      "tenant_id": 478,
-      "semester_id": 116,
-      "course_id": 202,
+      "id": 260,
+      "tenant_id": 755,
+      "semester_id": 179,
+      "course_id": 486,
       "assessment_id": null,
       "title": "QE101 End-of-term Examination",
-      "starts_at": "2026-08-26T16:01:05.779+00:00",
+      "starts_at": "2026-08-27T17:03:09.616+00:00",
       "duration_minutes": 120,
       "max_marks": 100,
       "pass_marks": 40,
       "status": "scheduled",
-      "created_by": "f8618100-c404-4532-a38e-2b778f182889",
-      "created_at": "2026-08-23T16:01:06.354599+00:00",
-      "updated_at": "2026-08-23T16:01:06.354599+00:00"
+      "created_by": "815975ae-02ad-4b36-bfa3-29a54f8985f3",
+      "created_at": "2026-08-24T17:03:10.368611+00:00",
+      "updated_at": "2026-08-24T17:03:10.368611+00:00"
     }
   },
   "steps": [
@@ -525,15 +547,15 @@
       "act": "superadmin",
       "name": "create institution + first admin",
       "verdict": "PASS",
-      "detail": "200 \"Institution created.\" tenant_id=478",
-      "tenant_id": 478
+      "detail": "200 \"Institution created.\" tenant_id=755",
+      "tenant_id": 755
     },
     {
       "seq": 3,
       "act": "superadmin",
       "name": "institution appears in console list",
       "verdict": "PASS",
-      "detail": "total=6 contains=true"
+      "detail": "total=9 contains=true"
     },
     {
       "seq": 4,
@@ -547,56 +569,56 @@
       "act": "admin",
       "name": "first admin can sign in",
       "verdict": "PASS",
-      "detail": "role=admin tenant=qa-cert-00810765"
+      "detail": "role=admin tenant=qa-cert-90933141"
     },
     {
       "seq": 6,
       "act": "admin",
       "name": "create programme",
       "verdict": "PASS",
-      "detail": "200 \"Programme created.\" id=116"
+      "detail": "200 \"Programme created.\" id=179"
     },
     {
       "seq": 7,
       "act": "admin",
       "name": "create semester",
       "verdict": "PASS",
-      "detail": "200 \"Semester created.\" id=116"
+      "detail": "200 \"Semester created.\" id=179"
     },
     {
       "seq": 8,
       "act": "admin",
       "name": "add member (faculty)",
       "verdict": "PASS",
-      "detail": "200 \"Member added.\" qa.faculty.00810765@onyx.test"
+      "detail": "200 \"Member added.\" qa.faculty.90933141@onyx.test"
     },
     {
       "seq": 9,
       "act": "admin",
       "name": "add member (exams)",
       "verdict": "PASS",
-      "detail": "200 \"Member added.\" qa.exams.00810765@onyx.test"
+      "detail": "200 \"Member added.\" qa.exams.90933141@onyx.test"
     },
     {
       "seq": 10,
       "act": "admin",
       "name": "add member (student)",
       "verdict": "PASS",
-      "detail": "200 \"Member added.\" qa.s1.00810765@onyx.test"
+      "detail": "200 \"Member added.\" qa.s1.90933141@onyx.test"
     },
     {
       "seq": 11,
       "act": "admin",
       "name": "add member (student)",
       "verdict": "PASS",
-      "detail": "200 \"Member added.\" qa.s2.00810765@onyx.test"
+      "detail": "200 \"Member added.\" qa.s2.90933141@onyx.test"
     },
     {
       "seq": 12,
       "act": "admin",
       "name": "add member (student)",
       "verdict": "PASS",
-      "detail": "200 \"Member added.\" qa.s3.00810765@onyx.test"
+      "detail": "200 \"Member added.\" qa.s3.90933141@onyx.test"
     },
     {
       "seq": 13,
@@ -610,7 +632,7 @@
       "act": "admin",
       "name": "create course",
       "verdict": "PASS",
-      "detail": "200 \"Course created.\" id=202"
+      "detail": "200 \"Course created.\" id=486"
     },
     {
       "seq": 15,
@@ -624,7 +646,7 @@
       "act": "admin",
       "name": "create module 1",
       "verdict": "PASS",
-      "detail": "200 \"Module added.\" id=96"
+      "detail": "200 \"Module added.\" id=137"
     },
     {
       "seq": 17,
@@ -645,7 +667,7 @@
       "act": "admin",
       "name": "create module 2",
       "verdict": "PASS",
-      "detail": "200 \"Module added.\" id=97"
+      "detail": "200 \"Module added.\" id=138"
     },
     {
       "seq": 20,
@@ -715,7 +737,7 @@
       "act": "faculty",
       "name": "create question bank",
       "verdict": "PASS",
-      "detail": "200 \"Bank created.\" id=64"
+      "detail": "200 \"Bank created.\" id=174"
     },
     {
       "seq": 30,
@@ -757,7 +779,7 @@
       "act": "faculty",
       "name": "create assessment (draws 4 from bank)",
       "verdict": "PASS",
-      "detail": "200 \"Assessment created.\" id=101"
+      "detail": "200 \"Assessment created.\" id=236"
     },
     {
       "seq": 36,
@@ -771,7 +793,7 @@
       "act": "student",
       "name": "draft assessment hidden from learner",
       "verdict": "PASS",
-      "detail": "my/assessments count=0 contains_draft=false"
+      "detail": "assessments count=0 contains_draft=false"
     },
     {
       "seq": 38,
@@ -784,15 +806,15 @@
       "seq": 39,
       "act": "student",
       "name": "published assessment appears for learner",
-      "verdict": "FAIL",
-      "detail": "count=0"
+      "verdict": "PASS",
+      "detail": "count=1"
     },
     {
       "seq": 40,
       "act": "student",
       "name": "start attempt",
       "verdict": "PASS",
-      "detail": "200 attempt=144"
+      "detail": "200 attempt=254"
     },
     {
       "seq": 41,
@@ -883,7 +905,7 @@
       "act": "faculty",
       "name": "results analytics available",
       "verdict": "PASS",
-      "detail": "200 {\"assessment_id\":101,\"title\":\"QE101 — Class Test 1\",\"published\":true,\"cohort\":{\"sat\":1,\"max_score\":20,\"mean\":19,\"median\":19,\"stdev\":0,\"highest\":19,\"lo"
+      "detail": "200 {\"assessment_id\":236,\"title\":\"QE101 — Class Test 1\",\"published\":true,\"cohort\":{\"sat\":1,\"max_score\":20,\"mean\":19,\"median\":19,\"stdev\":0,\"highest\":19,\"lo"
     },
     {
       "seq": 54,
@@ -896,15 +918,15 @@
       "seq": 55,
       "act": "student",
       "name": "released result now visible",
-      "verdict": "FAIL",
-      "detail": "not found in 0 rows"
+      "verdict": "PASS",
+      "detail": "score=19/20 released=true"
     },
     {
       "seq": 56,
       "act": "student",
       "name": "score matches what was marked",
-      "verdict": "WARN",
-      "detail": "student sees undefined, marker recorded 19"
+      "verdict": "PASS",
+      "detail": "student sees 19, marker recorded 19"
     },
     {
       "seq": 57,
@@ -918,14 +940,14 @@
       "act": "exams",
       "name": "create examination hall (5×6)",
       "verdict": "PASS",
-      "detail": "200 id=78"
+      "detail": "200 id=97"
     },
     {
       "seq": 59,
       "act": "exams",
       "name": "schedule examination",
       "verdict": "PASS",
-      "detail": "200 id=125"
+      "detail": "200 id=260"
     },
     {
       "seq": 60,

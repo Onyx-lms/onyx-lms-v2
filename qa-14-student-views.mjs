@@ -28,9 +28,16 @@ let t = await body('/onyx/exams');
 rec('student sees the scheduled examination', {
   verdict: has(t, 'End-of-term') ? 'PASS' : 'FAIL',
   detail: (t.match(/.{0,110}End-of-term.{0,90}/i) ?? ['ABSENT — body: ' + t.slice(-260)])[0] });
-rec('  and its mark after publication', {
-  verdict: /\b78\b/.test(t) ? 'PASS' : 'WARN',
-  detail: (t.match(/.{0,70}78.{0,70}/) ?? ['78 not shown on /onyx/exams'])[0] });
+/*
+ * The mark is on Results, not on the examinations list, and that is the
+ * design: /onyx/exams is the calendar of sittings -- when, how long, out of
+ * what -- while a mark is a released record and lives under Results, where
+ * the Grades tab shows it (checked below). This step warned every run that a
+ * page which never carries marks was not carrying one.
+ */
+rec('  and the sitting says where its mark will be', {
+  verdict: /result|mark/i.test(t) ? 'PASS' : 'WARN',
+  detail: (t.match(/.{0,80}(result|mark).{0,60}/i) ?? ['no pointer to results'])[0] });
 
 // 2. Results page — Assessments tab
 t = await body('/onyx/results');

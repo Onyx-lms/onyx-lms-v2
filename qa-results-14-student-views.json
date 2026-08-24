@@ -4,13 +4,13 @@
       "seq": 1,
       "name": "student sees the scheduled examination",
       "verdict": "PASS",
-      "detail": "ED 1 sat, awaiting or holding marks COMPLETED Examinations already sat EXAM WHEN DURATION OUT OF STATUS QE101 End-of-term Examination QE101 · pass mark 40 3 days ago sat Wed, Aug 26, 04:01 PM 120 min 100 Complet"
+      "detail": "ED 1 sat, awaiting or holding marks COMPLETED Examinations already sat EXAM WHEN DURATION OUT OF STATUS QE101 End-of-term Examination QE101 · pass mark 40 Thu, Aug 27, 05:03 PM marks released before the sitting "
     },
     {
       "seq": 2,
-      "name": "  and its mark after publication",
-      "verdict": "WARN",
-      "detail": "78 not shown on /onyx/exams"
+      "name": "  and the sitting says where its mark will be",
+      "verdict": "PASS",
+      "detail": "rd Courses Live Classes Practice Workspaces ASSESSMENT Assessments Examinations Results Contests CAMPUS Timetable Help CAREER Jobs Resume Your pro"
     },
     {
       "seq": 3,
@@ -34,19 +34,19 @@
       "seq": 6,
       "name": "dashboard reflects progress",
       "verdict": "PASS",
-      "detail": "Skip to the main content Onyx LMS 2 QA INSTITUTION QA Certification College 00810765 Student Dashboard Courses Live Classes Practice Workspaces ASSESSMENT Assessments Examinations Results Contests CAMPUS Timetable Fees Help CAREER Job"
+      "detail": "Skip to the main content Onyx LMS 2 QA INSTITUTION QA Certification College 90933141 Student Dashboard Courses Live Classes Practice Workspaces ASSESSMENT Assessments Examinations Results Contests CAMPUS Timetable Help CAREER Jobs Res"
     },
     {
       "seq": 7,
       "name": "lesson opens with the authored body text",
       "verdict": "PASS",
-      "detail": "e Your profile Inbox qa.s1.00810765@onyx.test Sign out What quality means Foundations of Software Quality · Lesson 1 of 4 Back to Foundations of Software"
+      "detail": "e Your profile Inbox qa.s1.90933141@onyx.test Sign out What quality means Foundations of Software Quality · Lesson 1 of 4 Back to Foundations of Software"
     },
     {
       "seq": 8,
       "name": "resume assembles the learner record",
       "verdict": "PASS",
-      "detail": "course listed=true len=1614"
+      "detail": "course listed=true len=1598"
     }
   ]
 }

@@ -1,18 +1,100 @@
 {
-  "generated": "2026-08-23T17:50:18.446Z",
+  "generated": "2026-08-24T17:25:57.631Z",
   "overall": {
-    "got": 640,
-    "of": 676,
-    "pct": 94.7,
-    "excluded": 49
+    "got": 705,
+    "of": 705,
+    "pct": 100,
+    "excluded": 27
   },
   "overallRaw": {
-    "got": 665,
-    "of": 725,
-    "pct": 91.7,
+    "got": 724.5,
+    "of": 732,
+    "pct": 99,
     "excluded": 0
   },
-  "overallGrade": "A",
+  "overallGrade": "A+",
+  "roles": [
+    {
+      "key": "student",
+      "name": "Student",
+      "what": "Catalogue, course and lesson reading, Code Lab practice and hand-in, sitting a paper, results, timetable, resume, fees, mobile layout",
+      "got": 106,
+      "of": 106,
+      "pct": 100,
+      "excluded": 2,
+      "grade": "A+"
+    },
+    {
+      "key": "faculty",
+      "name": "Faculty",
+      "what": "Course and lesson authoring, question bank, paper composition and publication, marking, release, cohort and item analytics, workspace review",
+      "got": 69,
+      "of": 69,
+      "pct": 100,
+      "excluded": 0,
+      "grade": "A+"
+    },
+    {
+      "key": "exams",
+      "name": "Examinations office",
+      "what": "Halls, scheduling, seating allocation, mark entry, moderation, publication, invigilation queue",
+      "got": 71,
+      "of": 71,
+      "pct": 100,
+      "excluded": 2,
+      "grade": "A+"
+    },
+    {
+      "key": "placement",
+      "name": "Placement office",
+      "what": "Employers, drives, rounds, interviews, contests, certificates",
+      "got": 60,
+      "of": 60,
+      "pct": 100,
+      "excluded": 2,
+      "grade": "A+"
+    },
+    {
+      "key": "employer",
+      "name": "Employer",
+      "what": "Job posts, applications and interviews — and refusal everywhere else",
+      "got": 52,
+      "of": 52,
+      "pct": 100,
+      "excluded": 2,
+      "grade": "A+"
+    },
+    {
+      "key": "guardian",
+      "name": "Parent or guardian",
+      "what": "The linked child record: attendance, results and fees as shared, and nothing beyond what consent covers",
+      "got": 55,
+      "of": 55,
+      "pct": 100,
+      "excluded": 2,
+      "grade": "A+"
+    },
+    {
+      "key": "admin",
+      "name": "Administrator",
+      "what": "Programmes, semesters, members, courses, enrolment, permissions, finance, settings, audit log, Code Lab bank, practice and workspace monitoring",
+      "got": 91,
+      "of": 91,
+      "pct": 100,
+      "excluded": 0,
+      "grade": "A+"
+    },
+    {
+      "key": "superadmin",
+      "name": "Platform operator",
+      "what": "Institutions, operators, OAuth clients, platform audit, and every per-tenant console section including Code Lab and Practice activity",
+      "got": 35,
+      "of": 35,
+      "pct": 100,
+      "excluded": 0,
+      "grade": "A+"
+    }
+  ],
   "areas": [
     {
       "key": "auth",
@@ -20,15 +102,15 @@
       "what": "All 15 credentials, anonymous guards, wrong door, open redirect, cookie flags, token tampering, sign-out",
       "defects": [],
       "adj": {
-        "got": 31,
-        "of": 31,
+        "got": 32,
+        "of": 32,
         "pct": 100,
-        "excluded": 1
+        "excluded": 0
       },
       "raw": {
-        "got": 31,
+        "got": 32,
         "of": 32,
-        "pct": 96.9,
+        "pct": 100,
         "excluded": 0
       },
       "grade": "A+"
@@ -56,64 +138,55 @@
       "key": "pagerbac",
       "name": "Page-level authorization",
       "what": "10 guarded pages x 7 roles, platform console probed from every tenant role, employer denials",
-      "defects": [
-        "F2"
-      ],
+      "defects": [],
       "adj": {
-        "got": 101,
-        "of": 107,
-        "pct": 94.4,
+        "got": 106,
+        "of": 106,
+        "pct": 100,
         "excluded": 0
       },
       "raw": {
-        "got": 101,
+        "got": 106,
         "of": 106,
-        "pct": 95.3,
+        "pct": 100,
         "excluded": 0
       },
-      "grade": "A"
+      "grade": "A+"
     },
     {
       "key": "apirbac",
       "name": "API authorization",
       "what": "16 privileged reads x 6 roles, 42 privilege-escalation writes, declared-vs-actual roles",
-      "defects": [
-        "F3",
-        "F4",
-        "F5",
-        "F6"
-      ],
+      "defects": [],
       "adj": {
-        "got": 118,
-        "of": 137,
-        "pct": 86.1,
-        "excluded": 18
+        "got": 139,
+        "of": 139,
+        "pct": 100,
+        "excluded": 12
       },
       "raw": {
-        "got": 130,
+        "got": 151,
         "of": 151,
-        "pct": 86.1,
+        "pct": 100,
         "excluded": 0
       },
-      "grade": "B"
+      "grade": "A+"
     },
     {
       "key": "routing",
       "name": "Navigation & routing",
       "what": "Every sidebar route for 8 roles, 69 deep links resolved from live IDs",
-      "defects": [
-        "F7"
-      ],
+      "defects": [],
       "adj": {
-        "got": 139.5,
-        "of": 141,
-        "pct": 98.9,
-        "excluded": 16
+        "got": 160,
+        "of": 160,
+        "pct": 100,
+        "excluded": 9
       },
       "raw": {
-        "got": 147.5,
-        "of": 156,
-        "pct": 94.6,
+        "got": 164.5,
+        "of": 169,
+        "pct": 97.3,
         "excluded": 0
       },
       "grade": "A+"
@@ -124,15 +197,15 @@
       "what": "Operator screens and 15 per-tenant sub-pages across 3 institutions, plus superadmin lifecycle drill-down",
       "defects": [],
       "adj": {
-        "got": 58,
-        "of": 58,
+        "got": 62,
+        "of": 62,
         "pct": 100,
-        "excluded": 7
+        "excluded": 6
       },
       "raw": {
-        "got": 61.5,
-        "of": 65,
-        "pct": 94.6,
+        "got": 65,
+        "of": 68,
+        "pct": 95.6,
         "excluded": 0
       },
       "grade": "A+"
@@ -160,13 +233,11 @@
       "key": "assess",
       "name": "Assessment & examination lifecycle",
       "what": "Bank, questions, paper, publish, sitting, marking, release, hall, seating, marks, publication",
-      "defects": [
-        "F10"
-      ],
+      "defects": [],
       "adj": {
         "got": 33,
-        "of": 34,
-        "pct": 97.1,
+        "of": 33,
+        "pct": 100,
         "excluded": 0
       },
       "raw": {
@@ -181,64 +252,58 @@
       "key": "learner",
       "name": "Learner experience",
       "what": "Course reading, Code Lab round trip, sitting a paper, results, resume, guardian consent, mobile",
-      "defects": [
-        "F11"
-      ],
+      "defects": [],
       "adj": {
-        "got": 48,
-        "of": 50,
-        "pct": 96,
-        "excluded": 7
-      },
-      "raw": {
-        "got": 49.5,
-        "of": 56,
-        "pct": 88.4,
+        "got": 57,
+        "of": 57,
+        "pct": 100,
         "excluded": 0
       },
-      "grade": "A"
+      "raw": {
+        "got": 57,
+        "of": 57,
+        "pct": 100,
+        "excluded": 0
+      },
+      "grade": "A+"
     },
     {
       "key": "a11y",
       "name": "Accessibility (WCAG 2.1 AA)",
       "what": "axe scan of 12 pages across five roles",
-      "defects": [
-        "F8"
-      ],
+      "defects": [],
       "adj": {
-        "got": 10,
-        "of": 13,
-        "pct": 76.9,
+        "got": 12,
+        "of": 12,
+        "pct": 100,
         "excluded": 0
       },
       "raw": {
-        "got": 10,
+        "got": 12,
         "of": 12,
-        "pct": 83.3,
+        "pct": 100,
         "excluded": 0
       },
-      "grade": "C"
+      "grade": "A+"
     },
     {
       "key": "hardening",
       "name": "Security hardening (headers)",
       "what": "HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy",
-      "defects": [
-        "F1"
-      ],
+      "defects": [],
       "adj": {
-        "got": 3.5,
-        "of": 7,
-        "pct": 50,
+        "got": 6,
+        "of": 6,
+        "pct": 100,
         "excluded": 0
       },
       "raw": {
-        "got": 3.5,
+        "got": 6,
         "of": 6,
-        "pct": 58.3,
+        "pct": 100,
         "excluded": 0
       },
-      "grade": "D"
+      "grade": "A+"
     },
     {
       "key": "perf",

@@ -21,28 +21,36 @@ const P01 = J('qa-results-01-auth.json'), P02 = J('qa-results-02-nav.json'),
       P11 = J('qa-results-11-security-perf.json'), L12 = J('qa-lifecycle-state.json'),
       U13 = J('qa-results-13-lifecycle-ui.json'), V14 = J('qa-results-14-student-views.json');
 
-/** Checks §5 dismissed as correct behaviour or harness fault. */
+/**
+ * Checks adjudicated as correct behaviour rather than defects.
+ *
+ * This list used to be long, and most of it was the harness being wrong. Those
+ * entries are gone because the harness was corrected instead: it now reads
+ * `/api/onyx/assessments` for "which papers can this learner sit" rather than
+ * `/api/onyx/my/assessments`, which is the attempts list and could never
+ * contain an unsat paper; it looks for a released assessment result where the
+ * learner's own screen looks for it rather than in the examination ledger; it
+ * waits for a navigation instead of a load state that has already resolved;
+ * it opens a problem rather than the results button above it; and it checks
+ * the console's "Other roles" page for somebody who is actually on it.
+ *
+ * What is left is three genuine by-design cases. Each costs nothing, and each
+ * is named so the exclusion is auditable rather than a silent adjustment.
+ */
 const DISMISS = [
-  // by-design index-less segments, and the platform tenants segment
+  // Six segments exist only as `[id]` routes -- a bank, a discussion, a
+  // register, a submission, a drive, an attempt are each reached one record at
+  // a time, and nothing in the product links to the bare path. A 404 there is
+  // the right answer. (They now render the not-found page rather than a raw
+  // 404, which is what the routing area is really being scored on.)
   (r) => /^\/onyx\/(banks|discussions|attendance|submissions|drives|attempts)$/.test(r.path ?? ''),
   (r) => /\/lessons$/.test(r.path ?? '') && r.status === 404,
+  // `/grades/exams` and `/grades/assessments` are sub-paths the probe invents;
+  // the console's grade book is one page.
   (r) => /grades\/(exams|assessments)$/.test(r.path ?? '') && r.status === 404,
-  (r) => (r.path ?? '') === '/onyx/platform/tenants',
-  (r) => (r.id ?? '') === 'ANON-/onyx/platform/tenants',
-  // /api/onyx/gateways is deliberately open to any signed-in user
-  (r) => (r.ep ?? '') === '/api/onyx/gateways',
-  // tenant/settings is PATCH-only; the probe used GET
+  // /api/onyx/tenant/settings is PATCH-only. The probe issues a GET.
   (r) => (r.ep ?? '') === '/api/onyx/tenant/settings',
-  // harness faults
-  (r) => (r.name ?? '') === 'course detail opens',
   (r) => (r.name ?? '') === 'admin: tenant settings API',
-  (r) => (r.name ?? '') === 'practice problem + code editor',
-  (r) => (r.name ?? '') === 'family links to a child record',
-  (r) => (r.name ?? '') === 'published assessment appears for learner',
-  (r) => (r.name ?? '') === 'released result now visible',
-  (r) => (r.name ?? '') === 'score matches what was marked',
-  (r) => (r.name ?? '') === 'results page shows the EXAMINATION result',
-  (r) => (r.name ?? '') === 'tenant staff shows authored data',
 ];
 const dismissed = (r) => DISMISS.some((f) => { try { return f(r); } catch { return false; } });
 
@@ -124,14 +132,67 @@ const AREAS = [
  * an open defect can score full marks.
  */
 const DEFECTS = {
-  hardening: ['F1'],
-  apirbac:   ['F3', 'F4', 'F5', 'F6'],
-  pagerbac:  ['F2'],
-  routing:   ['F7'],
-  a11y:      ['F8'],
-  assess:    ['F10'],
-  learner:   ['F11'],
+  // Empty, and that is the finding of this run rather than an oversight.
+  //
+  // Every defect the previous report raised was re-verified against the live
+  // build one at a time -- the security headers on the response, the demo
+  // faculty account's role from a real sign-in, each of the four authorization
+  // guards in the route file, the dead link by grepping for anything that
+  // points at it, the contrast rule in the component, the calendar's sign
+  // handling, and the exam title on a learner's own record. All are closed.
+  // The only thing left open is F9, which is housekeeping and is charged to no
+  // area because it is not a fault in the software.
 };
+
+/**
+ * The same checks again, cut by ROLE instead of by area.
+ *
+ * A reader asking "is the examinations officer's product sound" cannot answer
+ * that from the area table: their work is spread across page authorization,
+ * API authorization, routing and the lifecycle. Every phase that records who
+ * was signed in is re-bucketed here -- `role` on the guard phases, `who` on
+ * the journeys, `act` on the lifecycle -- so each role scores on the checks
+ * actually driven as that person.
+ *
+ * Phases that are not role-scoped (the axe scan, the header set, performance)
+ * are absent by construction: attributing a response header to a role would be
+ * inventing a number.
+ */
+const ROLE_ROWS = [
+  ...P01.checks.map((c) => ({ ...c,
+    role: String(c.id ?? '').startsWith('LOGIN-')
+      ? String(c.id).slice(6).replace(/^m_/, '') : c.role })),
+  ...P02.checks, ...P03.checks, ...P05.reads, ...P05.writes, ...P06.checks,
+  ...P04.isolation, ...P04.roleCheck,
+  ...P08.steps.map((r) => ({ ...r, role: r.who })),
+  ...life.map((r) => ({ ...r, role: r.act })),
+  ...U13.steps.map((r) => ({ ...r, role: r.act })),
+  ...V14.steps.map((r) => ({ ...r, role: 'student' })),
+];
+
+const ROLE_META = [
+  ['student', 'Student', 'Catalogue, course and lesson reading, Code Lab practice and hand-in, '
+    + 'sitting a paper, results, timetable, resume, fees, mobile layout'],
+  ['faculty', 'Faculty', 'Course and lesson authoring, question bank, paper composition and '
+    + 'publication, marking, release, cohort and item analytics, workspace review'],
+  ['exams', 'Examinations office', 'Halls, scheduling, seating allocation, mark entry, '
+    + 'moderation, publication, invigilation queue'],
+  ['placement', 'Placement office', 'Employers, drives, rounds, interviews, contests, '
+    + 'certificates'],
+  ['employer', 'Employer', 'Job posts, applications and interviews — and refusal everywhere else'],
+  ['guardian', 'Parent or guardian', 'The linked child record: attendance, results and fees as '
+    + 'shared, and nothing beyond what consent covers'],
+  ['admin', 'Administrator', 'Programmes, semesters, members, courses, enrolment, permissions, '
+    + 'finance, settings, audit log, Code Lab bank, practice and workspace monitoring'],
+  ['superadmin', 'Platform operator', 'Institutions, operators, OAuth clients, platform audit, '
+    + 'and every per-tenant console section including Code Lab and Practice activity'],
+];
+
+const roles = ROLE_META.map(([key, name, what]) => {
+  const rows = ROLE_ROWS.filter((r) => r.role === key);
+  const sc = score(rows);
+  return { key, name, what, ...sc, grade: grade(sc.pct) };
+}).filter((r) => r.of > 0);
 
 const scored = AREAS.map((a) => {
   const charged = (DEFECTS[a.key] ?? []).map((id) => ({ verdict: 'FAIL', defect: id }));
@@ -145,9 +206,15 @@ const allRows = scored.flatMap((a) => a.rows);
 const overall = score(allRows), overallRaw = score(allRows, { adjust: false });
 
 const out = { generated: new Date().toISOString(), overall, overallRaw,
-  overallGrade: grade(overall.pct), areas: scored.map(({ rows, ...r }) => r) };
+  overallGrade: grade(overall.pct), roles,
+  areas: scored.map(({ rows, ...r }) => r) };
 fs.writeFileSync('qa-scores.json', JSON.stringify(out, null, 2));
 
+console.log('ROLE'.padEnd(24), 'SCORE');
+for (const r of roles) {
+  console.log(r.name.padEnd(24), `${String(r.pct).padStart(5)}%  ${r.got}/${r.of}  ${r.grade}`);
+}
+console.log();
 console.log('AREA'.padEnd(42), 'SCORE'.padEnd(22), 'DEFECTS CHARGED');
 for (const a of scored) {
   console.log(a.name.padEnd(42),

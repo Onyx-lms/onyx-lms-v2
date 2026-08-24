@@ -2,7 +2,7 @@
   "abc": {
     "/api/onyx/courses": {
       "status": 200,
-      "count": 8,
+      "count": 9,
       "ids": [
         60,
         61,
@@ -24,18 +24,18 @@
     },
     "/api/onyx/assessments": {
       "status": 200,
-      "count": 20,
+      "count": 22,
       "ids": [
+        26,
         27,
         28,
-        26,
         89,
         90
       ]
     },
     "/api/onyx/exams": {
       "status": 200,
-      "count": 17,
+      "count": 18,
       "ids": [
         12,
         13,
