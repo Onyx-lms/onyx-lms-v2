@@ -214,8 +214,14 @@ await step('drawing from that bank', '/api/onyx/platform/tenants/' + tid
 await step('and published', '/api/onyx/platform/tenants/' + tid
   + '/assessments/' + paperId + '/publish', { method: 'POST', token: pt, body: {} });
 
+// Consent and the devices, because a paper set from the console is monitored
+// by default now -- the sitting screen sends both, and a paper that refused
+// without them would be behaving correctly.
 const started = await step('the learner starts it',
-  '/api/onyx/assessments/' + paperId + '/start', { method: 'POST', token: st, body: {} });
+  '/api/onyx/assessments/' + paperId + '/start', {
+    method: 'POST', token: st,
+    body: { consent: true, devices: { camera: true, screen: true } },
+  });
 const attemptId = started.data?.id;
 // Answered correctly, so a full mark proves the marking ran rather than merely
 // that a number appeared.
