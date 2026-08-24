@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { money } from '@/lib/onyx-money';
 import { Icon } from '@/components/onyx-ui';
 import { Modal } from '@/components/onyx-modal';
 import { completeCheckout } from '@/lib/onyx-checkout-client';
@@ -44,9 +45,7 @@ export function BuyCourseButton({ courseId, title, price, currency, compact, gat
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
-  const amount = currency + ' '
-    + Math.floor(price / 100).toLocaleString('en-IN')
-    + '.' + String(price % 100).padStart(2, '0');
+  const amount = money(price, currency);
 
   /** The mock: one post, recorded, enrolled. */
   const buyMock = () => start(async () => {

@@ -98,8 +98,12 @@ try {
   say(true, 'the course offers to be bought', (await buy.textContent())?.trim());
 
   await buy.click();
-  // The dialog's own Buy, not the card's.
-  await page.getByRole('dialog').getByRole('button', { name: /Buy|Pay/i }).first().click();
+  const dialog = page.getByRole('dialog');
+  await dialog.waitFor({ timeout: 15_000 });
+  say(true, 'the buy dialog opened',
+    (await dialog.innerText()).replace(/\s+/g, ' ').slice(0, 90));
+  // The dialog's own button, which says "Pay ₹300.00".
+  await dialog.getByRole('button', { name: /^Pay/i }).first().click();
 
   /*
    * Razorpay's window is an iframe of theirs, and everything below is their

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { apiSafe, type SiteSettings } from '@/lib/api';
 import { Icon, type IconName } from '@/components/onyx-ui';
+import { money } from '@/lib/onyx-money';
 
 export const revalidate = 60;
 
@@ -366,7 +367,7 @@ export default async function HomePage() {
                         they close. */}
                     <span className="text-[17px] font-extrabold tabular-nums">
                       {c.access === 'locked'
-                        ? c.currency + ' ' + Math.floor(c.price_minor / 100).toLocaleString('en-IN')
+                        ? money(c.price_minor, c.currency)
                         : 'Free'}
                     </span>
                     {/* To the course, not to a form. Somebody deciding whether

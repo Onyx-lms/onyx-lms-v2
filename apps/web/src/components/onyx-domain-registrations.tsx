@@ -1,4 +1,5 @@
 import { Card, DataTable, EmptyRow, Pill, SectionHead } from '@/components/onyx-ui';
+import { money } from '@/lib/onyx-money';
 
 /**
  * Who has signed up for one Live Class.
@@ -35,10 +36,9 @@ const STATUS: Record<string, { label: string; tone: 'good' | 'soon' | 'late' }> 
   failed: { label: 'Failed', tone: 'late' },
 };
 
-function money(minor: number, currency: string): string {
-  if (!minor) return 'Free';
-  return currency + ' ' + Math.floor(minor / 100).toLocaleString('en-IN')
-    + '.' + String(minor % 100).padStart(2, '0');
+/** Free is a price too, and the one worth saying in words. */
+function priced(minor: number, currency: string): string {
+  return minor ? money(minor, currency) : 'Free';
 }
 
 /** A date somebody can act on, not an ISO string. */
@@ -105,7 +105,7 @@ export function DomainRegistrations({ rows }: { rows: DomainRegistration[] }) {
                   </a>
                   : <span className="text-muted">Not given</span>}
               </td>
-              <td className="tabular-nums">{money(r.amount_minor, r.currency)}</td>
+              <td className="tabular-nums">{priced(r.amount_minor, r.currency)}</td>
               <td className="whitespace-nowrap">{when(r.created_at)}</td>
               <td>
                 <Pill tone={STATUS[r.status]?.tone ?? 'neutral'}>

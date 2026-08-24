@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { money } from '@/lib/onyx-money';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { appOrigin } from '@/lib/app-origin';
@@ -56,9 +57,7 @@ const TYPE_ICON: Record<string, 'play' | 'book' | 'file' | 'external'> = {
   video: 'play', text: 'book', document: 'file', image: 'file', link: 'external',
 };
 
-const money = (minor: number, currency: string) =>
-  currency + ' ' + Math.floor(minor / 100).toLocaleString('en-IN')
-  + '.' + String(minor % 100).padStart(2, '0');
+
 
 /**
  * A course's own page, for people who do not have an account.
