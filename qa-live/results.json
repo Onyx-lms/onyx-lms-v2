@@ -23,7 +23,7 @@
     "phase": "1. platform operator",
     "status": "PASS",
     "what": "sees every institution on the platform",
-    "detail": "14 institutions",
+    "detail": "9 institutions",
     "evidence": {
       "status": 200,
       "message": null
@@ -337,7 +337,7 @@
     "phase": "3. assessment and examination",
     "status": "PASS",
     "what": "schedules an examination without naming a semester",
-    "detail": "semester_id=165",
+    "detail": "semester_id=166",
     "evidence": {
       "status": 200,
       "message": null
