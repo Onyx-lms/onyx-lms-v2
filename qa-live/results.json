@@ -337,7 +337,7 @@
     "phase": "3. assessment and examination",
     "status": "PASS",
     "what": "schedules an examination without naming a semester",
-    "detail": "semester_id=172",
+    "detail": "semester_id=174",
     "evidence": {
       "status": 200,
       "message": null
@@ -494,7 +494,7 @@
     "phase": "5. learner",
     "status": "PASS",
     "what": "hands the paper in",
-    "detail": "score=null/20",
+    "detail": "score=null/15",
     "evidence": {
       "status": 200,
       "message": "Handed in."
