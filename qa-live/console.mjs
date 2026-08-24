@@ -128,6 +128,38 @@ check('and then reads as published', Number(published.data?.status) === 1,
 await step('and withdrawn again', '/api/onyx/platform/tenants/' + tid + '/domains/' + domainId,
   { method: 'PATCH', token: pt, body: { status: 0 } });
 
+// The banner, proved with a real upload rather than by handing the route a
+// path -- "the API accepts image_path" and "a picture can be uploaded" are
+// different claims, and only the second is what somebody is trying to do.
+const banner = await step('a banner upload ticket is issued',
+  '/api/onyx/platform/tenants/' + tid + '/domains/uploads/sign', {
+    method: 'POST', token: pt, body: { filename: 'banner-' + RUN + '.png' },
+  });
+// A one-pixel PNG: the smallest thing that is genuinely an image.
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64');
+const putBanner = await fetch(banner.data?.signedUrl, {
+  method: 'PUT', headers: { 'Content-Type': 'image/png' }, body: PNG,
+});
+check('the browser can PUT the image straight to storage', putBanner.ok,
+  'status ' + putBanner.status);
+
+await step('the Live Class takes the banner',
+  '/api/onyx/platform/tenants/' + tid + '/domains/' + domainId,
+  { method: 'PATCH', token: pt, body: { image_path: banner.data?.path } });
+
+const withBanner = await call('/api/onyx/platform/tenants/' + tid + '/domains', { token: pt });
+const banded = (withBanner.data ?? []).find((d) => Number(d.id) === Number(domainId));
+check('and the list hands back a URL a browser can load, not a bucket path',
+  String(banded?.image_url ?? '').startsWith('http'),
+  String(banded?.image_url ?? '').slice(0, 55) + '…');
+const servedBanner = await fetch(banded?.image_url);
+check('which serves the image that was uploaded', servedBanner.ok
+  && Number(servedBanner.headers.get('content-length')) === PNG.length,
+'status ' + servedBanner.status + ', '
++ servedBanner.headers.get('content-length') + ' bytes');
+
 const anon = await call('/api/onyx/platform/tenants/' + tid + '/domains');
 check('none of this is reachable without a platform session',
   anon.status === 401 || anon.status === 403, 'status ' + anon.status);

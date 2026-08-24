@@ -2222,16 +2222,9 @@ export function CreateDomainForm({ tenantId }: { tenantId: number }) {
     return ticket.data.path as string;
   }
 
-  if (!open) {
-    return (
-      <button type="button" onClick={() => setOpen(true)} className={button}>
-        Add a Live Class
-      </button>
-    );
-  }
-  return (
+  const form = (
     <form
-      className="grid gap-3 rounded-2xl border border-line bg-slate-50 p-4 sm:grid-cols-2"
+      className="grid gap-3 sm:grid-cols-2"
       onSubmit={(e) => {
         e.preventDefault();
         const data = new FormData(e.currentTarget);
@@ -2324,16 +2317,33 @@ export function CreateDomainForm({ tenantId }: { tenantId: number }) {
         <input id="cd-url" name="curriculum_url" maxLength={500}
           placeholder="example.com/curriculum" className={field} />
       </div>
-      <div className="col-span-full flex gap-2">
+      <div className="col-span-full flex gap-2 pt-1">
         <button type="submit" disabled={pending} className={button}>
           {stage ?? (pending ? 'Adding…' : 'Add it as a draft')}
         </button>
-        <button type="button" onClick={() => setOpen(false)}
+        <button type="button" disabled={pending} onClick={() => setOpen(false)}
           className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
           Cancel
         </button>
       </div>
     </form>
+  );
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} className={button}>
+        Add a Live Class
+      </button>
+      {/* A dialog, like the institution's own composer -- which is the form
+          this one is meant to match. Expanding in place put it in whatever
+          width the header row had left over, which was half the screen with
+          the count stranded beside it. */}
+      {open ? (
+        <Modal title="Add a Live Class" onClose={() => setOpen(false)} wide>
+          {form}
+        </Modal>
+      ) : null}
+    </>
   );
 }
 
