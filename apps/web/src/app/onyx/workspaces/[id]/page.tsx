@@ -4,7 +4,7 @@ import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxWorkspace } from '@/components/onyx-workspace';
 import { Icon } from '@/components/onyx-ui';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import type { WorkspaceDetail } from '@/lib/onyx-codelab';
 
 export const metadata: Metadata = { title: 'Workspace' };
@@ -17,7 +17,7 @@ export default async function OnyxWorkspacePage({ params }: { params: Promise<{ 
   const { id } = await params;
   const [me, workspace] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<WorkspaceDetail>('/api/onyx/workspaces/' + id),
+    onyxApiRecord<WorkspaceDetail>('/api/onyx/workspaces/' + id),
   ]);
 
   const open = workspace.comments.filter((c) => !c.resolved_at).length;

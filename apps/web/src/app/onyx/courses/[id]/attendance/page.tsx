@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import type { AttendanceAnalytics, AttendanceSession, Course } from '@/lib/onyx-learn';
 import {
   Banner, Card, DataTable, Empty, EmptyRow, Icon, ListRow, Pill, RowList, Score,
@@ -60,7 +60,7 @@ export default async function OnyxCourseAttendancePage(
 
   const [me, course, analytics, sessions, members] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<Course>('/api/onyx/courses/' + id),
+    onyxApiRecord<Course>('/api/onyx/courses/' + id),
     onyxApiSafe<AttendanceAnalytics>(
       '/api/onyx/courses/' + id + '/attendance/analytics?threshold=' + threshold),
     onyxApiSafe<AttendanceSession[]>('/api/onyx/courses/' + id + '/attendance'),

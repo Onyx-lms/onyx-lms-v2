@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxSla, OnyxTicketActions } from '@/components/onyx-engage';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import type { TicketDetail } from '@/lib/onyx-campus';
 
 export const metadata: Metadata = { title: 'Ticket' };
@@ -22,7 +22,7 @@ export default async function OnyxSupportTicketPage({ params }: { params: Promis
   const { id } = await params;
   const [me, ticket] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<TicketDetail>('/api/onyx/tickets/' + id),
+    onyxApiRecord<TicketDetail>('/api/onyx/tickets/' + id),
   ]);
   const mentor = MENTOR_ROLES.includes(me.role);
 

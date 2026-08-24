@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxMarker } from '@/components/onyx-marking';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxPageRole, onyxApi, type Me } from '@/lib/onyx-session';
+import { requireOnyxPageRole, onyxApi, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import type { MarkerPaper } from '@/lib/onyx-assess';
 import {
   Card, Icon, Meter, Score, SectionHead, State,
@@ -23,7 +23,7 @@ export default async function OnyxMarkPaperPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const [me, paper] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<MarkerPaper>('/api/onyx/attempts/' + id + '/paper'),
+    onyxApiRecord<MarkerPaper>('/api/onyx/attempts/' + id + '/paper'),
   ]);
 
   // Where you are in this script, counted off the questions themselves. A

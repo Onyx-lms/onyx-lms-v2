@@ -15,10 +15,10 @@
       "key": "faculty",
       "email": "faculty@demo.onyx",
       "csv_role": "faculty",
-      "actual_role": "admin",
+      "actual_role": "faculty",
       "tenant": "abc-institution",
       "tenant_id": 1,
-      "verdict": "FAIL"
+      "verdict": "PASS"
     },
     {
       "key": "exams",
@@ -203,14 +203,6 @@
     },
     {
       "actor": "meridian-admin->abc",
-      "url": "/api/onyx/assessments/26",
-      "status": 404,
-      "leaked": false,
-      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
-      "verdict": "PASS"
-    },
-    {
-      "actor": "meridian-admin->abc",
       "url": "/api/onyx/assessments/27",
       "status": 404,
       "leaked": false,
@@ -220,6 +212,14 @@
     {
       "actor": "meridian-admin->abc",
       "url": "/api/onyx/assessments/28",
+      "status": 404,
+      "leaked": false,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "actor": "meridian-admin->abc",
+      "url": "/api/onyx/assessments/26",
       "status": 404,
       "leaked": false,
       "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Assessment not found.\"}",

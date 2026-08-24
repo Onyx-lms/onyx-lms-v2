@@ -4,7 +4,7 @@ import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxCodeLab } from '@/components/onyx-codelab';
 import { Card, CodeBlock, Icon, Pill, SectionHead } from '@/components/onyx-ui';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import { DIFFICULTY_LABELS, type ProblemDetail } from '@/lib/onyx-codelab';
 import type { Course } from '@/lib/onyx-learn';
 import { ProblemSettingsForm, TestCases } from '@/components/onyx-manage';
@@ -33,7 +33,7 @@ export default async function OnyxProblemPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const [me, problem] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<ProblemDetail>('/api/onyx/problems/' + id),
+    onyxApiRecord<ProblemDetail>('/api/onyx/problems/' + id),
   ]);
   const staff = me.role === 'admin' || me.role === 'faculty';
   // For the course picker on ProblemSettingsForm -- same split as the

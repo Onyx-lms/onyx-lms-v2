@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxReplyForm, OnyxVote, OnyxResolve, OnyxEscalate } from '@/components/onyx-engage';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import type { DiscussionDetail } from '@/lib/onyx-campus';
 
 export const metadata: Metadata = { title: 'Question' };
@@ -20,7 +20,7 @@ export default async function OnyxDiscussionPage({ params }: { params: Promise<{
   const { id } = await params;
   const [me, thread] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<DiscussionDetail>('/api/onyx/discussions/' + id),
+    onyxApiRecord<DiscussionDetail>('/api/onyx/discussions/' + id),
   ]);
 
   const mine = String(thread.author_id) === me.user_id;

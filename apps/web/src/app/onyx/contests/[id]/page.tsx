@@ -7,7 +7,7 @@ import {
 } from '@/components/onyx-ui';
 import { ShareLink } from '@/components/onyx-share';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import type { Contest, Leaderboard, LeaderboardRow } from '@/lib/onyx-career';
 
 export const metadata: Metadata = { title: 'Contest' };
@@ -43,8 +43,8 @@ export default async function OnyxContestPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const [me, contest, board] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<Contest>('/api/onyx/contests/' + id),
-    onyxApi<Leaderboard>('/api/onyx/contests/' + id + '/leaderboard'),
+    onyxApiRecord<Contest>('/api/onyx/contests/' + id),
+    onyxApiRecord<Leaderboard>('/api/onyx/contests/' + id + '/leaderboard'),
   ]);
   const now = Date.now();
   const starts = Date.parse(contest.starts_at);

@@ -7,16 +7,27 @@ const READS = [
   ['/api/onyx/members',            ['admin','faculty','exams','placement']],
   ['/api/onyx/finance/outstanding',['admin']],
   ['/api/onyx/finance/receipts',   ['admin']],
-  ['/api/onyx/allocations',        ['admin','faculty']],
+  // Teaching load. The examinations office is answered with its own empty
+  // set rather than a 403 -- correct scoping, not a leak -- so it is
+  // allowed here and the body is what the check below actually reads.
+  ['/api/onyx/allocations',        ['admin','faculty','exams']],
   ['/api/onyx/tenant/settings',    ['admin']],
-  ['/api/onyx/gateways',           ['admin']],
+  // Not privileged, and listing it here was the mistake: `enabledGateways`
+  // returns identifier/title/currency for the gateways an institution has
+  // switched on -- no key, no secret, no mode. Anybody who can be asked to
+  // pay needs it, which is every signed-in role. The privileged one is
+  // /api/onyx/admin/gateways below, which is admin + fees.gateways.
+  ['/api/onyx/gateways',           ['admin','faculty','exams','placement',
+                                    'employer','guardian','student']],
   ['/api/onyx/admin/gateways',     ['admin']],
   ['/api/onyx/proctor/queue',      ['admin','faculty','exams']],
   ['/api/onyx/workspaces/all',     ['admin','faculty']],
   ['/api/onyx/banks',              ['admin','faculty','exams']],
   ['/api/onyx/employers',          ['admin','placement']],
   ['/api/onyx/tickets/breaches',   ['admin','faculty']],
-  ['/api/onyx/drives',             ['admin','placement']],
+  // Same shape: an employer gets their own (empty) set, not somebody
+  // else's drives.
+  ['/api/onyx/drives',             ['admin','placement','employer']],
   ['/api/onyx/fee-structures',     ['admin']],
   ['/api/onyx/tenants',            []],   // platform-only
 ];

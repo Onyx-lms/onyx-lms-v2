@@ -8,7 +8,7 @@ import {
 import { OnyxReturnedWork, OnyxSubmissionForm } from '@/components/onyx-assignment';
 import { ActionButton } from '@/components/onyx-create';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import { isStaff, type Assignment } from '@/lib/onyx-learn';
 
 export const metadata: Metadata = { title: 'Assignment' };
@@ -26,7 +26,7 @@ export default async function OnyxAssignmentPage({ params }: { params: Promise<{
   const { id } = await params;
   const [me, assignment] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<Assignment>('/api/onyx/assignments/' + id),
+    onyxApiRecord<Assignment>('/api/onyx/assignments/' + id),
   ]);
 
   const staff = isStaff(claims.tenant_role);

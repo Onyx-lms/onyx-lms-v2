@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxPlayer, ResourceLink } from '@/components/onyx-player';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import { formatDuration, type LessonDetail, type Outline } from '@/lib/onyx-learn';
 import {
   Card, Icon, Meter, Pill, RowList, SectionHead, Theatre, type IconName,
@@ -44,8 +44,8 @@ export default async function OnyxLessonPage(
   const { id, lessonId } = await params;
   const [me, lesson, outline] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<LessonDetail>('/api/onyx/lessons/' + lessonId),
-    onyxApi<Outline>('/api/onyx/courses/' + id + '/outline'),
+    onyxApiRecord<LessonDetail>('/api/onyx/lessons/' + lessonId),
+    onyxApiRecord<Outline>('/api/onyx/courses/' + id + '/outline'),
   ]);
 
   const flat = outline.modules.flatMap((m) => m.lessons);

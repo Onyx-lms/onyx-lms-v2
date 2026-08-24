@@ -1,13 +1,13 @@
 {
   "phase": "nav",
-  "base": "https://onyx-lms-v2.vercel.app",
+  "base": "http://localhost:5199",
   "checks": [
     {
       "role": "student",
       "path": "/onyx/dashboard",
       "landed": "/onyx/dashboard",
       "status": 200,
-      "ms": 2712,
+      "ms": 2090,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -15,7 +15,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1830,
+      "bodyLen": 1922,
       "verdict": "PASS"
     },
     {
@@ -23,7 +23,7 @@
       "path": "/onyx/courses",
       "landed": "/onyx/courses",
       "status": 200,
-      "ms": 1438,
+      "ms": 1039,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -31,7 +31,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1778,
+      "bodyLen": 2183,
       "verdict": "PASS"
     },
     {
@@ -39,7 +39,7 @@
       "path": "/onyx/domains",
       "landed": "/onyx/domains",
       "status": 200,
-      "ms": 419,
+      "ms": 579,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -55,7 +55,7 @@
       "path": "/onyx/practice",
       "landed": "/onyx/practice",
       "status": 200,
-      "ms": 421,
+      "ms": 483,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -63,7 +63,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2225,
+      "bodyLen": 2526,
       "verdict": "PASS"
     },
     {
@@ -71,7 +71,7 @@
       "path": "/onyx/workspaces",
       "landed": "/onyx/workspaces",
       "status": 200,
-      "ms": 562,
+      "ms": 553,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -79,7 +79,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 998,
+      "bodyLen": 1046,
       "verdict": "PASS"
     },
     {
@@ -87,7 +87,7 @@
       "path": "/onyx/assessments",
       "landed": "/onyx/assessments",
       "status": 200,
-      "ms": 696,
+      "ms": 578,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -95,7 +95,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1525,
+      "bodyLen": 1801,
       "verdict": "PASS"
     },
     {
@@ -103,7 +103,7 @@
       "path": "/onyx/exams",
       "landed": "/onyx/exams",
       "status": 200,
-      "ms": 609,
+      "ms": 569,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -111,7 +111,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2376,
+      "bodyLen": 2684,
       "verdict": "PASS"
     },
     {
@@ -119,7 +119,7 @@
       "path": "/onyx/results",
       "landed": "/onyx/results",
       "status": 200,
-      "ms": 731,
+      "ms": 599,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -127,7 +127,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1837,
+      "bodyLen": 1925,
       "verdict": "PASS"
     },
     {
@@ -135,7 +135,7 @@
       "path": "/onyx/contests",
       "landed": "/onyx/contests",
       "status": 200,
-      "ms": 539,
+      "ms": 722,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -151,7 +151,7 @@
       "path": "/onyx/timetable",
       "landed": "/onyx/timetable",
       "status": 200,
-      "ms": 905,
+      "ms": 770,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -159,7 +159,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 3308,
+      "bodyLen": 3680,
       "verdict": "PASS"
     },
     {
@@ -167,7 +167,7 @@
       "path": "/onyx/fees",
       "landed": "/onyx/fees",
       "status": 200,
-      "ms": 566,
+      "ms": 572,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -183,7 +183,7 @@
       "path": "/onyx/support",
       "landed": "/onyx/support",
       "status": 200,
-      "ms": 752,
+      "ms": 390,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -199,7 +199,7 @@
       "path": "/onyx/jobs",
       "landed": "/onyx/jobs",
       "status": 200,
-      "ms": 599,
+      "ms": 395,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -215,7 +215,7 @@
       "path": "/onyx/interviews",
       "landed": "/onyx/interviews",
       "status": 200,
-      "ms": 531,
+      "ms": 294,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -231,7 +231,7 @@
       "path": "/onyx/resume",
       "landed": "/onyx/resume",
       "status": 200,
-      "ms": 950,
+      "ms": 697,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -239,7 +239,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2354,
+      "bodyLen": 2492,
       "verdict": "PASS"
     },
     {
@@ -247,7 +247,7 @@
       "path": "/onyx/profile",
       "landed": "/onyx/profile",
       "status": 200,
-      "ms": 2670,
+      "ms": 1887,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -255,7 +255,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 3308,
+      "bodyLen": 3396,
       "verdict": "PASS"
     },
     {
@@ -263,7 +263,7 @@
       "path": "/onyx/inbox",
       "landed": "/onyx/inbox",
       "status": 200,
-      "ms": 399,
+      "ms": 482,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -279,7 +279,7 @@
       "path": "/onyx/dashboard",
       "landed": "/onyx/dashboard",
       "status": 200,
-      "ms": 1049,
+      "ms": 764,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -295,7 +295,7 @@
       "path": "/onyx/courses",
       "landed": "/onyx/courses",
       "status": 200,
-      "ms": 1300,
+      "ms": 889,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -303,7 +303,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2085,
+      "bodyLen": 2229,
       "verdict": "PASS"
     },
     {
@@ -311,7 +311,7 @@
       "path": "/onyx/domains",
       "landed": "/onyx/domains",
       "status": 200,
-      "ms": 475,
+      "ms": 506,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -327,7 +327,7 @@
       "path": "/onyx/practice",
       "landed": "/onyx/practice",
       "status": 200,
-      "ms": 780,
+      "ms": 598,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -335,7 +335,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2750,
+      "bodyLen": 3051,
       "verdict": "PASS"
     },
     {
@@ -343,7 +343,7 @@
       "path": "/onyx/practice/submissions",
       "landed": "/onyx/practice/submissions",
       "status": 200,
-      "ms": 1168,
+      "ms": 872,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -351,7 +351,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 5222,
+      "bodyLen": 5531,
       "verdict": "PASS"
     },
     {
@@ -359,7 +359,7 @@
       "path": "/onyx/workspaces",
       "landed": "/onyx/workspaces",
       "status": 200,
-      "ms": 1298,
+      "ms": 982,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -367,7 +367,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1795,
+      "bodyLen": 1861,
       "verdict": "PASS"
     },
     {
@@ -375,7 +375,7 @@
       "path": "/onyx/assessments",
       "landed": "/onyx/assessments",
       "status": 200,
-      "ms": 909,
+      "ms": 692,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -383,7 +383,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2730,
+      "bodyLen": 3103,
       "verdict": "PASS"
     },
     {
@@ -391,7 +391,7 @@
       "path": "/onyx/exams",
       "landed": "/onyx/exams",
       "status": 200,
-      "ms": 1232,
+      "ms": 1308,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -399,7 +399,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2541,
+      "bodyLen": 2887,
       "verdict": "PASS"
     },
     {
@@ -407,7 +407,7 @@
       "path": "/onyx/invigilate",
       "landed": "/onyx/invigilate",
       "status": 200,
-      "ms": 1070,
+      "ms": 696,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -423,7 +423,7 @@
       "path": "/onyx/programs",
       "landed": "/onyx/programs",
       "status": 200,
-      "ms": 896,
+      "ms": 645,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -431,7 +431,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 754,
+      "bodyLen": 753,
       "verdict": "PASS"
     },
     {
@@ -439,7 +439,7 @@
       "path": "/onyx/timetable",
       "landed": "/onyx/timetable",
       "status": 200,
-      "ms": 931,
+      "ms": 741,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -455,7 +455,7 @@
       "path": "/onyx/allocations",
       "landed": "/onyx/allocations",
       "status": 200,
-      "ms": 770,
+      "ms": 725,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -471,7 +471,7 @@
       "path": "/onyx/people",
       "landed": "/onyx/people",
       "status": 200,
-      "ms": 686,
+      "ms": 533,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -487,7 +487,7 @@
       "path": "/onyx/support",
       "landed": "/onyx/support",
       "status": 200,
-      "ms": 726,
+      "ms": 486,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -503,7 +503,7 @@
       "path": "/onyx/inbox",
       "landed": "/onyx/inbox",
       "status": 200,
-      "ms": 427,
+      "ms": 425,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -519,7 +519,7 @@
       "path": "/onyx/profile",
       "landed": "/onyx/profile",
       "status": 200,
-      "ms": 1051,
+      "ms": 588,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -527,7 +527,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1710,
+      "bodyLen": 1692,
       "verdict": "PASS"
     },
     {
@@ -535,7 +535,7 @@
       "path": "/onyx/assessments",
       "landed": "/onyx/assessments",
       "status": 200,
-      "ms": 1787,
+      "ms": 840,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -543,7 +543,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2623,
+      "bodyLen": 2996,
       "verdict": "PASS"
     },
     {
@@ -551,7 +551,7 @@
       "path": "/onyx/invigilate",
       "landed": "/onyx/invigilate",
       "status": 200,
-      "ms": 858,
+      "ms": 669,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -567,7 +567,7 @@
       "path": "/onyx/exams",
       "landed": "/onyx/exams",
       "status": 200,
-      "ms": 1180,
+      "ms": 600,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -575,7 +575,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2445,
+      "bodyLen": 2791,
       "verdict": "PASS"
     },
     {
@@ -583,7 +583,7 @@
       "path": "/onyx/timetable",
       "landed": "/onyx/timetable",
       "status": 200,
-      "ms": 899,
+      "ms": 480,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -591,7 +591,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 3238,
+      "bodyLen": 3610,
       "verdict": "PASS"
     },
     {
@@ -599,7 +599,7 @@
       "path": "/onyx/certificates",
       "landed": "/onyx/certificates",
       "status": 200,
-      "ms": 632,
+      "ms": 357,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -615,7 +615,7 @@
       "path": "/onyx/inbox",
       "landed": "/onyx/inbox",
       "status": 200,
-      "ms": 527,
+      "ms": 224,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -631,7 +631,7 @@
       "path": "/onyx/profile",
       "landed": "/onyx/profile",
       "status": 200,
-      "ms": 691,
+      "ms": 319,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -639,7 +639,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1326,
+      "bodyLen": 1317,
       "verdict": "PASS"
     },
     {
@@ -647,7 +647,7 @@
       "path": "/onyx/placement",
       "landed": "/onyx/placement",
       "status": 200,
-      "ms": 772,
+      "ms": 365,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -663,7 +663,7 @@
       "path": "/onyx/jobs",
       "landed": "/onyx/jobs",
       "status": 200,
-      "ms": 649,
+      "ms": 316,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -679,7 +679,7 @@
       "path": "/onyx/interviews",
       "landed": "/onyx/interviews",
       "status": 200,
-      "ms": 503,
+      "ms": 200,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -695,7 +695,7 @@
       "path": "/onyx/contests",
       "landed": "/onyx/contests",
       "status": 200,
-      "ms": 552,
+      "ms": 237,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -711,7 +711,7 @@
       "path": "/onyx/certificates",
       "landed": "/onyx/certificates",
       "status": 200,
-      "ms": 558,
+      "ms": 382,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -727,7 +727,7 @@
       "path": "/onyx/inbox",
       "landed": "/onyx/inbox",
       "status": 200,
-      "ms": 685,
+      "ms": 214,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -743,7 +743,7 @@
       "path": "/onyx/profile",
       "landed": "/onyx/profile",
       "status": 200,
-      "ms": 591,
+      "ms": 301,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -751,7 +751,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1316,
+      "bodyLen": 1307,
       "verdict": "PASS"
     },
     {
@@ -759,7 +759,7 @@
       "path": "/onyx/jobs",
       "landed": "/onyx/jobs",
       "status": 200,
-      "ms": 612,
+      "ms": 406,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -775,7 +775,7 @@
       "path": "/onyx/interviews",
       "landed": "/onyx/interviews",
       "status": 200,
-      "ms": 491,
+      "ms": 395,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -791,7 +791,7 @@
       "path": "/onyx/inbox",
       "landed": "/onyx/inbox",
       "status": 200,
-      "ms": 449,
+      "ms": 518,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -807,7 +807,7 @@
       "path": "/onyx/profile",
       "landed": "/onyx/profile",
       "status": 200,
-      "ms": 610,
+      "ms": 719,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -815,7 +815,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1274,
+      "bodyLen": 1265,
       "verdict": "PASS"
     },
     {
@@ -823,7 +823,7 @@
       "path": "/onyx/family",
       "landed": "/onyx/family",
       "status": 200,
-      "ms": 455,
+      "ms": 252,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -839,7 +839,7 @@
       "path": "/onyx/inbox",
       "landed": "/onyx/inbox",
       "status": 200,
-      "ms": 518,
+      "ms": 280,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -855,7 +855,7 @@
       "path": "/onyx/profile",
       "landed": "/onyx/profile",
       "status": 200,
-      "ms": 589,
+      "ms": 284,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -863,7 +863,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1294,
+      "bodyLen": 1285,
       "verdict": "PASS"
     },
     {
@@ -871,7 +871,7 @@
       "path": "/onyx/dashboard",
       "landed": "/onyx/dashboard",
       "status": 200,
-      "ms": 1234,
+      "ms": 1173,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -879,7 +879,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1706,
+      "bodyLen": 1707,
       "verdict": "PASS"
     },
     {
@@ -887,7 +887,7 @@
       "path": "/onyx/courses",
       "landed": "/onyx/courses",
       "status": 200,
-      "ms": 846,
+      "ms": 499,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -895,7 +895,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1841,
+      "bodyLen": 1985,
       "verdict": "PASS"
     },
     {
@@ -903,7 +903,7 @@
       "path": "/onyx/domains",
       "landed": "/onyx/domains",
       "status": 200,
-      "ms": 499,
+      "ms": 456,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -919,7 +919,7 @@
       "path": "/onyx/practice",
       "landed": "/onyx/practice",
       "status": 200,
-      "ms": 943,
+      "ms": 709,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -927,7 +927,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2824,
+      "bodyLen": 3125,
       "verdict": "PASS"
     },
     {
@@ -935,7 +935,7 @@
       "path": "/onyx/practice/submissions",
       "landed": "/onyx/practice/submissions",
       "status": 200,
-      "ms": 933,
+      "ms": 845,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -943,7 +943,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 5793,
+      "bodyLen": 6000,
       "verdict": "PASS"
     },
     {
@@ -951,7 +951,7 @@
       "path": "/onyx/practice/results",
       "landed": "/onyx/practice/results",
       "status": 200,
-      "ms": 820,
+      "ms": 704,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -967,7 +967,7 @@
       "path": "/onyx/workspaces",
       "landed": "/onyx/workspaces",
       "status": 200,
-      "ms": 1144,
+      "ms": 734,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -975,7 +975,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2156,
+      "bodyLen": 2222,
       "verdict": "PASS"
     },
     {
@@ -983,7 +983,7 @@
       "path": "/onyx/assessments",
       "landed": "/onyx/assessments",
       "status": 200,
-      "ms": 944,
+      "ms": 707,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -991,7 +991,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2804,
+      "bodyLen": 3177,
       "verdict": "PASS"
     },
     {
@@ -999,7 +999,7 @@
       "path": "/onyx/invigilate",
       "landed": "/onyx/invigilate",
       "status": 200,
-      "ms": 960,
+      "ms": 880,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1015,7 +1015,7 @@
       "path": "/onyx/exams",
       "landed": "/onyx/exams",
       "status": 200,
-      "ms": 1243,
+      "ms": 1192,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1023,7 +1023,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2626,
+      "bodyLen": 2972,
       "verdict": "PASS"
     },
     {
@@ -1031,7 +1031,7 @@
       "path": "/onyx/contests",
       "landed": "/onyx/contests",
       "status": 200,
-      "ms": 465,
+      "ms": 375,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1047,7 +1047,7 @@
       "path": "/onyx/certificates",
       "landed": "/onyx/certificates",
       "status": 200,
-      "ms": 638,
+      "ms": 471,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1063,7 +1063,7 @@
       "path": "/onyx/programs",
       "landed": "/onyx/programs",
       "status": 200,
-      "ms": 725,
+      "ms": 632,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1071,7 +1071,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 828,
+      "bodyLen": 827,
       "verdict": "PASS"
     },
     {
@@ -1079,7 +1079,7 @@
       "path": "/onyx/timetable",
       "landed": "/onyx/timetable",
       "status": 200,
-      "ms": 872,
+      "ms": 921,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1087,7 +1087,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 3533,
+      "bodyLen": 3905,
       "verdict": "PASS"
     },
     {
@@ -1095,7 +1095,7 @@
       "path": "/onyx/people?role=student",
       "landed": "/onyx/people?role=student",
       "status": 200,
-      "ms": 582,
+      "ms": 415,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1111,7 +1111,7 @@
       "path": "/onyx/people?role=faculty",
       "landed": "/onyx/people?role=faculty",
       "status": 200,
-      "ms": 506,
+      "ms": 372,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1127,7 +1127,7 @@
       "path": "/onyx/finance",
       "landed": "/onyx/finance",
       "status": 200,
-      "ms": 1322,
+      "ms": 1106,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1135,7 +1135,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1573,
+      "bodyLen": 1572,
       "verdict": "PASS"
     },
     {
@@ -1143,7 +1143,7 @@
       "path": "/onyx/placement",
       "landed": "/onyx/placement",
       "status": 200,
-      "ms": 749,
+      "ms": 780,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1159,7 +1159,7 @@
       "path": "/onyx/jobs",
       "landed": "/onyx/jobs",
       "status": 200,
-      "ms": 713,
+      "ms": 464,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1175,7 +1175,7 @@
       "path": "/onyx/settings",
       "landed": "/onyx/settings",
       "status": 200,
-      "ms": 490,
+      "ms": 323,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1191,7 +1191,7 @@
       "path": "/onyx/profile",
       "landed": "/onyx/profile",
       "status": 200,
-      "ms": 663,
+      "ms": 501,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1199,7 +1199,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1506,
+      "bodyLen": 1497,
       "verdict": "PASS"
     },
     {
@@ -1207,25 +1207,23 @@
       "path": "/onyx/audit",
       "landed": "/onyx/audit",
       "status": 200,
-      "ms": 1025,
+      "ms": 1160,
       "nav_error": null,
-      "errorText": [
-        "/500\\s*[-|:]\\s*/"
-      ],
+      "errorText": [],
       "h1": "Skip to the main content",
       "empty": false,
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
       "bodyLen": 6000,
-      "verdict": "FAIL"
+      "verdict": "PASS"
     },
     {
       "role": "admin",
       "path": "/onyx/inbox",
       "landed": "/onyx/inbox",
       "status": 200,
-      "ms": 558,
+      "ms": 432,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1241,7 +1239,7 @@
       "path": "/onyx/allocations",
       "landed": "/onyx/allocations",
       "status": 200,
-      "ms": 879,
+      "ms": 775,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1257,7 +1255,7 @@
       "path": "/onyx/support",
       "landed": "/onyx/support",
       "status": 200,
-      "ms": 879,
+      "ms": 488,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1270,166 +1268,10 @@
     },
     {
       "role": "admin",
-      "path": "/onyx/banks",
-      "landed": "/onyx/banks",
-      "status": 404,
-      "ms": 216,
-      "nav_error": null,
-      "errorText": [],
-      "h1": "Skip to the main content",
-      "empty": false,
-      "pageerrors": [],
-      "consoleErrors": [
-        {
-          "type": "error",
-          "text": "Failed to load resource: the server responded with a status of 404 ()"
-        }
-      ],
-      "badResp": [
-        {
-          "url": "/onyx/banks",
-          "status": 404
-        }
-      ],
-      "bodyLen": 109,
-      "verdict": "WARN"
-    },
-    {
-      "role": "admin",
-      "path": "/onyx/discussions",
-      "landed": "/onyx/discussions",
-      "status": 404,
-      "ms": 259,
-      "nav_error": null,
-      "errorText": [],
-      "h1": "Skip to the main content",
-      "empty": false,
-      "pageerrors": [],
-      "consoleErrors": [
-        {
-          "type": "error",
-          "text": "Failed to load resource: the server responded with a status of 404 ()"
-        }
-      ],
-      "badResp": [
-        {
-          "url": "/onyx/discussions",
-          "status": 404
-        }
-      ],
-      "bodyLen": 109,
-      "verdict": "WARN"
-    },
-    {
-      "role": "admin",
-      "path": "/onyx/attendance",
-      "landed": "/onyx/attendance",
-      "status": 404,
-      "ms": 175,
-      "nav_error": null,
-      "errorText": [],
-      "h1": "Skip to the main content",
-      "empty": false,
-      "pageerrors": [],
-      "consoleErrors": [
-        {
-          "type": "error",
-          "text": "Failed to load resource: the server responded with a status of 404 ()"
-        }
-      ],
-      "badResp": [
-        {
-          "url": "/onyx/attendance",
-          "status": 404
-        }
-      ],
-      "bodyLen": 109,
-      "verdict": "WARN"
-    },
-    {
-      "role": "admin",
-      "path": "/onyx/submissions",
-      "landed": "/onyx/submissions",
-      "status": 404,
-      "ms": 167,
-      "nav_error": null,
-      "errorText": [],
-      "h1": "Skip to the main content",
-      "empty": false,
-      "pageerrors": [],
-      "consoleErrors": [
-        {
-          "type": "error",
-          "text": "Failed to load resource: the server responded with a status of 404 ()"
-        }
-      ],
-      "badResp": [
-        {
-          "url": "/onyx/submissions",
-          "status": 404
-        }
-      ],
-      "bodyLen": 109,
-      "verdict": "WARN"
-    },
-    {
-      "role": "admin",
-      "path": "/onyx/drives",
-      "landed": "/onyx/drives",
-      "status": 404,
-      "ms": 183,
-      "nav_error": null,
-      "errorText": [],
-      "h1": "Skip to the main content",
-      "empty": false,
-      "pageerrors": [],
-      "consoleErrors": [
-        {
-          "type": "error",
-          "text": "Failed to load resource: the server responded with a status of 404 ()"
-        }
-      ],
-      "badResp": [
-        {
-          "url": "/onyx/drives",
-          "status": 404
-        }
-      ],
-      "bodyLen": 109,
-      "verdict": "WARN"
-    },
-    {
-      "role": "admin",
-      "path": "/onyx/attempts",
-      "landed": "/onyx/attempts",
-      "status": 404,
-      "ms": 212,
-      "nav_error": null,
-      "errorText": [],
-      "h1": "Skip to the main content",
-      "empty": false,
-      "pageerrors": [],
-      "consoleErrors": [
-        {
-          "type": "error",
-          "text": "Failed to load resource: the server responded with a status of 404 ()"
-        }
-      ],
-      "badResp": [
-        {
-          "url": "/onyx/attempts",
-          "status": 404
-        }
-      ],
-      "bodyLen": 109,
-      "verdict": "WARN"
-    },
-    {
-      "role": "admin",
       "path": "/onyx/fees",
       "landed": "/onyx/fees",
       "status": 200,
-      "ms": 461,
+      "ms": 506,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1445,7 +1287,7 @@
       "path": "/onyx/platform",
       "landed": "/onyx/platform",
       "status": 200,
-      "ms": 467,
+      "ms": 378,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1453,7 +1295,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2022,
+      "bodyLen": 2038,
       "verdict": "PASS"
     },
     {
@@ -1461,7 +1303,7 @@
       "path": "/onyx/platform/admins",
       "landed": "/onyx/platform/admins",
       "status": 200,
-      "ms": 535,
+      "ms": 312,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1469,7 +1311,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 600,
+      "bodyLen": 598,
       "verdict": "PASS"
     },
     {
@@ -1477,7 +1319,7 @@
       "path": "/onyx/platform/oauth-clients",
       "landed": "/onyx/platform/oauth-clients",
       "status": 200,
-      "ms": 444,
+      "ms": 171,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1493,7 +1335,7 @@
       "path": "/onyx/platform/audit",
       "landed": "/onyx/platform/audit",
       "status": 200,
-      "ms": 755,
+      "ms": 525,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1507,35 +1349,25 @@
     {
       "role": "superadmin",
       "path": "/onyx/platform/tenants",
-      "landed": "/onyx/platform/tenants",
-      "status": 404,
-      "ms": 170,
+      "landed": "/onyx/platform",
+      "status": 200,
+      "ms": 368,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
       "empty": false,
       "pageerrors": [],
-      "consoleErrors": [
-        {
-          "type": "error",
-          "text": "Failed to load resource: the server responded with a status of 404 ()"
-        }
-      ],
-      "badResp": [
-        {
-          "url": "/onyx/platform/tenants",
-          "status": 404
-        }
-      ],
-      "bodyLen": 109,
-      "verdict": "WARN"
+      "consoleErrors": [],
+      "badResp": [],
+      "bodyLen": 2038,
+      "verdict": "PASS"
     },
     {
       "role": "superadmin",
       "path": "/onyx/platform/tenants/1",
       "landed": "/onyx/platform/tenants/1",
       "status": 200,
-      "ms": 1314,
+      "ms": 669,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1551,7 +1383,7 @@
       "path": "/onyx/platform/tenants/1/students",
       "landed": "/onyx/platform/tenants/1/students",
       "status": 200,
-      "ms": 1246,
+      "ms": 720,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1567,7 +1399,7 @@
       "path": "/onyx/platform/tenants/1/faculty",
       "landed": "/onyx/platform/tenants/1/faculty",
       "status": 200,
-      "ms": 950,
+      "ms": 961,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1583,7 +1415,7 @@
       "path": "/onyx/platform/tenants/1/staff",
       "landed": "/onyx/platform/tenants/1/staff",
       "status": 200,
-      "ms": 1338,
+      "ms": 983,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1599,7 +1431,7 @@
       "path": "/onyx/platform/tenants/1/courses",
       "landed": "/onyx/platform/tenants/1/courses",
       "status": 200,
-      "ms": 808,
+      "ms": 546,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1607,7 +1439,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1400,
+      "bodyLen": 1504,
       "verdict": "PASS"
     },
     {
@@ -1615,7 +1447,7 @@
       "path": "/onyx/platform/tenants/1/domains",
       "landed": "/onyx/platform/tenants/1/domains",
       "status": 200,
-      "ms": 760,
+      "ms": 1122,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1631,7 +1463,7 @@
       "path": "/onyx/platform/tenants/1/timetable",
       "landed": "/onyx/platform/tenants/1/timetable",
       "status": 200,
-      "ms": 665,
+      "ms": 1372,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1639,7 +1471,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1140,
+      "bodyLen": 1238,
       "verdict": "PASS"
     },
     {
@@ -1647,7 +1479,7 @@
       "path": "/onyx/platform/tenants/1/examinations",
       "landed": "/onyx/platform/tenants/1/examinations",
       "status": 200,
-      "ms": 1059,
+      "ms": 2137,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1655,7 +1487,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2005,
+      "bodyLen": 2159,
       "verdict": "PASS"
     },
     {
@@ -1663,7 +1495,7 @@
       "path": "/onyx/platform/tenants/1/assessments",
       "landed": "/onyx/platform/tenants/1/assessments",
       "status": 200,
-      "ms": 1013,
+      "ms": 1337,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1671,7 +1503,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 2430,
+      "bodyLen": 2725,
       "verdict": "PASS"
     },
     {
@@ -1679,7 +1511,7 @@
       "path": "/onyx/platform/tenants/1/problems",
       "landed": "/onyx/platform/tenants/1/problems",
       "status": 200,
-      "ms": 685,
+      "ms": 1660,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1687,7 +1519,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 3671,
+      "bodyLen": 4072,
       "verdict": "PASS"
     },
     {
@@ -1695,7 +1527,7 @@
       "path": "/onyx/platform/tenants/1/practice",
       "landed": "/onyx/platform/tenants/1/practice",
       "status": 200,
-      "ms": 1262,
+      "ms": 1225,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1711,7 +1543,7 @@
       "path": "/onyx/platform/tenants/1/permissions",
       "landed": "/onyx/platform/tenants/1/permissions",
       "status": 200,
-      "ms": 791,
+      "ms": 576,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1727,7 +1559,7 @@
       "path": "/onyx/platform/tenants/1/grades",
       "landed": "/onyx/platform/tenants/1/grades",
       "status": 200,
-      "ms": 742,
+      "ms": 1073,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1735,7 +1567,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 3300,
+      "bodyLen": 3675,
       "verdict": "PASS"
     },
     {
@@ -1743,7 +1575,7 @@
       "path": "/onyx/platform/tenants/1/fees",
       "landed": "/onyx/platform/tenants/1/fees",
       "status": 200,
-      "ms": 693,
+      "ms": 1627,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -1751,7 +1583,7 @@
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 1268,
+      "bodyLen": 1267,
       "verdict": "PASS"
     },
     {
@@ -1759,7 +1591,7 @@
       "path": "/onyx/platform/tenants/1/settings",
       "landed": "/onyx/platform/tenants/1/settings",
       "status": 200,
-      "ms": 592,
+      "ms": 654,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",

@@ -5,7 +5,7 @@ import {
   BackLink, Banner, Card, DataTable, Empty, EmptyRow, Icon, Meter, Pill, Score, SectionHead, StatTile, State, Stepper, relativeWhen,
 } from '@/components/onyx-ui';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import { APPLICATION_LABELS, type Application, type DriveSummary } from '@/lib/onyx-career';
 import { RecordRound } from '@/components/onyx-manage';
 
@@ -33,7 +33,7 @@ export default async function OnyxDrivePage({ params }: { params: Promise<{ id: 
   const { id } = await params;
   const [me, summary, members] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<DriveSummary>('/api/onyx/drives/' + id + '/summary'),
+    onyxApiRecord<DriveSummary>('/api/onyx/drives/' + id + '/summary'),
     onyxApiSafe<{ user_id: string; user: { name: string } | null }[]>('/api/onyx/members'),
   ]);
   const names = new Map((members ?? [])

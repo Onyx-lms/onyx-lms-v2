@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxCheckIn, OnyxRosterMarking, OnyxSessionCode } from '@/components/onyx-attendance';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import { isStaff, type AttendanceRecord, type AttendanceSession } from '@/lib/onyx-learn';
 import {
   Banner, Card, Empty, Icon, Meter, SectionHead, State, StatTile,
@@ -67,7 +67,7 @@ export default async function OnyxSessionPage(
 
   const [me, sessions, rosterData, members] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<AttendanceSession[]>('/api/onyx/courses/' + id + '/attendance'),
+    onyxApiRecord<AttendanceSession[]>('/api/onyx/courses/' + id + '/attendance'),
     staff ? onyxApiSafe<RosterResponse>('/api/onyx/attendance/' + sessionId + '/roster') : null,
     staff ? onyxApiSafe<{ user_id: string; user: { name: string; email: string } | null }[]>(
       '/api/onyx/members') : null,

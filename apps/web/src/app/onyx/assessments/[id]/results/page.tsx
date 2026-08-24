@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import type { Assessment, ItemStat, ResultsReport } from '@/lib/onyx-assess';
 import {
   ActionLink, Banner, Buckets, Card, CardGrid, DataTable, EmptyRow, Icon, Meter, Pill,
@@ -49,9 +49,9 @@ export default async function OnyxResultsPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const [me, assessment, report, items] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<Assessment>('/api/onyx/assessments/' + id),
-    onyxApi<ResultsReport>('/api/onyx/assessments/' + id + '/results'),
-    onyxApi<{ sat: number; items: ItemStat[] }>('/api/onyx/assessments/' + id + '/items'),
+    onyxApiRecord<Assessment>('/api/onyx/assessments/' + id),
+    onyxApiRecord<ResultsReport>('/api/onyx/assessments/' + id + '/results'),
+    onyxApiRecord<{ sat: number; items: ItemStat[] }>('/api/onyx/assessments/' + id + '/items'),
   ]);
 
   /*

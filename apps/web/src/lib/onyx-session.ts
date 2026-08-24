@@ -1,5 +1,5 @@
 import { cookies, headers } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { redirect, notFound } from 'next/navigation';
 import { appOrigin } from '@/lib/app-origin';
 
 /**
@@ -140,6 +140,42 @@ export async function onyxApi<T>(path: string, init?: RequestInit): Promise<T> {
 
 export async function onyxApiSafe<T>(path: string): Promise<T | null> {
   try { return await onyxApi<T>(path); } catch { return null; }
+}
+
+/**
+ * A read of one RECORD, where "there is no such record" is a real answer.
+ *
+ * `onyxApi` throws on any failure, and a server component that throws renders
+ * Next's error screen -- in production, a grey "Application error: a
+ * server-side exception has occurred" with a digest and nothing else. That is
+ * the correct treatment for a database that is down and the wrong one for a
+ * stale link, a mistyped id, or an id belonging to another institution, all of
+ * which the API answers 404 to. Every `/onyx/<thing>/[id]` page had the second
+ * case rendering as the first: pasting a course id from another tenant
+ * produced a 500 with a digest, when the honest answer is "no such course".
+ *
+ * So a 404 becomes `notFound()`, which Next renders through not-found.tsx, and
+ * everything else still throws -- a 500 should look like a 500.
+ *
+ * Not folded into `onyxApi` itself: `onyxApiSafe` wraps it in a try/catch, and
+ * `notFound()` works by throwing, so it would be swallowed there and turn a
+ * missing optional section into a blank page.
+ */
+export async function onyxApiRecord<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = await getOnyxToken();
+  const res = await fetch(API + path, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {}),
+      ...(init?.headers ?? {}),
+    },
+    cache: 'no-store',
+  });
+  const body = await res.json().catch(() => ({ ok: false, message: 'Bad response' }));
+  if (res.status === 404) notFound();
+  if (!body.ok) throw new Error(body.message || 'Request failed: ' + path);
+  return body.data as T;
 }
 
 /**

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import type { Exam, SeatingPlan, Hall, ExamMark } from '@/lib/onyx-campus';
 import {
   AllocateSeating, DeleteExamButton, EnterMarks, ExamEditForm, MarkOverride,
@@ -69,7 +69,7 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const [me, exam] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<Exam>('/api/onyx/exams/' + id),
+    onyxApiRecord<Exam>('/api/onyx/exams/' + id),
   ]);
   // `staff` runs the examinations office institution-wide: seating stays
   // theirs alone, a shared physical resource one course's faculty do not

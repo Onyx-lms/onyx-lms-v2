@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxInterviewFeedback } from '@/components/onyx-career';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import type { Interview } from '@/lib/onyx-career';
 
 export const metadata: Metadata = { title: 'Interview' };
@@ -20,7 +20,7 @@ export default async function OnyxInterviewPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const [me, interview] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<Interview>('/api/onyx/interviews/' + id),
+    onyxApiRecord<Interview>('/api/onyx/interviews/' + id),
   ]);
   const isInterviewer = String(interview.interviewer_id) === claims.user_id;
 

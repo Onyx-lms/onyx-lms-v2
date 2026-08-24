@@ -3,7 +3,7 @@ import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxSitPaper } from '@/components/onyx-sit';
 import { OnyxAttemptResult } from '@/components/onyx-attempt-result';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import type { Assessment, CandidateAttempt } from '@/lib/onyx-assess';
 
 export const metadata: Metadata = { title: 'Attempt' };
@@ -14,9 +14,9 @@ export default async function OnyxAttemptPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const [me, attempt] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<CandidateAttempt>('/api/onyx/attempts/' + id),
+    onyxApiRecord<CandidateAttempt>('/api/onyx/attempts/' + id),
   ]);
-  const assessment = await onyxApi<Assessment>('/api/onyx/assessments/' + attempt.assessment_id);
+  const assessment = await onyxApiRecord<Assessment>('/api/onyx/assessments/' + attempt.assessment_id);
 
   if (attempt.status !== 'in_progress') {
     /*

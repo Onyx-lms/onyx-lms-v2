@@ -9,28 +9,28 @@
     },
     {
       "name": "header x-content-type-options",
-      "verdict": "WARN",
-      "detail": "ABSENT"
+      "verdict": "PASS",
+      "detail": "nosniff"
     },
     {
       "name": "header x-frame-options",
-      "verdict": "WARN",
-      "detail": "ABSENT"
+      "verdict": "PASS",
+      "detail": "SAMEORIGIN"
     },
     {
       "name": "header content-security-policy",
-      "verdict": "WARN",
-      "detail": "ABSENT"
+      "verdict": "PASS",
+      "detail": "frame-ancestors 'self'"
     },
     {
       "name": "header referrer-policy",
-      "verdict": "WARN",
-      "detail": "ABSENT"
+      "verdict": "PASS",
+      "detail": "strict-origin-when-cross-origin"
     },
     {
       "name": "header permissions-policy",
-      "verdict": "WARN",
-      "detail": "ABSENT"
+      "verdict": "PASS",
+      "detail": "camera=(self), microphone=(), geolocation=(), payment=(self), interest-cohort=()"
     },
     {
       "name": "cookie onyx_tenant_session",
@@ -55,7 +55,7 @@
     {
       "name": "employer renders /onyx/jobs",
       "verdict": "PASS",
-      "detail": "status=200 len=277"
+      "detail": "status=200 len=326"
     },
     {
       "name": "employer renders /onyx/interviews",
@@ -65,7 +65,7 @@
     {
       "name": "employer renders /onyx/inbox",
       "verdict": "PASS",
-      "detail": "status=200 len=448"
+      "detail": "status=200 len=446"
     },
     {
       "name": "employer renders /onyx/profile",
@@ -120,61 +120,66 @@
   "perf": [
     {
       "path": "/onyx/dashboard",
-      "wall": 1210,
-      "ttfb": 139,
-      "dcl": 1198,
-      "load": 1202
+      "wall": 1211,
+      "ttfb": 37,
+      "dcl": 1150,
+      "load": 1205
     },
     {
       "path": "/onyx/courses",
-      "wall": 861,
-      "ttfb": 57,
-      "dcl": 660,
-      "load": 853
+      "wall": 635,
+      "ttfb": 28,
+      "dcl": 579,
+      "load": 631
     },
     {
       "path": "/onyx/people?role=student",
-      "wall": 693,
-      "ttfb": 60,
-      "dcl": 658,
-      "load": 677
+      "wall": 496,
+      "ttfb": 26,
+      "dcl": 431,
+      "load": 490
     },
     {
       "path": "/onyx/finance",
-      "wall": 1010,
-      "ttfb": 48,
-      "dcl": 853,
-      "load": 994
+      "wall": 1391,
+      "ttfb": 27,
+      "dcl": 1361,
+      "load": 1387
     },
     {
       "path": "/onyx/audit",
-      "wall": 1027,
-      "ttfb": 87,
-      "dcl": 1012,
-      "load": 1013
+      "wall": 961,
+      "ttfb": 33,
+      "dcl": 954,
+      "load": 957
     },
     {
       "path": "/onyx/settings",
-      "wall": 623,
-      "ttfb": 31,
-      "dcl": 564,
-      "load": 615
+      "wall": 514,
+      "ttfb": 28,
+      "dcl": 462,
+      "load": 510
     }
   ],
   "headers": {
     "age": "0",
     "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate",
     "content-encoding": "br",
+    "content-security-policy": "frame-ancestors 'self'",
     "content-type": "text/html; charset=utf-8",
-    "date": "Sun, 23 Aug 2026 15:36:30 GMT",
-    "link": "</_next/static/media/636a5ac981f94f8b-s.p.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/media/af4bf8399d1aacdf-s.p.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/css/8ba6982332f5edaa.css>; rel=preload; as=\"style\", </_next/static/css/6a5f97146766caf5.css>; rel=preload; as=\"style\"",
+    "date": "Mon, 24 Aug 2026 16:03:39 GMT",
+    "link": "</_next/static/media/636a5ac981f94f8b-s.p.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/media/af4bf8399d1aacdf-s.p.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/css/379a2a50da590dea.css>; rel=preload; as=\"style\", </_next/static/css/6a5f97146766caf5.css>; rel=preload; as=\"style\"",
+    "permissions-policy": "camera=(self), microphone=(), geolocation=(), payment=(self), interest-cohort=()",
+    "referrer-policy": "strict-origin-when-cross-origin",
     "server": "Vercel",
     "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
     "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "SAMEORIGIN",
     "x-matched-path": "/onyx/login",
     "x-powered-by": "Next.js",
     "x-vercel-cache": "MISS",
-    "x-vercel-id": "bom1::sin1::9xhxg-1787499390017-39d2aaa477c6"
+    "x-vercel-id": "bom1::sin1::mck4c-1787587419822-94f4e998351a"
   },
   "cookies": [
     {
@@ -183,7 +188,7 @@
       "secure": true,
       "sameSite": "Lax",
       "path": "/",
-      "expires": 1787500291.43029
+      "expires": 1787588321.079777
     }
   ]
 }

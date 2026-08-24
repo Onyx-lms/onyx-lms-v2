@@ -4,7 +4,7 @@ import { OnyxShell } from '@/components/onyx-shell';
 import { ResourceLink } from '@/components/onyx-player';
 import { OnyxAskForm } from '@/components/onyx-engage';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import {
   formatDuration, isStaff,
   type Assignment, type AttendanceSession, type Outline, type Resource,
@@ -48,7 +48,7 @@ export default async function OnyxCoursePage(
 
   const [me, outline, members, purchases, gateways] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<Outline>('/api/onyx/courses/' + id + '/outline'),
+    onyxApiRecord<Outline>('/api/onyx/courses/' + id + '/outline'),
     onyxApiSafe<{ user: { id: string; name: string; email: string } | null; role: string }[]>(
       '/api/onyx/members'),
     /*

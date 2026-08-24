@@ -8,7 +8,7 @@
       "path": "/",
       "landed": "/",
       "status": 200,
-      "ms": 423,
+      "ms": 4769,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -25,7 +25,7 @@
       "path": "/onyx/login",
       "landed": "/onyx/login",
       "status": 200,
-      "ms": 214,
+      "ms": 328,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -42,7 +42,7 @@
       "path": "/onyx/platform/login",
       "landed": "/onyx/platform/login",
       "status": 200,
-      "ms": 231,
+      "ms": 358,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -59,7 +59,7 @@
       "path": "/onyx/signup",
       "landed": "/onyx/signup",
       "status": 200,
-      "ms": 264,
+      "ms": 225,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -76,15 +76,15 @@
       "path": "/health",
       "landed": "/health",
       "status": 200,
-      "ms": 335,
+      "ms": 226,
       "nav_error": null,
       "errorText": [],
-      "h1": "{\"ok\":true,\"data\":{\"status\":\"up\",\"ts\":\"2026-08-24T15:20:47.498Z\",\"uptime_seconds\":108,\"checks\":[{\"name\":\"database\",\"ok\":",
+      "h1": "{\"ok\":true,\"data\":{\"status\":\"up\",\"ts\":\"2026-08-24T15:45:12.713Z\",\"uptime_seconds\":2,\"checks\":[{\"name\":\"database\",\"ok\":tr",
       "empty": false,
       "pageerrors": [],
       "consoleErrors": [],
       "badResp": [],
-      "bodyLen": 137,
+      "bodyLen": 133,
       "verdict": "PASS"
     },
     {
@@ -93,7 +93,7 @@
       "path": "/onyx/dashboard",
       "landed": "/onyx/login?next=%2Fonyx%2Fdashboard",
       "status": 200,
-      "ms": 362,
+      "ms": 682,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -111,7 +111,7 @@
       "path": "/onyx/people",
       "landed": "/onyx/login?next=%2Fonyx%2Fpeople",
       "status": 200,
-      "ms": 374,
+      "ms": 468,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -129,7 +129,7 @@
       "path": "/onyx/settings",
       "landed": "/onyx/login?next=%2Fonyx%2Fsettings",
       "status": 200,
-      "ms": 455,
+      "ms": 403,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -147,7 +147,7 @@
       "path": "/onyx/audit",
       "landed": "/onyx/login?next=%2Fonyx%2Faudit",
       "status": 200,
-      "ms": 399,
+      "ms": 397,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -163,29 +163,19 @@
       "id": "ANON-/onyx/platform/tenants",
       "group": "anon-guard",
       "path": "/onyx/platform/tenants",
-      "landed": "/onyx/platform/tenants",
-      "status": 404,
-      "ms": 233,
+      "landed": "/onyx/platform/login",
+      "status": 200,
+      "ms": 488,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
       "empty": false,
       "pageerrors": [],
-      "consoleErrors": [
-        {
-          "type": "error",
-          "text": "Failed to load resource: the server responded with a status of 404 ()"
-        }
-      ],
-      "badResp": [
-        {
-          "url": "/onyx/platform/tenants",
-          "status": 404
-        }
-      ],
-      "bodyLen": 109,
-      "leaked": true,
-      "verdict": "FAIL"
+      "consoleErrors": [],
+      "badResp": [],
+      "bodyLen": 562,
+      "leaked": false,
+      "verdict": "PASS"
     },
     {
       "id": "ANON-/onyx/platform/admins",
@@ -193,7 +183,7 @@
       "path": "/onyx/platform/admins",
       "landed": "/onyx/platform/login",
       "status": 200,
-      "ms": 386,
+      "ms": 375,
       "nav_error": null,
       "errorText": [],
       "h1": "Skip to the main content",
@@ -230,7 +220,7 @@
       "group": "login",
       "email": "superadmin@onyx.platform",
       "landed": "/onyx/platform",
-      "ms": 2201,
+      "ms": 3151,
       "verdict": "PASS"
     },
     {
@@ -238,7 +228,7 @@
       "group": "login",
       "email": "admin@demo.onyx",
       "landed": "/onyx/dashboard",
-      "ms": 2471,
+      "ms": 3383,
       "verdict": "PASS"
     },
     {
@@ -246,7 +236,7 @@
       "group": "login",
       "email": "faculty@demo.onyx",
       "landed": "/onyx/dashboard",
-      "ms": 2622,
+      "ms": 2806,
       "verdict": "PASS"
     },
     {
@@ -254,7 +244,7 @@
       "group": "login",
       "email": "exams@demo.onyx",
       "landed": "/onyx/dashboard",
-      "ms": 2002,
+      "ms": 2106,
       "verdict": "PASS"
     },
     {
@@ -262,7 +252,7 @@
       "group": "login",
       "email": "placement@demo.onyx",
       "landed": "/onyx/dashboard",
-      "ms": 2101,
+      "ms": 2164,
       "verdict": "PASS"
     },
     {
@@ -270,7 +260,7 @@
       "group": "login",
       "email": "employer@demo.onyx",
       "landed": "/onyx/dashboard",
-      "ms": 2122,
+      "ms": 2463,
       "verdict": "PASS"
     },
     {
@@ -278,7 +268,7 @@
       "group": "login",
       "email": "guardian@demo.onyx",
       "landed": "/onyx/dashboard",
-      "ms": 2099,
+      "ms": 2997,
       "verdict": "PASS"
     },
     {
@@ -286,7 +276,7 @@
       "group": "login",
       "email": "student@demo.onyx",
       "landed": "/onyx/dashboard",
-      "ms": 4410,
+      "ms": 4967,
       "verdict": "PASS"
     },
     {
@@ -294,7 +284,7 @@
       "group": "login",
       "email": "kavya.rao@meridian.edu",
       "landed": "/onyx/dashboard",
-      "ms": 2966,
+      "ms": 3007,
       "verdict": "PASS"
     },
     {
@@ -302,7 +292,7 @@
       "group": "login",
       "email": "leela.iyer@meridian.edu",
       "landed": "/onyx/dashboard",
-      "ms": 2841,
+      "ms": 2850,
       "verdict": "PASS"
     },
     {
@@ -310,7 +300,7 @@
       "group": "login",
       "email": "ananya.krishnan@meridian.edu",
       "landed": "/onyx/dashboard",
-      "ms": 4139,
+      "ms": 4061,
       "verdict": "PASS"
     },
     {
@@ -318,7 +308,7 @@
       "group": "login",
       "email": "nisha.verma@meridian.edu",
       "landed": "/onyx/dashboard",
-      "ms": 2037,
+      "ms": 2023,
       "verdict": "PASS"
     },
     {
@@ -326,7 +316,7 @@
       "group": "login",
       "email": "sunita.pillai@example.com",
       "landed": "/onyx/dashboard",
-      "ms": 2082,
+      "ms": 2043,
       "verdict": "PASS"
     },
     {
@@ -334,7 +324,7 @@
       "group": "login",
       "email": "ravi.chandran@meridian.edu",
       "landed": "/onyx/dashboard",
-      "ms": 1966,
+      "ms": 2036,
       "verdict": "PASS"
     }
   ]

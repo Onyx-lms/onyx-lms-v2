@@ -4,7 +4,7 @@ import { OnyxShell } from '@/components/onyx-shell';
 import { Card, Pill } from '@/components/onyx-ui';
 import { OnyxGrader } from '@/components/onyx-assignment';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import type { Assignment, Submission } from '@/lib/onyx-learn';
 
 export const metadata: Metadata = { title: 'Marking' };
@@ -16,9 +16,9 @@ export default async function OnyxSubmissionPage({ params }: { params: Promise<{
 
   const [me, submission] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<Submission>('/api/onyx/submissions/' + id),
+    onyxApiRecord<Submission>('/api/onyx/submissions/' + id),
   ]);
-  const assignment = await onyxApi<Assignment>('/api/onyx/assignments/' + submission.assignment_id);
+  const assignment = await onyxApiRecord<Assignment>('/api/onyx/assignments/' + submission.assignment_id);
   const members = await onyxApiSafe<{ user_id: string; user: { name: string } | null }[]>(
     '/api/onyx/members');
   const name = (members ?? []).find((m) => m.user_id === submission.user_id)?.user?.name

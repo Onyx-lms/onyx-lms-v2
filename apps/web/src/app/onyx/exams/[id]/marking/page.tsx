@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import type { Exam } from '@/lib/onyx-campus';
 import type { MarkingQueueRow } from '@/lib/onyx-assess';
 import { MarkingQueue } from '@/components/onyx-marking-queue';
@@ -30,7 +30,7 @@ export default async function OnyxExamMarkingPage({ params }: { params: Promise<
   const { id } = await params;
   const [me, exam] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<Exam>('/api/onyx/exams/' + id),
+    onyxApiRecord<Exam>('/api/onyx/exams/' + id),
   ]);
 
   // Same course-scoped trust as the exam page itself: the examinations
@@ -45,7 +45,7 @@ export default async function OnyxExamMarkingPage({ params }: { params: Promise<
   // rather than a bare denial, since that page explains why.
   if (!canMark || !exam.assessment_id) redirect('/onyx/exams/' + id);
 
-  const queue = await onyxApi<MarkingQueueRow[]>('/api/onyx/assessments/' + exam.assessment_id + '/marking');
+  const queue = await onyxApiRecord<MarkingQueueRow[]>('/api/onyx/assessments/' + exam.assessment_id + '/marking');
 
   return (
     <OnyxShell

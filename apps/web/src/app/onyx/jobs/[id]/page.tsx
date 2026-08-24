@@ -6,7 +6,7 @@ import {
   Card, Icon, Pill, SectionHead, StatTile, State, Stepper, relativeWhen,
 } from '@/components/onyx-ui';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import {
   APPLICATION_LABELS, isPlacementStaff, type Application, type JobPost,
 } from '@/lib/onyx-career';
@@ -38,7 +38,7 @@ export default async function OnyxJobPage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const [me, job] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<JobPost>('/api/onyx/jobs/' + id),
+    onyxApiRecord<JobPost>('/api/onyx/jobs/' + id),
   ]);
 
   const canSeePipeline = claims.tenant_role === 'employer'

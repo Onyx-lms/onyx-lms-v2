@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxPageRole, onyxApi, type Me } from '@/lib/onyx-session';
+import { requireOnyxPageRole, onyxApi, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import type { Assessment, MarkingQueueRow } from '@/lib/onyx-assess';
 import { MarkingQueue } from '@/components/onyx-marking-queue';
 import { Icon } from '@/components/onyx-ui';
@@ -15,8 +15,8 @@ export default async function OnyxMarkingPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const [me, assessment, queue] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<Assessment>('/api/onyx/assessments/' + id),
-    onyxApi<MarkingQueueRow[]>('/api/onyx/assessments/' + id + '/marking'),
+    onyxApiRecord<Assessment>('/api/onyx/assessments/' + id),
+    onyxApiRecord<MarkingQueueRow[]>('/api/onyx/assessments/' + id + '/marking'),
   ]);
 
   return (

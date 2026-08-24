@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import { isExamsStaff } from '@/lib/onyx-assess';
 import { AddQuestion, EditQuestionForm, RetireQuestionButton } from '@/components/onyx-manage';
 import {
@@ -58,7 +58,7 @@ export default async function OnyxBankPage({ params }: { params: Promise<{ id: s
   const [banks, questions, allProblems] = await Promise.all([
     onyxApi<{ id: number; name: string; description: string | null; course_id: number | null }[]>(
       '/api/onyx/banks'),
-    onyxApi<Question[]>('/api/onyx/banks/' + id + '/questions'),
+    onyxApiRecord<Question[]>('/api/onyx/banks/' + id + '/questions'),
     onyxApiSafe<{ id: number; title: string; difficulty: string; status: string }[]>(
       '/api/onyx/problems'),
   ]);

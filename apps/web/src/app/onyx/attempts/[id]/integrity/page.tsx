@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxIntegrityTimeline } from '@/components/onyx-marking';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxPageRole, onyxApi, type Me } from '@/lib/onyx-session';
+import { requireOnyxPageRole, onyxApi, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import { formatClock, type ProctorTimeline } from '@/lib/onyx-assess';
 import {
   Banner, Buckets, Card, CardGrid, Icon, SectionHead, StackBar, State, StatTile,
@@ -42,7 +42,7 @@ export default async function OnyxIntegrityPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const [me, timeline] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<ProctorTimeline>('/api/onyx/attempts/' + id + '/proctor'),
+    onyxApiRecord<ProctorTimeline>('/api/onyx/attempts/' + id + '/proctor'),
   ]);
 
   // Severity comes off the weight the recorder assigned, not off a colour a

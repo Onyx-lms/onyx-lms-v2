@@ -6,7 +6,7 @@ import { OnyxPublishResults } from '@/components/onyx-marking';
 import { AssessmentEditForm } from '@/components/onyx-manage';
 import { PaperBuilder } from '@/components/onyx-paper-builder';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
+import { requireOnyxSession, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import { isExamsStaff, type Assessment, type MyAttempt } from '@/lib/onyx-assess';
 import {
   ActionLink, BackLink, Card, CardGrid, Icon, ListRow, RowList, Score, SectionHead,
@@ -33,7 +33,7 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
   const { id } = await params;
   const [me, assessment] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<Assessment>('/api/onyx/assessments/' + id),
+    onyxApiRecord<Assessment>('/api/onyx/assessments/' + id),
   ]);
   const staff = isExamsStaff(claims.tenant_role);
   // Only staff, and only for a draft -- the composer needs somewhere to draw

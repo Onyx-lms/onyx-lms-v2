@@ -46,11 +46,11 @@
       "role": "student",
       "actualRole": "student",
       "ep": "/api/onyx/allocations",
-      "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
+      "status": 403,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
       "expected": "deny",
-      "got": "allow",
-      "verdict": "FAIL"
+      "got": "deny",
+      "verdict": "PASS"
     },
     {
       "role": "student",
@@ -67,10 +67,10 @@
       "actualRole": "student",
       "ep": "/api/onyx/gateways",
       "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
-      "expected": "deny",
+      "body": "{\"ok\":true,\"data\":[{\"identifier\":\"razorpay\",\"title\":\"Razorpay\",\"currency\":\"INR\"}]}",
+      "expected": "allow",
       "got": "allow",
-      "verdict": "FAIL"
+      "verdict": "PASS"
     },
     {
       "role": "student",
@@ -136,16 +136,6 @@
       "role": "student",
       "actualRole": "student",
       "ep": "/api/onyx/drives",
-      "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
-      "expected": "deny",
-      "got": "allow",
-      "verdict": "FAIL"
-    },
-    {
-      "role": "student",
-      "actualRole": "student",
-      "ep": "/api/onyx/fee-structures",
       "status": 403,
       "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
       "expected": "deny",
@@ -155,6 +145,16 @@
     {
       "role": "student",
       "actualRole": "student",
+      "ep": "/api/onyx/fee-structures",
+      "status": 403,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
+      "expected": "deny",
+      "got": "deny",
+      "verdict": "PASS"
+    },
+    {
+      "role": "student",
+      "actualRole": "student",
       "ep": "/api/onyx/tenants",
       "status": 404,
       "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
@@ -206,11 +206,11 @@
       "role": "guardian",
       "actualRole": "guardian",
       "ep": "/api/onyx/allocations",
-      "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
+      "status": 403,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
       "expected": "deny",
-      "got": "allow",
-      "verdict": "FAIL"
+      "got": "deny",
+      "verdict": "PASS"
     },
     {
       "role": "guardian",
@@ -227,10 +227,10 @@
       "actualRole": "guardian",
       "ep": "/api/onyx/gateways",
       "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
-      "expected": "deny",
+      "body": "{\"ok\":true,\"data\":[{\"identifier\":\"razorpay\",\"title\":\"Razorpay\",\"currency\":\"INR\"}]}",
+      "expected": "allow",
       "got": "allow",
-      "verdict": "FAIL"
+      "verdict": "PASS"
     },
     {
       "role": "guardian",
@@ -296,16 +296,6 @@
       "role": "guardian",
       "actualRole": "guardian",
       "ep": "/api/onyx/drives",
-      "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
-      "expected": "deny",
-      "got": "allow",
-      "verdict": "FAIL"
-    },
-    {
-      "role": "guardian",
-      "actualRole": "guardian",
-      "ep": "/api/onyx/fee-structures",
       "status": 403,
       "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
       "expected": "deny",
@@ -315,6 +305,16 @@
     {
       "role": "guardian",
       "actualRole": "guardian",
+      "ep": "/api/onyx/fee-structures",
+      "status": 403,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
+      "expected": "deny",
+      "got": "deny",
+      "verdict": "PASS"
+    },
+    {
+      "role": "guardian",
+      "actualRole": "guardian",
       "ep": "/api/onyx/tenants",
       "status": 404,
       "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"Not found.\"}",
@@ -366,11 +366,11 @@
       "role": "employer",
       "actualRole": "employer",
       "ep": "/api/onyx/allocations",
-      "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
+      "status": 403,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
       "expected": "deny",
-      "got": "allow",
-      "verdict": "FAIL"
+      "got": "deny",
+      "verdict": "PASS"
     },
     {
       "role": "employer",
@@ -387,10 +387,10 @@
       "actualRole": "employer",
       "ep": "/api/onyx/gateways",
       "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
-      "expected": "deny",
+      "body": "{\"ok\":true,\"data\":[{\"identifier\":\"razorpay\",\"title\":\"Razorpay\",\"currency\":\"INR\"}]}",
+      "expected": "allow",
       "got": "allow",
-      "verdict": "FAIL"
+      "verdict": "PASS"
     },
     {
       "role": "employer",
@@ -458,9 +458,9 @@
       "ep": "/api/onyx/drives",
       "status": 200,
       "body": "{\"ok\":true,\"data\":[]}",
-      "expected": "deny",
+      "expected": "allow",
       "got": "allow",
-      "verdict": "FAIL"
+      "verdict": "PASS"
     },
     {
       "role": "employer",
@@ -526,11 +526,11 @@
       "role": "placement",
       "actualRole": "placement",
       "ep": "/api/onyx/allocations",
-      "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
+      "status": 403,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
       "expected": "deny",
-      "got": "allow",
-      "verdict": "FAIL"
+      "got": "deny",
+      "verdict": "PASS"
     },
     {
       "role": "placement",
@@ -547,10 +547,10 @@
       "actualRole": "placement",
       "ep": "/api/onyx/gateways",
       "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
-      "expected": "deny",
+      "body": "{\"ok\":true,\"data\":[{\"identifier\":\"razorpay\",\"title\":\"Razorpay\",\"currency\":\"INR\"}]}",
+      "expected": "allow",
       "got": "allow",
-      "verdict": "FAIL"
+      "verdict": "PASS"
     },
     {
       "role": "placement",
@@ -647,7 +647,7 @@
       "actualRole": "exams",
       "ep": "/api/onyx/audit",
       "status": 403,
-      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Read the audit log” is not something your institution allows your role to do.\"}",
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Read the audit log” is not something your institution allows you to do.\"}",
       "expected": "allow",
       "got": "deny",
       "verdict": "PASS"
@@ -657,7 +657,7 @@
       "actualRole": "exams",
       "ep": "/api/onyx/members",
       "status": 200,
-      "body": "{\"ok\":true,\"data\":[{\"id\":1,\"tenant_id\":1,\"user_id\":\"75b817eb-360e-488f-b425-a747c02b3430\",\"role\":\"admin\",\"status\":1,\"roll_number\":null,\"created_at\":\"2026-08-17T08:44:18.484842+00:00\",\"user\":{\"id\":\"75b817eb-360e-488f-b425",
+      "body": "{\"ok\":true,\"data\":[{\"id\":1,\"tenant_id\":1,\"user_id\":\"75b817eb-360e-488f-b425-a747c02b3430\",\"role\":\"admin\",\"status\":1,\"roll_number\":null,\"permissions\":{},\"created_at\":\"2026-08-17T08:44:18.484842+00:00\",\"user\":{\"id\":\"75b817",
       "expected": "allow",
       "got": "allow",
       "verdict": "PASS"
@@ -688,9 +688,9 @@
       "ep": "/api/onyx/allocations",
       "status": 200,
       "body": "{\"ok\":true,\"data\":[]}",
-      "expected": "deny",
+      "expected": "allow",
       "got": "allow",
-      "verdict": "FAIL"
+      "verdict": "PASS"
     },
     {
       "role": "exams",
@@ -707,27 +707,27 @@
       "actualRole": "exams",
       "ep": "/api/onyx/gateways",
       "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
-      "expected": "deny",
+      "body": "{\"ok\":true,\"data\":[{\"identifier\":\"razorpay\",\"title\":\"Razorpay\",\"currency\":\"INR\"}]}",
+      "expected": "allow",
       "got": "allow",
-      "verdict": "FAIL"
+      "verdict": "PASS"
     },
     {
       "role": "exams",
       "actualRole": "exams",
       "ep": "/api/onyx/admin/gateways",
-      "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
+      "status": 403,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
       "expected": "deny",
-      "got": "allow",
-      "verdict": "FAIL"
+      "got": "deny",
+      "verdict": "PASS"
     },
     {
       "role": "exams",
       "actualRole": "exams",
       "ep": "/api/onyx/proctor/queue",
       "status": 200,
-      "body": "{\"ok\":true,\"data\":[{\"attempt_id\":141,\"assessment_id\":91,\"user_id\":\"a5c64dc7-edd0-4d72-b728-fe7008bd9caf\",\"name\":\"Thanush Chowdary Garimella\",\"roll_number\":\"qwertyu123\",\"status\":\"submitted\",\"integrity_flags\":6,\"integrity_",
+      "body": "{\"ok\":true,\"data\":[{\"attempt_id\":141,\"assessment_id\":91,\"user_id\":\"a5c64dc7-edd0-4d72-b728-fe7008bd9caf\",\"name\":\"Thanush Chowdary Garimella\",\"roll_number\":\"qwertyu123\",\"status\":\"published\",\"integrity_flags\":6,\"integrity_",
       "expected": "allow",
       "got": "allow",
       "verdict": "PASS"
@@ -747,7 +747,7 @@
       "actualRole": "exams",
       "ep": "/api/onyx/banks",
       "status": 200,
-      "body": "{\"ok\":true,\"data\":[{\"id\":58,\"tenant_id\":1,\"course_id\":60,\"name\":\"CSE1 — question bank\",\"description\":null,\"created_by\":\"587ab396-6635-45d2-82ef-927c5bc94185\",\"created_at\":\"2026-08-23T14:09:39.921144+00:00\"},{\"id\":57,\"ten",
+      "body": "{\"ok\":true,\"data\":[{\"id\":170,\"tenant_id\":1,\"course_id\":60,\"name\":\"UI Inline paper mt7elo4l — question bank\",\"description\":null,\"created_by\":\"157b33d3-377b-4c84-b4ce-8777eff3566c\",\"created_at\":\"2026-08-24T15:41:33.989472+",
       "expected": "allow",
       "got": "allow",
       "verdict": "PASS"
@@ -776,21 +776,21 @@
       "role": "exams",
       "actualRole": "exams",
       "ep": "/api/onyx/drives",
-      "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
+      "status": 403,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
       "expected": "deny",
-      "got": "allow",
-      "verdict": "FAIL"
+      "got": "deny",
+      "verdict": "PASS"
     },
     {
       "role": "exams",
       "actualRole": "exams",
       "ep": "/api/onyx/fee-structures",
-      "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
+      "status": 403,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
       "expected": "deny",
-      "got": "allow",
-      "verdict": "FAIL"
+      "got": "deny",
+      "verdict": "PASS"
     },
     {
       "role": "exams",
@@ -817,7 +817,7 @@
       "actualRole": "faculty",
       "ep": "/api/onyx/members",
       "status": 200,
-      "body": "{\"ok\":true,\"data\":[{\"id\":453,\"tenant_id\":190,\"user_id\":\"5cd60dcd-7b3b-447a-a06b-15d31dd62d21\",\"role\":\"admin\",\"status\":1,\"roll_number\":null,\"created_at\":\"2026-08-18T04:11:20.292069+00:00\",\"user\":{\"id\":\"5cd60dcd-7b3b-447a-",
+      "body": "{\"ok\":true,\"data\":[{\"id\":453,\"tenant_id\":190,\"user_id\":\"5cd60dcd-7b3b-447a-a06b-15d31dd62d21\",\"role\":\"admin\",\"status\":1,\"roll_number\":null,\"permissions\":{},\"created_at\":\"2026-08-18T04:11:20.292069+00:00\",\"user\":{\"id\":\"5c",
       "expected": "allow",
       "got": "allow",
       "verdict": "PASS"
@@ -867,20 +867,20 @@
       "actualRole": "faculty",
       "ep": "/api/onyx/gateways",
       "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
-      "expected": "deny",
+      "body": "{\"ok\":true,\"data\":[{\"identifier\":\"razorpay\",\"title\":\"Razorpay\",\"currency\":\"INR\"}]}",
+      "expected": "allow",
       "got": "allow",
-      "verdict": "FAIL"
+      "verdict": "PASS"
     },
     {
       "role": "m_faculty",
       "actualRole": "faculty",
       "ep": "/api/onyx/admin/gateways",
-      "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
+      "status": 403,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
       "expected": "deny",
-      "got": "allow",
-      "verdict": "FAIL"
+      "got": "deny",
+      "verdict": "PASS"
     },
     {
       "role": "m_faculty",
@@ -936,21 +936,21 @@
       "role": "m_faculty",
       "actualRole": "faculty",
       "ep": "/api/onyx/drives",
-      "status": 200,
-      "body": "{\"ok\":true,\"data\":[]}",
+      "status": 403,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
       "expected": "deny",
-      "got": "allow",
-      "verdict": "FAIL"
+      "got": "deny",
+      "verdict": "PASS"
     },
     {
       "role": "m_faculty",
       "actualRole": "faculty",
       "ep": "/api/onyx/fee-structures",
-      "status": 200,
-      "body": "{\"ok\":true,\"data\":[{\"id\":8,\"tenant_id\":190,\"program_id\":12,\"semester_id\":12,\"name\":\"Semester 3 fees\",\"currency\":\"INR\",\"instalments\":2,\"status\":\"published\",\"created_at\":\"2026-08-18T04:20:25.625999+00:00\",\"updated_at\":\"202",
+      "status": 403,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"This action is unauthorized.\"}",
       "expected": "deny",
-      "got": "allow",
-      "verdict": "FAIL"
+      "got": "deny",
+      "verdict": "PASS"
     },
     {
       "role": "m_faculty",
@@ -1201,7 +1201,7 @@
       "method": "POST",
       "ep": "/api/onyx/members",
       "status": 403,
-      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Add people” is not something your institution allows your role to do.\"}",
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Add people” is not something your institution allows you to do.\"}",
       "expected": "deny",
       "got": "deny",
       "verdict": "PASS"
@@ -1212,7 +1212,7 @@
       "method": "PATCH",
       "ep": "/api/onyx/members/0",
       "status": 403,
-      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Edit people” is not something your institution allows your role to do.\"}",
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Edit people” is not something your institution allows you to do.\"}",
       "expected": "deny",
       "got": "deny",
       "verdict": "PASS"
@@ -1278,7 +1278,7 @@
       "method": "POST",
       "ep": "/api/onyx/members",
       "status": 403,
-      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Add people” is not something your institution allows your role to do.\"}",
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Add people” is not something your institution allows you to do.\"}",
       "expected": "deny",
       "got": "deny",
       "verdict": "PASS"
@@ -1289,7 +1289,7 @@
       "method": "PATCH",
       "ep": "/api/onyx/members/0",
       "status": 403,
-      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Edit people” is not something your institution allows your role to do.\"}",
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Edit people” is not something your institution allows you to do.\"}",
       "expected": "deny",
       "got": "deny",
       "verdict": "PASS"
@@ -1344,7 +1344,7 @@
       "method": "POST",
       "ep": "/api/onyx/timetable/publish",
       "status": 403,
-      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Publish the timetable” is not something your institution allows your role to do.\"}",
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Publish the timetable” is not something your institution allows you to do.\"}",
       "expected": "allow",
       "got": "deny",
       "verdict": "PASS"
@@ -1366,7 +1366,7 @@
       "method": "PATCH",
       "ep": "/api/onyx/members/0",
       "status": 403,
-      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Edit people” is not something your institution allows your role to do.\"}",
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Edit people” is not something your institution allows you to do.\"}",
       "expected": "deny",
       "got": "deny",
       "verdict": "PASS"
@@ -1376,10 +1376,10 @@
       "actualRole": "faculty",
       "method": "POST",
       "ep": "/api/onyx/courses",
-      "status": 200,
-      "body": "{\"ok\":true,\"data\":{\"id\":198,\"tenant_id\":190,\"program_id\":null,\"semester_id\":null,\"code\":\"QAP-1787498311689\",\"title\":\"QA Probe Course\",\"slug\":\"qa-probe-course\",\"description\":null,\"credits\":0,\"self_enroll\":0,\"access\":\"batc",
+      "status": 422,
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"That course code or address is already in use.\"}",
       "expected": "allow",
-      "got": "allow",
+      "got": "deny",
       "verdict": "PASS"
     },
     {
@@ -1410,7 +1410,7 @@
       "method": "POST",
       "ep": "/api/onyx/skills/award",
       "status": 403,
-      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Award skills” is not something your institution allows your role to do.\"}",
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Award skills” is not something your institution allows you to do.\"}",
       "expected": "allow",
       "got": "deny",
       "verdict": "PASS"
@@ -1421,7 +1421,7 @@
       "method": "POST",
       "ep": "/api/onyx/timetable/publish",
       "status": 403,
-      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Publish the timetable” is not something your institution allows your role to do.\"}",
+      "body": "{\"ok\":false,\"level\":\"error\",\"message\":\"“Publish the timetable” is not something your institution allows you to do.\"}",
       "expected": "deny",
       "got": "deny",
       "verdict": "PASS"
