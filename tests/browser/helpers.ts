@@ -9,7 +9,7 @@
  * caller is node:test or Playwright: the API client, the run-unique suffix,
  * and direct database cleanup.
  */
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { api, withDb, RUN, WEB, env, createTenant as createTenantAsPlatform } from '../e2e/harness.ts';
 
 export { RUN, WEB, withDb, api };
@@ -102,9 +102,33 @@ export async function signInViaForm(page: Page, email: string, password = PASSWO
   await page.context().clearCookies();
   await page.goto('/onyx/login');
   await page.getByLabel('Email address').fill(email);
-  await page.getByLabel('Password').fill(password);
-  await page.getByRole('button', { name: /sign in/i }).click();
-  await page.waitForURL('**/onyx/dashboard');
+  // `exact`, because getByLabel matches on a SUBSTRING by default and the
+  // field carries a show/hide toggle labelled "Show password" -- so the plain
+  // string matches two elements and Playwright refuses in strict mode.
+  await page.getByLabel('Password', { exact: true }).fill(password);
+
+  /*
+   * Wait for the button to become enabled, rather than clicking a disabled one.
+   *
+   * `OnyxLoginForm` disables submit until it has hydrated, deliberately: before
+   * hydration the form would be submitted natively by the browser and the
+   * password would land in the URL. So a click that arrives first does nothing
+   * at all, and Playwright reports it as a thirty-second timeout on a locator
+   * it resolved perfectly well -- which reads as a broken login page and is
+   * really a race.
+   *
+   * It only bites under load. One spec on a warm server hydrates in
+   * milliseconds; a whole suite against a dev server compiling each route on
+   * first hit does not, and the entire signed-in half of the suite fails
+   * together in a way that looks like bad credentials.
+   *
+   * A generous timeout because the thing being waited for is a first
+   * compile, not a network round trip.
+   */
+  const submit = page.getByRole('button', { name: /sign in/i });
+  await expect(submit).toBeEnabled({ timeout: 60_000 });
+  await submit.click();
+  await page.waitForURL('**/onyx/dashboard', { timeout: 60_000 });
 }
 
 /**

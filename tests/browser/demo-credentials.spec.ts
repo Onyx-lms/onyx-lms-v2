@@ -41,7 +41,7 @@ test.describe('the fixed demo credentials handed to the user', () => {
     test(email + ' signs in through the real form', async ({ page }) => {
       await page.goto('/onyx/login');
       await page.getByLabel('Email address').fill(email);
-      await page.getByLabel('Password').fill(PASSWORD);
+      await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
       await page.getByRole('button', { name: /sign in/i }).click();
 
       await page.waitForURL('**' + landing, { timeout: 10_000 });

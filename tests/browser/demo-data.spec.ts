@@ -31,7 +31,7 @@ const EXAMS = 'exams@demo.onyx';
 async function signIn(page: Page, email: string) {
   await page.goto('/onyx/login');
   await page.getByLabel('Email address').fill(email);
-  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
   await page.getByRole('button', { name: /sign in/i }).click();
   // Anywhere but the form. Waiting on /\/onyx\// instead matches
   // /onyx/login itself, so the wait resolves before the click has been through

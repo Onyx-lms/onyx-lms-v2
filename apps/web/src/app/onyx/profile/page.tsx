@@ -7,6 +7,7 @@ import { headers } from 'next/headers';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
 import { ProfileEditor, type ProfileDetails } from '@/components/onyx-profile-editor';
 import { IdentityEditor } from '@/components/onyx-identity-editor';
+import { ProfileProgress, type ProfileTask } from '@/components/onyx-profile-progress';
 import type { Profile } from '@/lib/onyx-career';
 import type { GuardianLink } from '@/lib/onyx-campus';
 import type { ExamMark } from '@/lib/onyx-campus';
@@ -86,6 +87,39 @@ export default async function OnyxProfilePage() {
 
   const displayName = me.name ?? me.email;
   const initials = displayName.slice(0, 2).toUpperCase();
+
+  /*
+   * What is still missing, in the order it is worth doing.
+   *
+   * Every one of these is a field somebody else reads. The headline and the
+   * bio lead because they are what a placement officer sees first and the two
+   * most often left empty; the photo is next because a face on a shortlist is
+   * remembered and a grey circle is not.
+   *
+   * Anchors rather than page links: `#profile-details` lands on the editor
+   * that owns the field, so "add a headline" opens the box to type it in
+   * rather than the top of a page somebody then has to scan.
+   */
+  const tasks: ProfileTask[] = details ? [
+    { key: 'photo', label: 'Add a photo', done: Boolean(me.photo_url),
+      why: 'A face is remembered on a shortlist; a grey circle is not.',
+      href: '#profile-identity' },
+    { key: 'headline', label: 'Write a headline', done: Boolean(details.headline.trim()),
+      why: 'One line under your name. It is the first thing anybody reads.',
+      href: '#profile-details' },
+    { key: 'bio', label: 'Write a short bio', done: Boolean(details.bio.trim()),
+      why: 'A paragraph in your own words, rather than a list of marks.',
+      href: '#profile-details' },
+    { key: 'skills', label: 'List your skills', done: Boolean(details.skills_text.trim()),
+      why: 'The ones you would claim yourself, alongside the ones earned here.',
+      href: '#profile-details' },
+    { key: 'phone', label: 'Add a phone number', done: Boolean(details.phone?.trim()),
+      why: 'How your institution reaches you about a placement at short notice.',
+      href: '#profile-identity' },
+    { key: 'website', label: 'Link something of yours', done: Boolean(details.website.trim()),
+      why: 'A portfolio, a repository, a profile elsewhere.',
+      href: '#profile-details' },
+  ] : [];
   const evidence = profile ? profile.skills.reduce((n, s) => n + s.evidence_count, 0) : 0;
 
   return (
@@ -107,8 +141,17 @@ export default async function OnyxProfilePage() {
           the only parts of a profile its owner could not change. Somebody
           arriving to fix a misspelled name should not have to scroll past a
           bio to find where. */}
-      {details ? (
+      {/* Before the editors, because it is the map of them. A person who
+          arrives to "finish my profile" should not have to scroll four boxes
+          to work out which ones are empty. */}
+      {details && isStudent ? (
         <section className="mb-6">
+          <ProfileProgress tasks={tasks} />
+        </section>
+      ) : null}
+
+      {details ? (
+        <section id="profile-identity" className="mb-6 scroll-mt-24">
           <IdentityEditor
             identity={{
               name: me.name ?? '',
@@ -122,7 +165,7 @@ export default async function OnyxProfilePage() {
       ) : null}
 
       {details ? (
-        <section className="mb-6">
+        <section id="profile-details" className="mb-6 scroll-mt-24">
           <SectionHead title="Your public profile" />
           <ProfileEditor details={details} role={me.role} origin={origin} />
         </section>

@@ -45,7 +45,7 @@ async function signIn(page: Page, email: string) {
   await page.context().clearCookies();
   await page.goto('/onyx/login');
   await page.getByLabel('Email address').fill(email);
-  await page.getByLabel('Password').fill(PW);
+  await page.getByLabel('Password', { exact: true }).fill(PW);
   await page.getByRole('button', { name: /sign in/i }).click();
   await page.waitForFunction(() => !location.pathname.endsWith('/onyx/login'), null,
     { timeout: 15_000 });
@@ -137,7 +137,7 @@ const soon = (days: number) => {
 test('setup: an institution with a course, a teacher and two learners', async ({ page }) => {
   await page.goto('/onyx/platform/login');
   await page.getByLabel('Email address').fill(PLATFORM.email);
-  await page.getByLabel('Password').fill(PLATFORM.password);
+  await page.getByLabel('Password', { exact: true }).fill(PLATFORM.password);
   await page.getByRole('button', { name: /sign in/i }).click();
   await page.waitForURL('**/onyx/platform', { timeout: 15_000 });
 

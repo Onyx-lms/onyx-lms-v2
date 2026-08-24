@@ -81,9 +81,36 @@ test.describe('accessibility', () => {
     // record rather than written out by hand.
     await signInViaForm(page, studentEmail);
     await page.goto('/onyx/resume');
-    const results = await new AxeBuilder({ page }).withTags(AA_TAGS).analyze();
-    expect(results.violations, explain(results.violations)).toEqual([]);
+
+    const closed = await new AxeBuilder({ page }).withTags(AA_TAGS).analyze();
+    expect(closed.violations, explain(closed.violations)).toEqual([]);
+
+    /*
+     * Then again with every group open.
+     *
+     * The controls live inside `<details>` now, and axe does not audit what is
+     * inside a closed one -- correctly, since it is not rendered. Left as it
+     * was, this test would have gone on passing while reporting on an almost
+     * empty page: the checkboxes it exists to check would simply not be there.
+     */
+    await page.evaluate(() => {
+      document.querySelectorAll('details').forEach((d) => { d.open = true; });
+    });
+    await expect(page.locator('input[type="checkbox"]').first()).toBeVisible();
+    const open = await new AxeBuilder({ page }).withTags(AA_TAGS).analyze();
+    expect(open.violations, explain(open.violations)).toEqual([]);
   });
+
+  test('the profile, with its editors and progress, has no wcag2a/wcag2aa violations',
+    async ({ page }) => {
+      // Two editors, a progress bar and a checklist of links, all above a
+      // derived record. The progress bar carries a value and a name of its own
+      // rather than being a bare div with a width.
+      await signInViaForm(page, studentEmail);
+      await page.goto('/onyx/profile');
+      const results = await new AxeBuilder({ page }).withTags(AA_TAGS).analyze();
+      expect(results.violations, explain(results.violations)).toEqual([]);
+    });
 
   test('the roster, with its data table and inline controls, has no violations', async ({ page }) => {
     await signInViaForm(page, adminEmail);

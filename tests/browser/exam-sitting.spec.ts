@@ -189,7 +189,7 @@ test('the shared link carries somebody who is not signed in to the paper', async
   await expect(page).toHaveURL(/\/onyx\/login/, { timeout: 20_000 });
 
   await page.getByLabel('Email address').fill(CANDIDATES[0]!);
-  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
   await page.getByRole('button', { name: /sign in/i }).click();
 
   // Landed on the paper itself, not dropped on a dashboard for the candidate

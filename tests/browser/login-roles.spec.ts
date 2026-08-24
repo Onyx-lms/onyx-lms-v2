@@ -98,7 +98,7 @@ test.describe('every role can sign in through the real form', () => {
   test('a person with no membership anywhere gets a clear error, not a crash', async ({ page }) => {
     await page.goto('/onyx/login');
     await page.getByLabel('Email address').fill('nobody.' + RUN + '@onyx.test');
-    await page.getByLabel('Password').fill('WhateverPassword#1');
+    await page.getByLabel('Password', { exact: true }).fill('WhateverPassword#1');
     await page.getByRole('button', { name: /sign in/i }).click();
     const alert = page.locator('form').getByRole('alert');
     await expect(alert).toBeVisible();

@@ -36,7 +36,7 @@ async function signIn(page: Page, email: string, password = PW) {
   await page.context().clearCookies();
   await page.goto(BASE + '/onyx/login');
   await page.getByLabel('Email address').fill(email);
-  await page.getByLabel('Password').fill(password);
+  await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: /sign in/i }).click();
   await page.waitForURL((u) => !u.pathname.endsWith('/login'), { timeout: 30_000 });
 }
@@ -95,7 +95,7 @@ test('a wrong password says so, and does not move the page', async ({ page }) =>
   await page.context().clearCookies();
   await page.goto(BASE + '/onyx/login');
   await page.getByLabel('Email address').fill(world.student);
-  await page.getByLabel('Password').fill('definitely-not-it');
+  await page.getByLabel('Password', { exact: true }).fill('definitely-not-it');
   await page.getByRole('button', { name: /sign in/i }).click();
   const alert = page.getByRole('alert');
   await expect(alert).toBeVisible({ timeout: 20_000 });

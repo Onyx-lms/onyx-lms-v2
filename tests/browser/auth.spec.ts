@@ -37,7 +37,7 @@ test.describe('signing in and out', () => {
   test('a wrong password shows a visible error and does not navigate', async ({ page }) => {
     await page.goto('/onyx/login');
     await page.getByLabel('Email address').fill(adminEmail);
-    await page.getByLabel('Password').fill('WrongPassword#0000');
+    await page.getByLabel('Password', { exact: true }).fill('WrongPassword#0000');
     await page.getByRole('button', { name: /sign in/i }).click();
 
     // Scoped to the form: Next.js's own route announcer

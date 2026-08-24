@@ -50,7 +50,7 @@ test.describe.configure({ mode: 'serial' });
 async function signIn(page: Page, email: string) {
   await page.goto('/onyx/login');
   await page.getByLabel('Email address').fill(email);
-  await page.getByLabel('Password').fill(PW);
+  await page.getByLabel('Password', { exact: true }).fill(PW);
   await page.getByRole('button', { name: /sign in/i }).click();
   await page.waitForFunction(() => !location.pathname.endsWith('/onyx/login'), null,
     { timeout: 15_000 });
@@ -101,7 +101,7 @@ async function token(request: APIRequestContext, email: string, password = PW) {
 test('1. the platform admin creates the institution, through the console', async ({ page }) => {
   await page.goto('/onyx/platform/login');
   await page.getByLabel('Email address').fill(PLATFORM.email);
-  await page.getByLabel('Password').fill(PLATFORM.password);
+  await page.getByLabel('Password', { exact: true }).fill(PLATFORM.password);
   await page.getByRole('button', { name: /sign in/i }).click();
   await page.waitForURL('**/onyx/platform', { timeout: 15_000 });
 

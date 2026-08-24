@@ -16,7 +16,7 @@ import type {
 } from '@/lib/onyx-campus';
 import { WEEKDAYS, hhmm, money } from '@/lib/onyx-campus';
 import type { AttendanceAnalytics, AttendanceSession } from '@/lib/onyx-learn';
-import type { Drive, JobPost } from '@/lib/onyx-career';
+import type { Drive, JobPost, Readiness as LearnerReadiness } from '@/lib/onyx-career';
 
 export const metadata: Metadata = { title: 'Dashboard' };
 
@@ -118,7 +118,7 @@ export default async function OnyxDashboard() {
     // The proposal's own dashboard mockup pairs a readiness score with the
     // streak widget -- this page had the streak but never the score, which
     // otherwise only ever surfaced a click away on /onyx/profile.
-    isLearner ? onyxApiSafe<{ readiness: { score: number } }>('/api/onyx/my/profile') : null,
+    isLearner ? onyxApiSafe<{ readiness: LearnerReadiness }>('/api/onyx/my/profile') : null,
   ]);
   const mine = courses ?? [];
 
@@ -558,7 +558,7 @@ export default async function OnyxDashboard() {
 
         {/* ---------------- right rail ---------------- */}
         <div className="min-w-0 space-y-5">
-          {profile ? <ReadinessCard score={profile.readiness.score} /> : null}
+          {profile ? <ReadinessCard readiness={profile.readiness} /> : null}
           {progress ? <StreakCard progress={progress} /> : null}
 
           {/* The right rail was empty for an administrator otherwise --
@@ -1407,38 +1407,133 @@ function ResumeCard({ courses, outlines }: {
  * "longest 0 · nothing today" never did.
  */
 /**
- * CAR-05 -- the readiness score, glanceable rather than broken down.
+ * CAR-05 -- the readiness score, as the one thing to do about it.
  *
- * The full formula and component-by-component working already have a home
- * on /onyx/profile (`OnyxReadiness`) -- repeating that here would just be a
- * second, smaller copy of the same five bars. What the dashboard is missing
- * is the number itself, at a glance, the way the proposal's own mockup pairs
- * it with the streak widget.
+ * This was a number, its denominator, and a sentence naming the five inputs:
+ * "49.96 / readiness score / Out of 100 / From attendance, assessments,
+ * practice, projects and interviews". Three problems, and the first is the
+ * smallest.
+ *
+ *   * **49.96.** Two decimal places on a score out of a hundred reads as a
+ *     spreadsheet cell rather than a judgement, and the hundredth of a point
+ *     is not a fact about anybody -- it is a rounding artefact of five
+ *     weighted components. Rounded, with the exact figure kept in the title
+ *     attribute for anybody who wants it.
+ *   * **Nothing said whether it was good.** A bare 50 out of 100 is unreadable
+ *     without a scale: is that failing, or the middle of a cohort? So the
+ *     number carries a band word and sits on a track, which is how every score
+ *     people actually act on is drawn -- a credit score, a password health
+ *     score, a site performance score.
+ *   * **It listed the ingredients instead of the advice.** Naming the five
+ *     inputs tells a learner nothing they can do on a Tuesday afternoon. The
+ *     breakdown is already on the wire -- `/my/profile` returns every
+ *     component with its weight and the points earned -- so the card names the
+ *     ONE furthest from full marks and links straight at it.
+ *
+ * The formula stays published on /onyx/profile, where the full working
+ * belongs. This is the dashboard: one number, one verdict, one next move.
  */
-function ReadinessCard({ score }: { score: number }) {
-  const band = score >= 70 ? 'text-green-700' : score >= 40 ? 'text-accent-700' : 'text-muted';
+const READINESS_BANDS = [
+  { at: 80, word: 'Strong', tone: 'text-green-700', bar: 'bg-green-600' },
+  { at: 60, word: 'On track', tone: 'text-green-700', bar: 'bg-green-600' },
+  { at: 40, word: 'Getting there', tone: 'text-accent-700', bar: 'bg-accent-500' },
+  { at: 0, word: 'Early days', tone: 'text-muted', bar: 'bg-slate-400' },
+] as const;
+
+/** Where each component sends somebody who wants to move it. */
+const READINESS_LINKS: Record<string, { href: string; verb: string }> = {
+  attendance: { href: '/onyx/timetable', verb: 'Your timetable' },
+  assessment: { href: '/onyx/assessments', verb: 'Your papers' },
+  practice: { href: '/onyx/practice', verb: 'Open Code Lab' },
+  projects: { href: '/onyx/workspaces', verb: 'Your projects' },
+  interview: { href: '/onyx/interviews', verb: 'Book a mock interview' },
+};
+
+function ReadinessCard({ readiness }: { readiness: LearnerReadiness }) {
+  const exact = Number(readiness?.score ?? 0);
+  const score = Math.round(exact);
+  const band = READINESS_BANDS.find((b) => score >= b.at) ?? READINESS_BANDS[3];
+
+  /*
+   * The component with the most points still on the table -- not the lowest
+   * percentage.
+   *
+   * Those are different questions and only one of them is useful. Mock
+   * interviews at nought per cent are worth 15 points; attendance at eighty
+   * per cent is worth 4. Somebody told to fix the smaller number would spend
+   * their afternoon on the one that moves the score least.
+   */
+  const gaps = (readiness?.breakdown ?? [])
+    .map((c) => ({ ...c, missing: Number(c.weight ?? 0) - Number(c.points ?? 0) }))
+    .filter((c) => c.missing > 0.5)
+    .sort((a, b) => b.missing - a.missing);
+  const biggest = gaps[0];
+  const link = biggest ? READINESS_LINKS[biggest.key] : undefined;
+
   return (
     <section aria-labelledby="readiness-h">
       <Card className="p-4">
-        <div className="flex items-center gap-3">
-          <span className={'text-[40px] font-extrabold leading-none tabular-nums ' + band}>
+        <div className="flex items-baseline gap-2.5">
+          <span
+            title={'Exactly ' + exact}
+            className={'text-[40px] font-extrabold leading-none tabular-nums ' + band.tone}
+          >
             {score}
           </span>
-          <span>
+          <span className="min-w-0">
             <span id="readiness-h" className="block text-[13.5px] font-bold">
-              readiness score
+              {band.word}
             </span>
-            <span className="block text-[12.5px] text-muted">Out of 100</span>
+            <span className="block text-[12px] text-muted">readiness, out of 100</span>
           </span>
         </div>
-        <p className="mt-3 text-[12.5px] text-muted">
-          From attendance, assessments, practice, projects and interviews &mdash; weighted
-          the same way for everyone.
-        </p>
+
+        {/* The track. Colour is never the only signal -- the band word above
+            says the same thing in words, and the bar carries an accessible
+            name and value of its own. */}
+        <div
+          role="progressbar"
+          aria-valuenow={score} aria-valuemin={0} aria-valuemax={100}
+          aria-label={'Readiness ' + score + ' out of 100, ' + band.word}
+          className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"
+        >
+          <span className={'block h-full rounded-full ' + band.bar}
+            style={{ width: Math.max(2, score) + '%' }} />
+        </div>
+
+        {biggest ? (
+          <div className="mt-3 rounded-xl bg-slate-50 p-3">
+            <p className="text-[12px] font-bold uppercase tracking-wide text-muted">
+              Worth the most right now
+            </p>
+            <p className="mt-1 text-[13px] font-semibold leading-snug text-ink">
+              {biggest.label}
+            </p>
+            <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">
+              {Math.round(biggest.missing)} of your {Math.round(Number(biggest.weight))} points
+              here are still unearned &mdash; more than anywhere else.
+            </p>
+            {link ? (
+              <Link href={link.href}
+                className="mt-1.5 inline-flex items-center gap-1 text-[12.5px] font-bold
+                           text-brand-600 hover:underline">
+                {link.verb}
+                <Icon name="chevron" className="h-3.5 w-3.5" />
+              </Link>
+            ) : null}
+          </div>
+        ) : (
+          <p className="mt-3 rounded-xl bg-green-50 p-3 text-[12.5px] leading-relaxed
+                        text-green-800">
+            Every part of your score is at or near full marks. Nothing here is holding
+            you back.
+          </p>
+        )}
+
         <div className="mt-3">
           <Link href="/onyx/profile"
             className="text-[12.5px] font-bold text-brand-600 hover:underline">
-            See the breakdown
+            How this is worked out
           </Link>
         </div>
       </Card>
