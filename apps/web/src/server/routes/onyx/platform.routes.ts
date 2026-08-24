@@ -581,6 +581,70 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
     return ok(await ctx.onyxPlatform.domainDetail(idOf(req), subIdOf(req, 'domainId')));
   });
 
+  /**
+   * Authoring, from the console.
+   *
+   * `AssessService` is reused rather than reimplemented: it validates an
+   * answer key against the question type, refuses a code question with no
+   * problem behind it, checks that the problem is published and has tests, and
+   * versions a question when it changes. Rewriting any of that here would give
+   * the console a second, quieter set of rules -- and the one that is quieter
+   * is the one that lets a broken paper through.
+   *
+   * The actor is passed as `admin`, which is what a platform operator is with
+   * respect to any one institution: `#assertCanAuthor` lets an admin author
+   * against any course, and a platform token has already been checked to be a
+   * platform token before we get here.
+   */
+  app.post('/api/onyx/platform/tenants/:id/banks', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      name: z.string().min(1).max(255),
+      description: z.string().max(4000).nullish(),
+      course_id: z.number().int().positive().nullish(),
+    }), req.body);
+    return ok(await ctx.onyxAssess.createBank(
+      idOf(req), { userId: claims.user_id, role: 'admin' }, body), 'Question bank created.');
+  });
+
+  app.get('/api/onyx/platform/tenants/:id/banks/:bankId/questions', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxAssess.questions(idOf(req), subIdOf(req, 'bankId')));
+  });
+
+  app.post('/api/onyx/platform/tenants/:id/banks/:bankId/questions', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      type: z.enum(['single', 'multiple', 'truefalse', 'short', 'essay', 'code']).optional(),
+      prompt: z.string().min(1).max(20_000),
+      options: z.array(z.object({
+        id: z.string().min(1).max(20),
+        text: z.string().min(1).max(2000),
+      })).max(20).optional(),
+      answer: z.unknown().optional(),
+      explanation: z.string().max(20_000).nullish(),
+      points: z.number().int().min(1).max(1000).optional(),
+      difficulty: z.string().max(20).optional(),
+      tags: z.array(z.string().max(50)).max(20).optional(),
+      // `code` only: the Code Lab problem whose tests mark this question.
+      problem_id: z.number().int().positive().nullish(),
+    }), req.body);
+    return ok(await ctx.onyxAssess.addQuestion(
+      idOf(req), subIdOf(req, 'bankId'), { userId: claims.user_id, role: 'admin' }, body),
+    'Question added.');
+  });
+
+  /**
+   * The problems a code question can be bound to.
+   *
+   * Published ones only, because an unpublished problem has no promise that
+   * its tests are finished -- and a code question is marked by running them.
+   */
+  app.get('/api/onyx/platform/tenants/:id/problems', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxCodeLab.problems(idOf(req), 'admin'));
+  });
+
   app.get('/api/onyx/platform/tenants/:id/banks', async (req) => {
     await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     return ok(await ctx.onyxPlatform.questionBanks(idOf(req)));
