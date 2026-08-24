@@ -175,7 +175,100 @@ check('and none of this is open to an anonymous caller',
 
 // ---------------------------------------------------------------------------
 
-startPhase('4. putting ABC Institution back as it was');
+startPhase('4. lessons, files included');
+
+/*
+ * The five kinds the product offers. A file kind is proved with a REAL
+ * upload -- ticket, PUT to storage, then the key -- because "the route
+ * accepts a path" and "a file can be uploaded" are different claims and only
+ * the second one is what somebody is trying to do.
+ */
+const lessonIds = [];
+
+const ticket = await step('a signed upload ticket is issued',
+  '/api/onyx/platform/tenants/' + tid + '/courses/' + course.id + '/uploads/sign', {
+    method: 'POST', token: pt, body: { filename: 'console-qa-' + RUN + '.txt' },
+  });
+check('the storage key is derived from the tenant, not from the caller',
+  String(ticket.data?.path ?? '').includes('/' + tid + '/')
+  || String(ticket.data?.path ?? '').startsWith('onyx/'),
+  'path=' + ticket.data?.path);
+
+const put = await fetch(ticket.data?.signedUrl, {
+  method: 'PUT',
+  headers: { 'Content-Type': 'text/plain' },
+  body: 'Uploaded by qa-live/console.mjs at ' + new Date().toISOString(),
+});
+check('the browser can PUT straight to storage', put.ok, 'status ' + put.status);
+
+const doc = await step('a document lesson is added with that file',
+  '/api/onyx/platform/tenants/' + tid + '/modules/' + moduleId + '/lessons', {
+    method: 'POST', token: pt,
+    body: { title: 'Console QA document ' + RUN, type: 'document', path: ticket.data?.path },
+  });
+if (doc.data?.id) lessonIds.push(doc.data.id);
+
+const link = await step('a link lesson is added',
+  '/api/onyx/platform/tenants/' + tid + '/modules/' + moduleId + '/lessons', {
+    method: 'POST', token: pt,
+    body: { title: 'Console QA link ' + RUN, type: 'link',
+      path: 'https://example.com/reading' },
+  });
+if (link.data?.id) lessonIds.push(link.data.id);
+
+const text = await step('a written lesson is added',
+  '/api/onyx/platform/tenants/' + tid + '/modules/' + moduleId + '/lessons', {
+    method: 'POST', token: pt,
+    body: { title: 'Console QA reading ' + RUN, type: 'text',
+      body: 'Some reading, set out on the page itself.' },
+  });
+if (text.data?.id) lessonIds.push(text.data.id);
+
+check('all three landed', lessonIds.length === 3, lessonIds.length + ' created');
+
+// The refusals: a lesson that points at nothing is the commonest authoring
+// mistake and only shows up when a learner opens it.
+const noFile = await call('/api/onyx/platform/tenants/' + tid + '/modules/' + moduleId
+  + '/lessons', { method: 'POST', token: pt,
+  body: { title: 'Empty video', type: 'video' } });
+check('a video lesson with no file is refused', noFile.status === 422,
+  noFile.status + ' ' + (noFile.message ?? ''));
+
+const noText = await call('/api/onyx/platform/tenants/' + tid + '/modules/' + moduleId
+  + '/lessons', { method: 'POST', token: pt,
+  body: { title: 'Empty reading', type: 'text', body: '  ' } });
+check('a written lesson with no text is refused', noText.status === 422,
+  noText.status + ' ' + (noText.message ?? ''));
+
+const badType = await call('/api/onyx/platform/tenants/' + tid + '/modules/' + moduleId
+  + '/lessons', { method: 'POST', token: pt,
+  body: { title: 'Nonsense', type: 'hologram', path: 'x' } });
+check('and a kind the product does not have is refused', badType.status === 422,
+  badType.status);
+
+const withLessonsNow = await call('/api/onyx/platform/tenants/' + tid
+  + '/courses/' + course.id + '/outline', { token: pt });
+const built = (withLessonsNow.data?.modules ?? []).find((m) => Number(m.id) === Number(moduleId));
+check('the module now shows its lessons, in the order they were added',
+  (built?.lessons ?? []).length === 3
+  && (built?.lessons ?? []).every((l, i) => Number(l.sort) === i),
+  (built?.lessons ?? []).map((l) => l.type + '@' + l.sort).join(' '));
+
+const stillHeld = await call('/api/onyx/platform/tenants/' + tid + '/modules/' + moduleId,
+  { method: 'DELETE', token: pt });
+check('and the module cannot be removed while it holds them', stillHeld.status === 422,
+  stillHeld.status + ' ' + (stillHeld.message ?? ''));
+
+// ---------------------------------------------------------------------------
+
+startPhase('5. putting ABC Institution back as it was');
+
+for (const lessonId of lessonIds) {
+  const gone = await call('/api/onyx/platform/tenants/' + tid + '/lessons/' + lessonId,
+    { method: 'DELETE', token: pt });
+  check('lesson ' + lessonId + ' is removed', gone.status === 200,
+    gone.status + ' ' + (gone.message ?? ''));
+}
 
 const goneModule = await call('/api/onyx/platform/tenants/' + tid + '/modules/' + moduleId,
   { method: 'DELETE', token: pt });
