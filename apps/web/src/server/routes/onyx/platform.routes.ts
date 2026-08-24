@@ -314,6 +314,19 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       closes_at: z.string().nullish(),
       duration_minutes: z.number().int().min(1).max(1440).optional(),
       pass_mark: z.number().min(0).nullish(),
+      // How the paper is sat. Absent means "not stated", which the service
+      // reads as its default -- monitored, with camera and screen, for a paper
+      // set by an institution rather than by a lecturer.
+      attempts_allowed: z.number().int().min(1).max(20).optional(),
+      shuffle_questions: z.boolean().optional(),
+      shuffle_options: z.boolean().optional(),
+      proctoring: z.boolean().optional(),
+      require_camera: z.boolean().optional(),
+      require_screen: z.boolean().optional(),
+      watch_camera: z.boolean().optional(),
+      anonymous_marking: z.boolean().optional(),
+      moderation_required: z.boolean().optional(),
+      instant_results: z.boolean().optional(),
     }), req.body);
     return ok(await ctx.onyxPlatform.createAssessment(idOf(req), claims.user_id, body),
       'Assessment created.');
@@ -1110,6 +1123,19 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       pass_mark: z.number().min(0).nullish(),
       duration_minutes: z.number().int().min(0).optional(),
       status: z.string().max(20).optional(),
+      // How the paper is sat. Absent means "not stated", which the service
+      // reads as its default -- monitored, with camera and screen, for a paper
+      // set by an institution rather than by a lecturer.
+      attempts_allowed: z.number().int().min(1).max(20).optional(),
+      shuffle_questions: z.boolean().optional(),
+      shuffle_options: z.boolean().optional(),
+      proctoring: z.boolean().optional(),
+      require_camera: z.boolean().optional(),
+      require_screen: z.boolean().optional(),
+      watch_camera: z.boolean().optional(),
+      anonymous_marking: z.boolean().optional(),
+      moderation_required: z.boolean().optional(),
+      instant_results: z.boolean().optional(),
     }), req.body);
     return ok(await ctx.onyxPlatform.updateAssessment(
       idOf(req), subIdOf(req, 'assessmentId'), claims.user_id, body), 'Updated.');

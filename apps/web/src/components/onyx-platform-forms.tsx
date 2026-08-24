@@ -1710,6 +1710,145 @@ export function CreateAssignmentForm({ tenantId, courses }: {
 
 /** Create an assessment -- no sections/proctoring here, same scope as
  * PlatformService.createAssessment(). */
+/**
+ * How a paper is sat, and how it is marked.
+ *
+ * These switches live on the paper and always have. Only faculty's builder
+ * offered them, so a paper created from the console came out unproctored and
+ * unshuffled with nothing on the screen saying so -- an operator scheduled an
+ * examination and got an open-book one.
+ *
+ * The defaults deliberately differ from faculty's. A paper set by a lecturer is
+ * usually coursework, where monitoring is an imposition to opt into; a paper set
+ * from the console is the institution's own examination, so monitoring, camera
+ * and screen sharing start ON and an operator turns them off for the papers
+ * that do not need them. They are shown ticked rather than applied invisibly,
+ * because a camera requirement nobody was shown is one nobody agreed to.
+ */
+export interface PaperSwitchState {
+  shuffle_questions: boolean;
+  shuffle_options: boolean;
+  proctoring: boolean;
+  require_camera: boolean;
+  require_screen: boolean;
+  watch_camera: boolean;
+  anonymous_marking: boolean;
+  moderation_required: boolean;
+  instant_results: boolean;
+}
+
+/** What an institution's examination is, before anybody changes anything. */
+export const PAPER_SWITCH_DEFAULTS: PaperSwitchState = {
+  shuffle_questions: true,
+  shuffle_options: true,
+  proctoring: true,
+  require_camera: true,
+  require_screen: true,
+  watch_camera: true,
+  anonymous_marking: true,
+  moderation_required: false,
+  instant_results: true,
+};
+
+const SWITCHES: {
+  k: keyof PaperSwitchState; title: string; note: string; group: string;
+  dependent?: boolean;
+}[] = [
+  { group: 'The sitting', k: 'shuffle_questions', title: 'Shuffle the questions',
+    note: 'Each candidate gets them in a different order.' },
+  { group: 'The sitting', k: 'shuffle_options', title: 'Shuffle the options',
+    note: 'Answer positions differ, so “it was the third one” does not travel.' },
+  { group: 'Monitoring', k: 'proctoring', title: 'Monitor the sitting',
+    note: 'Records events — tab switches, pastes — and asks for consent first. '
+      + 'No video is stored.' },
+  { group: 'Monitoring', k: 'require_camera', title: 'Require a camera',
+    note: 'The candidate cannot start without one.', dependent: true },
+  { group: 'Monitoring', k: 'require_screen', title: 'Require screen sharing',
+    note: 'The candidate shares their screen for the whole sitting.', dependent: true },
+  { group: 'Monitoring', k: 'watch_camera', title: 'Let an invigilator watch the camera live',
+    note: 'An invigilator opens one candidate at a time and sees their camera while they '
+      + 'sit. Nothing is recorded, and the candidate is told on their own screen whenever '
+      + 'somebody is watching.', dependent: true },
+  { group: 'Marking', k: 'anonymous_marking', title: 'Mark anonymously',
+    note: 'The marker sees “Candidate 1”, not a name.' },
+  { group: 'Marking', k: 'moderation_required', title: 'Require moderation',
+    note: 'Results cannot be published until every attempt has a moderator’s mark.' },
+  { group: 'Marking', k: 'instant_results', title: 'Show the score as soon as they hand in',
+    note: 'Only applies where the paper can be marked without a person. Switch it off for '
+      + 'a paper others have not sat yet: the first candidate to finish learns which '
+      + 'answers were right.' },
+];
+
+export function PaperSwitches({ value, onChange }: {
+  value: PaperSwitchState;
+  onChange: (next: PaperSwitchState) => void;
+}) {
+  const groups = [...new Set(SWITCHES.map((sw) => sw.group))];
+  return (
+    <div className="space-y-3">
+      {groups.map((group) => (
+        <fieldset key={group} className="rounded-xl border border-line">
+          <legend className="ml-3 px-1 text-[11px] font-semibold uppercase tracking-wide
+                             text-muted">
+            {group}
+          </legend>
+          <div className="divide-y divide-line">
+            {SWITCHES.filter((sw) => sw.group === group).map((sw) => {
+              // The three device switches do nothing unless monitoring is on,
+              // so they say so and disable rather than silently having no
+              // effect -- the same rule faculty's builder follows.
+              const off = Boolean(sw.dependent) && !value.proctoring;
+              return (
+                <label key={sw.k}
+                  className={'flex cursor-pointer items-start gap-3 px-3 py-2.5 '
+                    + (off ? 'opacity-50' : '')}
+                >
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 shrink-0"
+                    checked={value[sw.k] && !off}
+                    disabled={off}
+                    onChange={(e) => onChange({ ...value, [sw.k]: e.target.checked })}
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-[13.5px] font-semibold text-ink">{sw.title}</span>
+                    <span className="mt-0.5 block text-[12.5px] leading-relaxed text-muted">
+                      {off ? 'Only applies when monitoring is on.' : sw.note}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The switches as the API takes them.
+ *
+ * The three dependent ones are forced off when monitoring is off, so what is
+ * stored matches what the screen showed. Otherwise a paper could carry
+ * `watch_camera` while unproctored -- harmless today, and exactly the kind of
+ * stored contradiction that becomes a bug when somebody later reads one switch
+ * without the other.
+ */
+export function paperSwitchBody(v: PaperSwitchState) {
+  return {
+    shuffle_questions: v.shuffle_questions,
+    shuffle_options: v.shuffle_options,
+    proctoring: v.proctoring,
+    require_camera: v.proctoring && v.require_camera,
+    require_screen: v.proctoring && v.require_screen,
+    watch_camera: v.proctoring && v.watch_camera,
+    anonymous_marking: v.anonymous_marking,
+    moderation_required: v.moderation_required,
+    instant_results: v.instant_results,
+  };
+}
+
 export function CreateAssessmentForm({ tenantId, courses }: {
   tenantId: number; courses: CourseOption[];
 }) {
@@ -1717,6 +1856,7 @@ export function CreateAssessmentForm({ tenantId, courses }: {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [switches, setSwitches] = useState<PaperSwitchState>(PAPER_SWITCH_DEFAULTS);
 
   const form = (
     <form
@@ -1736,6 +1876,7 @@ export function CreateAssessmentForm({ tenantId, courses }: {
             closes_at: closesRaw ? new Date(closesRaw).toISOString() : null,
             duration_minutes: Number(data.get('duration_minutes') || 60),
             pass_mark: Number(data.get('pass_mark') || 0) || null,
+            ...paperSwitchBody(switches),
           });
           if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
           setOpen(false);
@@ -1780,6 +1921,10 @@ export function CreateAssessmentForm({ tenantId, courses }: {
         * engine refuses it at the moment a candidate presses Start, which is
         * far too late for anybody to do something about it.
         */}
+      <div className="col-span-full">
+        <PaperSwitches value={switches} onChange={setSwitches} />
+      </div>
+
       <p className="col-span-full text-[12.5px] leading-relaxed text-muted">
         A paper is created as a draft with no questions in it. Add a section from a question
         bank next — the “Add questions” control on its row — and then publish it.
@@ -3403,6 +3548,86 @@ const blankQuestion = (): DraftQuestion => ({
  * console has the problems list, and a paper an operator builds should not be
  * less capable than one they could assemble by hand from the same API.
  */
+/**
+ * Change how an existing paper is sat.
+ *
+ * The switches were settable only at creation, which made a mistake permanent:
+ * an operator who left monitoring off had no way back to it and no way to see
+ * what the paper was actually set to — the detail page showed a "Monitored"
+ * pill or showed nothing, and nothing at all about camera, screen or shuffling.
+ *
+ * Editable while candidates are still to sit it; a paper already sat keeps
+ * whatever it was sat under, which is the engine's business rather than this
+ * form's — it reads the paper at `start()`, so a change now applies to sittings
+ * that have not begun.
+ */
+export function PaperSettingsForm({ tenantId, assessment }: {
+  tenantId: number;
+  assessment: { id: number } & Partial<Record<keyof PaperSwitchState, boolean | number | null>>;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  // 0/1 out of the database, boolean in the form. `Boolean(0)` is false and
+  // `Boolean('0')` is true, so the number cast is not optional.
+  const on = (v: boolean | number | null | undefined, fallback: boolean) =>
+    (v === null || v === undefined ? fallback : Boolean(Number(v)));
+  const initial: PaperSwitchState = {
+    shuffle_questions: on(assessment.shuffle_questions, true),
+    shuffle_options: on(assessment.shuffle_options, true),
+    proctoring: on(assessment.proctoring, false),
+    require_camera: on(assessment.require_camera, false),
+    require_screen: on(assessment.require_screen, false),
+    watch_camera: on(assessment.watch_camera, false),
+    anonymous_marking: on(assessment.anonymous_marking, true),
+    moderation_required: on(assessment.moderation_required, false),
+    instant_results: on(assessment.instant_results, true),
+  };
+  const [switches, setSwitches] = useState<PaperSwitchState>(initial);
+
+  return (
+    <>
+      <button type="button" onClick={() => { setSwitches(initial); setOpen(true); }}
+        className="rounded-lg border border-slate-300 px-3 py-1.5 text-[13px] font-semibold">
+        How it is sat
+      </button>
+      {open ? (
+        <Modal title="How this paper is sat" onClose={() => setOpen(false)}>
+          <div className="space-y-3">
+          {error ? <p role="alert" className="text-[13px] text-red-700">{error}</p> : null}
+          <PaperSwitches value={switches} onChange={setSwitches} />
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => start(async () => {
+                setError(null);
+                const res = await post(
+                  'onyx/platform/tenants/' + tenantId + '/assessments/' + assessment.id,
+                  paperSwitchBody(switches), 'PATCH');
+                if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+                setOpen(false);
+                router.refresh();
+              })}
+              className="rounded-lg bg-brand-600 px-3.5 py-2 text-[13px] font-semibold
+                         text-white disabled:opacity-60"
+            >
+              {pending ? 'Saving…' : 'Save'}
+            </button>
+            <button type="button" onClick={() => setOpen(false)}
+              className="rounded-lg border border-slate-300 px-3.5 py-2 text-[13px] font-semibold">
+              Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
+    </>
+  );
+}
+
 export function ConsoleCreatePaper({ tenantId, courses, problems = [] }: {
   tenantId: number;
   courses: CourseOption[];
@@ -3416,6 +3641,7 @@ export function ConsoleCreatePaper({ tenantId, courses, problems = [] }: {
   const [duration, setDuration] = useState('60');
   const [passMark, setPassMark] = useState('');
   const [questions, setQuestions] = useState<DraftQuestion[]>([blankQuestion()]);
+  const [switches, setSwitches] = useState<PaperSwitchState>(PAPER_SWITCH_DEFAULTS);
   const [error, setError] = useState<string | null>(null);
   const [stage, setStage] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -3545,6 +3771,7 @@ export function ConsoleCreatePaper({ tenantId, courses, problems = [] }: {
       course_id: Number(courseId),
       duration_minutes: Number(duration) || 60,
       ...(passMark.trim() ? { pass_mark: Number(passMark) } : {}),
+      ...paperSwitchBody(switches),
     });
     if (!paper.ok) { setStage(null); setError(paper.message ?? 'Could not make the paper.'); return; }
     const paperId = paper.data.id as number;
@@ -3628,6 +3855,11 @@ export function ConsoleCreatePaper({ tenantId, courses, problems = [] }: {
                 <input id="cp-pass" type="number" min={0} value={passMark} placeholder="Optional"
                   onChange={(e) => setPassMark(e.target.value)} className={field} />
               </div>
+            </div>
+
+            <div className="border-t border-line pt-3">
+              <h3 className="mb-2 text-[14px] font-bold text-ink">How it is sat</h3>
+              <PaperSwitches value={switches} onChange={setSwitches} />
             </div>
 
             <div className="flex flex-wrap items-baseline justify-between gap-2 border-t

@@ -5,6 +5,7 @@ import {
   attempt, SCROLLER, Unavailable, Workflow, clockTime, tookFor,
 } from '@/lib/onyx-platform-tenant';
 import { Card, DataTable, EmptyRow, Icon, Pill, SectionHead } from '@/components/onyx-ui';
+import { PaperSettingsForm } from '@/components/onyx-platform-forms';
 
 export const metadata: Metadata = { title: 'Assessment' };
 
@@ -21,7 +22,11 @@ interface AssessmentDetail {
     id: number; title: string; instructions: string | null;
     opens_at: string | null; closes_at: string | null; duration_minutes: number;
     attempts_allowed: number; pass_mark: number | null; status: string;
-    proctoring: boolean | number | null; moderation_required: boolean | number | null;
+    shuffle_questions: boolean | number | null; shuffle_options: boolean | number | null;
+    proctoring: boolean | number | null; require_camera: boolean | number | null;
+    require_screen: boolean | number | null; watch_camera: boolean | number | null;
+    anonymous_marking: boolean | number | null; moderation_required: boolean | number | null;
+    instant_results: boolean | number | null;
     results_published_at: string | null;
     sections: { id: string; title: string; bank_id: number; take: number }[] | null;
     course: { id: number; code: string; title: string } | null;
@@ -87,12 +92,35 @@ export default async function OnyxPlatformAssessmentPage(
               {draws
                 ? <Pill tone="neutral">draws {draws}</Pill>
                 : <Pill tone="late">No questions</Pill>}
-              {a.proctoring ? <Pill tone="neutral">Monitored</Pill> : null}
+              {/*
+                * Every switch, named, rather than one "Monitored" pill.
+                *
+                * What a paper is actually set to is the question asked when a
+                * candidate disputes a sitting -- was a camera required, were
+                * the options shuffled -- and the answer was on no screen in
+                * this console. An absent pill said nothing and looked the same
+                * as a setting nobody had thought about.
+                */}
+              {a.proctoring ? (
+                <>
+                  <Pill tone="neutral">Monitored</Pill>
+                  {a.require_camera ? <Pill tone="neutral">Camera required</Pill> : null}
+                  {a.require_screen ? <Pill tone="neutral">Screen shared</Pill> : null}
+                  {a.watch_camera ? <Pill tone="neutral">Invigilator can watch</Pill> : null}
+                </>
+              ) : <Pill tone="late">Not monitored</Pill>}
+              {a.shuffle_questions ? <Pill tone="neutral">Questions shuffled</Pill> : null}
+              {a.shuffle_options ? <Pill tone="neutral">Options shuffled</Pill> : null}
+              {a.anonymous_marking ? <Pill tone="neutral">Marked anonymously</Pill> : null}
               {a.moderation_required ? <Pill tone="neutral">Moderated</Pill> : null}
+              {a.instant_results ? <Pill tone="good">Instant results</Pill> : null}
               {a.results_published_at ? <Pill tone="good">Results released</Pill> : null}
             </div>
           </div>
-          <Workflow status={a.status} />
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <Workflow status={a.status} />
+            <PaperSettingsForm tenantId={tenantId} assessment={a} />
+          </div>
         </div>
       </Card>
 

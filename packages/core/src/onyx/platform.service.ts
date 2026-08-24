@@ -1675,9 +1675,28 @@ export class PlatformService {
   /** A basic assessment -- no sections/proctoring here, same as any assessment
    * created without a question bank on hand. Course faculty add sections once
    * a bank exists; this just gets it on the calendar. */
+  /**
+   * A paper, with the switches that decide how it is sat.
+   *
+   * These existed on the paper all along and only faculty could reach them, so
+   * a paper created from the console was unproctored, unshuffled and
+   * unchangeable from here -- and nothing on the screen said so. An operator
+   * scheduling an examination got an open-book one.
+   *
+   * The defaults are not faculty's. A paper set by faculty is usually
+   * coursework and monitoring is opt-in; a paper set from the console is an
+   * institution's examination, so monitoring, camera and screen sharing are ON
+   * unless the operator turns them off, and the form shows them ticked rather
+   * than applying them invisibly.
+   */
   async createAssessment(tenantId: number, actorId: string | null, input: {
     course_id?: number | null; title: string; opens_at?: string | null;
     closes_at?: string | null; duration_minutes?: number; pass_mark?: number | null;
+    attempts_allowed?: number;
+    shuffle_questions?: boolean; shuffle_options?: boolean;
+    proctoring?: boolean; require_camera?: boolean; require_screen?: boolean;
+    watch_camera?: boolean; anonymous_marking?: boolean; moderation_required?: boolean;
+    instant_results?: boolean;
   }) {
     if (input.course_id) {
       const { data: course } = await this.#db.from('onyx_courses')
@@ -1691,10 +1710,36 @@ export class PlatformService {
       throw new HttpError(422, 'The window closes before it opens.');
     }
 
+    /*
+     * `?? true` for the monitoring three, `?? false` for the rest.
+     *
+     * An absent field means the caller did not say, and what to do then differs
+     * per switch: an examination is monitored unless somebody decides otherwise,
+     * while nobody is put on the other end of a camera by omission. `=== false`
+     * would be wrong here -- it cannot tell "unticked" from "not sent", and the
+     * form sends every switch every time precisely so it can.
+     */
+    const flag = (v: boolean | undefined, fallback: boolean) => (v === undefined
+      ? Number(fallback) : Number(Boolean(v)));
+
     const { data, error } = await this.#db.from('onyx_assessments').insert({
       tenant_id: tenantId, course_id: input.course_id ?? null, title: input.title.trim(),
       opens_at: input.opens_at ?? null, closes_at: input.closes_at ?? null,
-      duration_minutes: duration, attempts_allowed: 1, pass_mark: input.pass_mark ?? null,
+      duration_minutes: duration,
+      attempts_allowed: input.attempts_allowed ?? 1,
+      pass_mark: input.pass_mark ?? null,
+      shuffle_questions: flag(input.shuffle_questions, true),
+      shuffle_options: flag(input.shuffle_options, true),
+      proctoring: flag(input.proctoring, true),
+      require_camera: flag(input.require_camera, true),
+      require_screen: flag(input.require_screen, true),
+      // A live camera feed is the one switch here with a person on the other
+      // end of it, and an invigilator watching is the point of an invigilated
+      // examination -- so it follows monitoring rather than sitting off.
+      watch_camera: flag(input.watch_camera, true),
+      anonymous_marking: flag(input.anonymous_marking, true),
+      moderation_required: flag(input.moderation_required, false),
+      instant_results: flag(input.instant_results, true),
       status: 'draft', created_by: actorId,
     }).select('id, title, course_id, opens_at, closes_at, status').maybeSingle();
     if (error) throw new HttpError(500, 'Could not create the assessment: ' + error.message);
@@ -1703,21 +1748,43 @@ export class PlatformService {
     return data;
   }
 
+  /**
+   * Edit a paper, its monitoring switches included.
+   *
+   * A switch is stored as 0/1 and arrives as a boolean, so the comparison that
+   * decides "did this change" has to be made on the same footing -- otherwise
+   * `true !== 1` is always true and every save rewrites every switch and logs a
+   * change nobody made.
+   */
   async updateAssessment(tenantId: number, assessmentId: number, actorId: string | null, patch: {
     title?: string; opens_at?: string | null; closes_at?: string | null;
     pass_mark?: number | null; duration_minutes?: number; status?: string;
+    attempts_allowed?: number;
+    shuffle_questions?: boolean; shuffle_options?: boolean;
+    proctoring?: boolean; require_camera?: boolean; require_screen?: boolean;
+    watch_camera?: boolean; anonymous_marking?: boolean; moderation_required?: boolean;
+    instant_results?: boolean;
   }) {
-    const { data: a } = await this.#db.from('onyx_assessments')
-      .select('id, tenant_id, title, opens_at, closes_at, pass_mark, duration_minutes, status')
-      .eq('id', assessmentId).maybeSingle();
+    // eslint-disable-next-line max-len
+    const { data: a } = await this.#db.from('onyx_assessments').select('id, tenant_id, title, opens_at, closes_at, pass_mark, duration_minutes, attempts_allowed, status, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, watch_camera, anonymous_marking, moderation_required, instant_results').eq('id', assessmentId).maybeSingle();
     if (!a || Number(a.tenant_id) !== tenantId) throw new HttpError(404, 'No such assessment.');
 
     const before: Record<string, unknown> = {};
     const after: Record<string, unknown> = {};
     for (const key of
-      ['title', 'opens_at', 'closes_at', 'pass_mark', 'duration_minutes', 'status'] as const) {
+      ['title', 'opens_at', 'closes_at', 'pass_mark', 'duration_minutes',
+        'attempts_allowed', 'status'] as const) {
       const value = patch[key];
       if (value !== undefined && value !== a[key]) { before[key] = a[key]; after[key] = value; }
+    }
+    for (const key of
+      ['shuffle_questions', 'shuffle_options', 'proctoring', 'require_camera',
+        'require_screen', 'watch_camera', 'anonymous_marking', 'moderation_required',
+        'instant_results'] as const) {
+      const value = patch[key];
+      if (value === undefined) continue;
+      const now = Number(Boolean(value));
+      if (now !== Number(a[key] ?? 0)) { before[key] = a[key]; after[key] = now; }
     }
     if (!Object.keys(after).length) return a;
     await this.#db.from('onyx_assessments')
@@ -2405,7 +2472,7 @@ export class PlatformService {
   async assessmentDetail(tenantId: number, assessmentId: number) {
     const { data: assessment } = await this.#db.from('onyx_assessments')
       // eslint-disable-next-line max-len -- one literal, same reason as above.
-      .select('id, tenant_id, course_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, pass_mark, status, sections, proctoring, moderation_required, results_published_at, created_at')
+      .select('id, tenant_id, course_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, pass_mark, status, sections, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, watch_camera, anonymous_marking, moderation_required, instant_results, results_published_at, created_at')
       .eq('tenant_id', tenantId).eq('id', assessmentId).maybeSingle();
     if (!assessment) throw new HttpError(404, 'No such assessment.');
 
