@@ -36,6 +36,9 @@ export type AuditAction =
   // O07 -- campus operations
   | 'timetable.published' | 'exam.scheduled' | 'exam.updated' | 'seating.allocated'
   | 'marks.entered' | 'marks.moderated' | 'marks.overridden' | 'assessment.updated'
+  // Cancelling a paper. Refused once anybody has sat it, so this only ever
+  // records the removal of one nobody's marks hang off.
+  | 'assessment.deleted'
   | 'invoice.issued' | 'guardian.linked' | 'guardian.consent_changed'
   | 'course.faculty_assigned' | 'course.faculty_removed' | 'course.removed'
   // Including a price change, which is why this one exists: the edit route

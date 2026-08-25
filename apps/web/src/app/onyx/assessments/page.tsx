@@ -129,8 +129,26 @@ export default async function OnyxAssessmentsPage() {
             />
           </div>
 
+          {/*
+            * A visible heading, not just an aria-label.
+            *
+            * These chips sat under the two buttons with nothing naming them, so
+            * on screen they read as part of the Papers list below — and the
+            * one-click builder names a bank after the paper it draws
+            * ("test-code" and "test-code — question bank"), which made a bank
+            * and a paper look like the same row twice. A screen reader was told
+            * what this list was; nobody else.
+            */}
           {banks?.length ? (
-            <ul className="mt-4 flex flex-wrap gap-2" aria-label="Question banks">
+            <>
+              <h2 className="mt-5 text-[11px] font-bold uppercase tracking-[.08em] text-muted">
+                Question banks · {banks.length}
+              </h2>
+              <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
+                Questions live here. A paper below draws from one — a bank is not a paper and
+                nobody sits it.
+              </p>
+              <ul className="mt-2.5 flex flex-wrap gap-2" aria-label="Question banks">
               {banks.map((b) => (
                 <li key={b.id}>
                   <Link href={'/onyx/banks/' + b.id}
@@ -142,7 +160,8 @@ export default async function OnyxAssessmentsPage() {
                   </Link>
                 </li>
               ))}
-            </ul>
+              </ul>
+            </>
           ) : (
             <p className="mt-3 text-sm text-muted">
               No question banks yet. A paper draws its questions from one, so build a bank first.

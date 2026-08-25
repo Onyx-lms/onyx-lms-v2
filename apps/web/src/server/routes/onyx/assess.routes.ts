@@ -238,6 +238,44 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
     return ok(assessment, 'Updated.');
   });
 
+  /**
+   * Cancel a paper.
+   *
+   * There was no way to remove one from the institution's side at all: a paper
+   * created by mistake, or a draft that drew nothing and never would, stayed on
+   * the list for ever with an Edit button and nothing else. Only the console
+   * could delete one, which meant a lecturer's own tidying-up needed a platform
+   * operator.
+   *
+   * `assertCanTeach` first: a paper belongs to a course, and faculty may act
+   * only on the courses they teach. An admin is past that check
+   * unconditionally, which is the same rule every other route here follows.
+   *
+   * The service refuses once anybody has sat it, and says how many -- their
+   * answers and marks hang off the row.
+   */
+  app.delete('/api/onyx/assessments/:id', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    const assessment = await ctx.onyxAssess.assessment(claims.tenant_id, idOf(req));
+    if (assessment.course_id) {
+      await ctx.onyxAcademics.assertCanTeach(claims.tenant_id, Number(assessment.course_id),
+        claims.user_id, claims.tenant_role);
+    } else if (claims.tenant_role !== 'admin') {
+      // A paper tied to no course has no teaching relationship to check
+      // against, so there is nothing that would make it one lecturer's rather
+      // than another's. An administrator decides.
+      throw new HttpError(403, 'Only an administrator can remove a paper that is not '
+        + 'tied to a course.');
+    }
+
+    const removed = await ctx.onyxAssess.deleteAssessment(claims.tenant_id, idOf(req));
+    await ctx.onyxAudit.record(claims, {
+      action: 'assessment.deleted', entityType: 'assessment', entityId: idOf(req),
+      before: { title: removed.title, status: assessment.status }, ip: ipOf(req),
+    });
+    return ok({ id: removed.id, removed: true }, 'Paper removed.');
+  });
+
   /** Override one attempt's score directly -- a dispute or a data-entry fix. */
   app.patch('/api/onyx/attempts/:id/score', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);

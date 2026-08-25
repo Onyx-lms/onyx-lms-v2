@@ -159,6 +159,15 @@ export function createContext(): AppContext {
   // only running code, in either place, does not.
   const onyxExecution = executionProviderFromEnv();
   const onyxCodeLab = new CodeLabService(onyxDb, onyxAcademics, onyxQueue, onyxExecution);
+  /*
+   * Hoisted to a local because the platform service is handed it.
+   *
+   * Cancelling a paper is refused once somebody has sat it, and that rule
+   * lives here rather than in the console's own service -- otherwise it
+   * exists twice and one copy drifts. The console needs the same object,
+   * not a second one built from the same arguments.
+   */
+  const onyxAssess = new AssessService(onyxDb, onyxAcademics, Date.now, onyxCodeLab);
   const onyxAttendance = new AttendanceService(onyxDb, onyxAcademics);
   // Career reads across everything before it -- attendance, assessment,
   // practice, projects -- which is what makes a readiness score mean anything.
@@ -269,7 +278,7 @@ export function createContext(): AppContext {
     // coding question on a paper is marked by exactly the same tests, in the
     // same sandbox, as the practice problem it points at -- rather than by a
     // second implementation that could disagree with the first.
-    onyxAssess: new AssessService(onyxDb, onyxAcademics, Date.now, onyxCodeLab),
+    onyxAssess,
     // The notifier is what turns a crossed threshold into something an
     // invigilator is told rather than something they must go and find. It is
     // the fourth argument; the third is the clock, stated explicitly here so
@@ -334,7 +343,7 @@ export function createContext(): AppContext {
       }] : [],
     }),
     onyxGuardians: new GuardianService(onyxDb, onyxAudit, onyxExams),
-    onyxPlatform: new PlatformService(onyxDb),
+    onyxPlatform: new PlatformService(onyxDb, undefined, onyxAssess),
     onyxOAuthClients: new OAuthClientsService(),
     onyxRunWorker: (opts) => runCodeLabWorker(onyxQueue, onyxCodeLab, {
       ...opts, onError: (m) => console.error('[onyx] ' + m),

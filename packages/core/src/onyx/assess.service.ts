@@ -966,6 +966,44 @@ export class AssessService {
   }
 
   /** Hands the paper in and auto-marks everything a machine can. */
+  /**
+   * Remove a paper, unless somebody has sat it.
+   *
+   * There was no way to remove one at all from the institution's side: a paper
+   * created by mistake, or a draft that drew nothing and never would, stayed on
+   * the list for ever with an Edit button and nothing else. The console could
+   * delete one, so the rule already existed -- in the console's own service,
+   * where the institution's routes could not reach it.
+   *
+   * **A sitting is somebody's work.** Once a candidate has started, their
+   * answers and their marks hang off this row, and deleting it takes both with
+   * them. That is not a decision for whoever is tidying a list, so it is
+   * refused by count with the number said out loud, and the way to stop a paper
+   * nobody should sit any more is to close its window.
+   *
+   * The check is a SELECT rather than a foreign key, deliberately: a database
+   * error surfaced to a lecturer as "violates constraint
+   * onyx_assessment_attempts_assessment_id_fkey" tells them nothing about what
+   * to do instead.
+   */
+  async deleteAssessment(tenantId: number, assessmentId: number) {
+    const assessment = await this.assessment(tenantId, assessmentId);
+
+    const { data: attempts } = await this.#db.from('onyx_assessment_attempts')
+      .select('id').eq('tenant_id', tenantId).eq('assessment_id', assessmentId);
+    const sat = (attempts ?? []).length;
+    if (sat) {
+      throw new HttpError(422, sat + (sat === 1 ? ' candidate has' : ' candidates have')
+        + ' sat this paper. Close its window instead — deleting it would take their '
+        + 'answers and their marks with it.');
+    }
+
+    const { error } = await this.#db.from('onyx_assessments')
+      .delete().eq('tenant_id', tenantId).eq('id', assessmentId);
+    if (error) throw new HttpError(500, 'Could not remove that paper: ' + error.message);
+    return { id: assessmentId, removed: true, title: String(assessment.title) };
+  }
+
   async submit(tenantId: number, attemptId: number, userId: string) {
     const attempt = await this.#attempt(tenantId, attemptId);
     if (String(attempt.user_id) !== userId) throw new HttpError(403, 'That is not your attempt.');

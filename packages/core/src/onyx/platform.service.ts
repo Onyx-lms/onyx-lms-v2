@@ -22,7 +22,7 @@ import { ROLES, normaliseCommunityUrl } from './tenancy.service.ts';
 import { gradeFor } from './examinations.service.ts';
 // The same two tests the marker applies, so the count an operator reads and
 // the decision `#finalise` makes can never drift apart.
-import { isObjective, hasKey } from './assess.service.ts';
+import { isObjective, hasKey, type AssessService } from './assess.service.ts';
 // The same guard the institution-side service uses, imported rather than
 // copied: a curriculum link becomes an anchor's href, and `javascript:` in
 // an href is stored XSS with extra steps. Two implementations of that check
@@ -77,10 +77,18 @@ interface PersonRow {
 
 export class PlatformService {
   #db: OnyxDb;
+  #assess: AssessService | null = null;
   #authClientOverride: SupabaseClient | undefined;
-  constructor(db: OnyxDb, authClient?: SupabaseClient) {
+  /**
+   * `assess` is optional so every existing caller and test that builds this
+   * with one argument keeps working. It is needed only where a rule already
+   * belongs to the institution's own service and must not be written twice --
+   * cancelling a paper is the first of those.
+   */
+  constructor(db: OnyxDb, authClient?: SupabaseClient, assess?: AssessService) {
     this.#db = db;
     this.#authClientOverride = authClient;
+    this.#assess = assess ?? null;
   }
   /** Fresh per exchange -- see onyxAuthClientFresh in db.ts. A shared client
    *  hands concurrent sign-ins each other's sessions. */
@@ -2435,26 +2443,29 @@ export class PlatformService {
    * way to stop a paper nobody should sit any more is to close it, which is
    * what the window is for.
    */
+  /**
+   * Cancel a paper.
+   *
+   * The rule -- refused once anybody has sat it, because their answers and
+   * marks hang off the row -- now lives in `AssessService.deleteAssessment`,
+   * where the institution's own routes can reach it too. It was here, which is
+   * why a lecturer had no way to remove a paper at all.
+   *
+   * What stays here is the console's own audit record: an operator deleting a
+   * customer's paper is an act of the platform and should read as one.
+   */
   async deleteAssessment(tenantId: number, assessmentId: number, actorId: string | null) {
-    const { data: assessment } = await this.#db.from('onyx_assessments')
+    const { data: before } = await this.#db.from('onyx_assessments')
       .select('id, title, status').eq('tenant_id', tenantId).eq('id', assessmentId).maybeSingle();
-    if (!assessment) throw new HttpError(404, 'No such assessment.');
+    if (!before) throw new HttpError(404, 'No such assessment.');
 
-    const { data: attempts } = await this.#db.from('onyx_assessment_attempts')
-      .select('id').eq('tenant_id', tenantId).eq('assessment_id', assessmentId);
-    const sat = (attempts ?? []).length;
-    if (sat) {
-      throw new HttpError(422, sat + (sat === 1 ? ' candidate has' : ' candidates have')
-        + ' sat this paper. Close its window instead — deleting it would take their '
-        + 'answers and their marks with it.');
+    if (!this.#assess) {
+      throw new HttpError(500, 'This deployment cannot cancel a paper from the console.');
     }
-
-    const { error } = await this.#db.from('onyx_assessments')
-      .delete().eq('tenant_id', tenantId).eq('id', assessmentId);
-    if (error) throw new HttpError(500, 'Could not remove that paper: ' + error.message);
+    const result = await this.#assess.deleteAssessment(tenantId, assessmentId);
     await this.#log(actorId, 'assessment.deleted', 'assessment', assessmentId,
-      { title: assessment.title, status: assessment.status }, null);
-    return { id: assessmentId, removed: true };
+      { title: before.title, status: before.status }, null);
+    return { id: result.id, removed: true };
   }
 
   /**

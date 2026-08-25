@@ -13,6 +13,7 @@ import {
   StatTile, State, Stepper,
 } from '@/components/onyx-ui';
 import { ShareLink } from '@/components/onyx-share';
+import { PaperDanger } from '@/components/onyx-paper-danger';
 
 export const metadata: Metadata = { title: 'Assessment' };
 
@@ -361,6 +362,15 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
           </section>
         </aside>
       </div>
+
+      {/* Last on the page, in its own frame, for whoever may act on it.
+
+          Not on the list row: the rule DangerPanel exists to hold is that the
+          fastest thing to reach on a screen full of records must never be the
+          one action that cannot be undone. */}
+      {staff ? (
+        <PaperDanger assessmentId={assessment.id} title={assessment.title} />
+      ) : null}
     </OnyxShell>
   );
 }

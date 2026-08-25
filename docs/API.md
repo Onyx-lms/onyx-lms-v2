@@ -37,6 +37,7 @@ docs:check` fails the build if it has.
 | `POST` | `/api/onyx/assessments` | admin, faculty, exams |
 | `GET` | `/api/onyx/assessments/:id` | any member |
 | `PATCH` | `/api/onyx/assessments/:id` | admin, faculty, exams |
+| `DELETE` | `/api/onyx/assessments/:id` | admin, faculty, exams |
 | `PATCH` | `/api/onyx/attempts/:id/score` | admin, faculty, exams |
 | `GET` | `/api/onyx/assessments/:id/preview` | admin, faculty, exams |
 | `POST` | `/api/onyx/assessments/:id/publish` | admin, faculty, exams |
@@ -474,4 +475,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_388 endpoints across 9 route files._
+_389 endpoints across 9 route files._
