@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import { attempt, Unavailable, money, AccessPill } from '@/lib/onyx-platform-tenant';
 import {
-  AddModuleForm, ModuleRowActions, AddLessonForm, LessonRemoveButton,
+  AddModuleForm, ModuleRowActions, AddLessonForm, LessonRemoveButton, ConsoleCourseFaculty,
   ConsoleEnrolForm, ConsoleWithdrawButton,
 } from '@/components/onyx-platform-forms';
 import type { PeoplePayload } from '@/lib/onyx-platform-tenant';
@@ -52,6 +52,11 @@ interface Outline {
  * The lesson composer sits INSIDE the module it adds to rather than once at
  * the top, so there is never a question of which module a file is going into.
  */
+/** Who teaches this course, as the console reads it -- names, not bare ids. */
+interface CourseFacultyRow {
+  user_id: string; name: string | null; email: string | null; role: string | null;
+}
+
 export default async function OnyxPlatformCoursePage(
   { params }: { params: Promise<{ id: string; courseId: string }> },
 ) {
@@ -59,10 +64,17 @@ export default async function OnyxPlatformCoursePage(
   const { id, courseId } = await params;
   const tenantId = Number(id);
   const base = '/api/onyx/platform/tenants/' + encodeURIComponent(id);
-  const [outline, roster, people] = await Promise.all([
+  const [outline, roster, people, faculty, teachers, admins] = await Promise.all([
     attempt<Outline>(base + '/courses/' + encodeURIComponent(courseId) + '/outline'),
     attempt<RosterRow[]>(base + '/courses/' + encodeURIComponent(courseId) + '/roster'),
     attempt<PeoplePayload>(base + '/people?role=student&limit=200'),
+    attempt<CourseFacultyRow[]>(
+      base + '/courses/' + encodeURIComponent(courseId) + '/faculty'),
+    attempt<PeoplePayload>(base + '/people?role=faculty&limit=200'),
+    // Administrators too: `assertCanTeach` lets an admin past unconditionally,
+    // so an institution where one of them also lectures is a real arrangement
+    // rather than a mistake to design out of the picker.
+    attempt<PeoplePayload>(base + '/people?role=admin&limit=200'),
   ]);
 
   if (outline === null) return <Unavailable what="course" />;
@@ -109,6 +121,32 @@ export default async function OnyxPlatformCoursePage(
           </div>
         </div>
       </Card>
+
+      {/* Who RUNS it, before who is on it.
+
+          A course with nobody teaching it is one no lecturer can take a
+          register for, mark work in or invigilate -- `assertCanTeach` refuses
+          all three -- so it is the first thing to be able to see and the first
+          thing to be able to fix. */}
+      <section>
+        <SectionHead title={'Teaching · ' + (faculty ?? []).length} />
+        <Card className="p-4">
+          {faculty === null ? (
+            <p className="text-[13px] text-muted">
+              Who teaches this course could not be loaded.
+            </p>
+          ) : (
+            <ConsoleCourseFaculty
+              tenantId={tenantId}
+              courseId={course.id}
+              faculty={faculty}
+              staff={[...(teachers?.people ?? []), ...(admins?.people ?? [])].map((p) => ({
+                user_id: p.user_id, name: p.name, email: p.email, role: p.role,
+              }))}
+            />
+          )}
+        </Card>
+      </section>
 
       {/* Who is on it, before what is in it. A course with an empty roster is
           an examination nobody can sit, and that is worth seeing on the way

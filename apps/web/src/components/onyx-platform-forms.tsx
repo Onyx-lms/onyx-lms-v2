@@ -2810,6 +2810,128 @@ export function DomainRowActions({ tenantId, domain }: {
  * a uuid, and asking anybody to paste one is asking for the wrong course to
  * gain the wrong person.
  */
+/**
+ * Who teaches a course, set from the console.
+ *
+ * The institution's own side has had this all along; the console had no way to
+ * say it. That is not cosmetic: `assertCanTeach` is the check every
+ * faculty-facing route makes, so a course with nobody assigned is one no
+ * lecturer can take a register for, mark work in, or invigilate — and an
+ * operator who had just built the whole course from here had no way to hand it
+ * over.
+ *
+ * A course runs to at most two, which the service enforces and says why. The
+ * form shows the count rather than letting somebody discover the cap by being
+ * refused, and lists who is already on it with a way to take them off, because
+ * the cap makes removal part of assigning rather than a separate errand.
+ */
+export function ConsoleCourseFaculty({ tenantId, courseId, faculty, staff }: {
+  tenantId: number;
+  courseId: number;
+  faculty: { user_id: string; name: string | null; email: string | null }[];
+  staff: { user_id: string; name: string; email: string; role: string }[];
+}) {
+  const router = useRouter();
+  const [userId, setUserId] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  const assigned = new Set(faculty.map((f) => String(f.user_id)));
+  // Anybody who may teach and does not already teach THIS. Admins are included
+  // because `assertCanTeach` lets them past unconditionally, so an institution
+  // where an administrator also lectures is a real arrangement rather than a
+  // mistake to design out.
+  const available = staff.filter((p) => !assigned.has(String(p.user_id)));
+  const full = faculty.length >= 2;
+
+  const act = (run: () => Promise<{ ok: boolean; message?: string }>) => start(async () => {
+    setError(null);
+    const res = await run();
+    if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+    setUserId('');
+    router.refresh();
+  });
+
+  return (
+    <div className="space-y-3">
+      {faculty.length ? (
+        <ul className="space-y-1.5">
+          {faculty.map((f) => (
+            <li key={f.user_id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl
+                         border border-line px-3 py-2">
+              <span className="min-w-0">
+                <span className="block text-[13.5px] font-semibold text-ink">
+                  {f.name ?? 'Unknown'}
+                </span>
+                {f.email ? (
+                  <span className="block break-all text-[12px] text-muted">{f.email}</span>
+                ) : null}
+              </span>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => act(() => post('onyx/platform/tenants/' + tenantId
+                  + '/courses/' + courseId + '/faculty/' + f.user_id, undefined, 'DELETE'))}
+                className="shrink-0 rounded-lg border border-slate-300 px-2.5 py-1
+                           text-[12.5px] font-semibold text-red-700 disabled:opacity-50"
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="rounded-xl bg-amber-50 px-3 py-2 text-[12.5px] leading-relaxed
+                      text-amber-800">
+          Nobody teaches this course yet, so no lecturer can take its register, mark its work
+          or invigilate its examinations.
+        </p>
+      )}
+
+      {full ? (
+        <p className="text-[12.5px] text-muted">
+          A course runs to two. Remove one of them to assign somebody else.
+        </p>
+      ) : !available.length ? (
+        <p className="text-[12.5px] text-muted">
+          {staff.length
+            ? 'Everybody who can teach here already teaches this course.'
+            : 'This institution has no faculty yet — add one under People first.'}
+        </p>
+      ) : (
+        <form
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!userId) { setError('Choose somebody.'); return; }
+            act(() => post('onyx/platform/tenants/' + tenantId
+              + '/courses/' + courseId + '/faculty', { user_id: userId }));
+          }}
+        >
+          <div className="min-w-[16rem]">
+            <label className={label} htmlFor="cf-faculty">Assign a lecturer</label>
+            <select id="cf-faculty" value={userId} onChange={(e) => setUserId(e.target.value)}
+              className={field}>
+              <option value="">Choose somebody…</option>
+              {available.map((p) => (
+                <option key={p.user_id} value={p.user_id}>
+                  {p.name}{p.role === 'admin' ? ' (administrator)' : ''} — {p.email}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" disabled={pending} className={button}>
+            {pending ? 'Assigning…' : 'Assign'}
+          </button>
+        </form>
+      )}
+
+      {error ? <p role="alert" className="text-[13px] text-rose-700">{error}</p> : null}
+    </div>
+  );
+}
+
 export function ConsoleEnrolForm({ tenantId, courseId, students }: {
   tenantId: number; courseId: number;
   students: { user_id: string; name: string; roll_number: string | null }[];

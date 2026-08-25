@@ -1039,6 +1039,87 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       { userId: claims.user_id, role: 'admin' }, body.body), 'Marked as resolved.');
   });
 
+  // ===========================================================================
+  // Who teaches a course
+  //
+  // The institution's own side has had these three routes all along; the
+  // console had none of them, so an operator could create a course, add its
+  // modules and lessons, publish it, schedule its examinations -- and not say
+  // who teaches it. That is not a cosmetic gap: `assertCanTeach` is the check
+  // every faculty-facing route makes, so an unassigned course is one no
+  // lecturer can take a register for, mark work in, or invigilate.
+  //
+  // Delegated to AcademicsService rather than reimplemented here, which is the
+  // exception to this file's usual rule of writing its own queries. The usual
+  // rule exists because those methods take an actor shaped for a tenant token;
+  // these three take only ids, so there is nothing to translate -- and the cap
+  // of two faculty per course is a rule that must not exist twice.
+  // ===========================================================================
+
+  /** Who teaches this course, with the names an operator can recognise. */
+  app.get('/api/onyx/platform/tenants/:id/courses/:courseId/faculty', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const tenantId = idOf(req);
+    const courseId = subIdOf(req, 'courseId');
+    const rows = await ctx.onyxAcademics.faculty(tenantId, courseId);
+
+    /*
+     * Names, not bare uuids.
+     *
+     * The institution's own screen can afford to return ids because it renders
+     * beside a roster it already has. The console does not, and an operator
+     * looking at "who teaches this" needs a person rather than a identifier
+     * they would have to go and look up.
+     */
+    const people = await ctx.onyxPlatform.tenantPeople(tenantId, { limit: 200 });
+    const byId = new Map((people.people ?? [])
+      .map((p: { user_id: string }) => [String(p.user_id), p]));
+    return ok(rows.map((r) => {
+      const person = byId.get(String(r.user_id)) as
+        { name?: string; email?: string; role?: string } | undefined;
+      return {
+        user_id: r.user_id,
+        name: person?.name ?? null,
+        email: person?.email ?? null,
+        role: person?.role ?? null,
+      };
+    }));
+  });
+
+  app.post('/api/onyx/platform/tenants/:id/courses/:courseId/faculty', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const tenantId = idOf(req);
+    const courseId = subIdOf(req, 'courseId');
+    const body = validate(z.object({ user_id: z.string().uuid() }), req.body);
+
+    // They have to teach HERE before they can teach this -- and the check is
+    // against this institution's membership, so an operator cannot attach
+    // somebody from another one by pasting their id.
+    const membership = await ctx.onyxTenancy.membership(tenantId, body.user_id);
+    if (!membership) throw new HttpError(422, 'They are not at this institution.');
+    if (membership.role !== 'faculty' && membership.role !== 'admin') {
+      throw new HttpError(422, 'Only faculty can be assigned to a course.');
+    }
+
+    const result = await ctx.onyxAcademics.assignFaculty(tenantId, courseId, body.user_id);
+    if (result.assigned) {
+      await ctx.onyxPlatform.recordAction(claims.user_id, 'course.faculty_assigned',
+        'course', courseId, null, { user_id: body.user_id });
+    }
+    return ok(result, result.assigned ? 'Assigned.' : 'They already teach this course.');
+  });
+
+  app.delete('/api/onyx/platform/tenants/:id/courses/:courseId/faculty/:userId', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const tenantId = idOf(req);
+    const courseId = subIdOf(req, 'courseId');
+    const userId = String((req.params as Record<string, string>).userId ?? '');
+    const removed = await ctx.onyxAcademics.removeFaculty(tenantId, courseId, userId);
+    await ctx.onyxPlatform.recordAction(claims.user_id, 'course.faculty_removed',
+      'course', courseId, { user_id: userId }, null);
+    return ok(removed, 'Removed.');
+  });
+
   app.get('/api/onyx/platform/tenants/:id/banks', async (req) => {
     await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     return ok(await ctx.onyxPlatform.questionBanks(idOf(req)));

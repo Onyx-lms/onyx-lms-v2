@@ -5,7 +5,7 @@ import {
   attempt, SCROLLER, RosterHeader, Unavailable, AccessPill, type AcademicsPayload,
 } from '@/lib/onyx-platform-tenant';
 import { CreateCourseForm, CourseEditToggle } from '@/components/onyx-platform-forms';
-import { DataTable, EmptyRow, Icon, State } from '@/components/onyx-ui';
+import { DataTable, EmptyRow, Icon, Pill, State } from '@/components/onyx-ui';
 
 export const metadata: Metadata = { title: 'Courses' };
 
@@ -76,7 +76,19 @@ export default async function OnyxPlatformCoursesPage(
                 <td className="text-[13px]">{c.programme ?? <span className="text-muted">—</span>}</td>
                 <td className="tabular-nums">{c.credits}</td>
                 <td className="tabular-nums">{c.enrollment_count}</td>
-                <td className="tabular-nums">{c.faculty_count}</td>
+                <td className="tabular-nums">
+                  {/* A zero here is a fault, not a number.
+
+                      `assertCanTeach` refuses every faculty-facing route on a
+                      course nobody is assigned to, so an unassigned course
+                      cannot have its register taken, its work marked or its
+                      examinations invigilated. Printed as a bare "0" that read
+                      as ordinary, which is how twenty-five courses can sit
+                      unassigned without anybody noticing. */}
+                  {c.faculty_count === 0
+                    ? <Pill tone="late">Nobody</Pill>
+                    : c.faculty_count}
+                </td>
                 <td>
                   <AccessPill access={c.access} priceMinor={c.price_minor}
                     currency={c.currency} />
