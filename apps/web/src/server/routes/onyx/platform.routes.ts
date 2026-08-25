@@ -828,6 +828,12 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       idOf(req), { userId: claims.user_id, role: 'admin' }, body), 'Question bank created.');
   });
 
+  /** The parallel sets a bank holds. See the tenant-side route. */
+  app.get('/api/onyx/platform/tenants/:id/banks/:bankId/sets', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxAssess.bankSets(idOf(req), subIdOf(req, 'bankId')));
+  });
+
   app.get('/api/onyx/platform/tenants/:id/banks/:bankId/questions', async (req) => {
     await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     return ok(await ctx.onyxAssess.questions(idOf(req), subIdOf(req, 'bankId')));
@@ -847,6 +853,8 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       points: z.number().int().min(1).max(1000).optional(),
       difficulty: z.string().max(20).optional(),
       tags: z.array(z.string().max(50)).max(20).optional(),
+      // Which parallel set of the bank this belongs to. Absent means Set 1.
+      set_number: z.number().int().min(1).max(50).optional(),
       // `code` only: the Code Lab problem whose tests mark this question.
       problem_id: z.number().int().positive().nullish(),
     }), req.body);

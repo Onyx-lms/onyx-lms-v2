@@ -418,6 +418,9 @@ export interface QuestionRow {
   points: number; difficulty: string; tags: unknown;
   version: number; status: string; created_by: number | null;
   created_at: string; updated_at: string;
+  /** Which parallel set of the bank this belongs to. 1 for everything
+   *  written before sets existed. See migration 0039. */
+  set_number: number;
 }
 
 export interface QuestionVersionRow {

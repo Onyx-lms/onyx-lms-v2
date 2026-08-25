@@ -3567,6 +3567,14 @@ export interface ConsoleBank {
    * marks exactly like an essay.
    */
   needs_marking?: number;
+  /**
+   * How many parallel sets it holds.
+   *
+   * The fact that decides whether a bank can be scheduled: candidates are
+   * dealt one set each, rotating by roll number, so a one-set bank gives
+   * everybody the same paper and a ten-set bank gives ten.
+   */
+  set_count?: number;
 }
 
 /**
@@ -3649,9 +3657,11 @@ export function AssessmentSectionsForm({ tenantId, assessment, banks }: {
             >
               {usable.map((b) => (
                 <option key={b.id} value={b.id}>
-                  {b.name} ({b.question_count} question{b.question_count === 1 ? '' : 's'}
+                  {b.name} — {Number(b.set_count ?? 1)}{' '}
+                  {Number(b.set_count ?? 1) === 1 ? 'set' : 'sets'}
+                  {', ' + b.question_count + ' question'}{b.question_count === 1 ? '' : 's'}
                   {Number(b.needs_marking ?? 0)
-                    ? ', ' + b.needs_marking + ' needing a marker' : ''})
+                    ? ', ' + b.needs_marking + ' needing a marker' : ''}
                 </option>
               ))}
             </select>

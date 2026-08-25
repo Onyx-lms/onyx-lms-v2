@@ -6,9 +6,10 @@ import {
 } from '@/lib/onyx-platform-tenant';
 import {
   CreateAssessmentForm, AssessmentEditToggle, AssessmentSectionsForm,
-  AssessmentPublishButton, ConsoleCreatePaper, type ConsoleBank,
+  AssessmentPublishButton, type ConsoleBank,
 } from '@/components/onyx-platform-forms';
 import { Banner, DataTable, EmptyRow, Pill } from '@/components/onyx-ui';
+import { BankComposer } from '@/components/onyx-bank-composer';
 
 export const metadata: Metadata = { title: 'Assessments' };
 
@@ -49,7 +50,14 @@ export default async function OnyxPlatformAssessmentsPage(
                 published. The control beside it makes an EMPTY paper, which
                 is still worth having when the questions are coming from a
                 bank that already exists. */}
-            <ConsoleCreatePaper tenantId={tenantId} courses={courses} problems={problems} />
+            {/* The bank, not a paper. An examination is scheduled FROM a bank of
+                parallel sets; "create a paper" made one paper and dealt it at
+                random, which is not how an examination is set. */}
+            <BankComposer
+              basePath={'onyx/platform/tenants/' + tenantId + '/banks'}
+              courses={courses.map((c) => ({ id: c.id, label: c.code + ' — ' + c.title }))}
+              problems={problems}
+            />
             <CreateAssessmentForm tenantId={tenantId} courses={courses}
               sections={sections} />
           </div>

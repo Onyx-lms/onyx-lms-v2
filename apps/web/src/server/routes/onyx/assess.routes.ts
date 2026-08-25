@@ -74,6 +74,19 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
    * Staff only, and deliberately a separate endpoint from anything a candidate
    * can reach: this is the key to every paper drawn from the bank.
    */
+  /**
+   * The parallel sets a bank holds, and the shape of each.
+   *
+   * What a scheduling screen needs before anybody schedules anything: "10 sets
+   * of 5" is the fact that decides whether a bank is ready to be sat, and
+   * "Set 3 has no coding question while the others do" is the fault a setter
+   * wants to see now rather than in a hall.
+   */
+  app.get('/api/onyx/banks/:id/sets', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    return ok(await ctx.onyxAssess.bankSets(claims.tenant_id, idOf(req)));
+  });
+
   app.get('/api/onyx/banks/:id/questions', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
     const q = req.query as { difficulty?: string; tag?: string; retired?: string };
@@ -94,6 +107,9 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
       points: z.number().int().min(1).max(1000).optional(),
       difficulty: z.string().max(20).optional(),
       tags: z.array(z.string().max(50)).max(20).optional(),
+      // Which parallel set of the bank this belongs to. Absent means Set 1,
+      // which is where a bank nobody has divided keeps everything.
+      set_number: z.number().int().min(1).max(50).optional(),
       // `code` only: the Code Lab problem whose tests mark this question.
       problem_id: z.number().int().positive().nullish(),
     }), req.body);

@@ -2385,14 +2385,19 @@ export class PlatformService {
       .order('id');
     if (!(banks ?? []).length) return [];
     // eslint-disable-next-line max-len
-    const { data: questions } = await this.#db.from('onyx_questions').select('id, bank_id, status, type, answer').eq('tenant_id', tenantId);
+    // eslint-disable-next-line max-len
+    const { data: questions } = await this.#db.from('onyx_questions').select('id, bank_id, status, type, answer, set_number').eq('tenant_id', tenantId);
 
     const counts = new Map<number, number>();
     const human = new Map<number, number>();
+    // The parallel sets each bank holds, which is what decides whether it can
+    // be scheduled: "10 sets of 5" is the fact a setter is looking for.
+    const setsOf = new Map<number, Set<number>>();
     for (const q of questions ?? []) {
       if (Number(q.status) === 0) continue;      // retired questions are not drawable
       const key = Number(q.bank_id);
       counts.set(key, (counts.get(key) ?? 0) + 1);
+      setsOf.set(key, (setsOf.get(key) ?? new Set()).add(Number(q.set_number ?? 1)));
       // The same two tests `#finalise` applies, in the same order: a type no
       // machine can judge, or an objective type with nothing to judge against.
       if (!isObjective(String(q.type)) || !hasKey(q.answer)) {
@@ -2403,6 +2408,7 @@ export class PlatformService {
       ...b,
       question_count: counts.get(Number(b.id)) ?? 0,
       needs_marking: human.get(Number(b.id)) ?? 0,
+      set_count: (setsOf.get(Number(b.id)) ?? new Set()).size,
     }));
   }
 

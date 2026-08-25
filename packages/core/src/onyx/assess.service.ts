@@ -24,12 +24,14 @@ import type { OnyxDb } from './db.ts';
 import type { Role } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
 import { isForSection } from './sections.service.ts';
+import { setIndexFor } from './paper-variants.ts';
 import { increment } from './metrics.ts';
 import { peopleFor, labelFor, type Person } from './directory.ts';
 import type { AcademicsService } from './academics.service.ts';
 
 const BANK_COLUMNS = 'id, tenant_id, course_id, name, description, created_by, created_at';
-const QUESTION_COLUMNS = 'id, tenant_id, bank_id, type, prompt, options, answer, explanation, points, difficulty, tags, version, status, problem_id, created_at';
+// eslint-disable-next-line max-len -- one literal: a concatenated select collapses the row type.
+const QUESTION_COLUMNS = 'id, tenant_id, bank_id, set_number, type, prompt, options, answer, explanation, points, difficulty, tags, version, status, problem_id, created_at';
 const VERSION_COLUMNS = 'id, tenant_id, question_id, version, type, prompt, options, answer, explanation, points, problem_id';
 const ASSESSMENT_COLUMNS = 'id, tenant_id, course_id, section_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, sections, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, watch_camera, instant_results, anonymous_marking, moderation_required, pass_mark, status, results_published_at, created_by, created_at';
 const ATTEMPT_COLUMNS = 'id, tenant_id, assessment_id, user_id, attempt, paper, status, started_at, expires_at, submitted_at, auto_score, manual_score, score, max_score, consented_at, integrity_flags, integrity_status, updated_at';
@@ -341,6 +343,13 @@ export class AssessService {
     answer?: unknown; explanation?: string | null;
     points?: number; difficulty?: string; tags?: string[];
     problem_id?: number | null;
+    /**
+     * Which parallel set this question belongs to.
+     *
+     * Absent means Set 1, which is where every question written before sets
+     * existed lives and where a setter who only wants one paper stays.
+     */
+    set_number?: number;
   }) {
     const bank = await this.#bank(tenantId, bankId);
     await this.#assertCanAuthor(tenantId, bank.course_id as number | null, actor);
@@ -353,6 +362,9 @@ export class AssessService {
 
     const { data, error } = await this.#db.from('onyx_questions').insert({
       tenant_id: tenantId, bank_id: bankId, type,
+      // 1 unless told otherwise: a bank nobody has divided is a one-set bank,
+      // and deals exactly as it always did.
+      set_number: Math.max(1, Math.min(50, Math.trunc(Number(input.set_number ?? 1)) || 1)),
       problem_id: type === 'code' ? input.problem_id : null,
       prompt: input.prompt.trim(),
       options: (input.options ?? []) as never,
@@ -445,14 +457,52 @@ export class AssessService {
    * list, which tells the caller the id is real. "No data leaked" is not the
    * same as "nothing was learned".
    */
+  /**
+   * The parallel sets a bank holds, and what is in each.
+   *
+   * A set is a whole paper: a setter writes Set 1, Set 2 and so on, each of the
+   * same shape and comparable difficulty, and the sets rotate down the register
+   * so that neighbours never sit the same one. This is what a scheduling screen
+   * needs to show before anybody schedules anything -- "this bank has 10 sets
+   * of 5" is the fact that decides whether it is ready.
+   *
+   * Reported even for a bank nobody has divided: one set of everything, which
+   * is exactly what such a bank is and how it has always been dealt.
+   */
+  async bankSets(tenantId: number, bankId: number) {
+    const all = await this.questions(tenantId, bankId);
+    const by = new Map<number, typeof all>();
+    for (const q of all) {
+      const n = Number(q.set_number ?? 1);
+      by.set(n, [...(by.get(n) ?? []), q]);
+    }
+    return [...by.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([set_number, questions]) => ({
+        set_number,
+        count: questions.length,
+        marks: questions.reduce((n, q) => n + Number(q.points ?? 0), 0),
+        // The shape, so a setter can see at a glance that Set 3 is missing its
+        // coding question while the others have one.
+        by_type: questions.reduce((acc: Record<string, number>, q) => {
+          const t = String(q.type);
+          acc[t] = (acc[t] ?? 0) + 1;
+          return acc;
+        }, {}),
+      }));
+  }
+
   async questions(tenantId: number, bankId: number, filters: {
     difficulty?: string; tag?: string; includeRetired?: boolean;
+    /** One parallel set of the bank. Absent means every set. */
+    setNumber?: number;
   } = {}) {
     await this.#bank(tenantId, bankId);
     let q = this.#db.from('onyx_questions')
       .select(QUESTION_COLUMNS).eq('tenant_id', tenantId).eq('bank_id', bankId);
     if (!filters.includeRetired) q = q.eq('status', 'active');
     if (filters.difficulty) q = q.eq('difficulty', filters.difficulty);
+    if (filters.setNumber !== undefined) q = q.eq('set_number', filters.setNumber);
     const { data } = await q.order('id');
     let rows = data ?? [];
     if (filters.tag) {
@@ -1738,14 +1788,68 @@ export class AssessService {
     const seed = [assessment.id, userId, attemptNumber].join(':');
     const paper: PaperEntry[] = [];
 
+    /*
+     * The candidate's roll number, for the variant they sit.
+     *
+     * Read once for the whole paper rather than per section: every section of
+     * one paper deals the same variant to the same candidate, or a "variant 3"
+     * would mean something different in each half of the script.
+     */
+    const { data: membership } = await this.#db.from('onyx_memberships')
+      .select('roll_number').eq('tenant_id', tenantId).eq('user_id', userId).maybeSingle();
+    const roll = membership?.roll_number ? String(membership.roll_number) : null;
+
     for (const section of sections) {
       const pool = await this.questions(tenantId, section.bank_id);
-      if (pool.length < section.take) {
-        throw new HttpError(422, 'Section "' + section.title + '" no longer has enough questions.');
+      if (!pool.length) {
+        throw new HttpError(422, 'Section "' + section.title + '" no longer has any questions.');
       }
-      const chosen = assessment.shuffle_questions
-        ? seededShuffle(pool, seed + ':' + section.id).slice(0, section.take)
-        : pool.slice(0, section.take);
+
+      /*
+       * The candidate sits ONE SET of the bank, chosen by their roll number.
+       *
+       * A set is a whole paper the setter wrote: Set 1, Set 2, and so on, each
+       * of the same shape and comparable difficulty. They rotate down the
+       * register -- roll 1 sits Set 1, roll 2 sits Set 2, roll 11 comes back
+       * round to Set 1 -- so nobody within reach of a neighbour holds the same
+       * paper. Sets share no questions because the setter put different
+       * questions in them, which is a stronger guarantee than any sampling can
+       * give and, more to the point, is a judgement only the setter can make:
+       * two papers are parallel when a person says they are.
+       *
+       * What was here dealt `take` questions sampled from the whole bank per
+       * candidate. That produced variety and no guarantee -- two independent
+       * draws of five from thirty overlap about six times in ten -- and it took
+       * the sets away from the setter entirely.
+       *
+       * A bank nobody has divided is a one-set bank and deals exactly as it
+       * always did: everybody sits Set 1.
+       */
+      const sets = [...new Set(pool.map((q) => Number(q.set_number ?? 1)))]
+        .sort((a, b) => a - b);
+      const setNumber = sets[setIndexFor(roll, userId, sets.length)] ?? sets[0]!;
+      const inSet = pool.filter((q) => Number(q.set_number ?? 1) === setNumber);
+
+      /*
+       * `take` still caps, and is still honoured.
+       *
+       * A one-set bank of forty with a paper of five is the old arrangement
+       * and must keep working; there, `take` is the whole composition. Where a
+       * setter has written sets, `take` is normally the size of a set and the
+       * cap does nothing -- but a set larger than `take` is sampled rather than
+       * truncated, so a five-question paper from a seven-question set is not
+       * always the same five.
+       */
+      const ordered = assessment.shuffle_questions
+        ? seededShuffle(inSet, 'set:' + assessment.id + ':' + section.id + ':' + setNumber)
+        : inSet;
+      const chosen = section.take > 0 && section.take < ordered.length
+        ? ordered.slice(0, section.take)
+        : ordered;
+      if (!chosen.length) {
+        throw new HttpError(422, 'Set ' + setNumber + ' of "' + section.title
+          + '" has no questions in it.');
+      }
 
       for (const q of chosen) {
         const options = (q.options ?? []) as unknown as { id: string; text: string }[];

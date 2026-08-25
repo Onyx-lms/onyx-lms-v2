@@ -82,6 +82,7 @@ export * from './onyx/notify.service.ts';
 export * from './onyx/metrics.ts';
 export * from './onyx/tenancy.service.ts';
 export * from './onyx/sections.service.ts';
+export * from './onyx/paper-variants.ts';
 export * from './onyx/permissions.ts';
 export * from './onyx/academics.service.ts';
 export * from './onyx/content.service.ts';

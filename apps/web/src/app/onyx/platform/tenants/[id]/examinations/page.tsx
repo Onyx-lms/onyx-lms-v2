@@ -6,9 +6,10 @@ import {
   type AcademicsPayload,
 } from '@/lib/onyx-platform-tenant';
 import {
-  CreateExamForm, ExamEditToggle, ConsoleCreatePaper,
+  CreateExamForm, ExamEditToggle,
 } from '@/components/onyx-platform-forms';
 import { DataTable, EmptyRow } from '@/components/onyx-ui';
+import { BankComposer } from '@/components/onyx-bank-composer';
 
 export const metadata: Metadata = { title: 'Examinations' };
 
@@ -45,7 +46,14 @@ export default async function OnyxPlatformExamsPage(
             {/* Build the paper here, then pick it in the form beside this --
                 which is the order somebody scheduling an exam works in, and
                 the reason the institution's own screen puts both together. */}
-            <ConsoleCreatePaper tenantId={tenantId} courses={courses} problems={problems} />
+            {/* The bank, not a paper. An examination is scheduled FROM a bank of
+                parallel sets; "create a paper" made one paper and dealt it at
+                random, which is not how an examination is set. */}
+            <BankComposer
+              basePath={'onyx/platform/tenants/' + tenantId + '/banks'}
+              courses={courses.map((c) => ({ id: c.id, label: c.code + ' — ' + c.title }))}
+              problems={problems}
+            />
           <CreateExamForm tenantId={tenantId} courses={courses} sections={sections}
             // So a sitting can be one somebody sits in a browser. Filtered to
             // the chosen course inside the form: the API refuses a paper from

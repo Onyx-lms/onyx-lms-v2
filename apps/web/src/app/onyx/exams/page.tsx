@@ -13,6 +13,7 @@ import {
   DataTable, EmptyRow, Icon, Pill, Banner, Segmented, State, StatTile,
 } from '@/components/onyx-ui';
 import { dayNumber } from '@/lib/onyx-time';
+import { BankComposer } from '@/components/onyx-bank-composer';
 
 export const metadata: Metadata = { title: 'Examinations' };
 
@@ -273,8 +274,12 @@ export default async function OnyxExamsPage() {
               here to pick it from the dropdown above. This does all three in
               one form and the result is published, so it is already sitting
               in that dropdown by the time this panel closes. */}
+          {/* The bank, not a paper. An examination is scheduled FROM a bank of
+              parallel sets, and the sets rotate down the register so that
+              neighbours never sit the same one. */}
           {canSchedule ? (
-            <CreatePaper
+            <BankComposer
+              basePath="onyx/banks"
               courses={schedulableCourses.map((c) =>
                 ({ id: c.id, label: c.code + ' — ' + c.title }))}
               problems={problems ?? []}

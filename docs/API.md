@@ -29,6 +29,7 @@ docs:check` fails the build if it has.
 | --- | --- | --- |
 | `GET` | `/api/onyx/banks` | admin, faculty, exams |
 | `POST` | `/api/onyx/banks` | admin, faculty, exams |
+| `GET` | `/api/onyx/banks/:id/sets` | admin, faculty, exams |
 | `GET` | `/api/onyx/banks/:id/questions` | admin, faculty, exams |
 | `POST` | `/api/onyx/banks/:id/questions` | admin, faculty, exams |
 | `PATCH` | `/api/onyx/questions/:id` | admin, faculty, exams |
@@ -411,6 +412,7 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/platform/tenants/:id/exams/:examId` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/domains/:domainId` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/banks` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/banks/:bankId/sets` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/banks/:bankId/questions` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/banks/:bankId/questions` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/problems` | platform admin |
@@ -493,4 +495,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_407 endpoints across 9 route files._
+_409 endpoints across 9 route files._
