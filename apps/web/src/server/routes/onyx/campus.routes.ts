@@ -16,7 +16,9 @@
  */
 import type { Router, ReqLike } from '../../router.ts';
 import { z } from 'zod';
-import { validate, ok, requireOnyx, requireOnyxRole, HttpError } from '@onyx/core';
+import {
+  validate, ok, requireOnyx, requireOnyxRole, HttpError, isForSection,
+} from '@onyx/core';
 import type { Role } from '@onyx/types';
 import type { AppContext } from '../../app-context.ts';
 import { syncExamAssessmentWindow } from '../../exam-window.ts';
@@ -463,17 +465,36 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
   });
 
   app.get('/api/onyx/exams', async (req) => {
-    const { claims } = await viewerOf(req);
+    const { claims, viewer } = await viewerOf(req);
     const query = req.query as { semester_id?: string; course_id?: string };
+    // The same rule the calendar applies, and for the same reason: a sitting
+    // set for one section is for the people in it. Staff are not filtered —
+    // they schedule them and have no section of their own.
+    const staff = viewer.role === 'admin' || viewer.role === 'faculty'
+      || viewer.role === 'exams';
+    const sectionId = staff ? undefined
+      : await ctx.onyxSections.sectionOf(claims.tenant_id, claims.user_id);
     return ok(await ctx.onyxExams.exams(claims.tenant_id, {
       semester_id: query.semester_id ? Number(query.semester_id) : undefined,
       course_id: query.course_id ? Number(query.course_id) : undefined,
+      sectionId,
     }));
   });
 
   app.get('/api/onyx/exams/:id', async (req) => {
-    const { claims } = await viewerOf(req);
-    return ok(await ctx.onyxExams.exam(claims.tenant_id, idOf(req)));
+    const { claims, viewer } = await viewerOf(req);
+    const exam = await ctx.onyxExams.exam(claims.tenant_id, idOf(req));
+    const staff = viewer.role === 'admin' || viewer.role === 'faculty'
+      || viewer.role === 'exams';
+    // Checked here as well as on the list. An exam id is a small number in a
+    // URL, and the list is only what a candidate is SHOWN.
+    if (!staff && exam.section_id != null) {
+      const mine = await ctx.onyxSections.sectionOf(claims.tenant_id, claims.user_id);
+      if (!isForSection(exam.section_id as number | null, mine)) {
+        throw new HttpError(403, 'That examination is for another section.');
+      }
+    }
+    return ok(exam);
   });
 
   /** Correct a scheduled exam, or cancel it -- the examinations office, or

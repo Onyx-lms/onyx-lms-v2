@@ -27,11 +27,13 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { OnyxDb } from './db.ts';
 import type { Role, MarkStatus } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
+import { isForSection } from './sections.service.ts';
 import { peopleFor } from './directory.ts';
 import { pdfTable } from '../format/pdf.ts';
 import type { AuditService } from './audit.service.ts';
 
-const EXAM_COLUMNS = 'id, tenant_id, semester_id, course_id, assessment_id, title, starts_at, duration_minutes, max_marks, pass_marks, status, created_by, created_at, updated_at';
+// eslint-disable-next-line max-len -- one literal: a concatenated select collapses the row type.
+const EXAM_COLUMNS = 'id, tenant_id, semester_id, course_id, section_id, assessment_id, title, starts_at, duration_minutes, max_marks, pass_marks, status, created_by, created_at, updated_at';
 const HALL_COLUMNS = 'id, tenant_id, code, name, row_count, col_count, capacity, status, created_at';
 const SEAT_COLUMNS = 'id, tenant_id, exam_id, hall_id, user_id, seat_label, created_at';
 const MARK_COLUMNS = 'id, tenant_id, exam_id, user_id, raw_marks, moderation_delta, final_marks, grade, grade_points, status, entered_by, moderated_by, moderated_at, published_at, created_at, updated_at';
@@ -269,12 +271,30 @@ export class ExaminationsService {
     return null;
   }
 
-  async exams(tenantId: number, filters: { semester_id?: number; course_id?: number } = {}) {
+  /**
+   * The sittings a caller may see.
+   *
+   * `sectionId` is the reader's own teaching division. A sitting set for one
+   * section is for the people in it and nobody else; one with no section is
+   * for everybody, which is what every exam scheduled before sections existed
+   * means. `undefined` means do not filter — staff, who schedule them.
+   *
+   * This filter was on the calendar and NOT here, so the week grid was right
+   * while the Examinations list beside it showed another section's paper. Two
+   * screens answering the same question differently is worse than either being
+   * wrong on its own: whichever a candidate happened to open decided what they
+   * believed they were sitting.
+   */
+  async exams(tenantId: number, filters: {
+    semester_id?: number; course_id?: number; sectionId?: number | null;
+  } = {}) {
     let q = this.#db.from('onyx_exams').select(EXAM_COLUMNS).eq('tenant_id', tenantId);
     if (filters.semester_id) q = q.eq('semester_id', filters.semester_id);
     if (filters.course_id) q = q.eq('course_id', filters.course_id);
     const { data } = await q.order('starts_at', { ascending: true });
-    return data ?? [];
+    const rows = data ?? [];
+    if (filters.sectionId === undefined) return rows;
+    return rows.filter((e) => isForSection(e.section_id as number | null, filters.sectionId));
   }
 
   async exam(tenantId: number, id: number) {

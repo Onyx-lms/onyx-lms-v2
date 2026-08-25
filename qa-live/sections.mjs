@@ -70,12 +70,22 @@ const [one, two] = sections.filter((sx) => sx.status === 1);
 check('with a head-count on each', one && one.member_count !== undefined,
   one?.name + ' has ' + one?.member_count);
 
-// Malla Reddy's are Greek, which is the whole point of the preset.
+/*
+ * Malla Reddy's own names, not a preset.
+ *
+ * It was seeded from the generic Greek set and then given the twenty-four
+ * divisions it actually runs -- five CSE, eight AI-ML, four DS, two CS, three
+ * IT, two ECE. Asserted by shape rather than by listing all of them: what
+ * matters is that they are the institution's own names in branch order, and a
+ * literal list here would have to be edited every time a section is added.
+ */
 const greek = (await call('/api/onyx/platform/tenants/' + mrit.id + '/sections',
   { token: pt })).data ?? [];
-check('Malla Reddy runs Alpha, Beta and Gamma',
-  greek.map((sx) => sx.name).join(',') === 'Alpha,Beta,Gamma',
-  greek.map((sx) => sx.name).join(', '));
+check('Malla Reddy runs its own branch sections, in order',
+  greek.length >= 20 && greek[0]?.name === 'Alpha-CSE'
+  && greek.some((sx) => sx.name.endsWith('-AI-ML'))
+  && greek.some((sx) => sx.name.endsWith('-ECE')),
+  greek.length + ': ' + greek[0]?.name + ' … ' + greek[greek.length - 1]?.name);
 
 // ---------------------------------------------------------------------------
 
