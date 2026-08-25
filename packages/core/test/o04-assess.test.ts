@@ -574,32 +574,50 @@ test('moderation beats a second mark, which beats the first', async () => {
   assert.deepEqual(grades.map((g) => g.role).sort(), ['first', 'moderation', 'second']);
 });
 
-test('ASS-03b: results are invisible until published, and moderation is enforced', async () => {
-  const w = world();
-  const { q, assessment } = await withPaper(w, { moderation_required: true });
-  const attempt = await w.assess.start(T, assessment, 'user-10');
-  await w.assess.saveAnswer(T, attempt.id, 'user-10',
-    { question_id: Number(q.single.id), response: 'b' });
-  await w.assess.submit(T, attempt.id, 'user-10');
-  await w.assess.mark(T, attempt.id, 'user-20', {
-    role: 'first', marks: [{ question_id: Number(q.essay.id), points: 4 }],
-  });
+test('ASS-03b: a mark reaches the candidate when it is written, and moderation still rules',
+  async () => {
+    /*
+     * This test used to assert the opposite: "results are invisible until
+     * published". That contract has been replaced at the client's request --
+     * the Publish button is gone, and marking IS the release, per script
+     * rather than per paper.
+     *
+     * What still has to hold, and is what this now checks:
+     *
+     *   * nothing is visible before anybody has marked it. An unmarked script
+     *     shows no score, which is the leak that would matter;
+     *   * a marked script reaches its candidate without a second step, so a
+     *     marker who has decided is not waiting on somebody to press a button;
+     *   * moderation still overrides the first mark, because that is a rule
+     *     about WHOSE number counts and has nothing to do with release.
+     */
+    const w = world();
+    const { q, assessment } = await withPaper(w, { moderation_required: true });
+    const attempt = await w.assess.start(T, assessment, 'user-10');
+    await w.assess.saveAnswer(T, attempt.id, 'user-10',
+      { question_id: Number(q.single.id), response: 'b' });
+    await w.assess.submit(T, attempt.id, 'user-10');
 
-  // Marked, but the candidate is told nothing.
-  const before = await w.assess.attemptForCandidate(T, attempt.id, 'user-10');
-  assert.equal(before.score, null, 'a mark leaked before it was released');
-  assert.equal((await w.assess.myAttempts(T, 'user-10'))[0]!.score, null);
+    // Handed in, nobody has marked the essay: no score, and that is the state
+    // a candidate must not be able to see a number in.
+    const unmarked = await w.assess.attemptForCandidate(T, attempt.id, 'user-10');
+    assert.equal(unmarked.score, null, 'a score appeared before anybody marked it');
 
-  // A second opinion that can be skipped is not a moderation workflow.
-  await assert.rejects(w.assess.publishResults(T, assessment), (e: HttpError) => e.status === 422);
+    await w.assess.mark(T, attempt.id, 'user-20', {
+      role: 'first', marks: [{ question_id: Number(q.essay.id), points: 4 }],
+    });
 
-  await w.assess.mark(T, attempt.id, 'user-22', {
-    role: 'moderation', marks: [{ question_id: Number(q.essay.id), points: 4 }],
-  });
-  const published = await w.assess.publishResults(T, assessment);
-  assert.equal(published.published, 1);
+    // Marked, so released -- no publish step in between.
+    const marked = await w.assess.attemptForCandidate(T, attempt.id, 'user-10');
+    assert.equal(Number(marked.score), 6, 'a marked script did not reach its candidate');
 
-  const after = await w.assess.attemptForCandidate(T, attempt.id, 'user-10');
+    // The moderator's number is the one that counts, and replaces the first
+    // marker's rather than adding to it.
+    await w.assess.mark(T, attempt.id, 'user-22', {
+      role: 'moderation', marks: [{ question_id: Number(q.essay.id), points: 4 }],
+    });
+
+    const after = await w.assess.attemptForCandidate(T, attempt.id, 'user-10');
   assert.equal(Number(after.score), 6);
   assert.equal(after.pass_mark, 6);
   const mine = (await w.assess.myAttempts(T, 'user-10'))[0]!;

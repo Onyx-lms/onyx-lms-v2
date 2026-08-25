@@ -26,6 +26,15 @@ export interface Person {
   name: string;
   /** The institution's own number. Null where it does not use them. */
   roll_number: string | null;
+  /**
+   * The teaching division, named.
+   *
+   * Every screen that lists submissions now shows it, so it is read here with
+   * the name and the roll number rather than by each of them separately -- a
+   * marker looking at a script wants "Alpha-CSE", not a section id, and a
+   * fourth query per screen to turn one into the other.
+   */
+  section: string | null;
 }
 
 /** What to show when an account has gone but its work has not. */
@@ -48,11 +57,25 @@ export async function peopleFor(
   const [{ data: users }, { data: memberships }] = await Promise.all([
     db.from('onyx_users').select('id, name').in('id', ids),
     db.from('onyx_memberships')
-      .select('user_id, roll_number').eq('tenant_id', tenantId).in('user_id', ids),
+      .select('user_id, roll_number, section_id').eq('tenant_id', tenantId).in('user_id', ids),
   ]);
 
   const rollOf = new Map((memberships ?? [])
     .map((m) => [String(m.user_id), (m.roll_number ?? null) as string | null]));
+
+  // Named once for the whole set rather than joined per person.
+  const sectionIds = [...new Set((memberships ?? [])
+    .map((m) => m.section_id).filter((x) => x != null).map(Number))];
+  const { data: sectionRows } = sectionIds.length
+    ? await db.from('onyx_sections').select('id, name')
+      .eq('tenant_id', tenantId).in('id', sectionIds)
+    : { data: [] as { id: number; name: string }[] };
+  const sectionName = new Map((sectionRows ?? [])
+    .map((sx) => [Number(sx.id), String(sx.name)]));
+  const sectionOf = new Map((memberships ?? []).map((m) => [
+    String(m.user_id),
+    m.section_id == null ? null : sectionName.get(Number(m.section_id)) ?? null,
+  ]));
 
   for (const id of ids) {
     const user = (users ?? []).find((u) => String(u.id) === id);
@@ -60,6 +83,7 @@ export async function peopleFor(
       user_id: id,
       name: user?.name ? String(user.name) : UNKNOWN_PERSON,
       roll_number: rollOf.get(id) ?? null,
+      section: sectionOf.get(id) ?? null,
     });
   }
   return out;

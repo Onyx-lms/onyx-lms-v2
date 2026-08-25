@@ -1375,6 +1375,11 @@ export class AssessService {
         // where it does not. Never the raw id, which is what this used to be.
         : labelFor(people.get(String(a.user_id)), String(a.user_id)),
       roll_number: anonymous ? null : people.get(String(a.user_id))?.roll_number ?? null,
+      // Withheld under anonymous marking with the name and the number: a
+      // cohort split into three sections of a hundred is not identified by
+      // its section, but on a small option it can be, and anonymity that
+      // leaks through one column is not anonymity.
+      section: anonymous ? null : people.get(String(a.user_id))?.section ?? null,
     }));
   }
 
@@ -1977,8 +1982,27 @@ export class AssessService {
      * would have silently DISAPPEARED at the exact moment somebody improved
      * it. A correction has to change the number, not withdraw it.
      */
-    const current = await this.#attempt(tenantId, attemptId);
-    const status = String(current.status) === 'published' ? 'published' : 'graded';
+    /*
+     * A marked script is a released script.
+     *
+     * There used to be a second step: a marker awarded the marks, the attempt
+     * settled at `graded`, and somebody then pressed Publish to release the
+     * whole paper at once. That button is gone at the client's request, and
+     * this is what has to change with it -- `releasedToCandidate` requires
+     * `published`, so without this a hand-marked result would sit at `graded`
+     * for ever and never reach the candidate it was written for.
+     *
+     * So marking IS the release, per script rather than per paper. A marker
+     * who saves has decided; a candidate whose script has been marked can see
+     * it; and a paper half-marked releases the half that is done rather than
+     * holding everybody until the last one is finished.
+     *
+     * Moderation still overrides afterwards -- `#recompute` runs again and the
+     * authoritative grade wins -- and a correction changes the number in place
+     * rather than withdrawing it, which is the behaviour the `published`
+     * branch was already protecting.
+     */
+    const status = 'published';
 
     await this.#db.from('onyx_assessment_attempts').update({
       auto_score: auto,

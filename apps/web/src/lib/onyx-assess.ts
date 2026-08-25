@@ -113,6 +113,10 @@ export interface MarkingQueueRow {
   integrity_status: string;
   user_id: string | null;
   candidate: string | null;
+  /** The institution's own number, and the teaching division. Both withheld
+   *  under anonymous marking, with the name. */
+  roll_number?: string | null;
+  section?: string | null;
 }
 
 export interface ResultsReport {

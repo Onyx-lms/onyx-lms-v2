@@ -1490,18 +1490,33 @@ function SectionChoice({ id, sections, value, onChange }: {
   if (!sections.length) return null;
   return (
     <div>
-      <label className={label} htmlFor={id}>Set for</label>
-      <select id={id} name="section_id" value={value} className={field}
+      <label className={label} htmlFor={id}>
+        Set for <span aria-hidden="true" className="text-red-600">*</span>
+      </label>
+      {/*
+        * A choice that has to be made, not one with a silent default.
+        *
+        * "Everybody" is still the common answer and is still one click away --
+        * what is gone is its being PRE-selected, which let a paper meant for
+        * one section reach the whole cohort because nobody touched the field.
+        * `required` on a select whose first option has an empty value is what
+        * makes the browser insist.
+        */}
+      <select id={id} name="section_id" value={value} className={field} required
         onChange={(e) => onChange(e.target.value)}>
-        <option value="">Everybody on the course</option>
+        <option value="">Who is this for?…</option>
+        <option value="all">Everybody on the course</option>
         {sections.map((sx) => (
           <option key={sx.id} value={sx.id}>{sx.name} only</option>
         ))}
       </select>
       <p className="mt-1 text-[12px] leading-relaxed text-muted">
-        {value
-          ? 'Only the students in that section are dealt this, and only they can start it.'
-          : 'Every student on the course, whichever section they are in.'}
+        {value === 'all'
+          ? 'Every student on the course, whichever section they are in.'
+          : value
+            ? 'Only the students in that section are dealt this, and only they can start it.'
+            : 'Pick one before saving — a paper set for the wrong people is not a mistake '
+              + 'anybody notices until they sit it.'}
       </p>
     </div>
   );
@@ -1988,7 +2003,8 @@ export function CreateAssessmentForm({ tenantId, courses, sections = [] }: {
             pass_mark: Number(data.get('pass_mark') || 0) || null,
             // Empty means everybody, and is sent as null rather than 0 -- a
             // zero would be a section id that does not exist.
-            section_id: sectionId ? Number(sectionId) : null,
+            // 'all' is the everybody case, which the API expresses as null.
+            section_id: sectionId && sectionId !== 'all' ? Number(sectionId) : null,
             ...paperSwitchBody(switches),
           });
           if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
@@ -2134,8 +2150,8 @@ export function CreateExamForm({ tenantId, courses, papers = [], sections = [] }
             ...(paper ? { assessment_id: Number(paper) } : {}),
             // Institution time, not the browser's -- see the edit form above.
             starts_at: fromLocalInput(startsRaw) ?? '',
-            // Which division sits it. Empty means the whole cohort.
-            section_id: sectionId ? Number(sectionId) : null,
+            // 'all' is the whole cohort, which the API expresses as null.
+            section_id: sectionId && sectionId !== 'all' ? Number(sectionId) : null,
             duration_minutes: Number(data.get('duration_minutes') || 180),
             max_marks: Number(data.get('max_marks') || 100),
             pass_marks: Number(data.get('pass_marks') || 40),

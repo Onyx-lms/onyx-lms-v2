@@ -2,12 +2,14 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxStartAssessment } from '@/components/onyx-sit';
-import { OnyxPublishResults } from '@/components/onyx-marking';
 import { AssessmentEditForm } from '@/components/onyx-manage';
 import { PaperBuilder } from '@/components/onyx-paper-builder';
+import { SubmissionsTable } from '@/components/onyx-submissions';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
-import { isExamsStaff, type Assessment, type MyAttempt } from '@/lib/onyx-assess';
+import {
+  isExamsStaff, type Assessment, type MyAttempt, type MarkingQueueRow,
+} from '@/lib/onyx-assess';
 import {
   ActionLink, BackLink, Card, CardGrid, Icon, ListRow, RowList, Score, SectionHead,
   StatTile, State, Stepper,
@@ -40,6 +42,17 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
   // Only staff, and only for a draft -- the composer needs somewhere to draw
   // from, and a candidate must never be handed the bank list.
   const editable = staff && assessment.status === 'draft';
+  /*
+   * Who has handed this in.
+   *
+   * On the paper's own page rather than one click away on a marking queue: a
+   * lecturer opening a paper is asking "who has sat it and what did they get",
+   * and the answer used to be a link to another screen.
+   */
+  const submissions = staff
+    ? await onyxApiSafe<MarkingQueueRow[]>('/api/onyx/assessments/' + id + '/marking')
+    : null;
+
   const [banks, courses] = await Promise.all([
     editable ? onyxApiSafe<{ id: number; name: string }[]>('/api/onyx/banks') : null,
     editable ? onyxApiSafe<{ id: number; title: string }[]>('/api/onyx/courses') : null,
@@ -172,6 +185,39 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
 
           {staff ? (
             <section>
+              <SectionHead title={'Submissions · ' + (submissions?.length ?? 0)} />
+              <Card className="p-4">
+                {submissions === null ? (
+                  <p className="text-[13px] text-muted">
+                    The submissions could not be loaded.
+                  </p>
+                ) : (
+                  <SubmissionsTable
+                    caption="Everybody who has handed this paper in."
+                    rows={submissions.map((r) => ({
+                      id: r.id,
+                      attempt: r.attempt,
+                      status: r.status,
+                      submitted_at: r.submitted_at,
+                      score: r.score,
+                      max_score: r.max_score,
+                      candidate: r.candidate,
+                      roll_number: r.roll_number ?? null,
+                      section: r.section ?? null,
+                      integrity_flags: r.integrity_flags,
+                    }))}
+                    markHref={(r) => '/onyx/attempts/' + r.id + '/mark'}
+                    scriptHref={(r) => '/api/proxy/onyx/attempts/' + r.id + '/marker-script.pdf'}
+                    bundleHref={submissions.length
+                      ? '/api/proxy/onyx/assessments/' + id + '/scripts.pdf' : undefined}
+                  />
+                )}
+              </Card>
+            </section>
+          ) : null}
+
+          {staff ? (
+            <section>
               <SectionHead title="Run the paper" />
               <Card className="space-y-4 p-4">
                 <div className="flex flex-wrap gap-2.5">
@@ -217,13 +263,16 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
                 <div className="border-t border-line pt-4">
                   <AssessmentEditForm assessmentId={Number(id)} assessment={assessment} />
                 </div>
-                <div className="border-t border-line pt-4">
-                  <OnyxPublishResults
-                    assessmentId={Number(id)}
-                    published={Boolean(assessment.results_published_at)}
-                    moderationRequired={Boolean(assessment.moderation_required)}
-                  />
-                </div>
+                {/*
+                  * No Publish control.
+                  *
+                  * Removed at the client's request, and the release model moved
+                  * with it: marking a script releases THAT script, so a marker
+                  * who has decided is not waiting on somebody to press a
+                  * button, and a paper half-marked hands back the half that is
+                  * done. See `#recompute` for the change that makes this true
+                  * rather than merely hiding the button.
+                  */}
               </Card>
             </section>
           ) : (

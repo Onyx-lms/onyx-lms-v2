@@ -480,26 +480,39 @@ test('the marker\'s comment reaches the candidate with the marks', async () => {
   assert.equal(objective.comment, null);
 });
 
-test('a comment is a mark in prose, and waits with the marks', async () => {
+test('a comment is a mark in prose, and travels with the marks', async () => {
   /*
-   * "You have misread the question" before the paper is out tells a candidate
-   * their score early, and does it in a form no moderation pass can quietly
-   * revise first. So it is gated on exactly what the score is gated on.
+   * A marker's note is gated on exactly what the score is gated on, and always
+   * has been. What changed is when that is: marking now releases the script
+   * rather than waiting for somebody to publish the paper, so the note is
+   * released with it.
+   *
+   * Both halves are checked, because the pairing is the point. A note visible
+   * before a mark would tell a candidate their score early, in prose; a mark
+   * visible without its note would withhold the one part of a result somebody
+   * can learn from.
    */
   const w = world();
   const id = await paperWithEssay(w, { moderation_required: true });
   const attemptId = await sitAndSubmit(w, id);
 
+  // Nobody has marked it: no score, and no note either.
+  const before = await w.assess.attemptForCandidate(T, attemptId, LEARNER);
+  assert.equal(before.score, null, 'a score appeared before anybody marked it');
+  for (const q of before.questions) {
+    assert.equal(q.comment, null, 'a marker comment appeared before any marking');
+  }
+
   const paper = await w.assess.attemptForMarker(T, attemptId);
   const essayId = paper.questions.find((q) => q.type === 'essay')!.question_id;
   await w.assess.mark(T, attemptId, 'user-20', {
     role: 'first',
-    marks: [{ question_id: essayId, points: 3, comment: 'Not yours to read yet.' }],
+    marks: [{ question_id: essayId, points: 3, comment: 'Read the second half again.' }],
   });
 
   const seen = await w.assess.attemptForCandidate(T, attemptId, LEARNER);
-  assert.equal(seen.score, null, 'fixture: this result should still be held');
-  for (const q of seen.questions) {
-    assert.equal(q.comment, null, 'a marker comment leaked before the result');
-  }
+  assert.notEqual(seen.score, null, 'a marked script did not reach its candidate');
+  const essay = seen.questions.find((q) => q.question_id === essayId)!;
+  assert.equal(essay.comment, 'Read the second half again.',
+    'the mark was released without the note that explains it');
 });

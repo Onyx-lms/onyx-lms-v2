@@ -8,14 +8,15 @@ import type { Exam, SeatingPlan, Hall, ExamMark } from '@/lib/onyx-campus';
 import {
   AllocateSeating, DeleteExamButton, EnterMarks, ExamEditForm, MarkOverride,
 } from '@/components/onyx-manage';
-import type { Assessment, MarkingQueueRow } from '@/lib/onyx-assess';
+import type { Assessment, MarkingQueueRow, MyAttempt } from '@/lib/onyx-assess';
 import { ActionButton } from '@/components/onyx-create';
 import { ModerateMarks } from '@/components/onyx-moderate';
 import {
   BackLink, Card, DataTable, Empty, EmptyRow, Icon, Meter, Pill, Score, SectionHead, StatTile, State, Stepper,
 } from '@/components/onyx-ui';
 import { ShareLink } from '@/components/onyx-share';
-import { dayNumber } from '@/lib/onyx-time';
+import { SubmissionsTable } from '@/components/onyx-submissions';
+import { dayNumber, dayTime } from '@/lib/onyx-time';
 
 export const metadata: Metadata = { title: 'Exam' };
 
@@ -101,7 +102,7 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
   const mayModerate = canMark && held.has('exams.moderate');
   const mayPublish = canMark && held.has('exams.publish');
 
-  const [seat, plan, halls, marks, roster, members, myMarks] = await Promise.all([
+  const [seat, plan, halls, marks, roster, members, myMarks, myAttempts] = await Promise.all([
     canMark ? null : onyxApiSafe<Seat>('/api/onyx/exams/' + id + '/seat'),
     // The seating plan itself stays staff-only on the API (every candidate's
     // name against a room and a seat) -- faculty get the marks register
@@ -120,6 +121,16 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
     // about themselves, so an empty array here means exactly "not out yet",
     // never a mark that exists but is being withheld.
     canMark ? null : onyxApiSafe<ExamMark[]>('/api/onyx/results?exam_id=' + id),
+    /*
+     * The candidate's own sitting of the online paper.
+     *
+     * The page showed the hand-entered exam MARK -- a number an examiner wrote
+     * down -- and never the attempt: what the candidate actually submitted,
+     * what each answer earned, or the script itself. Somebody who had just sat
+     * the paper here had nowhere on this page to see any of it, and was sent
+     * to a separate Results screen to find a total.
+     */
+    canMark ? null : onyxApiSafe<MyAttempt[]>('/api/onyx/my/assessments'),
   ]);
 
   // user_id is a Supabase Auth uuid, not a bigint any more -- Number(uuid) is
@@ -128,6 +139,16 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
   // whichever member's name happened to be inserted last. Keying on the
   // string itself is the fix; there is no numeric id to convert to.
   const nameOf = new Map((members ?? []).map((m) => [m.user_id, m.user?.name ?? null]));
+
+  /*
+   * Their latest sitting of THIS exam's paper.
+   *
+   * `myAttempts` is newest first, so a paper allowing two attempts is
+   * represented by the one that counts.
+   */
+  const mySitting = exam.assessment_id
+    ? (myAttempts ?? []).find((a) => Number(a.assessment_id) === Number(exam.assessment_id))
+    : undefined;
   // Marks already entered, so re-opening the panel shows what is there rather
   // than a blank grid that reads as "nobody has been marked".
   const entered = new Map((marks ?? []).map((m) => [m.user_id, Number(m.raw_marks)]));
@@ -158,7 +179,10 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
       : null,
     // Who has actually submitted, for the "Review submission" / "Didn't
     // attempt yet" column in the candidate register below.
-    exam.assessment_id && canMark && !staff
+    // Every marker, not only faculty: the submissions table below is the
+    // first thing an examinations officer and an administrator want too, and
+    // this was the one fetch that decided whether they got it.
+    exam.assessment_id && canMark
       ? onyxApiSafe<MarkingQueueRow[]>('/api/onyx/assessments/' + exam.assessment_id + '/marking')
       : null,
   ]);
@@ -333,6 +357,49 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
             phone, instead of the table scrolling inside its own box. */}
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_290px] lg:items-start">
           <div className="min-w-0 space-y-6">
+            {/*
+              * Who has handed it in, first.
+              *
+              * A marker opening an examination is asking "who sat it and what
+              * did they get", and the answer lived one click away on a
+              * separate marking queue. It leads the page now, with the same
+              * table the paper's own page and the console use.
+              */}
+            {canMark && exam.assessment_id ? (
+              <section>
+                <SectionHead title={'Submissions · ' + (markingQueue?.length ?? 0)} />
+                <Card className="p-4">
+                  {markingQueue === null ? (
+                    <p className="text-[13px] text-muted">
+                      The submissions could not be loaded.
+                    </p>
+                  ) : (
+                    <SubmissionsTable
+                      caption="Everybody who has sat this examination's paper."
+                      rows={markingQueue.map((r) => ({
+                        id: r.id,
+                        attempt: r.attempt,
+                        status: r.status,
+                        submitted_at: r.submitted_at,
+                        score: r.score,
+                        max_score: r.max_score,
+                        candidate: r.candidate,
+                        roll_number: r.roll_number ?? null,
+                        section: r.section ?? null,
+                        integrity_flags: r.integrity_flags,
+                      }))}
+                      markHref={(r) => '/onyx/attempts/' + r.id + '/mark'}
+                      scriptHref={(r) => '/api/proxy/onyx/attempts/' + r.id
+                        + '/marker-script.pdf'}
+                      bundleHref={markingQueue.length
+                        ? '/api/proxy/onyx/assessments/' + exam.assessment_id + '/scripts.pdf'
+                        : undefined}
+                    />
+                  )}
+                </Card>
+              </section>
+            ) : null}
+
             {/* This exam's paper is sat through the assessment engine, not
                 started here -- the actual start/resume button, with its own
                 eligibility and resume logic, already exists on the
@@ -364,12 +431,74 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
                     Opens {when.sub.split(' – ')[0]}. Unlike an assessment, this cannot be
                     started early — the window opens with the exam and nowhere sooner.
                   </p>
+                ) : mySitting ? (
+                  // They sat it. What follows says so and shows it, rather
+                  // than the old "if you sat it, your result appears here" --
+                  // which was written for a page that could not tell.
+                  <p className="mt-1 text-[13.5px] text-slate-700">
+                    You sat this paper. Your answers are below.
+                  </p>
                 ) : (
                   <p className="mt-1 text-[13.5px] text-slate-700">
-                    This exam’s window has closed. If you sat it, your result appears here
-                    once it is published.
+                    This exam’s window has closed, and there is no sitting of it on your
+                    record.
                   </p>
                 )}
+              </Card>
+            ) : null}
+
+            {/*
+              * Their own sitting: the mark, their answers, and the script.
+              *
+              * All three on the page they were already looking at. The mark
+              * alone lived on a separate Results screen, and what they wrote
+              * lived nowhere a candidate could reach from here at all.
+              */}
+            {!canMark && mySitting ? (
+              <Card className="p-4">
+                <div className="text-[10.5px] font-bold uppercase tracking-[.08em] text-muted">
+                  Your submission
+                </div>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  {mySitting.score !== null ? (
+                    <Score value={mySitting.score} outOf={mySitting.max_score}
+                      band={mySitting.passed === false ? 'lo' : 'hi'} />
+                  ) : (
+                    <Pill tone="soon">Not marked yet</Pill>
+                  )}
+                  {mySitting.submitted_at ? (
+                    <span className="text-[12.5px] text-muted">
+                      Handed in {dayTime(mySitting.submitted_at)}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
+                  {mySitting.score === null
+                    ? 'Something on this paper has to be read by a person. Your mark appears '
+                      + 'here once it has been marked.'
+                    : 'Open it to see every answer you gave, and the correct one beside it '
+                      + 'where the paper allows.'}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link href={'/onyx/attempts/' + mySitting.attempt_id}
+                    className="inline-flex min-h-[40px] items-center gap-1.5 rounded-2xl
+                               bg-brand-600 px-3.5 text-[13px] font-bold text-white
+                               hover:bg-brand-700">
+                    <Icon name="eye" className="h-3.5 w-3.5" />
+                    See your answers
+                  </Link>
+                  {/* The script as a document they can keep. */}
+                  <a
+                    href={'/api/proxy/onyx/attempts/' + mySitting.attempt_id + '/script.pdf'}
+                    download
+                    className="inline-flex min-h-[40px] items-center gap-1.5 rounded-2xl
+                               border border-line bg-white px-3.5 text-[13px] font-bold
+                               hover:bg-brand-50"
+                  >
+                    <Icon name="download" className="h-3.5 w-3.5" />
+                    Download my report
+                  </a>
+                </div>
               </Card>
             ) : null}
 

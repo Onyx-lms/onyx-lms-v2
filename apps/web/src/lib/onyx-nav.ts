@@ -96,7 +96,21 @@ const I = {
 const NAV: Record<Role, OnyxNavGroup[]> = {
   student: [
     { items: [I.dashboard, I.courses, I.domains, I.practice, I.spaces] },
-    { label: 'Assessment', items: [I.assess, I.exams, I.results, I.contests] },
+    /*
+     * No Results item.
+     *
+     * A result is not a place: it belongs to the paper or the examination that
+     * produced it, and both of those now show a candidate their mark, their
+     * answers and their downloadable script on the page they were already
+     * looking at. A separate Results screen sent somebody away from the exam
+     * they had just sat to find a total, and then gave them no way back to
+     * what they wrote.
+     *
+     * `/onyx/results` still exists and still answers -- links into it from
+     * elsewhere keep working, and nothing is deleted that anybody may have
+     * bookmarked. It simply stops being a destination in its own right.
+     */
+    { label: 'Assessment', items: [I.assess, I.exams, I.contests] },
     /*
      * No Fees for a learner.
      *
@@ -262,7 +276,9 @@ export function navFor(role: Role): OnyxNavGroup[] {
  * narrow for a thumb, and the sixth item is never the one anyone wanted.
  */
 const TABS: Record<Role, OnyxNavItem[]> = {
-  student:   [I.dashboard, I.courses, I.practice, I.results, I.timetable],
+  // Timetable takes the slot Results held: a learner reaching for a phone tab
+  // is asking "what is next", not "what did I score last week".
+  student:   [I.dashboard, I.courses, I.practice, I.assess, I.timetable],
   faculty:   [I.dashboard, I.courses, I.assess, I.people, I.timetable],
   // No Dashboard tab for either: it would bounce straight to the tab beside
   // it (their own hub is where `/onyx/dashboard` redirects them), which is a
