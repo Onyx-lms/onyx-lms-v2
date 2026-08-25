@@ -9,7 +9,7 @@ import {
   AssessmentPublishButton, type ConsoleBank,
 } from '@/components/onyx-platform-forms';
 import { Banner, DataTable, EmptyRow, Pill } from '@/components/onyx-ui';
-import { BankComposer } from '@/components/onyx-bank-composer';
+import { AssessmentTabs } from '@/lib/onyx-console-exams';
 
 export const metadata: Metadata = { title: 'Assessments' };
 
@@ -21,11 +21,6 @@ export default async function OnyxPlatformAssessmentsPage(
   const tenantId = Number(id);
   const academics = await attempt<AcademicsPayload>(
     '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/academics?limit=200');
-  // Published Code Lab problems, so a coding question in the paper builder has
-  // something to be marked against. Safe if it fails -- the builder simply
-  // does not offer the coding type.
-  const problems = (await attempt<{ id: number; title: string; status: string }[]>(
-    '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/problems')) ?? [];
   // The teaching divisions, so a paper or a sitting can be set for one of them
   // rather than for the whole cohort.
   const sections = (await attempt<{ id: number; name: string; status: number }[]>(
@@ -42,25 +37,15 @@ export default async function OnyxPlatformAssessmentsPage(
   const drawsNothing = assessments.filter((a) => !(a.sections ?? []).length);
 
   return (
-    <div className="min-w-0 space-y-4">
+    <div className="min-w-0">
+      <AssessmentTabs tenantId={tenantId} scheduled={assessments.length}
+        banks={banks.length} />
+
+      <div className="space-y-4">
       <RosterHeader count={assessments.length} noun="assessment"
         action={(
-          <div className="flex flex-wrap items-center gap-2">
-            {/* The whole paper in one form -- bank, questions, sections,
-                published. The control beside it makes an EMPTY paper, which
-                is still worth having when the questions are coming from a
-                bank that already exists. */}
-            {/* The bank, not a paper. An examination is scheduled FROM a bank of
-                parallel sets; "create a paper" made one paper and dealt it at
-                random, which is not how an examination is set. */}
-            <BankComposer
-              basePath={'onyx/platform/tenants/' + tenantId + '/banks'}
-              courses={courses.map((c) => ({ id: c.id, label: c.code + ' — ' + c.title }))}
-              problems={problems}
-            />
-            <CreateAssessmentForm tenantId={tenantId} courses={courses}
-              sections={sections} />
-          </div>
+          <CreateAssessmentForm tenantId={tenantId} courses={courses}
+            sections={sections} />
         )} />
 
       {/* Said on the list, where somebody can act on it -- not at the moment a
@@ -73,8 +58,8 @@ export default async function OnyxPlatformAssessmentsPage(
           no questions yet, so {drawsNothing.length === 1 ? 'it cannot' : 'they cannot'} be sat.
           {drawable.length
             ? ' Use “Add questions” to draw from a bank.'
-            : ' This institution has no question bank with questions in it yet — one has to be'
-              + ' authored from the institution before a paper can draw from it.'}
+            : ' This institution has no question bank with questions in it yet — build one'
+              + ' under “Assessment question bank” before a paper can draw from it.'}
         </Banner>
       ) : null}
 
@@ -138,6 +123,7 @@ export default async function OnyxPlatformAssessmentsPage(
           </DataTable>
         </div>
       )}
+      </div>
     </div>
   );
 }

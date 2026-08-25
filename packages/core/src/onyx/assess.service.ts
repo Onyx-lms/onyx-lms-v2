@@ -334,7 +334,46 @@ export class AssessService {
     let q = this.#db.from('onyx_question_banks').select(BANK_COLUMNS).eq('tenant_id', tenantId);
     if (courseId) q = q.eq('course_id', courseId);
     const { data } = await q.order('id', { ascending: false });
-    return data ?? [];
+    const rows = data ?? [];
+    if (!rows.length) return rows.map((b) => ({
+      ...b, question_count: 0, needs_marking: 0, set_count: 0,
+    }));
+
+    /*
+     * The three facts a setter asks about a bank before using it.
+     *
+     * How many SETS it holds decides whether it can be scheduled as parallel
+     * papers at all; how many questions, whether the sets are the same size;
+     * and how many need a person, whether results appear at hand-in or wait.
+     * All three used to require opening the bank and counting, on the
+     * institution's own screens -- the console had them and this did not.
+     *
+     * One query for every bank rather than one per bank: an institution with
+     * forty banks was forty round trips to answer a question about a list.
+     */
+    // eslint-disable-next-line max-len -- one literal; a concatenated select collapses the row type.
+    const { data: questions } = await this.#db.from('onyx_questions').select('id, bank_id, status, type, answer, set_number').eq('tenant_id', tenantId);
+
+    const counts = new Map<number, number>();
+    const human = new Map<number, number>();
+    const setsOf = new Map<number, Set<number>>();
+    for (const question of questions ?? []) {
+      if (Number(question.status) === 0) continue;   // retired: not drawable
+      const key = Number(question.bank_id);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+      setsOf.set(key, (setsOf.get(key) ?? new Set()).add(Number(question.set_number ?? 1)));
+      // The same two tests `#finalise` applies, in the same order: a type no
+      // machine can judge, or an objective type with nothing to judge against.
+      if (!isObjective(String(question.type)) || !hasKey(question.answer)) {
+        human.set(key, (human.get(key) ?? 0) + 1);
+      }
+    }
+    return rows.map((b) => ({
+      ...b,
+      question_count: counts.get(Number(b.id)) ?? 0,
+      needs_marking: human.get(Number(b.id)) ?? 0,
+      set_count: (setsOf.get(Number(b.id)) ?? new Set()).size,
+    }));
   }
 
   async addQuestion(tenantId: number, bankId: number, actor: AssessActor, input: {
@@ -515,11 +554,38 @@ export class AssessService {
   // ASS-01b -- assessments
   // -------------------------------------------------------------------------
 
+  /**
+   * A section id that really belongs to this institution, or null.
+   *
+   * Checked rather than trusted, for the reason every id crossing this
+   * boundary is: a section id from another institution would set a paper for a
+   * division nobody here is in, and the paper would then be invisible to
+   * everybody without ever looking broken.
+   */
+  async #sectionOfThisInstitution(
+    tenantId: number, sectionId: number | null | undefined,
+  ): Promise<number | null> {
+    if (sectionId == null) return null;
+    const { data } = await this.#db.from('onyx_sections')
+      .select('id').eq('tenant_id', tenantId).eq('id', Number(sectionId)).maybeSingle();
+    if (!data) throw new HttpError(404, 'No such section at this institution.');
+    return Number(sectionId);
+  }
+
   async createAssessment(tenantId: number, actor: AssessActor, input: {
     title: string; course_id?: number | null; instructions?: string | null;
     opens_at?: string | null; closes_at?: string | null;
     duration_minutes?: number; attempts_allowed?: number;
     sections?: { id: string; title: string; bank_id: number; take: number }[];
+    /**
+     * The teaching division this paper is set for. Null means every one.
+     *
+     * The console could set it and the institution's own staff could not,
+     * which made "set this test for Alpha-CSE only" a thing a lecturer had to
+     * ask the platform to do for them. The column and the visibility rule both
+     * already existed (0038, `isForSection`); only the way in was missing.
+     */
+    section_id?: number | null;
     shuffle_questions?: boolean; shuffle_options?: boolean;
     proctoring?: boolean; require_camera?: boolean; require_screen?: boolean;
     watch_camera?: boolean;
@@ -537,10 +603,12 @@ export class AssessService {
       throw new HttpError(422, 'The window closes before it opens.');
     }
     await this.#assertSectionsDrawable(tenantId, input.sections ?? []);
+    const sectionId = await this.#sectionOfThisInstitution(tenantId, input.section_id);
 
     const { data, error } = await this.#db.from('onyx_assessments').insert({
       tenant_id: tenantId,
       course_id: input.course_id ?? null,
+      section_id: sectionId,
       title: input.title.trim(),
       instructions: input.instructions ?? null,
       opens_at: input.opens_at ?? null,

@@ -5,6 +5,7 @@ import {
   attempt as read, SCROLLER, Unavailable, ago, Workflow, clockTime, tookFor,
 } from '@/lib/onyx-platform-tenant';
 import { Card, DataTable, EmptyRow, Icon, Pill, SectionHead } from '@/components/onyx-ui';
+import { ExamRegister } from '@/components/onyx-exam-register';
 import type { ConsoleAttempt } from '../../assessments/[assessmentId]/page';
 
 export const metadata: Metadata = { title: 'Examination' };
@@ -18,6 +19,16 @@ interface Seat {
   id: number; user_id: string; room_id: number | null; seat_no: string | null;
   student: { name: string; email: string } | null;
 }
+/** One candidate's whole sitting: who they are, what they sat, what they got. */
+export interface ExamRegisterRow {
+  user_id: string; name: string; email: string | null;
+  roll_number: string | null; section: string | null;
+  seat_no: string | null; room_id: number | null;
+  attempt_id: number | null; status: string | null; submitted_at: string | null;
+  score: number | null; max_score: number | null; integrity_flags: number;
+  raw_marks: number | null; moderation_delta: number | null; final_marks: number | null;
+  grade: string | null; result: 'pass' | 'fail' | null;
+}
 interface ExamDetail {
   exam: {
     id: number; title: string; starts_at: string; duration_minutes: number | null;
@@ -27,6 +38,7 @@ interface ExamDetail {
   };
   marks: Mark[];
   seats: Seat[];
+  register: ExamRegisterRow[];
   paper: {
     assessment: { id: number; title: string; status: string };
     attempts: ConsoleAttempt[];
@@ -61,6 +73,7 @@ export default async function OnyxPlatformExamPage(
 
   if (data === null) return <Unavailable what="examination" />;
   const { exam, marks, seats, paper, summary } = data;
+  const register = data.register ?? [];
 
   return (
     <div className="min-w-0 space-y-5">
@@ -117,6 +130,42 @@ export default async function OnyxPlatformExamPage(
           </div>
         </Card>
       </div>
+
+      {/*
+        * THE REGISTER: one row per candidate, which is the question anybody
+        * opening a sitting is actually asking.
+        *
+        * It sits above the two record-by-record tables rather than replacing
+        * them, because those answer different questions -- "what did the
+        * examiner enter" and "who sat where" -- and an operator reconciling a
+        * discrepancy needs to see each record as it was written. This is the
+        * reading; those are the sources.
+        */}
+      <section>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <SectionHead title="Candidates" />
+          {paper ? (
+            <a
+              href={'/api/proxy/onyx/platform/tenants/' + tenantId + '/exams/'
+                + examId + '/scripts.pdf'}
+              download
+              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border
+                         border-slate-300 bg-white px-3 text-[13px] font-semibold
+                         hover:bg-slate-50"
+            >
+              <Icon name="download" className="h-4 w-4" />
+              Download every script
+            </a>
+          ) : null}
+        </div>
+        <ExamRegister
+          rows={register}
+          attemptHref={(r) => '/onyx/platform/tenants/' + tenantId + '/attempts/' + r.attempt_id}
+          scriptHref={(r) => '/api/proxy/onyx/platform/tenants/' + tenantId
+            + '/attempts/' + r.attempt_id + '/script.pdf'}
+          outOf={exam.max_marks}
+        />
+      </section>
 
       {/* The online paper, where there is one. This is the half that carries
           responses and invigilation; the marks below are what an examiner

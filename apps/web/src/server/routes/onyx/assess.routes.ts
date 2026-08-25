@@ -194,6 +194,9 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
       anonymous_marking: z.boolean().optional(),
       moderation_required: z.boolean().optional(),
       pass_mark: z.number().int().min(0).nullish(),
+      // The teaching division this paper is set for. Absent or null is
+      // everybody, which is what every paper written before 0038 is.
+      section_id: z.number().int().positive().nullish(),
     }), req.body);
     return ok(await ctx.onyxAssess.createAssessment(
       claims.tenant_id, { userId: claims.user_id, role: claims.tenant_role }, body),

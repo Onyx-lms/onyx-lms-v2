@@ -474,6 +474,106 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       idOf(req), subIdOf(req, 'markId'), claims.user_id, body), 'Mark updated.');
   });
 
+  // ---------------------------------------------------------------------------
+  // Invigilation, from the console.
+  //
+  // The institution's own invigilation console has existed for some time; the
+  // platform had none, so an operator watching a live examination on behalf of
+  // an institution had to be handed that institution's own administrator
+  // account. These are the same operations behind the platform guard, and they
+  // delegate to the SAME service methods rather than reimplementing the rules
+  // -- who may be watched, when, and whether they consented is decided in one
+  // place, and a second copy of that decision is exactly the copy that would
+  // drift.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * The whole institution's invigilation queue, or one paper's.
+   *
+   * Never narrowed by course, unlike the tenant-side route's faculty branch:
+   * an operator in the console teaches nothing, so narrowing to "their"
+   * courses would narrow it to nothing.
+   */
+  app.get('/api/onyx/platform/tenants/:id/proctor/queue', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const q = req.query as { assessment_id?: string };
+    return ok(await ctx.onyxProctor.reviewQueue(
+      idOf(req), q.assessment_id ? [Number(q.assessment_id)] : undefined));
+  });
+
+  /** What one attempt's invigilation record says, event by event. */
+  app.get('/api/onyx/platform/tenants/:id/attempts/:attemptId/proctor', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxProctor.timeline(idOf(req), subIdOf(req, 'attemptId')));
+  });
+
+  /** Dismiss or uphold one flag. */
+  app.post('/api/onyx/platform/tenants/:id/proctor/events/:eventId/review', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      decision: z.enum(['dismissed', 'upheld']),
+      note: z.string().max(5000).nullish(),
+    }), req.body);
+    const tenantId = idOf(req);
+    return ok(await ctx.onyxProctor.review(tenantId, subIdOf(req, 'eventId'),
+      { tenant_id: tenantId, user_id: claims.user_id }, body), 'Reviewed.');
+  });
+
+  /** Settle the whole attempt: cleared, or upheld. */
+  app.post('/api/onyx/platform/tenants/:id/attempts/:attemptId/integrity', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      decision: z.enum(['cleared', 'upheld']),
+      note: z.string().max(5000).nullish(),
+    }), req.body);
+    const tenantId = idOf(req);
+    return ok(await ctx.onyxProctor.settle(tenantId, subIdOf(req, 'attemptId'),
+      { tenant_id: tenantId, user_id: claims.user_id }, body), 'Recorded.');
+  });
+
+  /**
+   * Watch one candidate's camera, live.
+   *
+   * The service refuses unless the paper was set up for live invigilation, the
+   * attempt is still running, and the candidate consented -- so an operator
+   * here gets exactly the three refusals an invigilator does, and cannot look
+   * at somebody who agreed to less than that. The watch is audited against the
+   * operator's own id, and the candidate is told on their own screen.
+   */
+  app.post('/api/onyx/platform/tenants/:id/attempts/:attemptId/watch', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxProctor.startWatch(
+      idOf(req), subIdOf(req, 'attemptId'), { userId: claims.user_id }));
+  });
+
+  /**
+   * One message into the negotiation, and everything the other side has sent.
+   *
+   * The sender is always `watcher`: a candidate signs in as themselves and uses
+   * the tenant-side route, so there is no side to work out and no branch to get
+   * wrong.
+   */
+  app.post('/api/onyx/platform/tenants/:id/attempts/:attemptId/signal', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      session_id: z.string().uuid(),
+      kind: z.enum(['offer', 'answer', 'ice', 'bye']),
+      payload: z.unknown(),
+    }), req.body);
+    return ok(await ctx.onyxProctor.postSignal(idOf(req), subIdOf(req, 'attemptId'), {
+      sessionId: body.session_id, sender: 'watcher', kind: body.kind, payload: body.payload,
+    }));
+  });
+
+  app.get('/api/onyx/platform/tenants/:id/attempts/:attemptId/signal', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const q = req.query as { session_id?: string; after?: string };
+    if (!q.session_id) throw new HttpError(422, 'Which watching session?');
+    return ok(await ctx.onyxProctor.pollSignals(idOf(req), subIdOf(req, 'attemptId'), {
+      sessionId: q.session_id, sender: 'watcher', after: q.after ? Number(q.after) : 0,
+    }));
+  });
+
   /**
    * One candidate's script, from the console.
    *

@@ -13,7 +13,8 @@ import {
   DataTable, EmptyRow, Icon, Pill, Banner, Segmented, State, StatTile,
 } from '@/components/onyx-ui';
 import { dayNumber } from '@/lib/onyx-time';
-import { BankComposer } from '@/components/onyx-bank-composer';
+import { FacultyExamTabs } from '@/lib/onyx-console-exams';
+import { CreateExamForm, type ConsoleBank } from '@/components/onyx-platform-forms';
 
 export const metadata: Metadata = { title: 'Examinations' };
 
@@ -138,17 +139,22 @@ export default async function OnyxExamsPage() {
   const canManageHalls = me.role === 'admin' || me.role === 'exams';
   // For the "Online paper" picker below -- staff see every assessment
   // regardless of status, same as the assessments page itself.
-  const [assessments, myCourses, problems] = await Promise.all([
+  const [assessments, myCourses, banks, sections] = await Promise.all([
     canSchedule
       ? onyxApiSafe<{ id: number; title: string; course_id: number | null }[]>(
         '/api/onyx/assessments')
       : null,
     me.role === 'faculty' ? onyxApiSafe<Course[]>('/api/onyx/my/courses') : null,
-    // For a coding question on a paper built here: it is marked by running a
-    // published problem's tests, so the picker needs the list. Staff only --
-    // `/problems` shows them drafts too, which is why the composer filters.
+    // No problem list any more: the only thing on this page that needed one
+    // was the bank composer, and that moved to the Exam paper tab. A request
+    // per page load for a picker nobody can see is a request for nothing.
+    // What a sitting can be set FROM, and which division it can be set for.
+    // Both were missing here: a lecturer could tie a sitting to a paper
+    // somebody had already built, but not build one from a bank, and could not
+    // say "Alpha-CSE only" at all.
+    canSchedule ? onyxApiSafe<ConsoleBank[]>('/api/onyx/banks') : null,
     canSchedule
-      ? onyxApiSafe<{ id: number; title: string; status: string }[]>('/api/onyx/problems')
+      ? onyxApiSafe<{ id: number; name: string; status: number }[]>('/api/onyx/sections')
       : null,
   ]);
   const schedulableCourses = me.role === 'faculty' ? (myCourses ?? []) : (courses ?? []);
@@ -205,86 +211,43 @@ export default async function OnyxExamsPage() {
       title="Examinations"
       subtitle="No learner is ever scheduled for two papers at once -- the calendar refuses that before it happens."
     >
+      {/* The two halves of Examinations: this one schedules and reports, the
+          other is where the question bank is written. */}
+      <FacultyExamTabs scheduled={rows.length} papers={(banks ?? []).length} />
+
       {/* CMP-02: "schedule exams, assign halls and seats, enter marks and
           generate transcripts end-to-end" -- none of which could be started
           from the product. */}
       {canSchedule || canManageHalls ? (
         <div className="mb-6 grid gap-3 lg:grid-cols-2">
+          {/*
+            * The same scheduling form the console uses.
+            *
+            * It replaces a flat CreatePanel that could only tie a sitting to a
+            * paper somebody had already built somewhere else. This one offers
+            * the three answers that are genuinely different examinations --
+            * set it from a bank, sit it on an existing paper, or sit it in a
+            * hall -- carries the proctoring switches, and asks which section
+            * is sitting it.
+            */}
           {canSchedule ? (
-            <CreatePanel
-              title="Schedule an exam" cta="Schedule an exam" icon="award" compact
-              rules={[{ kind: 'atMost', field: 'pass_marks', than: 'max_marks',
-                message: 'The pass mark is above the maximum for this paper.' }]}
-              endpoint="exams"
-              fields={[
-                { name: 'title', label: 'Exam', required: true, wide: true,
-                  placeholder: 'CS101 Final' },
-                { name: 'course_id', label: 'Course', type: 'select', required: true, numeric: true,
-                  options: schedulableCourses.map((c) => ({ value: String(c.id),
-                    label: c.code + ' — ' + c.title })) },
-                /* No Semester field. It was a row on this form asking somebody
-                   scheduling "CS101 Final" which semester row it belongs to,
-                   when the course already knows -- the API takes it from
-                   there. One less thing to get wrong, and nothing about the
-                   record changed. */
-                { name: 'starts_at', label: 'Starts', type: 'datetime', required: true,
-                  help: 'Nobody is scheduled for two exams at once — a clash is refused, '
-                    + 'naming who it caught.' },
-                /*
-                 * The three numbers are SHOWN rather than merely defaulted.
-                 *
-                 * They carried `fallback`, which is invisible: somebody saw
-                 * three empty boxes, and 180 minutes out of 100 with a pass at
-                 * 40 was chosen for them silently. `initial` puts the same
-                 * figures in the fields, where they can be read and changed
-                 * before anything is scheduled -- and the duration is what
-                 * decides how long the sitting occupies on everybody's
-                 * timetable, so it is not a number to hide.
-                 *
-                 * `fallback` stays beside it for the case `initial` cannot
-                 * cover: somebody clearing the box entirely. Visible default
-                 * and safe default are different jobs.
-                 *
-                 * The labels match the paper composer's, because these two
-                 * forms create the two halves of the same thing and should not
-                 * name the same field differently.
-                 */
-                { name: 'duration_minutes', label: 'Duration (minutes)', type: 'number', min: 5,
-                  max: 600, initial: 180, fallback: 180 },
-                { name: 'max_marks', label: 'Total marks', type: 'number', min: 1, max: 1000,
-                  initial: 100, fallback: 100 },
-                { name: 'pass_marks', label: 'Pass mark', type: 'number', min: 0, max: 1000,
-                  initial: 40, fallback: 40,
-                  help: 'The mark a candidate needs to pass this paper.' },
-                { name: 'assessment_id', label: 'Online paper', type: 'select', numeric: true,
-                  wide: true,
-                  options: [{ value: '', label: 'Offline — marks entered by hand' },
-                    ...(assessments ?? []).map((a) => ({ value: String(a.id),
-                      label: ((courses ?? []).find((c) => c.id === a.course_id)?.code ?? 'No course')
-                        + ' — ' + a.title }))],
-                  help: 'Ties this exam to a CBT paper on the same course, sat through the '
-                    + 'browser. Its own open/close window is overridden to exactly this exam’s '
-                    + 'scheduled time — unlike an ordinary assessment, a candidate cannot start '
-                    + 'it early or late.' },
-              ]}
-            />
-          ) : null}
-          {/* Building a paper used to mean leaving this page for Assessments
-              first -- a question bank, then a paper drawn from it, then back
-              here to pick it from the dropdown above. This does all three in
-              one form and the result is published, so it is already sitting
-              in that dropdown by the time this panel closes. */}
-          {/* The bank, not a paper. An examination is scheduled FROM a bank of
-              parallel sets, and the sets rotate down the register so that
-              neighbours never sit the same one. */}
-          {canSchedule ? (
-            <BankComposer
-              basePath="onyx/banks"
+            <CreateExamForm
+              basePath="onyx"
               courses={schedulableCourses.map((c) =>
-                ({ id: c.id, label: c.code + ' — ' + c.title }))}
-              problems={problems ?? []}
+                ({ id: Number(c.id), code: c.code, title: c.title }))}
+              sections={(sections ?? []).filter((sx) => sx.status === 1)
+                .map((sx) => ({ id: Number(sx.id), name: sx.name }))}
+              banks={banks ?? []}
+              papers={(assessments ?? []).map((a) => ({
+                id: Number(a.id), title: a.title, course_id: a.course_id,
+                status: 'published',
+              }))}
             />
           ) : null}
+          {/* The bank composer is NOT here any more: it lives on the Exam
+              paper tab. Building the sets and scheduling the sitting are
+              different work done at different times, and one page carrying
+              both meant scrolling past whichever one you did not come for. */}
           {/* Physical halls are an institution-wide resource shared across every
               course, not something one course's faculty allocate on their own --
               stays with the examinations office even now that scheduling itself

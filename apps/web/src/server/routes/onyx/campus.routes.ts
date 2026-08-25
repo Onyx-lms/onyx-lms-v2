@@ -416,6 +416,9 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
       max_marks: z.number().int().min(1).max(1000).optional(),
       pass_marks: z.number().int().min(0).max(1000).optional(),
       assessment_id: z.number().int().positive().nullish(),
+      // The teaching division sitting it. Absent or null is the whole cohort,
+      // which is what every sitting scheduled before 0038 is.
+      section_id: z.number().int().positive().nullish(),
     }), req.body);
     await assertCanRunExam(claims.tenant_id, body.course_id, claims.user_id, claims.tenant_role);
     await assertCanScheduleExam(claims.tenant_id, claims.tenant_role, claims.user_id);

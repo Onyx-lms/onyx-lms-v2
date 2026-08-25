@@ -115,6 +115,15 @@ export class ExaminationsService {
     semester_id: number | null; course_id: number; title: string; starts_at: string;
     duration_minutes?: number; max_marks?: number; pass_marks?: number;
     assessment_id?: number | null;
+    /**
+     * The section sitting it. Null means the whole cohort.
+     *
+     * The console could set this and the institution's own examinations office
+     * could not, so a sitting for one division had to be scheduled by the
+     * platform on their behalf. `isForSection` already decides who sees it;
+     * this is the way in.
+     */
+    section_id?: number | null;
   }) {
     // Course-scoping (only this course's own faculty, not faculty tenant-wide)
     // is the route layer's job -- assertCanRunExam in campus.routes.ts -- the
@@ -142,10 +151,22 @@ export class ExaminationsService {
       throw new HttpError(422, 'The pass mark cannot be above the maximum.');
     }
 
+    // Checked rather than trusted: a section id from another institution
+    // would set a sitting for a division nobody here is in, and it would then
+    // be invisible to everybody without ever looking broken.
+    let sectionId: number | null = null;
+    if (input.section_id != null) {
+      const { data: section } = await this.#db.from('onyx_sections').select('id')
+        .eq('tenant_id', tenantId).eq('id', Number(input.section_id)).maybeSingle();
+      if (!section) throw new HttpError(404, 'No such section at this institution.');
+      sectionId = Number(input.section_id);
+    }
+
     const { data, error } = await this.#db.from('onyx_exams').insert({
       tenant_id: tenantId,
       semester_id: input.semester_id,
       course_id: input.course_id,
+      section_id: sectionId,
       assessment_id: input.assessment_id ?? null,
       title: input.title.trim(),
       starts_at: new Date(start).toISOString(),

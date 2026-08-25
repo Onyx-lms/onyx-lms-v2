@@ -385,6 +385,13 @@ docs:check` fails the build if it has.
 | `POST` | `/api/onyx/platform/tenants/:id/fee-structures/:structureId/status` | platform admin |
 | `PATCH` | `/api/onyx/platform/tenants/:id/members/:memberId` | platform admin |
 | `PATCH` | `/api/onyx/platform/tenants/:id/exam-marks/:markId` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/proctor/queue` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/attempts/:attemptId/proctor` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/proctor/events/:eventId/review` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/attempts/:attemptId/integrity` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/attempts/:attemptId/watch` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/attempts/:attemptId/signal` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/attempts/:attemptId/signal` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/attempts/:attemptId/script.pdf` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/assessments/:assessmentId/scripts.pdf` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/exams/:examId/scripts.pdf` | platform admin |
@@ -495,4 +502,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_409 endpoints across 9 route files._
+_416 endpoints across 9 route files._

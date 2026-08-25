@@ -53,10 +53,22 @@ export interface Signal {
   payload: unknown;
 }
 
+/**
+ * Where one attempt's signalling lives, from the caller's side of the product.
+ *
+ * A candidate and an invigilator both reach it as `onyx/attempts/:id`; a
+ * platform operator reaches the same attempt through the console's own
+ * tenant-scoped guard, `onyx/platform/tenants/:tenant/attempts/:id`. The two
+ * routes call the same service, so only the prefix differs -- and passing it in
+ * is what stopped this file needing a second copy of the negotiation.
+ */
+export const attemptPath = (attemptId: number, base = 'onyx/attempts/'): string =>
+  '/api/proxy/' + base + attemptId;
+
 /** POSTs one message into the negotiation. */
 export async function sendSignal(attemptId: number, sessionId: string,
-  kind: Signal['kind'], payload: unknown): Promise<void> {
-  await fetch('/api/proxy/onyx/attempts/' + attemptId + '/signal', {
+  kind: Signal['kind'], payload: unknown, base?: string): Promise<void> {
+  await fetch(attemptPath(attemptId, base) + '/signal', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ session_id: sessionId, kind, payload }),
@@ -75,6 +87,7 @@ export async function sendSignal(attemptId: number, sessionId: string,
 export function pollSignals(
   attemptId: number, sessionId: string,
   onSignal: (signal: Signal) => void | Promise<void>,
+  base?: string,
 ): () => void {
   let after = 0;
   let live = true;
@@ -83,7 +96,7 @@ export function pollSignals(
   const tick = async () => {
     while (live) {
       try {
-        const res = await fetch('/api/proxy/onyx/attempts/' + attemptId
+        const res = await fetch(attemptPath(attemptId, base)
           + '/signal?session_id=' + encodeURIComponent(sessionId) + '&after=' + after);
         const body = await res.json().catch(() => ({ ok: false }));
         const rows: Signal[] = body.ok ? body.data : [];
@@ -112,10 +125,10 @@ export function pollSignals(
  * two copies of ICE plumbing is two places for a race to hide.
  */
 export function wire(pc: RTCPeerConnection, attemptId: number, sessionId: string,
-  onState?: (state: RTCPeerConnectionState) => void): void {
+  onState?: (state: RTCPeerConnectionState) => void, base?: string): void {
   pc.onicecandidate = (e) => {
     // The null candidate means gathering finished; there is nothing to send.
-    if (e.candidate) void sendSignal(attemptId, sessionId, 'ice', e.candidate.toJSON());
+    if (e.candidate) void sendSignal(attemptId, sessionId, 'ice', e.candidate.toJSON(), base);
   };
   pc.onconnectionstatechange = () => onState?.(pc.connectionState);
 }

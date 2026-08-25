@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/onyx-ui';
 import {
-  apply, hasTurn, iceServers, pollSignals, sendSignal, wire, type Signal,
+  apply, attemptPath, hasTurn, iceServers, pollSignals, sendSignal, wire, type Signal,
 } from '@/lib/onyx-webrtc';
 
 /**
@@ -145,9 +145,18 @@ export function CandidateCamera({ attemptId, enabled }: {
  * streams in one browser tab, which no browser will do. A whole-hall view
  * needs an SFU, and an SFU is a server this deployment does not have.
  */
-export function WatchCandidate({ attemptId, name }: {
+export function WatchCandidate({ attemptId, name, base }: {
   attemptId: number;
   name: string;
+  /**
+   * Which side of the product is watching.
+   *
+   * Defaults to the institution's own route. The platform console passes its
+   * tenant-scoped prefix instead, because its operator holds a platform
+   * session rather than a membership -- same service, same three refusals,
+   * different guard.
+   */
+  base?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<'connecting' | 'live' | 'failed' | 'idle'>('idle');
@@ -158,7 +167,7 @@ export function WatchCandidate({ attemptId, name }: {
   const session = useRef<string | null>(null);
 
   const close = () => {
-    if (session.current) void sendSignal(attemptId, session.current, 'bye', {});
+    if (session.current) void sendSignal(attemptId, session.current, 'bye', {}, base);
     stop.current?.();
     stop.current = null;
     pc.current?.close();
@@ -176,7 +185,7 @@ export function WatchCandidate({ attemptId, name }: {
     setOpen(true);
     setState('connecting');
 
-    const res = await fetch('/api/proxy/onyx/attempts/' + attemptId + '/watch',
+    const res = await fetch(attemptPath(attemptId, base) + '/watch',
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     const body = await res.json().catch(() => ({ ok: false }));
     if (!body.ok) {
@@ -199,7 +208,7 @@ export function WatchCandidate({ attemptId, name }: {
     wire(peer, attemptId, id, (s) => {
       if (s === 'connected') setState('live');
       else if (s === 'failed' || s === 'disconnected') setState('failed');
-    });
+    }, base);
 
     stop.current = pollSignals(attemptId, id, async (signal) => {
       if (signal.kind === 'answer') {
@@ -208,11 +217,11 @@ export function WatchCandidate({ attemptId, name }: {
       }
       if (signal.kind === 'bye') { close(); return; }
       await apply(peer, signal);
-    });
+    }, base);
 
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
-    await sendSignal(attemptId, id, 'offer', offer);
+    await sendSignal(attemptId, id, 'offer', offer, base);
   };
 
   return (

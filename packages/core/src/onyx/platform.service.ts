@@ -17,6 +17,7 @@ import type { Role } from '@onyx/types';
 import type { OnyxDb } from './db.ts';
 import { onyxAuthAdmin, onyxAuthClientFresh } from './db.ts';
 import { HttpError } from '../http/errors.ts';
+import { peopleFor } from './directory.ts';
 import { slugify } from '../authoring/slug.ts';
 import { ROLES, normaliseCommunityUrl } from './tenancy.service.ts';
 import { gradeFor } from './examinations.service.ts';
@@ -81,6 +82,28 @@ interface PersonRow {
   batch: { id: number; name: string; code: string } | null;
   programme: { id: number; name: string; code: string } | null;
   enrollment_count: number; teaching_count: number;
+}
+
+/**
+ * Roll order for the register above.
+ *
+ * `byRoll` in `directory.ts` sorts `Person` records; this sorts the joined row,
+ * which carries the same two fields under the same names. Numeric-aware, so
+ * MR-002 comes before MR-010, and anybody without a number sorts last by name
+ * rather than first -- an unnumbered row at the top of a numbered register
+ * reads as an error.
+ */
+function byRoll2(
+  a: { roll_number: string | null; name: string },
+  b: { roll_number: string | null; name: string },
+): number {
+  if (a.roll_number && b.roll_number) {
+    return a.roll_number.localeCompare(b.roll_number, undefined,
+      { numeric: true, sensitivity: 'base' });
+  }
+  if (a.roll_number) return -1;
+  if (b.roll_number) return 1;
+  return a.name.localeCompare(b.name);
 }
 
 export class PlatformService {
@@ -528,7 +551,11 @@ export class PlatformService {
       // Examinations (CMP-02): scheduled papers, not the marks off them --
       // those are still tenantGrades()'s job, audited the same as ever.
       this.#db.from('onyx_exams')
-        .select('id, course_id, title, starts_at, duration_minutes, max_marks, pass_marks, status, created_at')
+        // With `assessment_id`: whether a sitting is sat in a browser is what
+        // decides if it can be invigilated at all, and the console was reading
+        // that fact from nowhere.
+        // eslint-disable-next-line max-len -- one literal, same reason as above.
+        .select('id, course_id, assessment_id, section_id, title, starts_at, duration_minutes, max_marks, pass_marks, status, created_at')
         .eq('tenant_id', id).order('starts_at', { ascending: false, nullsFirst: false })
         .limit(limit + 1),
     ]);
@@ -1705,7 +1732,7 @@ export class PlatformService {
       status: 'scheduled', created_by: actorId,
     })
       // eslint-disable-next-line max-len -- one literal: a concatenated select collapses the client's row type.
-      .select('id, title, course_id, semester_id, assessment_id, starts_at, duration_minutes, max_marks, pass_marks, status')
+      .select('id, title, course_id, section_id, semester_id, assessment_id, starts_at, duration_minutes, max_marks, pass_marks, status')
       .maybeSingle();
     if (error) throw new HttpError(500, 'Could not schedule the exam: ' + error.message);
     await this.#log(actorId, 'exam.scheduled', 'exam', Number(data!.id), null,
@@ -1808,7 +1835,10 @@ export class PlatformService {
       moderation_required: flag(input.moderation_required, false),
       instant_results: flag(input.instant_results, true),
       status: 'draft', created_by: actorId,
-    }).select('id, title, course_id, opens_at, closes_at, status').maybeSingle();
+      // With `section_id`: the row is written with one and the response did
+      // not carry it back, so nothing could confirm which division a paper had
+      // just been set for -- including the form that had only asked.
+    }).select('id, title, course_id, section_id, opens_at, closes_at, status').maybeSingle();
     if (error) throw new HttpError(500, 'Could not create the assessment: ' + error.message);
     await this.#log(actorId, 'assessment.created', 'assessment', Number(data!.id), null,
       { title: data!.title, course_id: input.course_id ?? null });
@@ -2380,36 +2410,19 @@ export class PlatformService {
    * is made: the section editor is where a bank is picked.
    */
   async questionBanks(tenantId: number) {
-    const { data: banks } = await this.#db.from('onyx_question_banks')
-      .select('id, name, course_id, description, created_at').eq('tenant_id', tenantId)
-      .order('id');
-    if (!(banks ?? []).length) return [];
-    // eslint-disable-next-line max-len
-    // eslint-disable-next-line max-len
-    const { data: questions } = await this.#db.from('onyx_questions').select('id, bank_id, status, type, answer, set_number').eq('tenant_id', tenantId);
-
-    const counts = new Map<number, number>();
-    const human = new Map<number, number>();
-    // The parallel sets each bank holds, which is what decides whether it can
-    // be scheduled: "10 sets of 5" is the fact a setter is looking for.
-    const setsOf = new Map<number, Set<number>>();
-    for (const q of questions ?? []) {
-      if (Number(q.status) === 0) continue;      // retired questions are not drawable
-      const key = Number(q.bank_id);
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-      setsOf.set(key, (setsOf.get(key) ?? new Set()).add(Number(q.set_number ?? 1)));
-      // The same two tests `#finalise` applies, in the same order: a type no
-      // machine can judge, or an objective type with nothing to judge against.
-      if (!isObjective(String(q.type)) || !hasKey(q.answer)) {
-        human.set(key, (human.get(key) ?? 0) + 1);
-      }
+    /*
+     * Delegated, not duplicated.
+     *
+     * This used to hold its own copy of the counting -- the same query, the
+     * same two marking tests, the same set tally -- beside AssessService's
+     * bare `banks()`. Two copies of "how many sets does this bank hold" is
+     * how the console and the institution's own screen come to disagree
+     * about whether a bank can be scheduled.
+     */
+    if (!this.#assess) {
+      throw new HttpError(500, 'The question bank service is not available here.');
     }
-    return (banks ?? []).map((b) => ({
-      ...b,
-      question_count: counts.get(Number(b.id)) ?? 0,
-      needs_marking: human.get(Number(b.id)) ?? 0,
-      set_count: (setsOf.get(Number(b.id)) ?? new Set()).size,
-    }));
+    return await this.#assess.banks(tenantId);
   }
 
   /**
@@ -2559,6 +2572,17 @@ export class PlatformService {
 
     const rows = attempts ?? [];
     const users = await this.#usersById(rows.map((a) => String(a.user_id)));
+    /*
+     * The roll number and the section, alongside the name.
+     *
+     * A console operator asked how a paper went is asked back "for whom" --
+     * and the answer an institution gives is a roll number and a section, not
+     * an email address. Anonymous marking is not honoured here on purpose:
+     * this is the platform console, not a marker's queue, and its whole job is
+     * to see who is who. What a MARKER sees is decided in `markingQueue`,
+     * which strips all three.
+     */
+    const people = await peopleFor(this.#db, tenantId, rows.map((a) => a.user_id));
 
     // Integrity in one query rather than one per attempt.
     const { data: events } = rows.length
@@ -2582,6 +2606,8 @@ export class PlatformService {
       attempts: rows.map((a) => ({
         ...a,
         student: users.get(String(a.user_id)) ?? null,
+        roll_number: people.get(String(a.user_id))?.roll_number ?? null,
+        section: people.get(String(a.user_id))?.section ?? null,
         integrity_score: flagged.get(Number(a.id)) ?? 0,
       })),
       summary: {
@@ -2635,11 +2661,84 @@ export class PlatformService {
       ...(seats ?? []).map((x) => String(x.user_id)),
     ]);
 
+    /*
+     * ONE ROW PER CANDIDATE, which is how a sitting is actually read.
+     *
+     * The three records a sitting produces -- the attempt sat in the browser,
+     * the mark an examiner entered, the seat they were given -- were returned
+     * as three separate lists, and the screen showed three separate tables. So
+     * "how did Meghana do" meant finding her name three times and holding the
+     * answer together in your head, and a candidate who sat the paper but was
+     * never marked appeared in one table and not the next with nothing saying
+     * why.
+     *
+     * They are joined here rather than on the page because the join needs the
+     * roll number and the section, which are on a fourth table, and doing it
+     * per screen is how the console came to show raw uuids in the first place.
+     *
+     * The union is deliberate: somebody with a mark and no attempt sat it in a
+     * hall, and somebody with an attempt and no mark is waiting on a marker.
+     * Both are real states and both have to be visible.
+     */
+    const everyone = [...new Set([
+      ...(marks ?? []).map((m) => String(m.user_id)),
+      ...(seats ?? []).map((x) => String(x.user_id)),
+      ...(paper?.attempts ?? []).map((a) => String(a.user_id)),
+    ])];
+    const people = await peopleFor(this.#db, tenantId, everyone);
+    const markOf = new Map((marks ?? []).map((m) => [String(m.user_id), m]));
+    const seatOf = new Map((seats ?? []).map((x) => [String(x.user_id), x]));
+    // The LAST attempt, which is the one that counts where a paper allows more
+    // than one: attempts are read in id order, so the later write wins.
+    const attemptOf = new Map((paper?.attempts ?? []).map((a) => [String(a.user_id), a]));
+
+    const register = everyone.map((userId) => {
+      const person = people.get(userId);
+      const mark = markOf.get(userId);
+      const sat = attemptOf.get(userId);
+      const final = mark ? Number(mark.final_marks ?? 0) : null;
+      return {
+        user_id: userId,
+        name: person?.name ?? users.get(userId)?.name ?? 'Unknown',
+        email: users.get(userId)?.email ?? null,
+        roll_number: person?.roll_number ?? null,
+        section: person?.section ?? null,
+        seat_no: seatOf.get(userId)?.seat_no ?? null,
+        room_id: seatOf.get(userId)?.room_id ?? null,
+        attempt_id: sat ? Number(sat.id) : null,
+        status: sat ? String(sat.status) : null,
+        submitted_at: sat?.submitted_at ?? null,
+        score: sat?.score ?? null,
+        max_score: sat?.max_score ?? null,
+        integrity_flags: sat ? Number(sat.integrity_score ?? 0) : 0,
+        raw_marks: mark ? Number(mark.raw_marks ?? 0) : null,
+        moderation_delta: mark ? Number(mark.moderation_delta ?? 0) : null,
+        final_marks: final,
+        grade: mark?.grade ?? null,
+        // Said once, here, so three screens cannot disagree about it. Null
+        // where there is nothing to judge -- an unmarked script is not a fail.
+        result: final == null || exam.pass_marks == null
+          ? null
+          : (final >= Number(exam.pass_marks) ? 'pass' : 'fail'),
+      };
+    }).sort(byRoll2);
+
     const finals = (marks ?? []).map((m) => Number(m.final_marks ?? 0));
     return {
       exam: { ...exam, course: course ?? null },
-      marks: (marks ?? []).map((m) => ({ ...m, student: users.get(String(m.user_id)) ?? null })),
-      seats: (seats ?? []).map((x) => ({ ...x, student: users.get(String(x.user_id)) ?? null })),
+      marks: (marks ?? []).map((m) => ({
+        ...m,
+        student: users.get(String(m.user_id)) ?? null,
+        roll_number: people.get(String(m.user_id))?.roll_number ?? null,
+        section: people.get(String(m.user_id))?.section ?? null,
+      })),
+      seats: (seats ?? []).map((x) => ({
+        ...x,
+        student: users.get(String(x.user_id)) ?? null,
+        roll_number: people.get(String(x.user_id))?.roll_number ?? null,
+        section: people.get(String(x.user_id))?.section ?? null,
+      })),
+      register,
       paper,
       summary: {
         entered: (marks ?? []).length,

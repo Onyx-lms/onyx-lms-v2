@@ -2105,12 +2105,29 @@ export function CreateAssessmentForm({ tenantId, courses, sections = [] }: {
  * this is the console catching up, and nothing about the row that gets written
  * changes.
  */
-export function CreateExamForm({ tenantId, courses, papers = [], sections = [] }: {
-  tenantId: number; courses: CourseOption[];
+export function CreateExamForm({
+  tenantId, courses, papers = [], sections = [], banks = [], basePath,
+}: {
+  /** Only used to build the default path; omit it when passing `basePath`. */
+  tenantId?: number;
+  /**
+   * Which side of the product is scheduling.
+   *
+   * The console writes through `onyx/platform/tenants/:id`, an institution's
+   * own staff through `onyx` — same fields, same four writes, same refusals,
+   * different guard. It is one form because the client asked for one form:
+   * "see how super admin can create examination, do it similarly for faculty",
+   * and two copies of a four-write sequence is two chances to leave a paper
+   * behind.
+   */
+  basePath?: string;
+  courses: CourseOption[];
   /** The institution's papers, so a sitting can be one sat in a browser. */
   papers?: { id: number; title: string; course_id: number | null; status: string }[];
   /** Its teaching divisions, so a sitting can be for one of them. */
   sections?: { id: number; name: string }[];
+  /** The banks a sitting can be set from directly. */
+  banks?: ConsoleBank[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -2120,6 +2137,12 @@ export function CreateExamForm({ tenantId, courses, papers = [], sections = [] }
   const [sectionId, setSectionId] = useState('');
   const [pending, start] = useTransition();
   const [courseId, setCourseId] = useState<number | null>(courses[0]?.id ?? null);
+  /** How this sitting is sat -- and therefore what the rest of the form asks. */
+  const [how, setHow] = useState<'bank' | 'paper' | 'offline'>('bank');
+  const [bankId, setBankId] = useState('');
+  const [take, setTake] = useState('');
+  const [switches, setSwitches] = useState<PaperSwitchState>(PAPER_SWITCH_DEFAULTS);
+  const [stage, setStage] = useState<string | null>(null);
   // A course is all that is genuinely required.
   const ready = courses.length > 0;
 
@@ -2132,6 +2155,25 @@ export function CreateExamForm({ tenantId, courses, papers = [], sections = [] }
    */
   const onThisCourse = papers.filter((a) => Number(a.course_id) === Number(courseId));
 
+  /*
+   * Banks for this course, plus the ones tied to no course at all.
+   *
+   * A bank with no course is a general one -- an aptitude paper, a placement
+   * screen -- and hiding it would mean a setter could author a bank the
+   * scheduler then cannot find. A bank with no questions is not offered at
+   * all: scheduling from it produces a paper nobody can sit.
+   */
+  const usableBanks = banks.filter((b) => (
+    b.question_count > 0
+    && (b.course_id == null || Number(b.course_id) === Number(courseId))
+  ));
+  const chosenBank = usableBanks.find((b) => String(b.id) === bankId);
+  /** The largest draw a bank can honour: the size of one of its sets. */
+  const perSet = chosenBank
+    ? Math.floor(chosenBank.question_count / Math.max(1, Number(chosenBank.set_count ?? 1)))
+    : 0;
+  const drawing = Number(take || perSet || 0);
+
   const form = (
     <form
       className="grid gap-3 sm:grid-cols-2"
@@ -2141,23 +2183,103 @@ export function CreateExamForm({ tenantId, courses, papers = [], sections = [] }
         setError(null);
         start(async () => {
           const startsRaw = String(data.get('starts_at') ?? '');
-          const paper = String(data.get('assessment_id') ?? '');
-          const res = await post('onyx/platform/tenants/' + tenantId + '/exams', {
-            title: String(data.get('title') ?? ''),
-            course_id: Number(data.get('course_id')),
+          const startsAt = fromLocalInput(startsRaw) ?? '';
+          const duration = Number(data.get('duration_minutes') || 180);
+          const title = String(data.get('title') ?? '');
+          const course = Number(data.get('course_id'));
+          const section = sectionId && sectionId !== 'all' ? Number(sectionId) : null;
+          const base = basePath ?? 'onyx/platform/tenants/' + tenantId;
+
+          /*
+           * Scheduling FROM A BANK builds the paper on the way past.
+           *
+           * The paper was always there -- an examination sat in a browser is an
+           * online paper the sitting points at -- but it was an object somebody
+           * had to know about: create it on another screen, draw it from a
+           * bank, publish it, and only then would this form offer it. Three
+           * screens and a vocabulary lesson to schedule one exam.
+           *
+           * So the writes happen here, in the order that leaves the least
+           * behind if one fails: the paper, its draw from the bank, published;
+           * then the sitting. A failure part-way leaves an unpublished paper
+           * and says so, which is recoverable -- the reverse order would leave
+           * a sitting pointing at a paper nobody can sit.
+           */
+          let paperId: number | null = how === 'paper'
+            ? Number(data.get('assessment_id') || 0) || null
+            : null;
+
+          if (how === 'bank') {
+            if (!bankId) { setError('Pick the question bank this exam is set from.'); return; }
+            setStage('Making the paper...');
+            const made = await post(base + '/assessments', {
+              title,
+              course_id: course,
+              duration_minutes: duration,
+              // The window is the sitting itself. It is overridden again when
+              // the exam row is written, and set here so the paper is never
+              // momentarily open to the whole cohort.
+              opens_at: startsAt || null,
+              closes_at: startsAt
+                ? new Date(new Date(startsAt).getTime() + duration * 60_000).toISOString()
+                : null,
+              pass_mark: Number(data.get('pass_marks') || 0) || null,
+              section_id: section,
+              ...paperSwitchBody(switches),
+            });
+            if (!made.ok || !made.data?.id) {
+              setStage(null);
+              setError(made.message ?? 'The paper could not be created.');
+              return;
+            }
+            paperId = Number(made.data.id);
+
+            setStage('Drawing from the bank...');
+            const drew = await post(base + '/assessments/' + paperId + '/sections', {
+              sections: [{
+                id: 's1',
+                title: 'All questions',
+                bank_id: Number(bankId),
+                take: Math.max(1, drawing),
+              }],
+            }, 'PUT');
+            if (!drew.ok) {
+              setStage(null);
+              setError('The paper was created but drew nothing: '
+                + (drew.message ?? 'the bank could not be read.'));
+              return;
+            }
+
+            setStage('Publishing it...');
+            const live = await post(base + '/assessments/' + paperId + '/publish', {});
+            if (!live.ok) {
+              setStage(null);
+              setError('The paper was created but could not be published: '
+                + (live.message ?? 'that did not work.'));
+              return;
+            }
+          }
+
+          setStage('Scheduling the sitting...');
+          const res = await post(base + '/exams', {
+            title,
+            course_id: course,
             // No semester_id is sent at all. The API reads the course's own
             // term, and writes none where the course has none.
-            ...(paper ? { assessment_id: Number(paper) } : {}),
+            ...(paperId ? { assessment_id: paperId } : {}),
             // Institution time, not the browser's -- see the edit form above.
-            starts_at: fromLocalInput(startsRaw) ?? '',
+            starts_at: startsAt,
             // 'all' is the whole cohort, which the API expresses as null.
-            section_id: sectionId && sectionId !== 'all' ? Number(sectionId) : null,
-            duration_minutes: Number(data.get('duration_minutes') || 180),
+            section_id: section,
+            duration_minutes: duration,
             max_marks: Number(data.get('max_marks') || 100),
             pass_marks: Number(data.get('pass_marks') || 40),
           });
+          setStage(null);
           if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
           setOpen(false);
+          setBankId('');
+          setTake('');
           router.refresh();
         });
       }}
@@ -2171,8 +2293,9 @@ export function CreateExamForm({ tenantId, courses, papers = [], sections = [] }
       <div>
         <label className={label} htmlFor="ce-course">Course</label>
         <select id="ce-course" name="course_id" required className={field}
-          value={courseId ?? ''} onChange={(e) => setCourseId(Number(e.target.value))}>
-          {courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.title}</option>)}
+          value={courseId ?? ''}
+          onChange={(e) => { setCourseId(Number(e.target.value)); setBankId(''); }}>
+          {courses.map((c) => <option key={c.id} value={c.id}>{c.code} &mdash; {c.title}</option>)}
         </select>
       </div>
       <div>
@@ -2189,37 +2312,123 @@ export function CreateExamForm({ tenantId, courses, papers = [], sections = [] }
       <SectionChoice id="ce-section" sections={sections}
         value={sectionId} onChange={setSectionId} />
 
-      {/*
-        * The paper this sitting is sat on, and the reason this form existed
-        * without one was an oversight rather than a decision: every sitting
-        * scheduled from here was marked by hand, and there was no way from the
-        * console to run an examination anybody sits in a browser.
-        */}
-      <div className="sm:col-span-2">
-        <label className={label} htmlFor="ce-paper">Online paper</label>
-        <select id="ce-paper" name="assessment_id" className={field}>
-          <option value="">Offline — marks entered by hand</option>
-          {onThisCourse.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.title}{a.status === 'published' ? '' : ' (' + a.status + ')'}
-            </option>
-          ))}
-        </select>
-        <p className="mt-1 text-[12px] leading-relaxed text-muted">
-          {onThisCourse.length
-            ? 'Ties this sitting to a paper sat through the browser. Its own open and close '
-              + 'times are overridden to exactly this sitting — unlike an ordinary '
-              + 'assessment, a candidate cannot start it early or late.'
-            : 'This course has no paper yet. Build one under Assessments — a paper needs a '
-              + 'question bank to draw from before anybody can sit it.'}
-        </p>
-      </div>
-
       <div>
         <label className={label} htmlFor="ce-dur">Duration (minutes)</label>
         <input id="ce-dur" name="duration_minutes" type="number" min={5} defaultValue={180}
           className={field} />
       </div>
+
+      {/*
+        * How it is sat, as a choice rather than a select nobody read.
+        *
+        * The three answers are genuinely different examinations -- one set from
+        * a bank, one on a paper somebody already built, one on paper in a hall
+        * -- and each asks for different things below, which a dropdown could
+        * not show.
+        */}
+      <fieldset className="col-span-full rounded-xl border border-line p-3">
+        <legend className="px-1 text-[12.5px] font-semibold text-slate-700">
+          How it is sat
+        </legend>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {([
+            { k: 'bank' as const,
+              title: 'From a question bank',
+              body: 'Builds the paper from a bank of sets and publishes it.' },
+            { k: 'paper' as const,
+              title: 'On an existing paper',
+              body: 'Ties this sitting to a paper that is already built.' },
+            { k: 'offline' as const,
+              title: 'In a hall',
+              body: 'Nothing is sat in a browser; marks are entered by hand.' },
+          ]).map((choice) => (
+            <label key={choice.k}
+              className={'flex cursor-pointer gap-2.5 rounded-xl border p-2.5 '
+                + (how === choice.k
+                  ? 'border-brand-500 bg-brand-50/60'
+                  : 'border-line bg-white hover:bg-slate-50')}>
+              <input type="radio" name="ce-how" className="mt-0.5" checked={how === choice.k}
+                onChange={() => setHow(choice.k)} />
+              <span className="min-w-0">
+                <span className="block text-[13px] font-bold text-ink">{choice.title}</span>
+                <span className="block text-[12px] leading-relaxed text-muted">
+                  {choice.body}
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
+
+        {how === 'bank' ? (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className={label} htmlFor="ce-bank">Question bank</label>
+              <select id="ce-bank" className={field} value={bankId}
+                onChange={(e) => { setBankId(e.target.value); setTake(''); }}>
+                <option value="">Choose a bank...</option>
+                {usableBanks.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} &mdash; {Number(b.set_count ?? 1)} set
+                    {Number(b.set_count ?? 1) === 1 ? '' : 's'}, {b.question_count} questions
+                  </option>
+                ))}
+              </select>
+              {usableBanks.length ? null : (
+                <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                  No bank on this course has questions in it yet. Build one under
+                  <strong> Exam paper</strong> first.
+                </p>
+              )}
+            </div>
+            <div>
+              <label className={label} htmlFor="ce-take">Questions per candidate</label>
+              <input id="ce-take" type="number" min={1} max={perSet || undefined}
+                className={field} value={take}
+                placeholder={perSet ? String(perSet) : ''}
+                onChange={(e) => setTake(e.target.value)} />
+              <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                {chosenBank
+                  ? 'Each candidate is dealt one set. This bank holds ' + perSet
+                    + ' question' + (perSet === 1 ? '' : 's') + ' per set'
+                    + (Number(chosenBank.set_count ?? 1) > 1
+                      ? ', rotating by roll number so neighbours differ.'
+                      : ', and everybody sits the same one.')
+                  : 'Leave it blank to use the whole set.'}
+              </p>
+              {markingNote(chosenBank) ? (
+                <p className="mt-1 text-[12px] leading-relaxed text-amber-800">
+                  {markingNote(chosenBank)}
+                </p>
+              ) : null}
+            </div>
+            <div className="col-span-full">
+              <PaperSwitches value={switches} onChange={setSwitches} />
+            </div>
+          </div>
+        ) : null}
+
+        {how === 'paper' ? (
+          <div className="mt-3">
+            <label className={label} htmlFor="ce-paper">Online paper</label>
+            <select id="ce-paper" name="assessment_id" className={field}>
+              <option value="">Choose a paper...</option>
+              {onThisCourse.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.title}{a.status === 'published' ? '' : ' (' + a.status + ')'}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[12px] leading-relaxed text-muted">
+              {onThisCourse.length
+                ? 'Its own open and close times are overridden to exactly this sitting '
+                  + '&mdash; unlike an ordinary assessment, a candidate cannot start it '
+                  + 'early or late.'
+                : 'This course has no paper yet. Set it from a bank instead.'}
+            </p>
+          </div>
+        ) : null}
+      </fieldset>
+
       <div>
         <label className={label} htmlFor="ce-max">Total marks</label>
         <input id="ce-max" name="max_marks" type="number" min={1} defaultValue={100}
@@ -2230,14 +2439,17 @@ export function CreateExamForm({ tenantId, courses, papers = [], sections = [] }
         <input id="ce-pass" name="pass_marks" type="number" min={0} defaultValue={40}
           className={field} />
       </div>
-      <div className="col-span-full flex gap-2 pt-1">
+      <div className="col-span-full flex flex-wrap items-center gap-2 pt-1">
         <button type="submit" disabled={pending} className={button}>
-          {pending ? 'Scheduling…' : 'Schedule it'}
+          {pending ? 'Scheduling...' : 'Schedule it'}
         </button>
         <button type="button" disabled={pending} onClick={() => setOpen(false)}
           className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
           Cancel
         </button>
+        {/* Four writes behind one button: say which one is running, so a slow
+            one does not read as a hung form. */}
+        {stage ? <span className="text-[12.5px] text-muted">{stage}</span> : null}
       </div>
     </form>
   );

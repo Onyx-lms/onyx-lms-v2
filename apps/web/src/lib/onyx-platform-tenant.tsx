@@ -91,6 +91,9 @@ export interface ExamRow {
   id: number; title: string; course: { code: string; title: string } | null;
   starts_at: string | null; duration_minutes: number; max_marks: number; pass_marks: number;
   status: string; seats_allocated: number; marks_entered: number; marks_published: number;
+  /** The online paper this sitting is sat on, where it is sat in a browser. */
+  assessment_id: number | null;
+  section_id: number | null;
 }
 export interface AcademicsPayload {
   limit: number;

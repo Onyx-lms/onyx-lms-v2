@@ -81,13 +81,28 @@ const button = 'rounded-xl bg-brand-600 px-4 py-2 text-[13.5px] font-bold text-w
 const quiet = 'rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[13px] '
   + 'font-semibold hover:bg-slate-50 disabled:opacity-60';
 
-export function BankComposer({ basePath, courses, problems = [], onDone }: {
+export function BankComposer({
+  basePath, courses, problems = [], onDone, singleSetOption = false, noun = 'examination',
+}: {
   /** `onyx/banks` for an institution, or the console's tenant-scoped path. */
   basePath: string;
   courses: { id: number; label: string }[];
   problems?: { id: number; title: string; status: string }[];
   /** Where to go when it is built. Defaults to refreshing the page. */
   onDone?: (bankId: number) => void;
+  /**
+   * Offer "one set" as a first-class choice, and start on it.
+   *
+   * An assessment is usually a class test everybody sits together off one
+   * paper, and forcing the set machinery on that is ceremony for nothing: a
+   * one-set bank is dealt to everybody identically, which is exactly the old
+   * behaviour and the right default there. An examination is the other way
+   * round — parallel sets are the point — so it starts on sets and does not
+   * offer the switch at all.
+   */
+  singleSetOption?: boolean;
+  /** What this bank will be used for, in the prose. */
+  noun?: 'examination' | 'assessment';
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -95,6 +110,8 @@ export function BankComposer({ basePath, courses, problems = [], onDone }: {
   const [courseId, setCourseId] = useState(courses[0] ? String(courses[0].id) : '');
   const [sets, setSets] = useState<SetDraft[]>([{ questions: [blank()] }]);
   const [active, setActive] = useState(0);
+  /** Whether this bank is parallel sets or one paper everybody sits. */
+  const [multi, setMulti] = useState(!singleSetOption);
   const [error, setError] = useState<string | null>(null);
   const [stage, setStage] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -120,6 +137,17 @@ export function BankComposer({ basePath, courses, problems = [], onDone }: {
     }));
     setSets((all) => [...all, { questions: shape.length ? shape : [blank()] }]);
     setActive(sets.length);
+  };
+
+  /**
+   * Switching back to one paper KEEPS Set 1 and drops the rest, rather than
+   * hiding them and writing them anyway. A set that is not on screen must not
+   * end up in the bank.
+   */
+  const chooseSingle = () => {
+    setMulti(false);
+    setSets((all) => all.slice(0, 1));
+    setActive(0);
   };
 
   const written = (q: Draft) => q.prompt.trim() !== '';
@@ -172,7 +200,7 @@ export function BankComposer({ basePath, courses, problems = [], onDone }: {
      * before trying again.
      */
     for (const [si, sx] of sets.entries()) {
-      const where = 'Set ' + (si + 1);
+      const where = multi ? 'Set ' + (si + 1) : 'This paper';
       const live = sx.questions.filter(written);
       if (!live.length) { setError(where + ' has no questions in it.'); return; }
       for (const q of live) {
@@ -274,6 +302,7 @@ export function BankComposer({ basePath, courses, problems = [], onDone }: {
     setName('');
     setSets([{ questions: [blank()] }]);
     setActive(0);
+    setMulti(!singleSetOption);
     if (onDone) onDone(bankId);
     else router.refresh();
   });
@@ -295,10 +324,19 @@ export function BankComposer({ basePath, courses, problems = [], onDone }: {
         <div>
           <h3 className="text-[15px] font-extrabold text-ink">New question bank</h3>
           <p className="mt-0.5 max-w-2xl text-[12.5px] leading-relaxed text-muted">
-            A bank holds parallel sets — Set 1, Set 2, and so on — each a whole paper of the
-            same shape. When an examination is scheduled from this bank, the sets rotate down
-            the register: roll 1 sits Set 1, roll 2 sits Set 2, and roll 11 comes back round
-            to Set 1, so nobody within reach sits the same paper.
+            {multi ? (
+              <>
+                A bank holds parallel sets — Set 1, Set 2, and so on — each a whole paper of
+                the same shape. When an {noun} is scheduled from this bank, the sets rotate
+                down the register: roll 1 sits Set 1, roll 2 sits Set 2, and roll 11 comes
+                back round to Set 1, so nobody within reach sits the same paper.
+              </>
+            ) : (
+              <>
+                One paper, sat by everybody. Write the questions once and every candidate on
+                this {noun} is dealt the same ones, in the order set here.
+              </>
+            )}
           </p>
         </div>
         <button type="button" onClick={() => setOpen(false)} className={quiet}>Cancel</button>
@@ -321,8 +359,50 @@ export function BankComposer({ basePath, courses, problems = [], onDone }: {
         </div>
       </div>
 
+      {/* The choice, where it changes what the rest of the form is. Offered
+          only for assessments: an examination is parallel sets by definition. */}
+      {singleSetOption ? (
+        <fieldset className="mt-4 rounded-xl border border-line p-3">
+          <legend className="px-1 text-[12.5px] font-semibold text-slate-700">
+            How this bank is sat
+          </legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[
+              {
+                on: !multi,
+                pick: chooseSingle,
+                title: 'One paper',
+                body: 'Everybody sits the same questions. The usual shape for a class test.',
+              },
+              {
+                on: multi,
+                pick: () => setMulti(true),
+                title: 'Parallel sets',
+                body: 'Set 1, Set 2, … rotate down the register, so neighbours differ.',
+              },
+            ].map((choice) => (
+              <label key={choice.title}
+                className={'flex cursor-pointer gap-2.5 rounded-xl border p-2.5 text-left '
+                  + (choice.on
+                    ? 'border-brand-500 bg-brand-50/60'
+                    : 'border-line bg-white hover:bg-slate-50')}>
+                <input type="radio" name="bc-shape" checked={choice.on} className="mt-0.5"
+                  onChange={choice.pick} />
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-bold text-ink">{choice.title}</span>
+                  <span className="block text-[12px] leading-relaxed text-muted">
+                    {choice.body}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+
       {/* The sets, as tabs. A setter works one paper at a time. */}
-      <div className="mt-4 flex flex-wrap items-center gap-1.5 border-b border-line pb-2">
+      <div className={'mt-4 flex flex-wrap items-center gap-1.5 border-b border-line pb-2 '
+        + (multi ? '' : 'hidden')}>
         {sets.map((sx, si) => (
           <button
             key={si} type="button" onClick={() => setActive(si)}
@@ -368,7 +448,9 @@ export function BankComposer({ basePath, courses, problems = [], onDone }: {
       ) : null}
 
       <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h4 className="text-[13.5px] font-bold text-ink">Set {active + 1}</h4>
+        <h4 className="text-[13.5px] font-bold text-ink">
+          {multi ? 'Set ' + (active + 1) : 'Questions'}
+        </h4>
         <span className="text-[12px] tabular-nums text-muted">
           {setSize(set)} written · {setMarks(set)} marks
         </span>

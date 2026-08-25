@@ -53,6 +53,13 @@ const GROUPS: TenantNavGroup[] = [
     { seg: 'timetable', label: 'Timetable', icon: 'calendar' },
     { seg: 'examinations', label: 'Examinations', icon: 'award' },
     { seg: 'assessments', label: 'Assessments', icon: 'target' },
+    // Watching a sitting while it happens, which the console could not do at
+    // all: an operator asked to invigilate for an institution had to be handed
+    // that institution's own administrator account. A sibling of Examinations
+    // rather than a tab inside it, because it is a different job done by a
+    // different person at a different hour -- one schedules and marks, the
+    // other watches.
+    { seg: 'invigilate', label: 'Invigilate', icon: 'shield' },
     // Code Lab, which had no console route at all. The paper builder could
     // BIND a coding question to one of an institution's published problems but
     // there was no way to create one, so the first coding problem anywhere had
@@ -128,6 +135,8 @@ const OFF_MENU: Record<string, string> = {
 const DETAIL_OF: Record<string, string> = {
   courses: 'Course', domains: 'Live Class', assessments: 'Assessment',
   examinations: 'Examination', problems: 'Coding problem',
+  // The drill-down is one SITTING being watched, not the console itself.
+  invigilate: 'Sitting',
 };
 
 export function sectionOf(pathname: string, tenantId: number): {

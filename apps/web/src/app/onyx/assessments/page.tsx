@@ -5,7 +5,7 @@ import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
 import { isExamsStaff, type Assessment, type MyAttempt } from '@/lib/onyx-assess';
 import type { Course } from '@/lib/onyx-learn';
-import { CreatePanel } from '@/components/onyx-create';
+import { FacultyAssessmentTabs } from '@/lib/onyx-console-exams';
 import { PaperBuilder } from '@/components/onyx-paper-builder';
 import {
   ActionLink, Banner, CardGrid, DataTable, Empty, EmptyRow, Icon, ListRow, Pill, RowList,
@@ -105,6 +105,14 @@ export default async function OnyxAssessmentsPage() {
       title="Assessments"
       subtitle={staff ? 'Papers set at this institution.' : 'Your tests, and your results.'}
     >
+      {/* The two halves of Assessments. Building a bank moved to its own tab:
+          a lecturer scheduling a test was scrolling past a question composer
+          to reach the list, and a setter writing questions was scrolling past
+          a calendar to reach the composer. */}
+      {staff ? (
+        <FacultyAssessmentTabs scheduled={assessments.length} banks={(banks ?? []).length} />
+      ) : null}
+
       {staff ? (
         <section className="mb-6">
           <div className="flex flex-wrap items-start gap-3">
@@ -115,56 +123,11 @@ export default async function OnyxAssessmentsPage() {
               banks={(banks ?? []).map((b) => ({
                 id: Number(b.id), name: b.name, course_id: null }))}
               courses={(courses ?? []).map((c) => ({ id: Number(c.id), title: c.title }))} />
-            <CreatePanel
-              title="New question bank" cta="New question bank" icon="edit" compact
-              endpoint="banks"
-              fields={[
-                { name: 'name', label: 'Name', required: true, wide: true,
-                  placeholder: 'Data structures — term 1' },
-                { name: 'course_id', label: 'Course', type: 'select', numeric: true, wide: true,
-                  options: [{ value: '', label: 'Not tied to a course' }].concat(
-                    (courses ?? []).map((c) => ({ value: String(c.id), label: c.title }))) },
-                { name: 'description', label: 'Description', type: 'textarea' },
-              ]}
-            />
           </div>
-
-          {/*
-            * A visible heading, not just an aria-label.
-            *
-            * These chips sat under the two buttons with nothing naming them, so
-            * on screen they read as part of the Papers list below — and the
-            * one-click builder names a bank after the paper it draws
-            * ("test-code" and "test-code — question bank"), which made a bank
-            * and a paper look like the same row twice. A screen reader was told
-            * what this list was; nobody else.
-            */}
-          {banks?.length ? (
-            <>
-              <h2 className="mt-5 text-[11px] font-bold uppercase tracking-[.08em] text-muted">
-                Question banks · {banks.length}
-              </h2>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
-                Questions live here. A paper below draws from one — a bank is not a paper and
-                nobody sits it.
-              </p>
-              <ul className="mt-2.5 flex flex-wrap gap-2" aria-label="Question banks">
-              {banks.map((b) => (
-                <li key={b.id}>
-                  <Link href={'/onyx/banks/' + b.id}
-                    className="inline-flex min-h-[38px] items-center gap-2 rounded-xl border
-                               border-line bg-white px-3 py-2 text-[13px] font-semibold
-                               shadow-card hover:bg-brand-50">
-                    <Icon name="layers" className="h-4 w-4 text-brand-600" />
-                    {b.name}
-                  </Link>
-                </li>
-              ))}
-              </ul>
-            </>
-          ) : (
+          {banks?.length ? null : (
             <p className="mt-3 text-sm text-muted">
-              No question banks yet. A paper draws its questions from one, so build a bank first.
+              No question banks yet. A paper draws its questions from one, so build a bank
+              first — under <span className="font-semibold">Assessment question bank</span>.
             </p>
           )}
         </section>

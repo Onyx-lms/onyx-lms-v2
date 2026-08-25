@@ -56,3 +56,8 @@ rzp*.csv
 
 # QA screenshots, written by the qa-*.mjs drivers on every run.
 qa-*.png
+
+# Per-tenant JSON dumps taken before an institution is deleted. They are the
+# only copy of that institution's data and belong on the operator's disk, not
+# in a repository that gets cloned.
+backups/

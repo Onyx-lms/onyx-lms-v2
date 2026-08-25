@@ -6,10 +6,10 @@ import {
   type AcademicsPayload,
 } from '@/lib/onyx-platform-tenant';
 import {
-  CreateExamForm, ExamEditToggle,
+  CreateExamForm, ExamEditToggle, type ConsoleBank,
 } from '@/components/onyx-platform-forms';
 import { DataTable, EmptyRow } from '@/components/onyx-ui';
-import { BankComposer } from '@/components/onyx-bank-composer';
+import { ExamTabs } from '@/lib/onyx-console-exams';
 
 export const metadata: Metadata = { title: 'Examinations' };
 
@@ -24,11 +24,10 @@ export default async function OnyxPlatformExamsPage(
   // allows an exam that belongs to no term at all.
   const academics = await attempt<AcademicsPayload>(
     '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/academics?limit=200');
-  // Published Code Lab problems, so a coding question in the paper builder has
-  // something to be marked against. Safe if it fails -- the builder simply
-  // does not offer the coding type.
-  const problems = (await attempt<{ id: number; title: string; status: string }[]>(
-    '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/problems')) ?? [];
+  // The banks a sitting can be set from directly, so scheduling one no longer
+  // means building a paper on another screen first.
+  const banks = (await attempt<ConsoleBank[]>(
+    '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/banks')) ?? [];
   // The teaching divisions, so a paper or a sitting can be set for one of them
   // rather than for the whole cohort.
   const sections = (await attempt<{ id: number; name: string; status: number }[]>(
@@ -39,22 +38,14 @@ export default async function OnyxPlatformExamsPage(
   const courses = academics?.courses ?? [];
 
   return (
-    <div className="min-w-0 space-y-4">
+    <div className="min-w-0">
+      <ExamTabs tenantId={tenantId} scheduled={exams.length} papers={banks.length} />
+
+      <div className="space-y-4">
       <RosterHeader count={exams.length} noun="examination"
         action={(
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Build the paper here, then pick it in the form beside this --
-                which is the order somebody scheduling an exam works in, and
-                the reason the institution's own screen puts both together. */}
-            {/* The bank, not a paper. An examination is scheduled FROM a bank of
-                parallel sets; "create a paper" made one paper and dealt it at
-                random, which is not how an examination is set. */}
-            <BankComposer
-              basePath={'onyx/platform/tenants/' + tenantId + '/banks'}
-              courses={courses.map((c) => ({ id: c.id, label: c.code + ' — ' + c.title }))}
-              problems={problems}
-            />
           <CreateExamForm tenantId={tenantId} courses={courses} sections={sections}
+            banks={banks}
             // So a sitting can be one somebody sits in a browser. Filtered to
             // the chosen course inside the form: the API refuses a paper from
             // another course, and offering one here would be offering
@@ -62,7 +53,6 @@ export default async function OnyxPlatformExamsPage(
             papers={(academics?.assessments ?? []).map((a) => ({
               id: a.id, title: a.title, course_id: a.course_id, status: a.status,
             }))} />
-          </div>
         )} />
 
       {academics === null ? <Unavailable what="examination list" /> : (
@@ -115,6 +105,7 @@ export default async function OnyxPlatformExamsPage(
           </DataTable>
         </div>
       )}
+      </div>
     </div>
   );
 }
