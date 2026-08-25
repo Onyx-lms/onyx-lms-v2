@@ -59,7 +59,7 @@ export function registerMediaRoutes(app: Router, ctx: AppContext): void {
     const body = validate(z.object({ to: z.string().email() }), req.body);
     const result = await ctx.mail.send({
       to: body.to,
-      subject: 'Onyx LMS test email',
+      subject: 'Onyx EduTech test email',
       html: '<p>If you are reading this, SMTP is configured correctly.</p>',
     });
     return ok(result, result.sent ? 'Test email sent.' :

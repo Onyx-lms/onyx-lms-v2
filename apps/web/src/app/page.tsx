@@ -108,7 +108,7 @@ export default async function HomePage() {
   // the storefront catalogue does and the reason it was never worth linking to
   // from the hero.
   const catalogue = (await apiSafe<PublicCourse[]>('/api/onyx/catalogue')) ?? [];
-  const name = settings?.system_title ?? 'Onyx LMS';
+  const name = settings?.system_title ?? 'Onyx EduTech';
 
   return (
     <>

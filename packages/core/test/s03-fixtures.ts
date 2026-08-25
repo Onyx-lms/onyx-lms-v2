@@ -49,7 +49,7 @@ export const seed = () => new FakeDb({
       course_id: 10, blog_id: null, bootcamp_id: null },
   ],
   settings: [
-    { id: 1, type: 'meta_title', description: 'EZiL Certify' },
+    { id: 1, type: 'meta_title', description: 'Onyx EduTech' },
     { id: 2, type: 'meta_description', description: 'Site wide description' },
     { id: 3, type: 'meta_keywords', description: 'lms, courses' },
   ],

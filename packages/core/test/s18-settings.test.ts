@@ -11,7 +11,7 @@ import { HttpError } from '../src/http/errors.ts';
 function make() {
   const d = new FakeDb({
     settings: [
-      { id: 1, type: 'system_title', description: 'EZiL Certify' },
+      { id: 1, type: 'system_title', description: 'Onyx EduTech' },
       { id: 2, type: 'smtp_pass', description: 'real-secret' },
       { id: 3, type: 'language', description: 'English' },
     ],
@@ -37,7 +37,7 @@ function make() {
 test('SET-01 a secret is never read back, only reported as set', async () => {
   const { admin } = make();
   const group = await admin.group('system');
-  assert.equal(group['system_title'], 'EZiL Certify');
+  assert.equal(group['system_title'], 'Onyx EduTech');
   // The Laravel screens rendered smtp_pass straight into the form's value.
   assert.equal('smtp_pass' in group, false);
   assert.equal(group['smtp_pass_set'], true);

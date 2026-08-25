@@ -25,7 +25,7 @@ test('C-05 missing fields fall back to the global settings', async () => {
   const d = seed();
   const seo = new SeoService(d as never, new SettingsService(d as never));
   const meta = await seo.resolve({ route: 'unknown-route' });
-  assert.equal(meta.title, 'EZiL Certify');
+  assert.equal(meta.title, 'Onyx EduTech');
   assert.equal(meta.description, 'Site wide description');
   assert.equal(meta.robots, 'index, follow');
 });

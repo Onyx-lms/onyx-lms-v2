@@ -46,7 +46,7 @@ export function OnyxShell({ me, title, subtitle, children, action }: {
 
   return (
     /*
-     * The administrator's console wears the EZiL Design Labs skin; every other
+     * The administrator's console wears the console skin; every other
      * role's product is untouched.
      *
      * One attribute, and the work is all in globals.css: the palette resolves
@@ -56,7 +56,7 @@ export function OnyxShell({ me, title, subtitle, children, action }: {
      * administrator's Courses page is the same page it was, in the design
      * language.
      */
-    <div className="min-h-screen bg-canvas" data-skin={me.role === 'admin' ? 'ezil' : undefined}>
+    <div className="min-h-screen bg-canvas" data-skin={me.role === 'admin' ? 'console' : undefined}>
       <Header me={me} onMenu={() => setMenuOpen(true)} />
 
       {menuOpen ? (
@@ -123,11 +123,11 @@ function Header({ me, onMenu }: { me: Me; onMenu: () => void }) {
         <Icon name="menu" />
       </button>
 
-      <Link href="/onyx/dashboard" aria-label="Onyx LMS, home"
+      <Link href="/onyx/dashboard" aria-label="Onyx EduTech, home"
         className="flex min-h-[44px] items-center gap-2.5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/onyx-mark.png" alt="" className="h-7 w-auto" />
-        <span className="hidden text-[15px] font-bold tracking-tight sm:inline">Onyx LMS</span>
+        <span className="hidden text-[15px] font-bold tracking-tight sm:inline">Onyx EduTech</span>
       </Link>
 
       <span className="flex-1" />

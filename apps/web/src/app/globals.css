@@ -251,7 +251,7 @@
  * border that holds it together. The orange stays as the accent because it is
  * the logo's, and the design language has a gold in the same position.
  */
-[data-skin='ezil'] {
+[data-skin='console'] {
   --c-brand-50:  237 241 247;
   --c-brand-100: 214 223 236;
   --c-brand-200: 173 190 216;
@@ -356,7 +356,7 @@
  * the warmth is what makes the skin recognisable and dropping it would make
  * the console look like a different product after sunset.
  */
-:root[data-theme='dark'] [data-skin='ezil'] {
+:root[data-theme='dark'] [data-skin='console'] {
   --c-brand-50:  22 32 48;
   --c-brand-100: 28 41 62;
   --c-brand-200: 35 53 80;
@@ -381,14 +381,14 @@
 }
 
 /* The skin's light-surface rules, undone: they hard-code the day palette. */
-:root[data-theme='dark'] [data-skin='ezil'] .bg-white { background-color: rgb(var(--c-surface)); }
-:root[data-theme='dark'] [data-skin='ezil'] .bg-white\/90 {
+:root[data-theme='dark'] [data-skin='console'] .bg-white { background-color: rgb(var(--c-surface)); }
+:root[data-theme='dark'] [data-skin='console'] .bg-white\/90 {
   background-color: rgb(var(--c-surface) / 0.9);
 }
-:root[data-theme='dark'] [data-skin='ezil'] .bg-slate-50 { background-color: rgb(27 37 49); }
-:root[data-theme='dark'] [data-skin='ezil'] { background-color: rgb(var(--c-canvas)); }
-:root[data-theme='dark'] [data-skin='ezil'] .text-brand-700,
-:root[data-theme='dark'] [data-skin='ezil'] .text-brand-600 { color: rgb(140 180 236); }
+:root[data-theme='dark'] [data-skin='console'] .bg-slate-50 { background-color: rgb(27 37 49); }
+:root[data-theme='dark'] [data-skin='console'] { background-color: rgb(var(--c-canvas)); }
+:root[data-theme='dark'] [data-skin='console'] .text-brand-700,
+:root[data-theme='dark'] [data-skin='console'] .text-brand-600 { color: rgb(140 180 236); }
 
 /*
  * The skin's own surfaces and type.
@@ -398,10 +398,10 @@
  * paints itself white, and the design language's serif display face is not
  * something a colour variable can carry.
  *
- * Scoped to `[data-skin='ezil']` throughout, so every other role's product is
+ * Scoped to `[data-skin='console']` throughout, so every other role's product is
  * byte-for-byte what it was.
  */
-[data-skin='ezil'] {
+[data-skin='console'] {
   background-color: rgb(var(--c-canvas));
   /* Fraunces and Plus Jakarta Sans are loaded by the root layout (next/font,
      self-hosted). The fallbacks are what renders if that ever fails, and they
@@ -410,9 +410,9 @@
 }
 
 /* Cards, headers, tables: white in the product, the skin's warm off-white here. */
-[data-skin='ezil'] .bg-white { background-color: rgb(var(--c-surface)); }
-[data-skin='ezil'] .bg-white\/90 { background-color: rgb(var(--c-surface) / 0.9); }
-[data-skin='ezil'] .bg-slate-50 { background-color: rgb(var(--c-canvas)); }
+[data-skin='console'] .bg-white { background-color: rgb(var(--c-surface)); }
+[data-skin='console'] .bg-white\/90 { background-color: rgb(var(--c-surface) / 0.9); }
+[data-skin='console'] .bg-slate-50 { background-color: rgb(var(--c-canvas)); }
 
 /*
  * A serif for the things a person reads first.
@@ -424,16 +424,16 @@
  * the lab uses it, and nowhere else: a serif inside a data table would cost
  * legibility for nothing.
  */
-[data-skin='ezil'] h1,
-[data-skin='ezil'] h2,
-[data-skin='ezil'] h3 {
+[data-skin='console'] h1,
+[data-skin='console'] h2,
+[data-skin='console'] h3 {
   font-family: var(--font-fraunces), Georgia, 'Times New Roman', serif;
   letter-spacing: -0.01em;
 }
-[data-skin='ezil'] h1 { font-weight: 600; }
+[data-skin='console'] h1 { font-weight: 600; }
 
 /* The figure on a stat tile is display type in the lab, not body type. */
-[data-skin='ezil'] [data-testid^='stat-'] + div {
+[data-skin='console'] [data-testid^='stat-'] + div {
   font-family: var(--font-fraunces), Georgia, serif;
   font-weight: 600;
 }
@@ -447,14 +447,14 @@
  * panel bolted to the page rather than as part of it. These rules take the box
  * off the two blocks that had one and let the groups breathe.
  */
-[data-skin='ezil'] [data-rail] .rail-card {
+[data-skin='console'] [data-rail] .rail-card {
   background-color: transparent;
   border-color: transparent;
   box-shadow: none;
   padding-left: 0;
   padding-right: 0;
 }
-[data-skin='ezil'] [data-rail] nav a { border-radius: var(--radius-md, 0.625rem); }
+[data-skin='console'] [data-rail] nav a { border-radius: var(--radius-md, 0.625rem); }
 
 @layer components {
   .container-page { @apply mx-auto w-full max-w-6xl px-4; }

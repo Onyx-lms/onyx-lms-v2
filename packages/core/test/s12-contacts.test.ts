@@ -17,7 +17,7 @@ function fakeMail(result: MailResult = { sent: true, messageId: 'x' }) {
 
 function make(mailResult?: MailResult) {
   const d = new FakeDb({
-    contacts: [], settings: [{ id: 1, type: 'system_title', description: 'EZiL Certify' }],
+    contacts: [], settings: [{ id: 1, type: 'system_title', description: 'Onyx EduTech' }],
   });
   const mail = fakeMail(mailResult);
   const svc = new ContactService(
@@ -59,7 +59,7 @@ test('M-06 a reply is emailed and only then flips the replied flag', async () =>
   assert.equal(mail.sent.length, 1);
   assert.equal(mail.sent[0]!.to, 'ada@onyx.test');
   assert.equal(mail.sent[0]!.text, 'Yes, within 14 days.');
-  assert.match(mail.sent[0]!.subject, /EZiL Certify/, 'the site title names the reply');
+  assert.match(mail.sent[0]!.subject, /Onyx EduTech/, 'the site title names the reply');
   assert.equal(after['replied'], 1);
 });
 

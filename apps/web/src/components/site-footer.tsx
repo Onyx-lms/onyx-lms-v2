@@ -18,7 +18,7 @@ export function SiteFooter({ settings }: { settings: SiteSettings | null }) {
       <div className="container-page grid gap-8 py-10 md:grid-cols-3">
         <div>
           <div className="text-base font-semibold text-brand-700">
-            {settings?.system_title ?? 'Onyx LMS'}
+            {settings?.system_title ?? 'Onyx EduTech'}
           </div>
           <p className="mt-2 text-sm text-slate-600">
             {settings?.meta_description ?? 'Learn from expert instructors.'}
@@ -41,7 +41,7 @@ export function SiteFooter({ settings }: { settings: SiteSettings | null }) {
 
       <div className="border-t border-slate-200 py-4 text-center text-xs text-slate-500">
         <Link href={settings?.footer_link ?? '/'}>
-          {settings?.footer_text ?? 'Onyx LMS'}
+          {settings?.footer_text ?? 'Onyx EduTech'}
         </Link>
       </div>
     </footer>

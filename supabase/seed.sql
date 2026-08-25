@@ -3,7 +3,7 @@
 -- Idempotent: safe to re-run.
 
 -- settings (25 rows)
-INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (1, 'system_title', 'EZiL Certify', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
+INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (1, 'system_title', 'Onyx EduTech', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
 INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (2, 'system_email', 'admin@example.com', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
 INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (3, 'timezone', 'UTC', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
 INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (4, 'language', 'english', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
@@ -17,7 +17,7 @@ INSERT INTO public."settings" ("id", "type", "description", "created_at", "updat
 INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (12, 'smtp_user', '', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
 INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (13, 'smtp_pass', '', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
 INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (14, 'smtp_from_email', 'hello@example.com', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
-INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (15, 'footer_text', 'EZiL Certify - Learning Management System', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
+INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (15, 'footer_text', 'Onyx EduTech - Learning Management System', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
 INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (16, 'footer_link', '/', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
 INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (17, 'instructor_can_publish_course', '1', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
 INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (18, 'instructor_application', '1', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
@@ -25,7 +25,7 @@ INSERT INTO public."settings" ("id", "type", "description", "created_at", "updat
 INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (20, 'paypal_active', '0', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
 INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (21, 'stripe_active', '0', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
 INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (22, 'razorpay_active', '0', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
-INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (23, 'meta_title', 'EZiL Certify - Online Learning Platform', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
+INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (23, 'meta_title', 'Onyx EduTech - Online Learning Platform', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
 INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (24, 'meta_description', 'Learn from expert instructors with our comprehensive online courses', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
 INSERT INTO public."settings" ("id", "type", "description", "created_at", "updated_at") VALUES (25, 'meta_keywords', 'online courses, e-learning, education, lms', '2026-01-06 18:58:29', '2026-01-06 18:58:29') ON CONFLICT DO NOTHING;
 

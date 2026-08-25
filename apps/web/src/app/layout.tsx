@@ -8,12 +8,12 @@ import { StorefrontChrome } from '@/components/storefront-chrome';
 
 
 /*
- * The administrator's console wears the EZiL Design Labs pairing: a display
+ * The administrator's console wears the design-system pairing: a display
  * serif over a geometric sans. Declared here rather than in the shell because
  * next/font is build-time -- it self-hosts the files and emits one class, so
  * there is no network request to a font CDN at runtime and no layout shift.
  *
- * Both are loaded on every page but USED only inside `[data-skin='ezil']`
+ * Both are loaded on every page but USED only inside `[data-skin='console']`
  * (globals.css). `display: 'swap'` and the variable form keep them out of the
  * critical path for every other role, who never reference the variables.
  */
@@ -45,7 +45,7 @@ const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('onyx-theme');`
 export async function generateMetadata(): Promise<Metadata> {
   const s = await apiSafe<SiteSettings>('/api/settings');
   return {
-    title: { default: s?.meta_title ?? s?.system_title ?? 'Onyx LMS', template: `%s | ${s?.system_title ?? 'Onyx LMS'}` },
+    title: { default: s?.meta_title ?? s?.system_title ?? 'Onyx EduTech', template: `%s | ${s?.system_title ?? 'Onyx EduTech'}` },
     description: s?.meta_description ?? '',
   };
 }

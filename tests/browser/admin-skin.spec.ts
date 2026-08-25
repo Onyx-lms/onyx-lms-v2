@@ -1,5 +1,5 @@
 /**
- * The administrator's console wears the EZiL Design Labs skin, and nobody
+ * The administrator's console wears the console skin, and nobody
  * else's does.
  *
  * The skin is a repaint: one `data-skin` attribute, a palette that resolves
@@ -27,12 +27,12 @@ test('an administrator gets the skin', async ({ page }) => {
   await signIn(page, 'admin@demo.onyx');
   await page.goto('/onyx/dashboard');
 
-  await expect(page.locator('[data-skin="ezil"]')).toHaveCount(1);
+  await expect(page.locator('[data-skin="console"]')).toHaveCount(1);
 
   // The canvas is the design language's warm cream, not the product's cool
   // grey -- read off the computed style rather than the class, because the
   // class is the thing under test.
-  const canvas = await page.locator('[data-skin="ezil"]').first()
+  const canvas = await page.locator('[data-skin="console"]').first()
     .evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(canvas).toBe('rgb(245, 243, 238)');
 

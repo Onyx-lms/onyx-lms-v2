@@ -15,7 +15,7 @@ export function OnyxBrand({ className = '' }: { className?: string }) {
   return (
     <div className={'flex items-center gap-2 ' + className}>
       <OnyxMark className="h-7 w-auto" />
-      <span className="text-lg font-semibold tracking-tight text-slate-900">Onyx LMS</span>
+      <span className="text-lg font-semibold tracking-tight text-slate-900">Onyx EduTech</span>
     </div>
   );
 }

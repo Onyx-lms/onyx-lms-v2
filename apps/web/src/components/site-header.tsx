@@ -22,7 +22,7 @@ export async function SiteHeader({ settings, categories }: {
         <Link href="/" className="flex min-h-[44px] items-center gap-2.5">
           <OnyxMark className="h-8 w-auto shrink-0" />
           <span className="text-lg font-semibold tracking-tight text-brand-700">
-            {settings?.system_title ?? 'Onyx LMS'}
+            {settings?.system_title ?? 'Onyx EduTech'}
           </span>
         </Link>
 

@@ -29,10 +29,10 @@ test('P-06 an unreachable SMTP host fails soft rather than throwing', async () =
 });
 
 test('P-06 verification email carries the action url in both button and text', () => {
-  const tpl = verifyEmailTemplate({ siteTitle: 'EZiL Certify', actionUrl: 'https://x.test/v?token=abc' });
+  const tpl = verifyEmailTemplate({ siteTitle: 'Onyx EduTech', actionUrl: 'https://x.test/v?token=abc' });
   assert.match(tpl.subject, /Verify/i);
   assert.ok(tpl.html.includes('https://x.test/v?token=abc'));
-  assert.ok(tpl.html.includes('EZiL Certify'));
+  assert.ok(tpl.html.includes('Onyx EduTech'));
 });
 
 test('P-06 templates escape site titles rather than injecting markup', () => {

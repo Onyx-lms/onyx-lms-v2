@@ -35,7 +35,7 @@ export default {
        * Tailwind's alpha modifiers keep working: `bg-brand-50/40` compiles to
        * `rgb(var(--c-brand-50) / 0.4)`, which a hex variable cannot express.
        *
-       * See `[data-skin='ezil']` in globals.css for the administrator's skin.
+       * See `[data-skin='console']` in globals.css for the administrator's skin.
        */
       colors: {
         brand: {

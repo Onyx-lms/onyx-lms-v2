@@ -8,7 +8,7 @@ import { StorageService } from '../src/storage/storage.service.ts';
 // Fixtures mirror the real rows in the Laravel database.
 const fixtures = () => new FakeDb({
   settings: [
-    { id: 1, type: 'system_title', description: 'EZiL Certify' },
+    { id: 1, type: 'system_title', description: 'Onyx EduTech' },
     { id: 2, type: 'language', description: 'english' },
     { id: 3, type: 'theme', description: 'classic' },
     { id: 4, type: 'currency_position', description: 'left' },
@@ -28,7 +28,7 @@ const fixtures = () => new FakeDb({
 
 test('P-01 settings.get returns the stored value', async () => {
   const s = new SettingsService(fixtures() as never);
-  assert.equal(await s.get('system_title'), 'EZiL Certify');
+  assert.equal(await s.get('system_title'), 'Onyx EduTech');
 });
 
 test('P-01 a missing key returns null (PHP returned false)', async () => {
@@ -41,7 +41,7 @@ test('P-01 second read is served from cache, not the database', async () => {
   const s = new SettingsService(db as never);
   await s.get('system_title');
   db.tables['settings'] = []; // if it hits the db again this returns null
-  assert.equal(await s.get('system_title'), 'EZiL Certify');
+  assert.equal(await s.get('system_title'), 'Onyx EduTech');
 });
 
 test('P-01 writing a setting invalidates the cached value', async () => {
@@ -60,7 +60,7 @@ test('P-02 theme falls back to default when the configured theme has no views', 
 test('P-07 secrets are excluded from the public settings payload', async () => {
   const s = new SettingsService(fixtures() as never);
   const pub = await s.publicSettings();
-  assert.equal(pub['system_title'], 'EZiL Certify');
+  assert.equal(pub['system_title'], 'Onyx EduTech');
   assert.ok(!('smtp_pass' in pub), 'smtp_pass must never reach the browser');
 });
 

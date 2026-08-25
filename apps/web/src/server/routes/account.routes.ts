@@ -29,7 +29,7 @@ export function registerAccountRoutes(app: Router, ctx: AppContext): void {
     if (!(await ctx.limiter.check(key, 6)).allowed) throw tooManyRequests();
   };
 
-  const siteTitle = async () => (await ctx.settings.get('system_title')) ?? 'Onyx LMS';
+  const siteTitle = async () => (await ctx.settings.get('system_title')) ?? 'Onyx EduTech';
 
   async function sendVerification(userId: number, email: string) {
     const token = await ctx.verification.issue(userId);

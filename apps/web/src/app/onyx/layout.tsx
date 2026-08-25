@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: { default: 'Onyx LMS', template: '%s · Onyx LMS' },
+  title: { default: 'Onyx EduTech', template: '%s · Onyx EduTech' },
   description: 'From attendance to employability -- one LMS built around student outcomes.',
   // Scoped to this segment's metadata only: the port keeps its own favicon.
   // Metadata on a segment layout only applies to pages under it, so this
