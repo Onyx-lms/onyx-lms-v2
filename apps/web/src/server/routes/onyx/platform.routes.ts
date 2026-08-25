@@ -13,6 +13,7 @@ import { z } from 'zod';
 import {
   validate, ok, requirePlatformAdmin, ROLES, HttpError,
   CAPABILITIES, CAPABILITY_AREAS, holdersOf, normaliseOverrides, normalisePersonal, can,
+  GREEK_SECTIONS, LETTER_SECTIONS,
   type PermissionOverrides,
 } from '@onyx/core';
 import type { Role } from '@onyx/types';
@@ -135,8 +136,12 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       role: z.enum(['student', 'faculty', 'exams', 'placement', 'employer', 'admin', 'guardian'])
         .optional(),
       limit: z.coerce.number().int().positive().max(200).optional(),
+      // A section id, or the literal `none` for everybody in no section.
+      section_id: z.union([z.literal('none'), z.coerce.number().int().positive()]).optional(),
     }), req.query ?? {});
-    return ok(await ctx.onyxPlatform.tenantPeople(idOf(req), q));
+    return ok(await ctx.onyxPlatform.tenantPeople(idOf(req), {
+      role: q.role, limit: q.limit, sectionId: q.section_id,
+    }));
   });
 
   app.get('/api/onyx/platform/tenants/:id/academics', async (req) => {
@@ -319,6 +324,9 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       closes_at: z.string().nullish(),
       duration_minutes: z.number().int().min(1).max(1440).optional(),
       pass_mark: z.number().min(0).nullish(),
+      // Which teaching division the paper is set for. Absent or null means
+      // every section.
+      section_id: z.number().int().positive().nullish(),
       // How the paper is sat. Absent means "not stated", which the service
       // reads as its default -- monitored, with camera and screen, for a paper
       // set by an institution rather than by a lecturer.
@@ -353,6 +361,9 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       // Ties the sitting to a paper sat in the browser. Without this the
       // console could only ever schedule an exam marked by hand.
       assessment_id: z.number().int().positive().nullish(),
+      // Which teaching division sits it. Absent or null means every section,
+      // which is what an examination for the whole cohort is.
+      section_id: z.number().int().positive().nullish(),
     }), req.body);
     const exam = await ctx.onyxPlatform.createExam(idOf(req), claims.user_id, body);
 
@@ -1118,6 +1129,101 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
     await ctx.onyxPlatform.recordAction(claims.user_id, 'course.faculty_removed',
       'course', courseId, { user_id: userId }, null);
     return ok(removed, 'Removed.');
+  });
+
+  // ===========================================================================
+  // Sections -- the teaching divisions an institution runs
+  //
+  // Reachable from the console because an institution's own administrator is
+  // often the person who has NOT set them up: the divisions exist on a
+  // timetable long before anybody types them into a product. An operator
+  // configuring an institution needs to be able to put them in.
+  // ===========================================================================
+
+  app.get('/api/onyx/platform/tenants/:id/sections', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const tenantId = idOf(req);
+    const [sections, counts] = await Promise.all([
+      ctx.onyxSections.list(tenantId, { includeRetired: true }),
+      ctx.onyxSections.counts(tenantId),
+    ]);
+    // The head-count beside each, because "which sections does this
+    // institution run" and "how many are in them" are one question.
+    return ok(sections.map((sx) => ({
+      ...sx, member_count: counts.get(Number(sx.id)) ?? 0,
+    })));
+  });
+
+  app.post('/api/onyx/platform/tenants/:id/sections', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      name: z.string().min(1).max(80),
+      code: z.string().max(20).optional(),
+      sort: z.number().int().min(0).max(999).optional(),
+    }), req.body);
+    const section = await ctx.onyxSections.create(idOf(req), body);
+    await ctx.onyxPlatform.recordAction(claims.user_id, 'section.created', 'section',
+      Number(section.id), null, { name: section.name, code: section.code });
+    return ok(section, 'Section added.');
+  });
+
+  app.patch('/api/onyx/platform/tenants/:id/sections/:sectionId', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      name: z.string().min(1).max(80).optional(),
+      code: z.string().max(20).optional(),
+      sort: z.number().int().min(0).max(999).optional(),
+      status: z.number().int().min(0).max(1).optional(),
+    }), req.body);
+    const { before, section } = await ctx.onyxSections.update(
+      idOf(req), subIdOf(req, 'sectionId'), body);
+    await ctx.onyxPlatform.recordAction(claims.user_id, 'section.updated', 'section',
+      subIdOf(req, 'sectionId'),
+      { name: before.name, code: before.code, status: before.status },
+      { name: section.name, code: section.code, status: section.status });
+    return ok(section, 'Saved.');
+  });
+
+  /** Refused while anybody is in it — retire it instead. See the service. */
+  app.delete('/api/onyx/platform/tenants/:id/sections/:sectionId', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const gone = await ctx.onyxSections.remove(idOf(req), subIdOf(req, 'sectionId'));
+    await ctx.onyxPlatform.recordAction(claims.user_id, 'section.removed', 'section',
+      subIdOf(req, 'sectionId'), null, null);
+    return ok(gone, 'Section removed.');
+  });
+
+  /**
+   * The default set, for an institution that has none.
+   *
+   * Two presets because the naming is the only thing that differs: Malla Reddy
+   * runs Alpha, Beta and Gamma; the convention nearly everywhere else is
+   * Section A, B and C. Both are ordinary rows afterwards — renamed, reordered,
+   * added to or retired — and neither is more real than the other.
+   */
+  app.post('/api/onyx/platform/tenants/:id/sections/seed', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      preset: z.enum(['greek', 'letters']).optional(),
+    }), req.body ?? {});
+    const sections = await ctx.onyxSections.seedDefaults(idOf(req),
+      body.preset === 'greek' ? GREEK_SECTIONS : LETTER_SECTIONS);
+    await ctx.onyxPlatform.recordAction(claims.user_id, 'section.created', 'tenant',
+      idOf(req), null, { seeded: sections.length, preset: body.preset ?? 'letters' });
+    return ok(sections, sections.length + ' sections ready.');
+  });
+
+  /** Move one person into a section, or out of every section. */
+  app.put('/api/onyx/platform/tenants/:id/members/:memberId/section', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      section_id: z.number().int().positive().nullable(),
+    }), req.body);
+    const saved = await ctx.onyxSections.assign(
+      idOf(req), subIdOf(req, 'memberId'), body.section_id);
+    await ctx.onyxPlatform.recordAction(claims.user_id, 'member.section', 'membership',
+      subIdOf(req, 'memberId'), null, { section_id: body.section_id });
+    return ok(saved, body.section_id === null ? 'Removed from their section.' : 'Section set.');
   });
 
   app.get('/api/onyx/platform/tenants/:id/banks', async (req) => {

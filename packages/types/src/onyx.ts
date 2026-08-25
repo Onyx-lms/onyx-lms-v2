@@ -51,6 +51,37 @@ export interface MembershipRow {
   user_id: number;
   role: Role;
   status: number;
+  /**
+   * The teaching division this person is in.
+   *
+   * Null for staff, who have no section, and for anybody not assigned yet —
+   * including every membership that existed before sections did.
+   */
+  section_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * A teaching division within an institution: Alpha, Beta, Gamma; Section A, B, C.
+ *
+ * Not a batch. `BatchRow` is a programme cohort keyed to a programme and a
+ * year — "B.Tech CSE 2024" — and a learner joins it through a join table. A
+ * section is a division WITHIN that cohort, a learner is in exactly one at a
+ * time, and it is what a timetable and an examination are actually organised
+ * by. See migration 0038 for why the two are separate tables.
+ */
+export interface SectionRow {
+  id: number;
+  tenant_id: number;
+  /** What it is called on screen: "Alpha", "Section A". */
+  name: string;
+  /** The short form a hall ticket prints. Lower-cased, unique per institution. */
+  code: string;
+  /** Teaching order, so Alpha/Beta/Gamma read in that order. */
+  sort: number;
+  /** 1 live, 0 retired. Retired rather than deleted — see 0038. */
+  status: number;
   created_at: string;
   updated_at: string;
 }
@@ -85,6 +116,7 @@ export interface OnyxDatabase {
       onyx_tenants: Table<TenantRow>;
       onyx_users: Table<OnyxUserRow>;
       onyx_memberships: Table<MembershipRow>;
+      onyx_sections: Table<SectionRow>;
       onyx_audit_logs: Table<AuditLogRow>;
       onyx_programs: Table<ProgramRow>;
       onyx_semesters: Table<SemesterRow>;
@@ -396,6 +428,8 @@ export interface QuestionVersionRow {
 
 export interface AssessmentRow {
   id: number; tenant_id: number; course_id: number | null;
+  /** The section this paper is set for. Null means every section. */
+  section_id: number | null;
   title: string; instructions: string | null;
   opens_at: string | null; closes_at: string | null;
   duration_minutes: number; attempts_allowed: number; sections: unknown;
@@ -678,6 +712,8 @@ export interface ExamRow {
   tenant_id: number;
   semester_id: number;
   course_id: number;
+  /** The section this sitting is for. Null means every section. */
+  section_id: number | null;
   assessment_id: number | null;
   title: string;
   starts_at: string;

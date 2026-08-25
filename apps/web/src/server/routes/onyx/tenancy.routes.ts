@@ -383,6 +383,10 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
       roll_number: z.string().max(40).nullish(),
       // The institution they picked, when their address names none.
       tenant_id: z.number().int().positive().nullish(),
+      // The teaching division they picked. Checked against the institution
+      // they are actually joining, in completeSignUp -- both fields arrive
+      // from a form anybody can post to.
+      section_id: z.number().int().positive().nullish(),
     }), req.body);
 
     const result = await ctx.onyxTenancy.completeSignUp(body);
@@ -417,6 +421,28 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
    * names the institution behind every public course, so this discloses
    * nothing a visitor could not already read.
    */
+  /**
+   * The sections a student may pick while joining one institution.
+   *
+   * Unauthenticated, like the institution list beside it: somebody choosing
+   * where they will be taught does not have an account yet. It discloses only
+   * the names of an institution's teaching divisions, which are printed on
+   * every timetable and hall ticket that institution issues.
+   *
+   * Answers for one institution at a time, and only for one that has said
+   * anyone may join — the same rule the institution list applies, so this
+   * cannot be used to enumerate the divisions of an institution that is not
+   * accepting registrations.
+   */
+  app.get('/api/onyx/auth/signup/sections', async (req) => {
+    const q = req.query as { tenant_id?: string };
+    const tenantId = Number(q.tenant_id);
+    if (!Number.isFinite(tenantId) || tenantId <= 0) return ok([]);
+    const open = await ctx.onyxTenancy.openInstitutions();
+    if (!open.some((t: { id: number }) => Number(t.id) === tenantId)) return ok([]);
+    return ok(await ctx.onyxSections.list(tenantId));
+  });
+
   app.get('/api/onyx/auth/signup/institutions', async () => {
     return ok(await ctx.onyxTenancy.openInstitutions());
   });
@@ -539,13 +565,95 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
 
   // ---- F-04: members ----
 
+  // ===========================================================================
+  // Sections -- the teaching divisions this institution runs
+  // ===========================================================================
+
+  /**
+   * Everybody may read them: a section is printed on a timetable and a hall
+   * ticket, and a learner has to be able to see which one is theirs.
+   */
+  app.get('/api/onyx/sections', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const q = req.query as { all?: string };
+    const staff = claims.tenant_role === 'admin' || claims.tenant_role === 'exams';
+    return ok(await ctx.onyxSections.list(claims.tenant_id, {
+      includeRetired: staff && q.all === '1',
+    }));
+  });
+
+  app.post('/api/onyx/sections', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'exams');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'settings.manage',
+      claims.user_id);
+    const body = validate(z.object({
+      name: z.string().min(1).max(80),
+      code: z.string().max(20).optional(),
+      sort: z.number().int().min(0).max(999).optional(),
+    }), req.body);
+    const section = await ctx.onyxSections.create(claims.tenant_id, body);
+    await ctx.onyxAudit.record(claims, {
+      action: 'section.created', entityType: 'section', entityId: Number(section.id),
+      after: { name: section.name, code: section.code }, ip: ipOf(req),
+    });
+    return ok(section, 'Section added.');
+  });
+
+  app.patch('/api/onyx/sections/:id', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'exams');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'settings.manage',
+      claims.user_id);
+    const body = validate(z.object({
+      name: z.string().min(1).max(80).optional(),
+      code: z.string().max(20).optional(),
+      sort: z.number().int().min(0).max(999).optional(),
+      status: z.number().int().min(0).max(1).optional(),
+    }), req.body);
+    const { before, section } = await ctx.onyxSections.update(
+      claims.tenant_id, idOf(req), body);
+    await ctx.onyxAudit.record(claims, {
+      action: 'section.updated', entityType: 'section', entityId: idOf(req),
+      before: { name: before.name, code: before.code, status: before.status },
+      after: { name: section.name, code: section.code, status: section.status },
+      ip: ipOf(req),
+    });
+    return ok(section, 'Saved.');
+  });
+
+  /** Refused while anybody is in it — retire it instead. See the service. */
+  app.delete('/api/onyx/sections/:id', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'settings.manage',
+      claims.user_id);
+    const gone = await ctx.onyxSections.remove(claims.tenant_id, idOf(req));
+    await ctx.onyxAudit.record(claims, {
+      action: 'section.removed', entityType: 'section', entityId: idOf(req), ip: ipOf(req),
+    });
+    return ok(gone, 'Section removed.');
+  });
+
+  /** Move one person into a section, or out of every section. */
+  app.put('/api/onyx/members/:id/section', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'exams');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'people.edit', claims.user_id);
+    const body = validate(z.object({
+      section_id: z.number().int().positive().nullable(),
+    }), req.body);
+    const saved = await ctx.onyxSections.assign(claims.tenant_id, idOf(req), body.section_id);
+    await ctx.onyxAudit.record(claims, {
+      action: 'membership.updated', entityType: 'membership', entityId: idOf(req),
+      after: { section_id: body.section_id }, ip: ipOf(req),
+    });
+    return ok(saved, body.section_id === null ? 'Removed from their section.' : 'Section set.');
+  });
+
   app.get('/api/onyx/members', async (req) => {
     // 'exams' added alongside admin/faculty: the examinations office runs
     // invigilation and marking institution-wide and needs the same "who is
     // this" name lookup admin/faculty already had -- without it, Invigilate
     // could only ever show a candidate's raw id to that role.
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty', 'exams');
-    const q = req.query as { role?: Role; search?: string };
+    const q = req.query as { role?: Role; search?: string; section_id?: string };
     // A lecturer's directory is their own class lists. Admin and the
     // examinations office run the institution and keep the whole roster.
     const onlyStudentsOn = claims.tenant_role === 'faculty'
@@ -554,6 +662,10 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
     return ok(await ctx.onyxTenancy.members(claims.tenant_id, {
       onlyStudentsOn,
       role: q.role, search: q.search,
+      // `none` is the people in no section, which is the list somebody works
+      // from at the start of a term.
+      sectionId: q.section_id === 'none' ? 'none'
+        : q.section_id ? Number(q.section_id) : undefined,
     }));
   });
 

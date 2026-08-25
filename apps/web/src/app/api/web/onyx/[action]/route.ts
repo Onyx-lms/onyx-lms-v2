@@ -108,6 +108,22 @@ export async function GET(request: Request, ctx: { params: Promise<{ action: str
     return NextResponse.json(payload, { status: res.status });
   }
 
+  /*
+   * The teaching divisions of one institution, for the sign-up form.
+   *
+   * Proxied like its neighbours rather than called from the browser: the form
+   * is on a public page and the API is not exposed to it directly. The API
+   * answers only for an institution that has said anyone may join, so this
+   * cannot be used to enumerate the divisions of one that has not.
+   */
+  if (action === 'signup-sections') {
+    const tenantId = new URL(request.url).searchParams.get('tenant_id') ?? '';
+    const res = await fetch(API + '/api/onyx/auth/signup/sections?tenant_id='
+      + encodeURIComponent(tenantId));
+    const payload = await res.json().catch(() => ({ ok: false, message: 'Bad response' }));
+    return NextResponse.json(payload, { status: res.status });
+  }
+
   if (action !== 'signup-institution') {
     return NextResponse.json({ ok: false, message: 'Unknown action.' }, { status: 404 });
   }

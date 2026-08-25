@@ -28,6 +28,12 @@ export default async function OnyxPlatformExamsPage(
   // does not offer the coding type.
   const problems = (await attempt<{ id: number; title: string; status: string }[]>(
     '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/problems')) ?? [];
+  // The teaching divisions, so a paper or a sitting can be set for one of them
+  // rather than for the whole cohort.
+  const sections = (await attempt<{ id: number; name: string; status: number }[]>(
+    '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/sections'))
+    ?.filter((sx) => sx.status === 1) ?? [];
+
   const exams = academics?.exams ?? [];
   const courses = academics?.courses ?? [];
 
@@ -40,7 +46,7 @@ export default async function OnyxPlatformExamsPage(
                 which is the order somebody scheduling an exam works in, and
                 the reason the institution's own screen puts both together. */}
             <ConsoleCreatePaper tenantId={tenantId} courses={courses} problems={problems} />
-          <CreateExamForm tenantId={tenantId} courses={courses}
+          <CreateExamForm tenantId={tenantId} courses={courses} sections={sections}
             // So a sitting can be one somebody sits in a browser. Filtered to
             // the chosen course inside the form: the API refuses a paper from
             // another course, and offering one here would be offering

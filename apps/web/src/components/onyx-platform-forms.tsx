@@ -1470,6 +1470,43 @@ function WhenEcho({ value }: { value: string }) {
   );
 }
 
+/**
+ * Who a paper or a sitting is for.
+ *
+ * "Everybody" leads and is the default, because it is both the common case and
+ * what every row created before sections existed means — a paper that names no
+ * section is for the whole cohort, and that has to stay true.
+ *
+ * Named `section_id` to match the field it posts. The empty string is the
+ * everybody case, which the caller turns into null rather than 0: a zero would
+ * be a section id that does not exist.
+ */
+function SectionChoice({ id, sections, value, onChange }: {
+  id: string;
+  sections: { id: number; name: string }[];
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  if (!sections.length) return null;
+  return (
+    <div>
+      <label className={label} htmlFor={id}>Set for</label>
+      <select id={id} name="section_id" value={value} className={field}
+        onChange={(e) => onChange(e.target.value)}>
+        <option value="">Everybody on the course</option>
+        {sections.map((sx) => (
+          <option key={sx.id} value={sx.id}>{sx.name} only</option>
+        ))}
+      </select>
+      <p className="mt-1 text-[12px] leading-relaxed text-muted">
+        {value
+          ? 'Only the students in that section are dealt this, and only they can start it.'
+          : 'Every student on the course, whichever section they are in.'}
+      </p>
+    </div>
+  );
+}
+
 export function TenantEditForm({ tenant }: {
   tenant: {
     id: number; name: string; slug: string; plan: string | null;
@@ -1919,14 +1956,17 @@ export function paperSwitchBody(v: PaperSwitchState) {
   };
 }
 
-export function CreateAssessmentForm({ tenantId, courses }: {
+export function CreateAssessmentForm({ tenantId, courses, sections = [] }: {
   tenantId: number; courses: CourseOption[];
+  /** The institution's teaching divisions, so a paper can be set for one. */
+  sections?: { id: number; name: string }[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [switches, setSwitches] = useState<PaperSwitchState>(PAPER_SWITCH_DEFAULTS);
+  const [sectionId, setSectionId] = useState('');
 
   const form = (
     <form
@@ -1946,6 +1986,9 @@ export function CreateAssessmentForm({ tenantId, courses }: {
             closes_at: closesRaw ? new Date(closesRaw).toISOString() : null,
             duration_minutes: Number(data.get('duration_minutes') || 60),
             pass_mark: Number(data.get('pass_mark') || 0) || null,
+            // Empty means everybody, and is sent as null rather than 0 -- a
+            // zero would be a section id that does not exist.
+            section_id: sectionId ? Number(sectionId) : null,
             ...paperSwitchBody(switches),
           });
           if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
@@ -1991,6 +2034,9 @@ export function CreateAssessmentForm({ tenantId, courses }: {
         * engine refuses it at the moment a candidate presses Start, which is
         * far too late for anybody to do something about it.
         */}
+      <SectionChoice id="cs-section" sections={sections}
+        value={sectionId} onChange={setSectionId} />
+
       <div className="col-span-full">
         <PaperSwitches value={switches} onChange={setSwitches} />
       </div>
@@ -2043,16 +2089,19 @@ export function CreateAssessmentForm({ tenantId, courses }: {
  * this is the console catching up, and nothing about the row that gets written
  * changes.
  */
-export function CreateExamForm({ tenantId, courses, papers = [] }: {
+export function CreateExamForm({ tenantId, courses, papers = [], sections = [] }: {
   tenantId: number; courses: CourseOption[];
   /** The institution's papers, so a sitting can be one sat in a browser. */
   papers?: { id: number; title: string; course_id: number | null; status: string }[];
+  /** Its teaching divisions, so a sitting can be for one of them. */
+  sections?: { id: number; name: string }[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Held in state so the echo under the field updates as it is typed.
   const [starts, setStarts] = useState('');
+  const [sectionId, setSectionId] = useState('');
   const [pending, start] = useTransition();
   const [courseId, setCourseId] = useState<number | null>(courses[0]?.id ?? null);
   // A course is all that is genuinely required.
@@ -2085,6 +2134,8 @@ export function CreateExamForm({ tenantId, courses, papers = [] }: {
             ...(paper ? { assessment_id: Number(paper) } : {}),
             // Institution time, not the browser's -- see the edit form above.
             starts_at: fromLocalInput(startsRaw) ?? '',
+            // Which division sits it. Empty means the whole cohort.
+            section_id: sectionId ? Number(sectionId) : null,
             duration_minutes: Number(data.get('duration_minutes') || 180),
             max_marks: Number(data.get('max_marks') || 100),
             pass_marks: Number(data.get('pass_marks') || 40),
@@ -2118,6 +2169,9 @@ export function CreateExamForm({ tenantId, courses, papers = [] }: {
             learner's timetable said it had been scheduled ten hours ago. */}
         <WhenEcho value={starts} />
       </div>
+
+      <SectionChoice id="ce-section" sections={sections}
+        value={sectionId} onChange={setSectionId} />
 
       {/*
         * The paper this sitting is sat on, and the reason this form existed

@@ -29,6 +29,9 @@ const GROUPS: TenantNavGroup[] = [
     { seg: 'students', label: 'Students', icon: 'users' },
     { seg: 'faculty', label: 'Faculty', icon: 'user' },
     { seg: 'staff', label: 'Other roles', icon: 'shield' },
+    // Under People rather than Academics: a section is a group of PEOPLE, and
+    // it is the roll somebody comes here to rearrange.
+    { seg: 'sections', label: 'Sections', icon: 'layers' },
   ] },
   // Assignments has no nav entry here on purpose -- it isn't a top-level
   // destination on the tenant side either (there is no student/faculty

@@ -33,6 +33,8 @@ export interface Person {
   membership_id: number; user_id: string; name: string; email: string; phone: string | null;
   /** The institution's own number for them. Searchable; see matchesPerson. */
   roll_number: string | null;
+  /** The teaching division, named. Null for staff and for anybody unassigned. */
+  section?: { id: number; name: string; code: string } | null;
   role: string; membership_status: number; account_status: number; joined_at: string;
   batch: { id: number; name: string; code: string } | null;
   programme: { id: number; name: string; code: string } | null;

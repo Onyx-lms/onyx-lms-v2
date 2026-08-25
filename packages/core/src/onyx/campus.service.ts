@@ -24,6 +24,7 @@
  */
 import type { OnyxDb } from './db.ts';
 import { HttpError } from '../http/errors.ts';
+import { isForSection } from './sections.service.ts';
 import type { AuditService } from './audit.service.ts';
 
 const ROOM_COLUMNS = 'id, tenant_id, code, name, capacity, kind, building, status, created_at';
@@ -378,20 +379,34 @@ export class CampusService {
     course_ids?: number[];
     /** Faculty see the exams and papers of the courses they teach. */
     publishedOnly?: boolean;
+    /**
+     * The reader's own teaching division, when they have one.
+     *
+     * A paper or a sitting set for one section is for the people in it and
+     * nobody else; one with no section is for everybody, which is what every
+     * row created before sections existed means. Undefined means "do not
+     * filter" — staff, who set the papers and have no section themselves.
+     */
+    sectionId?: number | null;
   } = {}) {
     const [exams, assessments] = await Promise.all([
       this.#examsIn(tenantId, range, filters),
       this.#assessmentsIn(tenantId, range, filters),
     ]);
-    return { exams, assessments };
+    // Filtered here rather than in each query, so the one rule lives in one
+    // place and a row with no section keeps meaning "everybody".
+    if (filters.sectionId === undefined) return { exams, assessments };
+    const mine = <T extends { section_id?: number | null }>(rows: T[]) =>
+      rows.filter((r) => isForSection(r.section_id, filters.sectionId));
+    return { exams: mine(exams), assessments: mine(assessments) };
   }
 
   async #examsIn(tenantId: number, range: { from: string; to: string }, filters: {
     course_ids?: number[]; publishedOnly?: boolean;
   }) {
     let q = this.#db.from('onyx_exams')
-      .select('id, tenant_id, course_id, semester_id, assessment_id, title, starts_at, '
-        + 'duration_minutes, max_marks, pass_marks, status')
+      // eslint-disable-next-line max-len -- one literal: a concatenated select collapses the row type.
+      .select('id, tenant_id, course_id, semester_id, assessment_id, section_id, title, starts_at, duration_minutes, max_marks, pass_marks, status')
       .eq('tenant_id', tenantId)
       .gte('starts_at', range.from)
       .lte('starts_at', range.to);
@@ -427,8 +442,8 @@ export class CampusService {
     course_ids?: number[]; publishedOnly?: boolean;
   }) {
     let q = this.#db.from('onyx_assessments')
-      .select('id, tenant_id, course_id, title, opens_at, closes_at, duration_minutes, '
-        + 'attempts_allowed, pass_mark, status')
+      // eslint-disable-next-line max-len -- one literal, same reason as above.
+      .select('id, tenant_id, course_id, section_id, title, opens_at, closes_at, duration_minutes, attempts_allowed, pass_mark, status')
       .eq('tenant_id', tenantId)
       // Closing inside the week is what makes a paper this week's problem. A
       // window that opened a month ago and closes on Wednesday is due

@@ -8,21 +8,36 @@ import {
   CreateProfileForm, MemberEditToggle,
 } from '@/components/onyx-platform-forms';
 import { DataTable, EmptyRow, Pill } from '@/components/onyx-ui';
+import { SectionFilter, type SectionRow } from '@/components/onyx-sections';
 
 export const metadata: Metadata = { title: 'Students' };
 
 export default async function OnyxPlatformStudentsPage(
   { params, searchParams }: {
     params: Promise<{ id: string }>;
-    searchParams: Promise<{ q?: string }>;
+    searchParams: Promise<{ q?: string; section?: string }>;
   },
 ) {
   await requirePlatformSession();
   const { id } = await params;
-  const { q } = await searchParams;
+  const { q, section } = await searchParams;
   const tenantId = Number(id);
-  const people = await attempt<PeoplePayload>(
-    '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/people?role=student');
+  const base = '/api/onyx/platform/tenants/' + encodeURIComponent(id);
+
+  /*
+   * Filtered on the server, not in the browser.
+   *
+   * The roll is paged, so filtering the page that arrived would answer "which
+   * of these two hundred are in Alpha" when the question is "which of the
+   * whole roll" — and the count beside the heading would be a count of the
+   * wrong set.
+   */
+  const query = '?role=student&limit=200'
+    + (section ? '&section_id=' + encodeURIComponent(section) : '');
+  const [people, sections] = await Promise.all([
+    attempt<PeoplePayload>(base + query),
+    attempt<SectionRow[]>(base + '/sections'),
+  ]);
   const all = people?.people ?? [];
   const students = all.filter((p) => matchesPerson(p, q ?? ''));
 
@@ -33,7 +48,12 @@ export default async function OnyxPlatformStudentsPage(
         <>
           <RosterHeader
             count={q ? students.length : people.total} noun="student"
-            aside={<RosterSearch q={q} placeholder="Name, roll number, email or batch" />}
+            aside={
+              <div className="flex flex-wrap items-center gap-2">
+                <RosterSearch q={q} placeholder="Name, roll number, email or batch" />
+                <SectionFilter sections={sections ?? []} current={section} />
+              </div>
+            }
             action={<CreateProfileForm lockedTenant={{ id: tenantId }} only="student" />}
           />
           <div tabIndex={0} role="region" aria-label="Students" className={SCROLLER}>
@@ -46,6 +66,10 @@ export default async function OnyxPlatformStudentsPage(
                       and is what somebody holding a register is reading
                       from. */}
                   <th scope="col">Roll no.</th>
+                  {/* Before Batch, because it is the finer division and the
+                      one a programme office is actually working from: a
+                      timetable is drawn per section, not per cohort. */}
+                  <th scope="col">Section</th>
                   <th scope="col">Batch</th>
                   {/* Least essential above sm -- a phone reads Student, Batch,
                       Enrolments, Account and the actions without them. */}
@@ -58,9 +82,9 @@ export default async function OnyxPlatformStudentsPage(
               }
             >
               {students.length === 0 ? (
-                <EmptyRow colSpan={8} icon="users">
-                  {q
-                    ? 'Nobody on this roll matches “' + q + '”.'
+                <EmptyRow colSpan={9} icon="users">
+                  {q || section
+                    ? 'Nobody on this roll matches that.'
                     : 'No students yet. A new institution starts with its administrator and nobody else — students arrive once someone invites or imports them.'}
                 </EmptyRow>
               ) : students.map((p) => (
@@ -71,6 +95,11 @@ export default async function OnyxPlatformStudentsPage(
                   </td>
                   <td className="font-mono text-[13px] tabular-nums">
                     {p.roll_number ?? <span className="text-muted">—</span>}
+                  </td>
+                  <td>
+                    {p.section
+                      ? <Pill tone="neutral">{p.section.name}</Pill>
+                      : <span className="text-[12.5px] text-muted">No section</span>}
                   </td>
                   <td>{p.batch
                     ? <Pill tone="brand">{p.batch.code}</Pill>

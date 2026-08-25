@@ -25,6 +25,12 @@ export default async function OnyxPlatformAssessmentsPage(
   // does not offer the coding type.
   const problems = (await attempt<{ id: number; title: string; status: string }[]>(
     '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/problems')) ?? [];
+  // The teaching divisions, so a paper or a sitting can be set for one of them
+  // rather than for the whole cohort.
+  const sections = (await attempt<{ id: number; name: string; status: number }[]>(
+    '/api/onyx/platform/tenants/' + encodeURIComponent(id) + '/sections'))
+    ?.filter((sx) => sx.status === 1) ?? [];
+
   const assessments = academics?.assessments ?? [];
   const courses = academics?.courses ?? [];
   // What there is to draw from. A paper needs a bank with questions in it, and
@@ -44,7 +50,8 @@ export default async function OnyxPlatformAssessmentsPage(
                 is still worth having when the questions are coming from a
                 bank that already exists. */}
             <ConsoleCreatePaper tenantId={tenantId} courses={courses} problems={problems} />
-            <CreateAssessmentForm tenantId={tenantId} courses={courses} />
+            <CreateAssessmentForm tenantId={tenantId} courses={courses}
+              sections={sections} />
           </div>
         )} />
 

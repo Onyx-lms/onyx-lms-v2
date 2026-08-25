@@ -42,6 +42,8 @@ function useHydrated(): boolean {
 interface Details {
   name: string; email: string; phone: string; roll_number: string;
   tenant_id: number | null;
+  /** The teaching division they picked. Null where the institution runs none. */
+  section_id: number | null;
 }
 
 export function OnyxSignUpForm({ next }: { next?: string } = {}) {
@@ -78,6 +80,40 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
       if (body?.ok && Array.isArray(body.data)) setChoices(body.data);
     })();
   }, []);
+
+  /*
+   * The teaching divisions of whichever institution this person is joining.
+   *
+   * Fetched when the institution is known and not before, because it is the
+   * institution that decides them: Alpha, Beta and Gamma at one, Section A, B
+   * and C at the next. Re-fetched whenever that changes, so somebody who picks
+   * the wrong institution and corrects it is never offered the first one's
+   * divisions.
+   *
+   * `tenantId` is whichever is settled: the one their address named, or the
+   * one they picked. Null while neither is, and then nothing is asked.
+   */
+  const tenantId = institution && institution !== 'unknown'
+    ? (institution as { id?: number }).id ?? null
+    : (picked ? Number(picked) : null);
+  const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
+  const [section, setSection] = useState('');
+  useEffect(() => {
+    if (!tenantId) { setSections([]); setSection(''); return; }
+    let live = true;
+    void (async () => {
+      const res = await fetch('/api/web/onyx/signup-sections?tenant_id=' + tenantId)
+        .catch(() => null);
+      const body = await res?.json().catch(() => ({}));
+      if (!live) return;
+      setSections(body?.ok && Array.isArray(body.data) ? body.data : []);
+      // Cleared rather than kept: a division id from the previous institution
+      // would be refused on submit, and the refusal would name a field the
+      // person can no longer see the wrong value in.
+      setSection('');
+    })();
+    return () => { live = false; };
+  }, [tenantId]);
 
   /**
    * Seconds until another code may be asked for.
@@ -240,6 +276,7 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
           email: String(data.get('email') ?? '').trim(),
           phone: String(data.get('phone') ?? ''),
           roll_number: String(data.get('roll_number') ?? ''),
+          section_id: section ? Number(section) : null,
           // Only when the address did not name one: an address that
           // matches is the stronger claim and should not be overridden by
           // a dropdown somebody forgot to change.
@@ -325,6 +362,28 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
           <input id="su-roll" name="roll_number" required maxLength={40}
             placeholder="As your institution issued it" className={field} />
         </div>
+        {/*
+          * Shown only once the institution is known, because it is the
+          * institution that decides what the divisions are called. Absent
+          * where an institution runs none, rather than an empty dropdown
+          * asking for something that does not exist there.
+          */}
+        {sections.length ? (
+          <div className="sm:col-span-2">
+            <label className={label} htmlFor="su-section">Your section</label>
+            <select id="su-section" name="section_id" required value={section}
+              onChange={(e) => setSection(e.target.value)} className={field}>
+              <option value="">Choose your section…</option>
+              {sections.map((sx) => (
+                <option key={sx.id} value={sx.id}>{sx.name}</option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-[12.5px] text-muted">
+              The group you are taught with. It decides which timetable and which
+              examinations you are given — your institution can move you later.
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <button type="submit" disabled={pending || !ready}

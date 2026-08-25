@@ -134,8 +134,15 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
   app.get('/api/onyx/assessments', async (req) => {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
     const q = req.query as { course_id?: string };
+    // A learner's own section, so they are shown their section's papers and
+    // the ones set for everybody. Staff pass undefined and see them all.
+    const staff = claims.tenant_role === 'admin' || claims.tenant_role === 'faculty'
+      || claims.tenant_role === 'exams';
+    const sectionId = staff ? undefined
+      : await ctx.onyxSections.sectionOf(claims.tenant_id, claims.user_id);
     return ok(await ctx.onyxAssess.assessments(
-      claims.tenant_id, claims.tenant_role, q.course_id ? Number(q.course_id) : undefined));
+      claims.tenant_id, claims.tenant_role,
+      q.course_id ? Number(q.course_id) : undefined, sectionId));
   });
 
   app.post('/api/onyx/assessments', async (req) => {

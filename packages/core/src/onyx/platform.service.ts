@@ -69,6 +69,14 @@ interface PersonRow {
    * enrolled.
    */
   roll_number: string | null;
+  /**
+   * The teaching division this person is in, named rather than numbered.
+   *
+   * An operator reading a roster wants "Alpha", not "17". Null for staff, who
+   * have none, and for a learner nobody has assigned yet — which is a state
+   * worth being able to see and to filter for.
+   */
+  section: { id: number; name: string; code: string } | null;
   role: string; membership_status: number; account_status: number; joined_at: string;
   batch: { id: number; name: string; code: string } | null;
   programme: { id: number; name: string; code: string } | null;
@@ -373,15 +381,25 @@ export class PlatformService {
    * context (batch, programme, how much they are enrolled in) to tell an active
    * student from a name that was imported once and never used.
    */
-  async tenantPeople(id: number, opts: { role?: string; limit?: number } = {}) {
+  async tenantPeople(id: number, opts: {
+    role?: string; limit?: number;
+    /** A section id, or `'none'` for the people in no section at all. */
+    sectionId?: number | 'none';
+  } = {}) {
     const tenant = await this.#requireTenant(id);
     const limit = clampLimit(opts.limit);
 
     const scoped = this.#db.from('onyx_memberships')
-      .select('id, user_id, role, status, roll_number, created_at').eq('tenant_id', id);
+      .select('id, user_id, role, status, roll_number, section_id, created_at')
+      .eq('tenant_id', id);
 
     // limit + 1 so "there is more" is a fact, not a guess from a full page.
-    const listing = opts.role ? scoped.eq('role', opts.role as Role) : scoped;
+    let listing = opts.role ? scoped.eq('role', opts.role as Role) : scoped;
+    // "Unassigned" has to be askable: it is the list somebody works from at
+    // the start of a term, and a filter that could only name a section would
+    // make the people who most need moving the hardest to find.
+    if (opts.sectionId === 'none') listing = listing.is('section_id', null);
+    else if (opts.sectionId !== undefined) listing = listing.eq('section_id', opts.sectionId);
     const { data: rows } = await listing
       .order('role', { ascending: true }).order('id', { ascending: true })
       .limit(limit + 1);
@@ -392,8 +410,10 @@ export class PlatformService {
     // filter applied -- so "showing 200 of 4,312" is about one comparable thing.
     const counting = this.#db.from('onyx_memberships')
       .select('id', { count: 'exact', head: true }).eq('tenant_id', id);
-    const { count: total } = await (opts.role
-      ? counting.eq('role', opts.role as Role) : counting);
+    let counted = opts.role ? counting.eq('role', opts.role as Role) : counting;
+    if (opts.sectionId === 'none') counted = counted.is('section_id', null);
+    else if (opts.sectionId !== undefined) counted = counted.eq('section_id', opts.sectionId);
+    const { count: total } = await counted;
 
     const userIds = page.map((m) => String(m.user_id));
     const users = await this.#usersById(userIds);
@@ -442,6 +462,12 @@ export class PlatformService {
       programme: programmes.get(num(b.program_id)) ?? null,
     }]));
 
+    // Named once for the whole page rather than joined per row.
+    const { data: sectionRows } = await this.#db.from('onyx_sections')
+      .select('id, name, code').eq('tenant_id', id);
+    const sections = new Map((sectionRows ?? []).map((sx) => [num(sx.id),
+      { id: num(sx.id), name: String(sx.name), code: String(sx.code) }]));
+
     const people: PersonRow[] = page.map((m) => {
       const uid = String(m.user_id);
       const user = users.get(uid);
@@ -453,6 +479,7 @@ export class PlatformService {
         email: user?.email ?? '',
         phone: user?.phone ?? null,
         roll_number: m.roll_number ? String(m.roll_number) : null,
+        section: m.section_id == null ? null : sections.get(num(m.section_id)) ?? null,
         role: String(m.role),
         membership_status: num(m.status),
         account_status: user?.status ?? 0,
@@ -1617,6 +1644,8 @@ export class PlatformService {
     duration_minutes?: number; max_marks?: number; pass_marks?: number;
     /** The online paper this sitting is sat through, where there is one. */
     assessment_id?: number | null;
+    /** The section sitting it. Null or absent means every section. */
+    section_id?: number | null;
   }) {
     const { data: course } = await this.#db.from('onyx_courses')
       .select('id, semester_id').eq('tenant_id', tenantId).eq('id', input.course_id).maybeSingle();
@@ -1670,6 +1699,7 @@ export class PlatformService {
     const { data, error } = await this.#db.from('onyx_exams').insert({
       tenant_id: tenantId, semester_id: semesterId, course_id: input.course_id,
       assessment_id: input.assessment_id ?? null,
+      section_id: input.section_id ?? null,
       title: input.title.trim(), starts_at: new Date(start).toISOString(),
       duration_minutes: input.duration_minutes ?? 180, max_marks: maxMarks, pass_marks: passMarks,
       status: 'scheduled', created_by: actorId,
@@ -1727,6 +1757,8 @@ export class PlatformService {
     course_id?: number | null; title: string; opens_at?: string | null;
     closes_at?: string | null; duration_minutes?: number; pass_mark?: number | null;
     attempts_allowed?: number;
+    /** The section this paper is set for. Null or absent means every section. */
+    section_id?: number | null;
     shuffle_questions?: boolean; shuffle_options?: boolean;
     proctoring?: boolean; require_camera?: boolean; require_screen?: boolean;
     watch_camera?: boolean; anonymous_marking?: boolean; moderation_required?: boolean;
@@ -1758,6 +1790,7 @@ export class PlatformService {
 
     const { data, error } = await this.#db.from('onyx_assessments').insert({
       tenant_id: tenantId, course_id: input.course_id ?? null, title: input.title.trim(),
+      section_id: input.section_id ?? null,
       opens_at: input.opens_at ?? null, closes_at: input.closes_at ?? null,
       duration_minutes: duration,
       attempts_allowed: input.attempts_allowed ?? 1,
@@ -2509,7 +2542,7 @@ export class PlatformService {
   async assessmentDetail(tenantId: number, assessmentId: number) {
     const { data: assessment } = await this.#db.from('onyx_assessments')
       // eslint-disable-next-line max-len -- one literal, same reason as above.
-      .select('id, tenant_id, course_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, pass_mark, status, sections, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, watch_camera, anonymous_marking, moderation_required, instant_results, results_published_at, created_at')
+      .select('id, tenant_id, course_id, section_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, pass_mark, status, sections, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, watch_camera, anonymous_marking, moderation_required, instant_results, results_published_at, created_at')
       .eq('tenant_id', tenantId).eq('id', assessmentId).maybeSingle();
     if (!assessment) throw new HttpError(404, 'No such assessment.');
 

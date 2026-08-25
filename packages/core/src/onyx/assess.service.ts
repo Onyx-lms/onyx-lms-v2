@@ -23,6 +23,7 @@ import { createHash } from 'node:crypto';
 import type { OnyxDb } from './db.ts';
 import type { Role } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
+import { isForSection } from './sections.service.ts';
 import { increment } from './metrics.ts';
 import { peopleFor, labelFor, type Person } from './directory.ts';
 import type { AcademicsService } from './academics.service.ts';
@@ -30,7 +31,7 @@ import type { AcademicsService } from './academics.service.ts';
 const BANK_COLUMNS = 'id, tenant_id, course_id, name, description, created_by, created_at';
 const QUESTION_COLUMNS = 'id, tenant_id, bank_id, type, prompt, options, answer, explanation, points, difficulty, tags, version, status, problem_id, created_at';
 const VERSION_COLUMNS = 'id, tenant_id, question_id, version, type, prompt, options, answer, explanation, points, problem_id';
-const ASSESSMENT_COLUMNS = 'id, tenant_id, course_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, sections, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, watch_camera, instant_results, anonymous_marking, moderation_required, pass_mark, status, results_published_at, created_by, created_at';
+const ASSESSMENT_COLUMNS = 'id, tenant_id, course_id, section_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, sections, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, watch_camera, instant_results, anonymous_marking, moderation_required, pass_mark, status, results_published_at, created_by, created_at';
 const ATTEMPT_COLUMNS = 'id, tenant_id, assessment_id, user_id, attempt, paper, status, started_at, expires_at, submitted_at, auto_score, manual_score, score, max_score, consented_at, integrity_flags, integrity_status, updated_at';
 const ANSWER_COLUMNS = 'id, tenant_id, attempt_id, question_id, version, response, auto_points, manual_points, marker_comment, flagged_for_review, submission_id, updated_at';
 const GRADE_COLUMNS = 'id, tenant_id, attempt_id, role, marker_id, manual_score, comment, created_at';
@@ -630,13 +631,39 @@ export class AssessService {
     return { id: attemptId, score, before };
   }
 
-  async assessments(tenantId: number, role: Role, courseId?: number) {
+  /**
+   * The papers a caller may see.
+   *
+   * `sectionId` is the reader's own teaching division and filters what a
+   * LEARNER is shown: a paper set for one section is for the people in it and
+   * nobody else, while a paper with no section is for everybody — which is
+   * what every row created before sections existed means and must keep
+   * meaning. Staff are never filtered by it: they set the papers, and have no
+   * section of their own.
+   *
+   * `undefined` rather than a missing argument for the staff case, so a caller
+   * that forgets to pass it does not silently hide every sectioned paper from
+   * a learner — the visible failure is better than the invisible one.
+   */
+  /** The reader's own section. One column, so it is read here rather than by
+   *  taking a dependency on the sections service for it. */
+  async #sectionOf(tenantId: number, userId: string): Promise<number | null> {
+    const { data } = await this.#db.from('onyx_memberships')
+      .select('section_id').eq('tenant_id', tenantId).eq('user_id', userId)
+      .eq('status', 1).maybeSingle();
+    return data?.section_id == null ? null : Number(data.section_id);
+  }
+
+  async assessments(tenantId: number, role: Role, courseId?: number,
+    sectionId?: number | null) {
     const staff = role === 'admin' || role === 'faculty' || role === 'exams';
     let q = this.#db.from('onyx_assessments').select(ASSESSMENT_COLUMNS).eq('tenant_id', tenantId);
     if (!staff) q = q.eq('status', 'published');
     if (courseId) q = q.eq('course_id', courseId);
     const { data } = await q.order('opens_at');
-    return data ?? [];
+    const rows = data ?? [];
+    if (staff || sectionId === undefined) return rows;
+    return rows.filter((a) => isForSection(a.section_id as number | null, sectionId));
   }
 
   /** Just the ids, across several courses at once -- a faculty member
@@ -699,6 +726,22 @@ export class AssessService {
         throw new HttpError(422, 'That attempt has run out of time.');
       }
       return this.attemptForCandidate(tenantId, Number(live.id), userId);
+    }
+
+    /*
+     * A paper set for another section is not theirs to sit.
+     *
+     * Checked here and not only on the list. The list is what a candidate
+     * SEES; this is what they can actually start, and a paper's id is a small
+     * number that appears in a URL. Without this, a candidate who guessed one
+     * could sit another section's examination — and the two sections very
+     * often sit different papers on the same course.
+     */
+    if (assessment.section_id != null) {
+      const mine = await this.#sectionOf(tenantId, userId);
+      if (!isForSection(assessment.section_id as number | null, mine)) {
+        throw new HttpError(403, 'This paper is set for another section.');
+      }
     }
 
     if (assessment.opens_at && now < Date.parse(assessment.opens_at)) {

@@ -38,7 +38,7 @@ export interface AvatarStorage {
 
 const USER_COLUMNS = 'id, email, name, phone, photo, status, email_verified_at, created_at';
 const PROFILE_COLUMNS = 'id, email, name, phone, photo, status, created_at, username, headline, bio, skills_text, interests, experience, website, profile_public';
-const MEMBERSHIP_COLUMNS = 'id, tenant_id, user_id, role, status, roll_number, permissions, created_at';
+const MEMBERSHIP_COLUMNS = 'id, tenant_id, user_id, role, status, roll_number, section_id, permissions, created_at';
 
 /**
  * Mailboxes anyone can open in thirty seconds, under any name.
@@ -338,7 +338,8 @@ export class TenancyService {
     return value;
   }
 
-  async addMember(tenantId: number, userId: string, role: Role, roll?: string | null) {
+  async addMember(tenantId: number, userId: string, role: Role, roll?: string | null,
+    sectionId?: number | null) {
     if (!ROLES.includes(role)) throw new HttpError(422, 'That is not a role.');
     const existing = await this.membership(tenantId, userId);
     if (existing) throw new HttpError(422, 'They are already a member of this institution.');
@@ -348,6 +349,9 @@ export class TenancyService {
       .insert({
         tenant_id: tenantId, user_id: userId, role, status: 1,
         roll_number: rollNumber ?? null,
+        // Only learners have one. A section on a staff membership would be a
+        // number nothing reads and a filter that quietly hid them.
+        section_id: role === 'student' ? sectionId ?? null : null,
       })
       .select(MEMBERSHIP_COLUMNS).maybeSingle();
     if (error) throw new HttpError(500, 'Could not add them: ' + error.message);
@@ -712,6 +716,15 @@ export class TenancyService {
     name: string; email: string; password: string; code: string;
     phone?: string | null; roll_number?: string | null;
     tenant_id?: number | null;
+    /**
+     * The teaching division they picked on the form.
+     *
+     * Checked against the institution they are actually joining rather than
+     * trusted: the two fields arrive together from a form anybody can post to,
+     * and a section id from another institution would otherwise put a learner
+     * in a group that is not theirs.
+     */
+    section_id?: number | null;
   }) {
     const email = input.email.trim().toLowerCase();
     // Re-checked, not remembered. See #resolveSignup.
@@ -733,8 +746,17 @@ export class TenancyService {
     const user = (await this.userByEmail(email))
       ?? await this.#insertProfile(verified.id, email, input.name, input.phone ?? null);
 
+    let sectionId: number | null = null;
+    if (input.section_id != null) {
+      const { data: section } = await this.#db.from('onyx_sections')
+        .select('id').eq('tenant_id', Number(tenant.id)).eq('id', input.section_id)
+        .eq('status', 1).maybeSingle();
+      if (!section) throw new HttpError(422, 'That is not a section at this institution.');
+      sectionId = Number(section.id);
+    }
+
     const membership = await this.addMember(
-      Number(tenant.id), user.id, 'student', input.roll_number ?? null);
+      Number(tenant.id), user.id, 'student', input.roll_number ?? null, sectionId);
 
     return {
       user: { id: user.id, email: user.email, name: user.name },
@@ -1210,6 +1232,14 @@ export class TenancyService {
    */
   async members(tenantId: number, filters: {
     role?: Role; search?: string; onlyStudentsOn?: number[];
+    /**
+     * A section id, or `'none'` for the people in no section at all.
+     *
+     * "Unassigned" has to be askable. It is the list somebody works from at
+     * the start of a term, and a filter that could only name a section would
+     * make the people who most need moving the ones hardest to find.
+     */
+    sectionId?: number | 'none';
   } = {}) {
     /*
      * Members, not applicants.
@@ -1227,6 +1257,8 @@ export class TenancyService {
     let query = this.#db.from('onyx_memberships')
       .select(MEMBERSHIP_COLUMNS).eq('tenant_id', tenantId).eq('status', 1);
     if (filters.role) query = query.eq('role', filters.role);
+    if (filters.sectionId === 'none') query = query.is('section_id', null);
+    else if (filters.sectionId !== undefined) query = query.eq('section_id', filters.sectionId);
     const { data } = await query.order('id');
     const rows = data ?? [];
     if (!rows.length) return [];

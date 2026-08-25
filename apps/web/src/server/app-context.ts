@@ -13,7 +13,7 @@ import {
   AssessService, ProctorService, AssessAnalyticsService,
   CareerService, PlacementService, ContestService, ResumeService,
   EngageService, SupportService, CampusService, ExaminationsService,
-  FinanceService, OnyxCheckoutService, GuardianService, PlatformService,
+  FinanceService, OnyxCheckoutService, GuardianService, PlatformService, OnyxSectionsService,
   NotifyService,
   executionProviderFromEnv, runCodeLabWorker,
   type ExecutionProvider, type CodeLabWorkerOptions,
@@ -120,6 +120,7 @@ export interface AppContext {
   onyxCheckout: OnyxCheckoutService;
   onyxGuardians: GuardianService;
   onyxPlatform: PlatformService;
+  onyxSections: OnyxSectionsService;
   onyxOAuthClients: OAuthClientsService;
   /** One pass of the Code Lab worker. Also driven by an interval in server.ts. */
   onyxRunWorker: (opts?: CodeLabWorkerOptions) =>
@@ -146,6 +147,9 @@ export function createContext(): AppContext {
   const mail = new MailService(settings);
   const onyxDb = onyxServiceClient();
   const onyxAcademics = new AcademicsService(onyxDb);
+  // Teaching divisions -- Alpha/Beta/Gamma, Section A/B/C. One small table
+  // and one column on memberships; see 0038 for why it is not a batch.
+  const onyxSections = new OnyxSectionsService(onyxDb);
   // Hoisted because the proctoring service records invigilator decisions
   // through it; a second instance would work but would be a second thing to
   // configure identically.
@@ -344,6 +348,7 @@ export function createContext(): AppContext {
     }),
     onyxGuardians: new GuardianService(onyxDb, onyxAudit, onyxExams),
     onyxPlatform: new PlatformService(onyxDb, undefined, onyxAssess),
+    onyxSections,
     onyxOAuthClients: new OAuthClientsService(),
     onyxRunWorker: (opts) => runCodeLabWorker(onyxQueue, onyxCodeLab, {
       ...opts, onError: (m) => console.error('[onyx] ' + m),

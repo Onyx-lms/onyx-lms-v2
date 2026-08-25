@@ -291,9 +291,18 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
       }
     }
 
+    /*
+     * A learner sees their own section's papers, and the ones set for
+     * everybody. Staff are not filtered: they set the papers, and have no
+     * section of their own to be filtered by.
+     */
+    const sectionId = staff ? undefined
+      : await ctx.onyxSections.sectionOf(claims.tenant_id, claims.user_id);
+
     return ok(await ctx.onyxCampus.calendar(claims.tenant_id, { from, to }, {
       course_ids: courseIds,
       publishedOnly: !staff,
+      sectionId,
     }));
   });
 
