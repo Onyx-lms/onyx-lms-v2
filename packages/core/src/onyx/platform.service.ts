@@ -106,6 +106,32 @@ function byRoll2(
   return a.name.localeCompare(b.name);
 }
 
+/**
+ * Whether one candidate passed, from the ledger mark or the online score.
+ *
+ * Kept out of the row builder because the rule is the interesting part and the
+ * row builder is long: the entered mark is judged against the sitting's own
+ * pass mark; an online score has to be judged against the PAPER's total, so
+ * the pass mark is scaled to it. A paper out of 21 sat under a sitting out of
+ * 100 with a pass at 40 passes at 8.4 of 21, not at 40 of 21 -- which is a
+ * mark nobody can reach, and would have failed everybody.
+ */
+function passFail(
+  entered: number | null,
+  passMark: number | null,
+  outOf: number,
+  score: number | null,
+  scoreOutOf: number | null,
+): 'pass' | 'fail' | null {
+  if (passMark == null) return null;
+  if (entered != null) return entered >= passMark ? 'pass' : 'fail';
+  if (score == null) return null;
+  // No usable total on either side: judge like for like rather than guess.
+  if (!scoreOutOf || !outOf) return score >= passMark ? 'pass' : 'fail';
+  const needed = (passMark / outOf) * scoreOutOf;
+  return score >= needed ? 'pass' : 'fail';
+}
+
 export class PlatformService {
   #db: OnyxDb;
   #assess: AssessService | null = null;
@@ -2758,11 +2784,31 @@ export class PlatformService {
         moderation_delta: mark ? Number(mark.moderation_delta ?? 0) : null,
         final_marks: final,
         grade: mark?.grade ?? null,
-        // Said once, here, so three screens cannot disagree about it. Null
-        // where there is nothing to judge -- an unmarked script is not a fail.
-        result: final == null || exam.pass_marks == null
-          ? null
-          : (final >= Number(exam.pass_marks) ? 'pass' : 'fail'),
+        /*
+         * Pass or fail, from whichever mark this candidate actually has.
+         *
+         * A sitting produces a mark one of two ways: an examiner enters it in
+         * the ledger, or the engine scores the paper the candidate sat in a
+         * browser. This read only knew about the first, so a candidate who
+         * sat online and scored full marks was reported with no result at all
+         * -- on the very screen the client asked to show grades and results.
+         *
+         * The examiner's entry wins where there is one: a moderated or
+         * hand-corrected mark is a decision about this candidate, and the raw
+         * engine score is not allowed to overrule it. Where there is none, the
+         * attempt's own score is judged against the paper's own total, because
+         * the sitting's `max_marks` is what a hall paper is out of and an
+         * online paper is out of what its questions are worth.
+         *
+         * Still null where there is genuinely nothing to judge: an unmarked
+         * script is not a fail, and saying otherwise on a screen somebody
+         * reads a grade off is the worst way to be wrong.
+         */
+        result: passFail(
+          final, exam.pass_marks == null ? null : Number(exam.pass_marks),
+          Number(exam.max_marks ?? 0),
+          sat?.score == null ? null : Number(sat.score),
+          sat?.max_score == null ? null : Number(sat.max_score)),
       };
     }).sort(byRoll2);
 

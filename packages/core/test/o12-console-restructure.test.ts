@@ -285,6 +285,79 @@ test('ASS-12 the academics list says which sittings are sat in a browser', async
   assert.equal(hall?.section_id, null);
 });
 
+test('ASS-12 an online score decides pass or fail when no mark was entered', async () => {
+  /*
+   * The sitting's own ledger is empty for a paper sat in a browser -- nobody
+   * writes a row there -- and this read only knew about the ledger. So a
+   * candidate who scored full marks online was reported with NO RESULT, on the
+   * one screen the client asked to show grades and results.
+   *
+   * The scaling matters as much as the fallback: a paper out of 20 sat under a
+   * sitting out of 100 with a pass at 40 passes at 8 of 20, not at 40 of 20 --
+   * a mark nobody can reach, which would fail everybody who sat it.
+   */
+  const w = world();
+  const platform = new PlatformService(w.db as unknown as OnyxDb, undefined, w.assess);
+  const paper = await w.assess.createAssessment(T, ACTOR, {
+    title: 'Online', course_id: 1, duration_minutes: 30,
+  });
+  const exam = await w.exams.schedule(T, ACTOR, {
+    semester_id: null, course_id: 1, title: 'Online sitting',
+    starts_at: new Date(1_800_100_000_000).toISOString(),
+    assessment_id: Number(paper!.id), max_marks: 100, pass_marks: 40,
+  });
+
+  await w.db.from('onyx_assessment_attempts').insert({
+    id: 900, tenant_id: T, assessment_id: Number(paper!.id), user_id: 'u-1', attempt: 1,
+    status: 'published', started_at: 'a', submitted_at: 'b', score: 18, max_score: 20,
+  });
+  await w.db.from('onyx_assessment_attempts').insert({
+    id: 901, tenant_id: T, assessment_id: Number(paper!.id), user_id: 'u-2', attempt: 1,
+    status: 'published', started_at: 'a', submitted_at: 'b', score: 4, max_score: 20,
+  });
+  await w.db.from('onyx_assessment_attempts').insert({
+    id: 902, tenant_id: T, assessment_id: Number(paper!.id), user_id: 'u-3', attempt: 1,
+    status: 'in_progress', started_at: 'a', submitted_at: null, score: null, max_score: 20,
+  });
+
+  const { register } = await platform.examDetail(T, Number(exam!.id));
+  const of = (roll: string | null) => register.find((r) => r.roll_number === roll);
+  // 18 of 20 is 90%, and the sitting passes at 40%.
+  assert.equal(of('MR-002')?.result, 'pass', 'a full-marks online script had no result');
+  // 4 of 20 is 20%, which is below it -- and is NOT compared against 40 raw.
+  assert.equal(of('MR-010')?.result, 'fail');
+  // Still nothing to judge for somebody who has not handed in.
+  assert.equal(register.find((r) => r.name === 'Zara')?.result, null);
+});
+
+test('ASS-12 an examiner’s entry outranks the engine’s score', async () => {
+  // A moderated or hand-corrected mark is a decision about this candidate. The
+  // raw score must not overrule it -- which is why the ledger is read first.
+  const w = world();
+  const platform = new PlatformService(w.db as unknown as OnyxDb, undefined, w.assess);
+  const paper = await w.assess.createAssessment(T, ACTOR, {
+    title: 'Online', course_id: 1, duration_minutes: 30,
+  });
+  const exam = await w.exams.schedule(T, ACTOR, {
+    semester_id: null, course_id: 1, title: 'Moderated',
+    starts_at: new Date(1_800_100_000_000).toISOString(),
+    assessment_id: Number(paper!.id), max_marks: 100, pass_marks: 40,
+  });
+  await w.db.from('onyx_assessment_attempts').insert({
+    id: 910, tenant_id: T, assessment_id: Number(paper!.id), user_id: 'u-1', attempt: 1,
+    status: 'published', started_at: 'a', submitted_at: 'b', score: 20, max_score: 20,
+  });
+  await w.db.from('onyx_exam_marks').insert({
+    id: 5, tenant_id: T, exam_id: Number(exam!.id), user_id: 'u-1',
+    raw_marks: 30, moderation_delta: 0, final_marks: 30, grade: 'F', status: 'published',
+  });
+
+  const { register } = await platform.examDetail(T, Number(exam!.id));
+  assert.equal(register[0]?.result, 'fail',
+    'the engine score overruled the examiner’s entry');
+  assert.equal(register[0]?.grade, 'F');
+});
+
 test('ASS-12 a seat with no mark still appears, with the seat on it', async () => {
   const w = world();
   const { platform, examId } = await sitting(w);

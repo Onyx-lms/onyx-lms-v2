@@ -99,6 +99,25 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
       // second question to draw one.
       ctx.onyxTenancy.profileFor(claims.user_id),
     ]);
+    const here = memberships.find((m) => Number(m.tenant?.id) === claims.tenant_id);
+
+    /*
+     * Which division they are in, by NAME.
+     *
+     * The membership carries a section id, which is no use to anybody reading
+     * their own record -- and this route returned neither. So a learner at an
+     * institution that runs sections could be shown a paper set for Alpha-CSE,
+     * be refused one set for Beta-CSE, and have no way to see which they were
+     * in; and every screen wanting to say it had to fetch the section list and
+     * match ids itself.
+     *
+     * One lookup, only when there is a section to look up.
+     */
+    const sectionId = here?.section_id == null ? null : Number(here.section_id);
+    const section = sectionId == null
+      ? null
+      : await ctx.onyxSections.section(claims.tenant_id, sectionId).catch(() => null);
+
     return ok({
       user_id: claims.user_id,
       name,
@@ -109,8 +128,9 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
       // roll number off their own profile rather than off a printed list --
       // and so staff writing it on a script have it to hand. Per membership,
       // so switching institutions switches the number with it.
-      roll_number: memberships.find((m) => Number(m.tenant?.id) === claims.tenant_id)
-        ?.roll_number ?? null,
+      roll_number: here?.roll_number ?? null,
+      section_id: sectionId,
+      section: section ? { id: Number(section.id), name: String(section.name) } : null,
       tenant,
       memberships: memberships.map((m) => ({ tenant: m.tenant, role: m.role })),
     });

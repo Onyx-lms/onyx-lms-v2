@@ -21,6 +21,17 @@ const PROGRAM_COLUMNS = 'id, tenant_id, name, code, description, duration_semest
 const SEMESTER_COLUMNS = 'id, tenant_id, program_id, name, number, starts_on, ends_on, status';
 const BATCH_COLUMNS = 'id, tenant_id, program_id, name, code, year, status';
 const COURSE_COLUMNS = 'id, tenant_id, program_id, semester_id, code, title, slug, description, credits, self_enroll, access, price_minor, currency, status, created_by, created_at';
+/**
+ * How a roster is read: one page, then the next.
+ *
+ * A thousand is what the server returns for a request that names no range,
+ * so it is the largest useful page. The ceiling is a runaway guard, not a
+ * product limit -- a single course with more students than this is a data
+ * problem, and stopping beats paging forever.
+ */
+const PAGE = 1000;
+const PAGE_CEILING = 50_000;
+
 const ENROLLMENT_COLUMNS = 'id, tenant_id, course_id, user_id, batch_id, status, enrolled_by, created_at';
 
 /**
@@ -617,12 +628,31 @@ export class AcademicsService {
     return [...new Set((data ?? []).map((r) => Number(r.course_id)))];
   }
 
+  /**
+   * Everybody on a course. ALL of them.
+   *
+   * This asked for the roster with no limit, which reads as "all of them" and
+   * is not: a request that names no range comes back capped at a thousand
+   * rows. A course with 1,440 students on it therefore had a roster of 1,000 --
+   * and this is the method an attendance register is built from, so the other
+   * 440 were not marked absent, they simply were not on the sheet. Nothing
+   * anywhere said the list had been cut.
+   *
+   * So it pages, in the largest bite the server will give, until a short page
+   * says there is no more.
+   */
   async roster(tenantId: number, courseId: number) {
-    const { data } = await this.#db.from('onyx_enrollments')
-      .select(ENROLLMENT_COLUMNS)
-      .eq('tenant_id', tenantId).eq('course_id', courseId).eq('status', 1)
-      .order('id');
-    return data ?? [];
+    const rows = [];
+    for (let from = 0; from < PAGE_CEILING; from += PAGE) {
+      const { data } = await this.#db.from('onyx_enrollments')
+        .select(ENROLLMENT_COLUMNS)
+        .eq('tenant_id', tenantId).eq('course_id', courseId).eq('status', 1)
+        .order('id').range(from, from + PAGE - 1);
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < PAGE) break;
+    }
+    return rows;
   }
 
   /**
@@ -630,13 +660,25 @@ export class AcademicsService {
    * so a caller groups them itself. The bulk twin of `roster()`, for a
    * dashboard reading a dozen taught courses' headcounts, which would
    * otherwise be a `roster()` call per course.
+   *
+   * Paged for the same reason `roster` is, and more sharply: this is what a
+   * lecturer's dashboard counts headcounts from, so a truncated read does not
+   * merely shorten a list -- it prints a smaller number beside every course
+   * and nothing looks wrong.
    */
   async rosterBulk(tenantId: number, courseIds: number[]) {
     if (!courseIds.length) return [];
-    const { data } = await this.#db.from('onyx_enrollments')
-      .select(ENROLLMENT_COLUMNS)
-      .eq('tenant_id', tenantId).eq('status', 1).in('course_id', courseIds);
-    return data ?? [];
+    const rows = [];
+    for (let from = 0; from < PAGE_CEILING; from += PAGE) {
+      const { data } = await this.#db.from('onyx_enrollments')
+        .select(ENROLLMENT_COLUMNS)
+        .eq('tenant_id', tenantId).eq('status', 1).in('course_id', courseIds)
+        .order('id').range(from, from + PAGE - 1);
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < PAGE) break;
+    }
+    return rows;
   }
 
   /** Administrator-driven enrolment. */
