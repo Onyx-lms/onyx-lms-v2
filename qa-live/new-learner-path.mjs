@@ -92,7 +92,12 @@ const paper = (await call(base + '/assessments', {
   method: 'POST', token: pt,
   body: {
     title: 'New learner QA paper ' + RUN, course_id: course.id, duration_minutes: 30,
-    opens_at: new Date(Date.now() - 60_000).toISOString(),
+    // An hour, not a minute. This machine's clock and the server's differ by
+    // enough that a window opening "sixty seconds ago" locally was still in
+    // the future there, and the paper was refused as not yet open -- a fault
+    // in the harness that read exactly like one in the product.
+    // Overwritten by the sitting below -- see `syncExamAssessmentWindow`.
+    opens_at: new Date(Date.now() - 3_600_000).toISOString(),
     closes_at: new Date(Date.now() + 3 * 3_600_000).toISOString(),
     proctoring: false, require_camera: false, require_screen: false, watch_camera: false,
   },
@@ -104,7 +109,17 @@ await call(base + '/assessments/' + paper.id + '/sections', {
 await call(base + '/assessments/' + paper.id + '/publish',
   { method: 'POST', token: pt, body: {} });
 
-const startsAt = new Date(Date.now() + 2 * 3_600_000).toISOString();
+/*
+ * A sitting that has already begun, so the paper is open when the learner
+ * reaches it.
+ *
+ * Scheduling it two hours ahead made this run fail with "this assessment has
+ * not opened yet", which looked like a defect and is the opposite: attaching a
+ * paper to a sitting calls `syncExamAssessmentWindow`, which opens the paper
+ * for exactly that sitting. A candidate cannot sit an examination paper before
+ * the examination starts, which is the whole point of scheduling one.
+ */
+const startsAt = new Date(Date.now() - 5 * 60_000).toISOString();
 const exam = (await call(base + '/exams', {
   method: 'POST', token: pt,
   body: {
