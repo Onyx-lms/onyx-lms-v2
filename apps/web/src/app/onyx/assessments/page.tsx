@@ -297,8 +297,7 @@ export default async function OnyxAssessmentsPage() {
                     <span className="tabular-nums">{a.duration_minutes} minutes</span>
                     <span>
                       {a.opens_at
-                        ? 'Opens ' + new Date(a.opens_at).toLocaleDateString(undefined,
-                          { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                        ? 'Opens ' + new Date(a.opens_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
                         : 'Open any time'}
                     </span>
                   </span>

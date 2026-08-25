@@ -56,7 +56,7 @@ export default async function OnyxProblemPage({ params }: { params: Promise<{ id
       title={problem.title}
       subtitle={difficulty
         + (problem.topic ? ', ' + problem.topic : '')
-        + ', ' + problem.time_limit_ms.toLocaleString() + 'ms and '
+        + ', ' + problem.time_limit_ms.toLocaleString('en-IN') + 'ms and '
         + memoryMb + 'MB per case'
         + (problem.attempts
           ? ' · ' + problem.attempts + ' attempt' + (problem.attempts === 1 ? '' : 's')
@@ -113,7 +113,7 @@ export default async function OnyxProblemPage({ params }: { params: Promise<{ id
             <SectionHead title="Constraints" />
             <dl className="grid gap-2">
               <Constraint k="Time per case"
-                v={problem.time_limit_ms.toLocaleString() + ' ms'} />
+                v={problem.time_limit_ms.toLocaleString('en-IN') + ' ms'} />
               <Constraint k="Memory per case" v={memoryMb + ' MB'} />
               <Constraint k="Languages"
                 v={(problem.languages ?? []).length

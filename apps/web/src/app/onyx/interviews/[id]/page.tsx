@@ -29,7 +29,7 @@ export default async function OnyxInterviewPage({ params }: { params: Promise<{ 
       me={me}
       nav={navFor(me.role)}
       title={interview.title}
-      subtitle={new Date(interview.scheduled_at).toLocaleString()
+      subtitle={new Date(interview.scheduled_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
         + ' · ' + interview.duration_minutes + ' minutes'}
     >
       <Link href="/onyx/interviews" className="text-sm text-muted hover:underline">

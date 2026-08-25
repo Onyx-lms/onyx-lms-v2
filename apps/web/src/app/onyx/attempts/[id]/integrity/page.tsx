@@ -57,8 +57,7 @@ export default async function OnyxIntegrityPage({ params }: { params: Promise<{ 
   const points = (list: typeof weighted) => list.reduce((n, e) => n + Number(e.weight), 0);
 
   const stamp = (iso: string | null) => iso
-    ? new Date(iso).toLocaleString(undefined,
-      { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    ? new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
     : null;
   // Elapsed wall-clock, capped at the time the paper actually allowed.
   //

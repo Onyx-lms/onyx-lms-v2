@@ -16,7 +16,7 @@ function expiryLabel(expiry: string | null): string {
   const raw = String(expiry).trim();
   const ms = /^\d+$/.test(raw) ? (Number(raw) < 1e12 ? Number(raw) * 1000 : Number(raw))
                                : Date.parse(raw);
-  return Number.isNaN(ms) ? raw : new Date(ms).toLocaleDateString();
+  return Number.isNaN(ms) ? raw : new Date(ms).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
 }
 
 /** E-03: coupon administration. */

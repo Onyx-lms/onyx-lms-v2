@@ -101,8 +101,7 @@ export default async function OnyxJobPage({ params }: { params: Promise<{ id: st
             : job.status === 'open' ? 'Open to applications' : 'No new applications'} />
         <StatTile label="Closes" value={job.closes_at ? closes.text : 'No date'}
           note={job.closes_at
-            ? new Date(job.closes_at).toLocaleDateString(undefined,
-              { weekday: 'short', day: 'numeric', month: 'short' })
+            ? new Date(job.closes_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short' })
             : 'The office closes this one by hand'} />
       </div>
 

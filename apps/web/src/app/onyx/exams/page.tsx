@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
+import { ExamWhen } from '@/components/onyx-local-time';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, type Me } from '@/lib/onyx-session';
 import type { Exam } from '@/lib/onyx-campus';
@@ -11,6 +12,7 @@ import type { Course } from '@/lib/onyx-learn';
 import {
   DataTable, EmptyRow, Icon, Pill, Banner, Segmented, State, StatTile,
 } from '@/components/onyx-ui';
+import { dayNumber } from '@/lib/onyx-time';
 
 export const metadata: Metadata = { title: 'Examinations' };
 
@@ -33,12 +35,13 @@ function gap(ms: number): string {
  * which is how a person reading a timetable thinks about it.
  */
 function days(from: number, to: number): number {
-  const startOf = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  // Midnight in the institution's zone, not the runtime's -- see
+  // `dayNumber` in lib/onyx-time.ts for what that fixed.
+  const startOf = (ms: number) => dayNumber(ms) * 86_400_000;
   return Math.round((startOf(to) - startOf(from)) / 86_400_000);
 }
 
-const AT = (ms: number) => new Date(ms).toLocaleString(undefined,
-  { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const AT = (ms: number) => new Date(ms).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 type Phase = 'running' | 'upcoming' | 'completed' | 'cancelled';
 
@@ -134,12 +137,18 @@ export default async function OnyxExamsPage() {
   const canManageHalls = me.role === 'admin' || me.role === 'exams';
   // For the "Online paper" picker below -- staff see every assessment
   // regardless of status, same as the assessments page itself.
-  const [assessments, myCourses] = await Promise.all([
+  const [assessments, myCourses, problems] = await Promise.all([
     canSchedule
       ? onyxApiSafe<{ id: number; title: string; course_id: number | null }[]>(
         '/api/onyx/assessments')
       : null,
     me.role === 'faculty' ? onyxApiSafe<Course[]>('/api/onyx/my/courses') : null,
+    // For a coding question on a paper built here: it is marked by running a
+    // published problem's tests, so the picker needs the list. Staff only --
+    // `/problems` shows them drafts too, which is why the composer filters.
+    canSchedule
+      ? onyxApiSafe<{ id: number; title: string; status: string }[]>('/api/onyx/problems')
+      : null,
   ]);
   const schedulableCourses = me.role === 'faculty' ? (myCourses ?? []) : (courses ?? []);
 
@@ -264,8 +273,13 @@ export default async function OnyxExamsPage() {
               here to pick it from the dropdown above. This does all three in
               one form and the result is published, so it is already sitting
               in that dropdown by the time this panel closes. */}
-          {canSchedule ? <CreatePaper courses={schedulableCourses.map((c) =>
-            ({ id: c.id, label: c.code + ' — ' + c.title }))} /> : null}
+          {canSchedule ? (
+            <CreatePaper
+              courses={schedulableCourses.map((c) =>
+                ({ id: c.id, label: c.code + ' — ' + c.title }))}
+              problems={problems ?? []}
+            />
+          ) : null}
           {/* Physical halls are an institution-wide resource shared across every
               course, not something one course's faculty allocate on their own --
               stays with the examinations office even now that scheduling itself
@@ -413,10 +427,23 @@ export default async function OnyxExamsPage() {
                       ) : null}
                     </td>
                     <td className="whitespace-nowrap">
-                      <div className="font-semibold">{when.lead}</div>
-                      {when.sub ? (
-                        <div className="text-[12.5px] text-muted">{when.sub}</div>
-                      ) : null}
+                      {/*
+                        * Rendered in the browser, not here.
+                        *
+                        * `schedule()` above still decides the PHASE, which is a
+                        * comparison between two instants and is the same answer
+                        * everywhere. The words are not: formatted on a server
+                        * running in UTC, a sitting stored at 08:05Z was shown to
+                        * a learner in India as "08:05 AM" when it starts at
+                        * 13:35 their time, and the "Today" above it was counted
+                        * from the wrong midnight.
+                        */}
+                      <ExamWhen
+                        startsAt={exam.starts_at}
+                        durationMinutes={exam.duration_minutes}
+                        cancelled={exam.status === 'cancelled'}
+                        completed={exam.status === 'completed'}
+                      />
                     </td>
                     <td className="whitespace-nowrap tabular-nums">
                       {exam.duration_minutes} min

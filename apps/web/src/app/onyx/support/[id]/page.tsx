@@ -51,7 +51,7 @@ export default async function OnyxSupportTicketPage({ params }: { params: Promis
               <li key={e.id} className="rounded-lg border border-line p-3 text-sm">
                 <div className="flex items-baseline justify-between text-xs text-muted">
                   <span>{e.kind}</span>
-                  <span>{new Date(e.created_at).toLocaleString()}</span>
+                  <span>{new Date(e.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</span>
                 </div>
                 {e.note ? <p className="mt-1 whitespace-pre-wrap">{e.note}</p> : null}
               </li>

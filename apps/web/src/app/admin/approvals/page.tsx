@@ -34,7 +34,7 @@ export default async function AdminApprovals() {
                 <p className="mt-1 text-sm text-slate-600">{a.message}</p>
                 <p className="mt-1 text-xs text-slate-500">
                   Submitted by user #{a.user_id}
-                  {a.created_at ? ` on ${new Date(a.created_at).toLocaleDateString()}` : ''}
+                  {a.created_at ? ` on ${new Date(a.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}` : ''}
                 </p>
               </div>
               <ApprovalActions courseId={a.course_id} />

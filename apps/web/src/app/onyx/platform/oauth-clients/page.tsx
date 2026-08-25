@@ -72,8 +72,7 @@ export default async function OnyxOAuthClientsPage() {
                 <span className="block truncate text-[12px] text-faint">
                   {c.registration_type === 'dynamic' ? 'Self-registered' : 'Registered manually'}
                   {' · '}
-                  {new Date(c.created_at).toLocaleDateString(undefined,
-                    { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {new Date(c.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
               </span>
               <OAuthClientManageToggle client={c} />

@@ -72,7 +72,7 @@ export default async function CertificatePage(
 
         <div style={at(t.date_top, t.date_left)} className="text-center">
           <div className="text-sm text-slate-700">
-            {cert.issued_at ? new Date(cert.issued_at).toLocaleDateString() : ''}
+            {cert.issued_at ? new Date(cert.issued_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : ''}
           </div>
           <div className="mt-1 border-t border-slate-300 pt-1 text-[10px] uppercase tracking-wider text-slate-500">
             Date

@@ -49,7 +49,7 @@ export default async function AdminEnrollments() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-slate-600">
-                  {r.expiry_date ? new Date(r.expiry_date).toLocaleDateString() : 'Never'}
+                  {r.expiry_date ? new Date(r.expiry_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'Never'}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <EnrollmentAdmin mode="delete" enrollmentId={r.id} />

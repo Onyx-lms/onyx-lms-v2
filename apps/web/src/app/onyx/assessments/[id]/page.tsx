@@ -71,8 +71,7 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
   }));
 
   const stamp = (iso: string | null) => iso
-    ? new Date(iso).toLocaleString(undefined,
-      { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    ? new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
     : null;
   const drawn = (assessment.sections ?? []).reduce((n, s) => n + Number(s.take || 0), 0);
 
@@ -268,7 +267,7 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
                 ) : !open ? (
                   <p className="text-sm text-muted">
                     {assessment.opens_at && Date.parse(assessment.opens_at) > now
-                      ? 'This opens ' + new Date(assessment.opens_at).toLocaleString() + '.'
+                      ? 'This opens ' + new Date(assessment.opens_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + '.'
                       : 'This assessment has closed.'}
                   </p>
                 ) : (

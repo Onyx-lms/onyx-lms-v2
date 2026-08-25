@@ -224,8 +224,7 @@ export default async function OnyxDrivePage({ params }: { params: Promise<{ id: 
                       : <Score value="—" band="none" />}
                   </td>
                   <td className="whitespace-nowrap text-muted">
-                    {new Date(a.created_at).toLocaleDateString(undefined,
-                      { day: 'numeric', month: 'short' })}
+                    {new Date(a.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' })}
                   </td>
                 </tr>
               ))}
@@ -299,8 +298,7 @@ export default async function OnyxDrivePage({ params }: { params: Promise<{ id: 
                   <div className="flex items-center justify-between gap-3 py-2">
                     <dt className="text-muted">Date</dt>
                     <dd className="min-w-0 break-words text-right font-bold">
-                      {new Date(summary.drive.scheduled_at).toLocaleString(undefined,
-                        { weekday: 'short', day: 'numeric', month: 'short',
+                      {new Date(summary.drive.scheduled_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short',
                           hour: '2-digit', minute: '2-digit' })}
                     </dd>
                   </div>

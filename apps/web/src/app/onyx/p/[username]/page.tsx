@@ -90,8 +90,7 @@ export default async function PublicProfilePage(
 
   const initials = profile.name.split(/\s+/).filter(Boolean).slice(0, 2)
     .map((w) => w[0]!.toUpperCase()).join('');
-  const joined = new Date(profile.since).toLocaleDateString(undefined,
-    { month: 'long', year: 'numeric' });
+  const joined = new Date(profile.since).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'long', year: 'numeric' });
 
   return (
     <div className="min-h-screen bg-canvas">

@@ -30,7 +30,7 @@ export async function generateMetadata(
 }
 
 const when = (seconds: number | null) =>
-  seconds ? new Date(Number(seconds) * 1000).toLocaleDateString() : '';
+  seconds ? new Date(Number(seconds) * 1000).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '';
 
 export default async function TeamPackagePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

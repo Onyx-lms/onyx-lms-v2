@@ -49,8 +49,7 @@ export default async function OnyxSubmissionPage({ params }: { params: Promise<{
               <div className="truncate text-[14px] font-semibold">{name}</div>
               <div className="text-[12.5px] text-muted">
                 {submission.submitted_at
-                  ? 'Handed in ' + new Date(submission.submitted_at).toLocaleString(undefined,
-                    { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                  ? 'Handed in ' + new Date(submission.submitted_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
                   : 'Not handed in'}
               </div>
             </div>

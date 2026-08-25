@@ -23,7 +23,7 @@ const navFor = (role: string) =>
   role === 'admin' ? ADMIN_NAV : role === 'instructor' ? INSTRUCTOR_NAV : STUDENT_NAV;
 
 function when(seconds: number | null): string {
-  return seconds ? new Date(Number(seconds) * 1000).toLocaleString() : '';
+  return seconds ? new Date(Number(seconds) * 1000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '';
 }
 
 export default async function MyBootcampPage({ params }: { params: Promise<{ slug: string }> }) {

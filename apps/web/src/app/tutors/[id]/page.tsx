@@ -35,7 +35,7 @@ export async function generateMetadata(
 }
 
 const when = (seconds: number | null) =>
-  seconds ? new Date(Number(seconds) * 1000).toLocaleString() : '';
+  seconds ? new Date(Number(seconds) * 1000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '';
 
 export default async function TutorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

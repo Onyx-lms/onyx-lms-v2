@@ -67,7 +67,7 @@ export default async function AdminCertificates(
                   </Link>
                 </td>
                 <td className="px-4 py-3 text-slate-600">
-                  {r.created_at ? new Date(r.created_at).toLocaleDateString() : '-'}
+                  {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-'}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <CertificateAdmin mode="row" certificateId={r.id} identifier={r.identifier} />

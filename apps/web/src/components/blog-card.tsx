@@ -18,7 +18,7 @@ export function formatDate(value: string | null): string {
   const d = new Date(value);
   return Number.isNaN(d.getTime())
     ? ''
-    : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    : d.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata',  day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function BlogCard({ post }: { post: BlogPost }) {

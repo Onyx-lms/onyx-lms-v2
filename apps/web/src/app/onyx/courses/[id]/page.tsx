@@ -579,8 +579,7 @@ export default async function OnyxCoursePage(
                     href={'/onyx/courses/' + id + '/attendance/' + s.id}
                     // A day and a time, not "11/8/2026, 12:11:13 am". Seconds
                     // have never told anybody when a lecture is.
-                    meta={new Date(s.scheduled_at).toLocaleDateString(undefined, {
-                      weekday: 'short', day: 'numeric', month: 'short',
+                    meta={new Date(s.scheduled_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short',
                       hour: '2-digit', minute: '2-digit',
                     })}
                     trailing={s.status === 'open'

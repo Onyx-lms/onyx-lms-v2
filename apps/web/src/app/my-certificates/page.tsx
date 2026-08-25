@@ -31,7 +31,7 @@ export default async function MyCertificates() {
             <article key={r.id} className="card p-5">
               <h2 className="font-semibold">{r.course?.title ?? 'Course'}</h2>
               <p className="mt-1 text-xs text-slate-500">
-                Issued {r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}
+                Issued {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : ''}
               </p>
               <p className="mt-2 font-mono text-xs text-slate-500">{r.identifier}</p>
               <div className="mt-4 flex gap-2">

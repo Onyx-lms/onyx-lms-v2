@@ -350,8 +350,7 @@ export default async function OnyxProfilePage() {
                     <div className="min-w-0">
                       <div className="text-[15px] font-bold leading-snug">{c.title}</div>
                       <div className="mt-0.5 text-[12.5px] text-muted">
-                        Issued {new Date(c.issued_at).toLocaleDateString(undefined,
-                          { day: 'numeric', month: 'short', year: 'numeric' })}
+                        Issued {new Date(c.issued_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}
                       </div>
                     </div>
 

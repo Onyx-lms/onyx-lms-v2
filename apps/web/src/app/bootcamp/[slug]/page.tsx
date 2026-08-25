@@ -47,7 +47,7 @@ export async function generateMetadata(
 
 function when(seconds: number | null): string {
   if (!seconds) return '';
-  return new Date(Number(seconds) * 1000).toLocaleString();
+  return new Date(Number(seconds) * 1000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 }
 
 export default async function BootcampPage({ params }: { params: Promise<{ slug: string }> }) {

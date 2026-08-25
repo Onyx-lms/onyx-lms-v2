@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { Verification } from '@/lib/onyx-career';
 import { Icon, Pill, State, type IconName } from '@/components/onyx-ui';
 import { appOrigin } from '@/lib/app-origin';
+import { dayNumber } from '@/lib/onyx-time';
 
 export const metadata: Metadata = {
   title: 'Verify a credential',
@@ -16,7 +17,9 @@ function ago(iso: string | null | undefined): string {
   if (!iso) return '—';
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return '—';
-  const startOf = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  // Midnight in the institution's zone, not the runtime's -- see
+  // `dayNumber` in lib/onyx-time.ts for what that fixed.
+  const startOf = (ms: number) => dayNumber(ms) * 86_400_000;
   const d = Math.round((startOf(Date.now()) - startOf(t)) / 86_400_000);
   if (d < 0) {
     const n = Math.abs(d);

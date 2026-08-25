@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
+import { LocalTime } from '@/components/onyx-local-time';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
 import type { Exam, SeatingPlan, Hall, ExamMark } from '@/lib/onyx-campus';
@@ -14,6 +15,7 @@ import {
   BackLink, Card, DataTable, Empty, EmptyRow, Icon, Meter, Pill, Score, SectionHead, StatTile, State, Stepper,
 } from '@/components/onyx-ui';
 import { ShareLink } from '@/components/onyx-share';
+import { dayNumber } from '@/lib/onyx-time';
 
 export const metadata: Metadata = { title: 'Exam' };
 
@@ -27,7 +29,9 @@ interface Seat { hall_id: number; seat_label: string; user_id: string; created_a
 
 /** Calendar days apart, so "tomorrow" does not depend on the hour of asking. */
 function days(from: number, to: number): number {
-  const startOf = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  // Midnight in the institution's zone, not the runtime's -- see
+  // `dayNumber` in lib/onyx-time.ts for what that fixed.
+  const startOf = (ms: number) => dayNumber(ms) * 86_400_000;
   return Math.round((startOf(to) - startOf(from)) / 86_400_000);
 }
 
@@ -38,8 +42,7 @@ function days(from: number, to: number): number {
  * clock time is still there, underneath, because that is what goes on a door.
  */
 function whenText(start: number, end: number, now: number): { lead: string; sub: string } {
-  const clock = (ms: number) => new Date(ms).toLocaleTimeString(undefined,
-    { hour: '2-digit', minute: '2-digit' });
+  const clock = (ms: number) => new Date(ms).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
   const range = clock(start) + ' – ' + clock(end);
   if (!Number.isFinite(start)) return { lead: 'No date', sub: '' };
   if (now >= start && now < end) {
@@ -679,10 +682,11 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
                   <div className="flex items-center justify-between gap-3 py-2.5">
                     <dt className="text-muted">Starts</dt>
                     <dd className="text-right font-semibold">
+                      {/* In the reader's zone, not the server's. Formatted
+                          here it came out in UTC, which for a sitting stored
+                          at 08:05Z read as 08:05 to somebody due at 13:35. */}
                       {Number.isFinite(start)
-                        ? new Date(start).toLocaleString(undefined,
-                          { weekday: 'short', day: 'numeric', month: 'short',
-                            hour: '2-digit', minute: '2-digit' })
+                        ? <LocalTime iso={exam.starts_at} />
                         : '—'}
                     </dd>
                   </div>

@@ -326,8 +326,8 @@ export default async function OnyxContestPage({ params }: { params: Promise<{ id
                   ? '+' + contest.penalty_minutes + ' min' : 'no penalty'} />
                 <Row k="Board freeze" v={contest.freeze_minutes
                   ? 'last ' + contest.freeze_minutes + ' min' : 'never'} />
-                <Row k="Starts" v={new Date(contest.starts_at).toLocaleString()} />
-                <Row k="Ends" v={new Date(contest.ends_at).toLocaleString()} />
+                <Row k="Starts" v={new Date(contest.starts_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} />
+                <Row k="Ends" v={new Date(contest.ends_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} />
               </dl>
               <p className="mt-3 border-t border-line pt-3 text-[13px] text-muted">
                 Solve them in Code Lab, then record the submission here.

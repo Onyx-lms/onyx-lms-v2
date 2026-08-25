@@ -7,6 +7,7 @@ import { MarkAllRead } from '@/components/onyx-inbox';
 import {
   Banner, Empty, Icon, type IconName, Pill, SectionHead,
 } from '@/components/onyx-ui';
+import { dayNumber } from '@/lib/onyx-time';
 
 export const metadata: Metadata = { title: 'Inbox' };
 
@@ -67,7 +68,8 @@ function bucketOf(iso: string, now = Date.now()): 'Today' | 'This week' | 'Earli
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return 'Earlier';
   const startOf = (ms: number) => {
-    const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime();
+    // Institution midnight, not the runtime's -- see lib/onyx-time.ts.
+    return dayNumber(ms) * 86_400_000;
   };
   const days = Math.round((startOf(now) - startOf(t)) / 86_400_000);
   if (days <= 0) return 'Today';

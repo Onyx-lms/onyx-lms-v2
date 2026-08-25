@@ -125,8 +125,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
       ctx.onyxAcademics.faculty(tenantId, courseId),
       ctx.onyxAcademics.roster(tenantId, courseId),
     ]);
-    const when = new Date(exam.starts_at).toLocaleString(undefined,
-      { weekday: 'long', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const when = new Date(exam.starts_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     const recipients = [
       ...faculty.map((f) => String(f.user_id)).filter((id) => id !== scheduledBy),
       ...roster.map((r) => String(r.user_id)),

@@ -45,8 +45,7 @@ function priced(minor: number, currency: string): string {
 function when(value: string): string {
   const t = Date.parse(value);
   if (Number.isNaN(t)) return '—';
-  return new Date(t).toLocaleDateString('en-IN',
-    { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(t).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata',  day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function DomainRegistrations({ rows }: { rows: DomainRegistration[] }) {

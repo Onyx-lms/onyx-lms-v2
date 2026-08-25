@@ -9,6 +9,7 @@ import {
   SectionHead, State, StatTile,
 } from '@/components/onyx-ui';
 import { ThresholdForm } from '@/components/onyx-attendance';
+import { dayNumber } from '@/lib/onyx-time';
 
 export const metadata: Metadata = { title: 'Attendance' };
 
@@ -19,16 +20,18 @@ const CALM = '[&_i]:motion-reduce:animate-none';
 function when(iso: string, now: number): string {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return 'No date';
-  const startOf = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  // Midnight in the institution's zone, not the runtime's -- see
+  // `dayNumber` in lib/onyx-time.ts for what that fixed.
+  const startOf = (ms: number) => dayNumber(ms) * 86_400_000;
   const d = Math.round((startOf(now) - startOf(t)) / 86_400_000);
-  const clock = new Date(t).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const clock = new Date(t).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
   if (d === 0) return 'Today, ' + clock;
   if (d === 1) return 'Yesterday, ' + clock;
   if (d === -1) return 'Tomorrow, ' + clock;
   if (d < 0) return 'In ' + Math.abs(d) + ' days';
   if (d <= 13) return d + ' days ago';
   if (d <= 60) return Math.round(d / 7) + ' weeks ago';
-  return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return new Date(t).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' });
 }
 
 /**

@@ -56,7 +56,7 @@ export default async function OnyxDiscussionPage({ params }: { params: Promise<{
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-sm font-medium">{p.author?.name ?? 'Someone'}</span>
                   <span className="text-xs text-muted">
-                    {new Date(p.created_at).toLocaleString()}
+                    {new Date(p.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                   </span>
                 </div>
                 {p.is_answer ? (

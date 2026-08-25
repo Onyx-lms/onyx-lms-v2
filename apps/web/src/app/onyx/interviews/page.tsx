@@ -11,8 +11,7 @@ import type { Interview } from '@/lib/onyx-career';
 export const metadata: Metadata = { title: 'Mock interviews' };
 
 /** The clock time, once the relative day has already been said. */
-const AT = (iso: string) => new Date(iso).toLocaleTimeString(undefined,
-  { hour: '2-digit', minute: '2-digit' });
+const AT = (iso: string) => new Date(iso).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
 
 /** How long ago it was. `relativeDue` reads the other direction and would call
  *  a finished interview "5 days late", which is the wrong sentence entirely. */

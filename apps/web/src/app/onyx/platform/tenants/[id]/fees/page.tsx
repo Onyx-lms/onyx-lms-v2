@@ -168,7 +168,7 @@ export default async function OnyxPlatformFeesPage(
                       : <Workflow status={inv.status} />}
                   </td>
                   <td className="whitespace-nowrap text-[12.5px] text-muted">
-                    {inv.due_at ? new Date(inv.due_at).toLocaleDateString() : '—'}
+                    {inv.due_at ? new Date(inv.due_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—'}
                   </td>
                 </tr>
               ))}

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useState, useTransition } from 'react';
 import { Modal } from '@/components/onyx-modal';
+import { toLocalInput, fromLocalInput, longWhen, INSTITUTION_TZ } from '@/lib/onyx-time';
 import { ROLE_LABELS } from '@/lib/onyx-nav';
 import { DangerPanel } from '@/components/onyx-danger';
 import { PasswordField } from '@/components/onyx-password-field';
@@ -1377,7 +1378,11 @@ export function ExamEditToggle({ tenantId, exam }: {
             const startsRaw = String(data.get('starts_at') ?? '');
             const res = await patch('onyx/platform/tenants/' + tenantId + '/exams/' + exam.id, {
               title: String(data.get('title') ?? ''),
-              starts_at: startsRaw ? new Date(startsRaw).toISOString() : null,
+              // `new Date('2026-08-25T13:35')` is parsed in the BROWSER's zone,
+              // so an operator working from anywhere but India would have
+              // stored the wrong instant for a time typed under a heading that
+              // says IST. `fromLocalInput` pins it to the institution's.
+              starts_at: fromLocalInput(startsRaw),
               duration_minutes: Number(data.get('duration_minutes')),
               max_marks: Number(data.get('max_marks')),
               pass_marks: Number(data.get('pass_marks')),
@@ -1440,29 +1445,6 @@ export function ExamEditToggle({ tenantId, exam }: {
 
 /** Edit the institution's own name, address and plan label. */
 /**
- * A stored instant, as a `datetime-local` input needs it.
- *
- * **This is the bug that moved a real examination.** The edit form fed
- * `starts_at.slice(0, 16)` straight into the input — that is the UTC
- * wall-clock, and a `datetime-local` input reads its value as LOCAL time. So an
- * operator in India opened a sitting scheduled for 13:35 and was shown 08:05;
- * saving it without touching anything then stored 08:05 IST, moving the exam
- * five and a half hours earlier. Every open-and-save moved it again.
- *
- * Built from the local parts rather than by arithmetic on the ISO string, so
- * the browser's own zone — including half-hour offsets and any daylight-saving
- * change between now and the exam — is what decides.
- */
-function toLocalInput(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
-    + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
-}
-
-/**
  * What the operator just typed, read back to them in words.
  *
  * A `datetime-local` control gives no feedback about what it understood, and on
@@ -1472,24 +1454,18 @@ function toLocalInput(iso: string | null | undefined): string {
  * list, not the learner's timetable.
  *
  * So the resolved instant is echoed with its weekday, and a time already past
- * is called out. The zone is named because the server stores UTC and the reader
- * is not obliged to know that.
+ * is called out. The zone is named because every time in this product is the
+ * institution's, and the reader is not obliged to assume that.
  */
 function WhenEcho({ value }: { value: string }) {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  const past = d.getTime() < Date.now();
-  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const text = d.toLocaleString(undefined, {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+  const iso = fromLocalInput(value);
+  if (!iso) return null;
+  const past = Date.parse(iso) < Date.now();
   return (
     <p className={'mt-1 text-[12px] leading-relaxed '
       + (past ? 'font-semibold text-amber-800' : 'text-muted')}>
-      {past ? 'That is in the past: ' : ''}{text}
-      <span className="text-muted"> · {zone}</span>
+      {past ? 'That is in the past: ' : ''}{longWhen(iso)}
+      <span className="text-muted"> · {INSTITUTION_TZ}</span>
     </p>
   );
 }
@@ -2107,7 +2083,8 @@ export function CreateExamForm({ tenantId, courses, papers = [] }: {
             // No semester_id is sent at all. The API reads the course's own
             // term, and writes none where the course has none.
             ...(paper ? { assessment_id: Number(paper) } : {}),
-            starts_at: startsRaw ? new Date(startsRaw).toISOString() : '',
+            // Institution time, not the browser's -- see the edit form above.
+            starts_at: fromLocalInput(startsRaw) ?? '',
             duration_minutes: Number(data.get('duration_minutes') || 180),
             max_marks: Number(data.get('max_marks') || 100),
             pass_marks: Number(data.get('pass_marks') || 40),
@@ -2472,8 +2449,7 @@ export function OAuthClientManageToggle({ client }: {
         <Fact term="Registered">
           {client.registration_type === 'dynamic' ? 'Self-registered' : 'Registered manually'}
           {' · '}
-          {new Date(client.created_at).toLocaleDateString(undefined,
-            { day: 'numeric', month: 'short', year: 'numeric' })}
+          {new Date(client.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}
         </Fact>
         <Fact term="Grant types">{client.grant_types.join(', ') || '—'}</Fact>
         <div className="sm:col-span-2">
@@ -2542,8 +2518,7 @@ export function AdminManageToggle({ admin }: {
       <dl className="grid gap-3 sm:grid-cols-2">
         <Fact term="Email">{admin.email}</Fact>
         <Fact term="Granted">
-          {new Date(admin.granted_at).toLocaleDateString(undefined,
-            { day: 'numeric', month: 'short', year: 'numeric' })}
+          {new Date(admin.granted_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}
         </Fact>
         <div className="sm:col-span-2 rounded-lg bg-amber-50 px-3 py-2 text-[12.5px] text-amber-900">
           Holds platform admin: can create, suspend, read and delete every institution, and can

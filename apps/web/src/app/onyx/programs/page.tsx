@@ -32,7 +32,7 @@ function Chip({ children, count }: { children: React.ReactNode; count?: React.Re
 
 /** "from 5 Jan 2026" reads; "2026-01-05" is a thing you decode. */
 const on = (iso: string | null) => (iso
-  ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+  ? new Date(iso).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })
   : null);
 
 /**

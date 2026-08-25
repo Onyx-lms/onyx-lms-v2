@@ -36,8 +36,7 @@ function since(iso: string, now = Date.now()): string {
   if (weeks < 5) return weeks + ' weeks ago';
   const months = Math.round(days / 30);
   if (months < 12) return months === 1 ? 'a month ago' : months + ' months ago';
-  return new Date(t).toLocaleDateString(undefined,
-    { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(t).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 /**

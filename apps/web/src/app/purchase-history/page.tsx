@@ -69,7 +69,7 @@ export default async function PurchaseHistory() {
                   <td className="px-4 py-3">{currency(Number(r.amount ?? 0))}</td>
                   <td className="px-4 py-3 capitalize text-slate-600">{r.payment_type}</td>
                   <td className="px-4 py-3 text-slate-600">
-                    {r.created_at ? new Date(r.created_at).toLocaleDateString() : '-'}
+                    {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-'}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {r.invoice && (
@@ -96,7 +96,7 @@ export default async function PurchaseHistory() {
                   <div className="font-medium">{OTHER_LABEL[p.kind] ?? p.kind}</div>
                   <p className="mt-0.5 text-xs text-slate-500">
                     {p.invoice}
-                    {p.created_at ? ' - ' + new Date(p.created_at).toLocaleDateString() : ''}
+                    {p.created_at ? ' - ' + new Date(p.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : ''}
                   </p>
                 </div>
                 <span className="font-medium">{currency(p.amount)}</span>

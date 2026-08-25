@@ -96,8 +96,8 @@ export default async function OnyxPlatformPage(
     const d = new Date(now.getFullYear(), now.getMonth() - back, 1);
     months.push({
       key: d.getFullYear() + '-' + d.getMonth(),
-      label: d.toLocaleDateString(undefined, { month: 'short' }),
-      full: d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+      label: d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short' }),
+      full: d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'long', year: 'numeric' }),
       value: 0,
     });
   }
@@ -115,8 +115,7 @@ export default async function OnyxPlatformPage(
     <OnyxPlatformShell
       email={session.email}
       title="Platform overview"
-      subtitle={new Date().toLocaleDateString(undefined,
-        { weekday: 'long', day: 'numeric', month: 'long' })
+      subtitle={new Date().toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', day: 'numeric', month: 'long' })
         + ' · ' + headline.length + (headline.length === 1 ? ' institution' : ' institutions')
         + ' served'}
       action={<div className="w-full sm:w-auto"><CreateTenantForm /></div>}
@@ -279,8 +278,7 @@ export default async function OnyxPlatformPage(
                       </td>
                       <td className="tabular-nums">{t.member_count}</td>
                       <td className="hidden whitespace-nowrap text-muted sm:table-cell">
-                        {new Date(t.created_at).toLocaleDateString(undefined,
-                          { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {new Date(t.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
                       <td><StatusDot on={t.status === 1} /></td>
                       <td className="text-right">
@@ -319,8 +317,7 @@ export default async function OnyxPlatformPage(
                         title={(verb ?? 'changed').replace(/_/g, ' ') + ' '
                           + (name ?? (noun ?? row.entity_type))}
                         meta={(row.actor?.name ?? 'The system') + ' · '
-                          + new Date(row.created_at).toLocaleString(undefined,
-                            { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          + new Date(row.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       />
                     );
                   })}

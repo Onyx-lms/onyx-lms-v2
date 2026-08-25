@@ -222,8 +222,8 @@ export default async function OnyxDashboard() {
   const activityTrend = [...perDay.entries()].map(([key, value]) => {
     const d = new Date(key);
     return {
-      label: d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
-      full: d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }),
+      label: d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' }),
+      full: d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', day: 'numeric', month: 'long' }),
       value,
     };
   });
@@ -289,8 +289,7 @@ export default async function OnyxDashboard() {
   const firstName = (me.email ?? '').split('@')[0]!.split(/[._]/)[0]!;
   const greeting = firstName.charAt(0).toUpperCase() + firstName.slice(1);
 
-  const today = new Date().toLocaleDateString(undefined,
-    { weekday: 'long', day: 'numeric', month: 'long' });
+  const today = new Date().toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
     <OnyxShell
@@ -618,8 +617,7 @@ export default async function OnyxDashboard() {
                         + (verb ?? 'acted on').replace(/_/g, ' ') + ' '
                         + (/^[aeiou]/i.test(noun ?? a.entity_type) ? 'an ' : 'a ')
                         + (noun ?? a.entity_type)}
-                      meta={new Date(a.created_at).toLocaleString(undefined,
-                        { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      meta={new Date(a.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     />
                   );
                 })}
@@ -719,7 +717,7 @@ const QUEUE = 24;  // published assignments whose marking queue is read
 
 const minutesOf = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
 const clockOf = (iso: string) =>
-  new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  new Date(iso).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
 const plural = (n: number, one: string, many = one + 's') => n + ' ' + (n === 1 ? one : many);
 
 /** Buckets a flat, `course_id`-carrying list back into per-course arrays --

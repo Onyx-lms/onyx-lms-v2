@@ -10,6 +10,7 @@ import {
   Banner, Card, DataTable, Empty, EmptyRow, Hero, ListRow, Meter, Pill, RowList,
   SectionHead, relativeDue,
 } from '@/components/onyx-ui';
+import { dayNumber } from '@/lib/onyx-time';
 
 export const metadata: Metadata = { title: 'Fees' };
 
@@ -20,7 +21,8 @@ const STATUS_LABEL: Record<Invoice['status'], string> = {
 /** Whole days between a due date and now, negative once it has passed. */
 function daysUntil(due: string, now = Date.now()): number {
   const startOf = (ms: number) => {
-    const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime();
+    // Institution midnight, not the runtime's -- see lib/onyx-time.ts.
+    return dayNumber(ms) * 86_400_000;
   };
   return Math.round((startOf(Date.parse(due)) - startOf(now)) / 86_400_000);
 }
@@ -162,8 +164,7 @@ export default async function OnyxFeesPage(
                       meta={i.paid_minor > 0
                         ? money(i.paid_minor, i.currency) + ' of '
                           + money(i.total_minor, i.currency) + ' paid so far'
-                        : 'Issued ' + new Date(i.issued_at).toLocaleDateString(undefined,
-                          { day: 'numeric', month: 'short', year: 'numeric' })}
+                        : 'Issued ' + new Date(i.issued_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}
                       chips={<Pill tone={when.tone}>{when.text}</Pill>}
                       trailing={
                         <div className="flex flex-col items-end gap-1.5">
@@ -226,8 +227,7 @@ export default async function OnyxFeesPage(
                     </Pill>
                   </td>
                   <td className="whitespace-nowrap text-muted">
-                    {new Date(i.issued_at).toLocaleDateString(undefined,
-                      { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {new Date(i.issued_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
                 </tr>
               ))}

@@ -2639,14 +2639,45 @@ export function DeleteCourseButton({ courseId }: { courseId: number }) {
 
 const OPTION_IDS = ['a', 'b', 'c', 'd'] as const;
 
+/**
+ * Every type a question bank can hold, not two of them.
+ *
+ * This composer offered "Multiple choice" and "Descriptive" only, while the
+ * bank editor beside it and the platform console both offered six. So a
+ * lecturer building a paper here could not set a true/false, a short answer, or
+ * a coding question — the engine has marked all three since the beginning, and
+ * the only thing missing was somewhere to type them.
+ */
+type PaperQuestionType = 'single' | 'multiple' | 'truefalse' | 'short' | 'essay' | 'code';
+
 interface PaperQuestion {
-  type: 'single' | 'essay';
+  type: PaperQuestionType;
   prompt: string;
   points: string;
   options: string[]; // four slots, blank ones dropped on submit
-  correct: string; // one of OPTION_IDS, meaningful only for 'single'; '' = none picked yet
-  manualOnly: boolean; // 'single' with no key -- marked by hand, not auto-graded
+  /** For 'single': one OPTION_ID. For 'truefalse': 'true' or 'false'. '' = unset. */
+  correct: string;
+  /** For 'multiple': the OPTION_IDs that are correct. */
+  correctMany: string[];
+  /** For 'short': the accepted answers, one per line. */
+  accepted: string;
+  /** For 'code': the published Code Lab problem whose tests mark it. */
+  problemId: string;
+  manualOnly: boolean; // a keyed type with no key -- marked by hand, not auto-graded
 }
+
+/** What each type is called, and what it needs from the person setting it. */
+const PAPER_QUESTION_TYPES: { value: PaperQuestionType; label: string }[] = [
+  { value: 'single', label: 'Multiple choice — one answer' },
+  { value: 'multiple', label: 'Multiple choice — several answers' },
+  { value: 'truefalse', label: 'True or false' },
+  { value: 'short', label: 'Short answer (matched against a list)' },
+  { value: 'essay', label: 'Descriptive (marked manually)' },
+  { value: 'code', label: 'Write code (marked by running tests)' },
+];
+
+/** The types that carry a list of options to choose between. */
+const CHOICE_TYPES: PaperQuestionType[] = ['single', 'multiple'];
 
 // correct starts blank, not 'a' -- option A used to come pre-checked on the
 // wire before anyone had looked at the question, so typing four options and
@@ -2654,7 +2685,7 @@ interface PaperQuestion {
 // nothing is correct until someone says so.
 const blankQuestion = (): PaperQuestion => ({
   type: 'single', prompt: '', points: '10', options: ['', '', '', ''],
-  correct: '', manualOnly: false,
+  correct: '', correctMany: [], accepted: '', problemId: '', manualOnly: false,
 });
 
 /**
@@ -2664,17 +2695,26 @@ const blankQuestion = (): PaperQuestion => ({
  * Building a paper used to mean leaving Examinations for Assessments,
  * building a question bank there, coming back, and picking it from a
  * dropdown. This is that whole path collapsed into the one screen someone
- * scheduling an exam is already on: pick multiple choice or descriptive per
- * question, right here, and the paper that comes out the other end is
- * published and ready to link the moment this closes.
+ * scheduling an exam is already on: pick any question type the engine can mark
+ * -- multiple choice, several answers, true or false, short answer, descriptive
+ * or a coding question run against a Code Lab problem's tests -- right here,
+ * and the paper that comes out the other end is published and ready to link the
+ * moment this closes.
  */
-export function CreatePaper({ courses }: { courses: { id: number; label: string }[] }) {
+export function CreatePaper({ courses, problems = [] }: {
+  courses: { id: number; label: string }[];
+  /** Published Code Lab problems a `code` question can be marked by. */
+  problems?: { id: number; title: string; status: string }[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [courseId, setCourseId] = useState(courses[0] ? String(courses[0].id) : '');
   const [duration, setDuration] = useState('60');
   const [passMark, setPassMark] = useState('');
+  // Only published ones: a draft problem has no tests a candidate's submission
+  // could be run against, so offering it would deal an unmarkable question.
+  const usableProblems = problems.filter((x) => String(x.status) === 'published');
   const [proctoring, setProctoring] = useState(true);
   const [requireCamera, setRequireCamera] = useState(true);
   // Every other formal exam already in this institution requires both --
@@ -2704,19 +2744,45 @@ export function CreatePaper({ courses }: { courses: { id: number; label: string 
           .map((q) => ({ ...q, prompt: q.prompt.trim() }))
           .filter((q) => q.prompt !== '');
         if (!clean.length) { setError('Add at least one question.'); return; }
+        // Everything checked BEFORE anything is written: the first write here
+        // creates a question bank, and a refusal halfway through would leave
+        // one behind with a paper that never got made.
         for (const q of clean) {
-          if (q.type === 'single') {
+          const short = '"' + q.prompt.slice(0, 40) + '…"';
+          if (CHOICE_TYPES.includes(q.type)) {
             const opts = q.options.map((o, i) => ({ id: OPTION_IDS[i]!, text: o.trim() }))
               .filter((o) => o.text !== '');
             if (opts.length < 2) {
-              setError('"' + q.prompt.slice(0, 40) + '…" needs at least two options.');
+              setError(short + ' needs at least two options.');
               return;
             }
-            if (!q.manualOnly && !opts.some((o) => o.id === q.correct)) {
-              setError('"' + q.prompt.slice(0, 40)
-                + '…" — mark which option is correct, or mark it for manual grading.');
+            if (!q.manualOnly && q.type === 'single' && !opts.some((o) => o.id === q.correct)) {
+              setError(short + ' — mark which option is correct, or mark it for manual grading.');
               return;
             }
+            if (!q.manualOnly && q.type === 'multiple'
+              && !q.correctMany.some((id) => opts.some((o) => o.id === id))) {
+              setError(short + ' — tick every option that is correct, or mark it for '
+                + 'manual grading.');
+              return;
+            }
+          }
+          if (q.type === 'truefalse' && !q.manualOnly && q.correct !== 'true'
+            && q.correct !== 'false') {
+            setError(short + ' — say whether it is true or false.');
+            return;
+          }
+          if (q.type === 'short' && !q.manualOnly && !q.accepted.trim()) {
+            setError(short + ' — list at least one accepted answer, one per line, or mark it '
+              + 'for manual grading.');
+            return;
+          }
+          if (q.type === 'code' && !q.problemId) {
+            // A code question is marked by running a problem's tests. Without
+            // one there is nothing to run, and the paper would deal a question
+            // no machine and no marker could score.
+            setError(short + ' — choose the Code Lab problem whose tests mark it.');
+            return;
           }
         }
 
@@ -2728,17 +2794,35 @@ export function CreatePaper({ courses }: { courses: { id: number; label: string 
 
         // 2. Every question, in order.
         for (const q of clean) {
+          const base = {
+            type: q.type, prompt: q.prompt, points: Number(q.points) || 10,
+          };
+          const opts = q.options.map((o, i) => ({ id: OPTION_IDS[i]!, text: o.trim() }))
+            .filter((o) => o.text !== '');
+          /*
+           * No key at all when marked manual-only.
+           *
+           * The API leaves a keyless question for a person rather than grading
+           * every answer wrong against a blank key -- which is the difference
+           * between "nobody has marked this yet" and "everybody failed".
+           */
           const body = q.type === 'single'
-            ? {
-              type: 'single', prompt: q.prompt, points: Number(q.points) || 10,
-              options: q.options.map((o, i) => ({ id: OPTION_IDS[i]!, text: o.trim() }))
-                .filter((o) => o.text !== ''),
-              // No key at all when marked manual-only -- the API leaves such a
-              // question unmarked by a machine rather than grading every
-              // answer wrong against a blank one.
-              answer: q.manualOnly ? undefined : q.correct,
-            }
-            : { type: 'essay', prompt: q.prompt, points: Number(q.points) || 10 };
+            ? { ...base, options: opts, answer: q.manualOnly ? undefined : q.correct }
+            : q.type === 'multiple'
+              ? { ...base, options: opts, answer: q.manualOnly ? undefined : q.correctMany }
+              : q.type === 'truefalse'
+                ? { ...base, answer: q.manualOnly ? undefined : q.correct }
+                : q.type === 'short'
+                  ? {
+                    ...base,
+                    // One accepted answer per line, so a marker can list the
+                    // spellings and synonyms they will take.
+                    answer: q.manualOnly ? undefined : q.accepted.split('\n')
+                      .map((a) => a.trim()).filter(Boolean),
+                  }
+                  : q.type === 'code'
+                    ? { ...base, problem_id: Number(q.problemId) }
+                    : base;
           const made = await send(`banks/${bankId}/questions`, body);
           if (!made.ok) { setError(made.message ?? 'Could not add a question.'); return; }
         }
@@ -2828,9 +2912,10 @@ export function CreatePaper({ courses }: { courses: { id: number; label: string 
             <div className="flex items-center justify-between gap-2">
               <select value={q.type} className={input + ' text-xs'}
                 aria-label={'Type for question ' + (i + 1)}
-                onChange={(e) => setQuestion(i, { type: e.target.value as PaperQuestion['type'] })}>
-                <option value="single">Multiple choice</option>
-                <option value="essay">Descriptive (marked manually)</option>
+                onChange={(e) => setQuestion(i, { type: e.target.value as PaperQuestionType })}>
+                {PAPER_QUESTION_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
               </select>
               {questions.length > 1 ? (
                 <button type="button" aria-label={'Remove question ' + (i + 1)}
@@ -2852,14 +2937,29 @@ export function CreatePaper({ courses }: { courses: { id: number; label: string 
                 className={input + ' w-20 text-xs'}
                 onChange={(e) => setQuestion(i, { points: e.target.value })} />
             </div>
-            {q.type === 'single' ? (
+            {CHOICE_TYPES.includes(q.type) ? (
               <div className="mt-2 space-y-1.5">
                 {OPTION_IDS.map((id, oi) => (
                   <label key={id} className="flex items-center gap-2 text-xs">
-                    <input type="radio" name={'pp-correct-' + i} checked={q.correct === id}
+                    {/* A radio for one answer, a checkbox for several. The
+                        control has to say which it is: a radio group that
+                        silently accepted two answers would be a paper whose
+                        key nobody could enter. */}
+                    <input
+                      type={q.type === 'single' ? 'radio' : 'checkbox'}
+                      name={q.type === 'single' ? 'pp-correct-' + i : undefined}
+                      checked={q.type === 'single'
+                        ? q.correct === id : q.correctMany.includes(id)}
                       disabled={q.manualOnly}
-                      aria-label={'Option ' + id.toUpperCase() + ' is the correct answer'}
-                      onChange={() => setQuestion(i, { correct: id })} />
+                      aria-label={'Option ' + id.toUpperCase() + ' is a correct answer'}
+                      onChange={() => setQuestion(i, q.type === 'single'
+                        ? { correct: id }
+                        : {
+                          correctMany: q.correctMany.includes(id)
+                            ? q.correctMany.filter((x) => x !== id)
+                            : [...q.correctMany, id],
+                        })}
+                    />
                     <input value={q.options[oi] ?? ''} placeholder={'Option ' + id.toUpperCase()}
                       aria-label={'Option ' + id.toUpperCase()}
                       className={input + ' flex-1 text-xs'}
@@ -2874,13 +2974,84 @@ export function CreatePaper({ courses }: { courses: { id: number; label: string 
                       // stale 'correct' behind would silently re-enable
                       // auto-grading against a choice nobody just re-affirmed.
                       correct: e.target.checked ? '' : q.correct,
+                      correctMany: e.target.checked ? [] : q.correctMany,
                     })} />
                   I don't have the correct answer yet -- mark this one by hand
                 </label>
                 <p className="text-[11px] text-muted">
                   {q.manualOnly
                     ? 'No key is set. This is marked by hand in the marking queue, same as an essay.'
-                    : 'The selected radio button is the correct option, auto-graded on submission.'}
+                    : q.type === 'single'
+                      ? 'The selected radio button is the correct option, auto-graded on submission.'
+                      : 'Every ticked option must be chosen for full marks, auto-graded on '
+                        + 'submission.'}
+                </p>
+              </div>
+            ) : q.type === 'truefalse' ? (
+              <div className="mt-2 space-y-1.5">
+                <div className="flex gap-4">
+                  {(['true', 'false'] as const).map((v) => (
+                    <label key={v} className="flex items-center gap-2 text-xs capitalize">
+                      <input type="radio" name={'pp-tf-' + i} checked={q.correct === v}
+                        disabled={q.manualOnly}
+                        onChange={() => setQuestion(i, { correct: v })} />
+                      {v}
+                    </label>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted">
+                  {q.manualOnly ? 'No key is set — marked by hand.'
+                    : 'Auto-graded on submission.'}
+                </p>
+              </div>
+            ) : q.type === 'short' ? (
+              <div className="mt-2 space-y-1.5">
+                <label className="block text-xs font-semibold" htmlFor={'pp-acc-' + i}>
+                  Accepted answers, one per line
+                </label>
+                <textarea id={'pp-acc-' + i} rows={3} value={q.accepted}
+                  disabled={q.manualOnly}
+                  placeholder={'preorder\npre-order'}
+                  className={input + ' w-full text-xs'}
+                  onChange={(e) => setQuestion(i, { accepted: e.target.value })} />
+                <p className="text-[11px] text-muted">
+                  {/* Said plainly, because a marker listing one spelling and
+                      getting a hundred scripts marked wrong is the failure
+                      this question type has. */}
+                  Any one of these counts as correct. List the spellings and synonyms you
+                  will take.
+                </p>
+                <label className="flex items-center gap-2 text-xs text-slate-700">
+                  <input type="checkbox" checked={q.manualOnly}
+                    onChange={(e) => setQuestion(i, { manualOnly: e.target.checked })} />
+                  I don't have the answers yet -- mark this one by hand
+                </label>
+              </div>
+            ) : q.type === 'code' ? (
+              <div className="mt-2 space-y-1.5">
+                <label className="block text-xs font-semibold" htmlFor={'pp-prob-' + i}>
+                  Marked by
+                </label>
+                {usableProblems.length ? (
+                  <select id={'pp-prob-' + i} value={q.problemId}
+                    className={input + ' w-full text-xs'}
+                    onChange={(e) => setQuestion(i, { problemId: e.target.value })}>
+                    <option value="">Choose a Code Lab problem…</option>
+                    {usableProblems.map((pr) => (
+                      <option key={pr.id} value={pr.id}>{pr.title}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-[11px] text-amber-800">
+                    There are no published Code Lab problems yet. Publish one under Practice
+                    first — a coding question is marked by running its tests, so there has to
+                    be something to run.
+                  </p>
+                )}
+                <p className="text-[11px] text-muted">
+                  Marked by running that problem's tests, hidden cases included — the same
+                  grader Code Lab practice uses, so a paper and the practice for it cannot
+                  disagree about the same submission.
                 </p>
               </div>
             ) : (

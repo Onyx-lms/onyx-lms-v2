@@ -135,7 +135,7 @@ export default async function StudentDashboard() {
                   <div className="font-medium">{LABEL[p.kind]}</div>
                   <p className="mt-0.5 text-xs text-slate-500">
                     {p.invoice}
-                    {p.created_at ? ' - ' + new Date(p.created_at).toLocaleDateString() : ''}
+                    {p.created_at ? ' - ' + new Date(p.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : ''}
                   </p>
                 </div>
                 <span className="font-medium">{currency(p.amount, position)}</span>

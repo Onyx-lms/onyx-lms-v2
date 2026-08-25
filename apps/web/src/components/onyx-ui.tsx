@@ -16,6 +16,7 @@ import Link from 'next/link';
 // it lives in lib/ because node --test cannot strip JSX out of this file.
 export { percentText } from '@/lib/percent';
 import { percentText } from '@/lib/percent';
+import { dayNumber } from '@/lib/onyx-time';
 
 /* ------------------------------------------------------------------ icons */
 
@@ -257,7 +258,7 @@ export function Pill({ children, tone = 'neutral' }: {
 /**
  * Human, relative dates -- "Tomorrow", "in 5 days", "2 days late".
  *
- * The dashboard previously rendered `toLocaleString()`, i.e.
+ * The dashboard previously rendered `toLocaleString('en-IN')`, i.e.
  * "8/17/2026, 12:00:00 AM". For the one thing a student scans a list for --
  * what is urgent -- that is the least readable format available, and it makes
  * lateness something you work out rather than something you see.
@@ -273,7 +274,9 @@ export function relativeDue(due: string | null | undefined, now = Date.now()): {
   // Compare calendar days, not elapsed hours: something due at 09:00 tomorrow
   // is "Tomorrow" whether it is now 22:00 or 08:00, which is how a person
   // reading a timetable thinks about it.
-  const startOf = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  // Midnight in the institution's zone, not the runtime's -- see
+  // `dayNumber` in lib/onyx-time.ts for what that fixed.
+  const startOf = (ms: number) => dayNumber(ms) * 86_400_000;
   const days = Math.round((startOf(t) - startOf(now)) / dayMs);
 
   if (days < 0) {
@@ -284,7 +287,7 @@ export function relativeDue(due: string | null | undefined, now = Date.now()): {
   if (days === 1) return { text: 'Tomorrow', tone: 'soon' };
   if (days <= 7) return { text: `in ${days} days`, tone: days <= 3 ? 'soon' : 'neutral' };
   if (days <= 30) return { text: `in ${Math.round(days / 7)} weeks`, tone: 'neutral' };
-  return { text: new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+  return { text: new Date(t).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' }),
     tone: 'neutral' };
 }
 
@@ -317,14 +320,13 @@ export function relativeWhen(
   // Still ahead, on something already finished: neither reading is safe to
   // assert, so state the date and let the reader judge.
   if (days < 0) {
-    return { text: new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+    return { text: new Date(t).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' }),
       tone: 'neutral' };
   }
   if (days === 0) return { text: 'Today', tone: 'neutral' };
   if (days === 1) return { text: 'Yesterday', tone: 'neutral' };
   if (days < 30) return { text: days + ' days ago', tone: 'neutral' };
-  return { text: new Date(t).toLocaleDateString(undefined,
-    { day: 'numeric', month: 'short', year: 'numeric' }), tone: 'neutral' };
+  return { text: new Date(t).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' }), tone: 'neutral' };
 }
 
 /** Empty states, styled once so no screen invents its own. */

@@ -121,8 +121,7 @@ export default async function OnyxAssignmentPage({ params }: { params: Promise<{
                     href={'/onyx/submissions/' + s.id}
                     chips={s.is_late ? <Pill tone="late">Late</Pill> : null}
                     meta={s.submitted_at
-                      ? 'Handed in ' + new Date(s.submitted_at).toLocaleDateString(undefined,
-                        { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                      ? 'Handed in ' + new Date(s.submitted_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
                       : 'Not handed in'}
                     trailing={s.score !== null && s.score !== undefined ? (
                       <span className="text-[15px] font-extrabold tabular-nums">

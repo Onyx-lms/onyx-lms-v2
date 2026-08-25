@@ -78,11 +78,9 @@ function securityRelevant(action: string): boolean {
     || /\.(suspended|removed|revoked|granted|role_changed|configured|deleted)$/.test(action);
 }
 
-const DAY = (iso: string) => new Date(iso).toLocaleDateString(undefined,
-  { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const DAY = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-const TIME = (iso: string) => new Date(iso).toLocaleTimeString(undefined,
-  { hour: '2-digit', minute: '2-digit' });
+const TIME = (iso: string) => new Date(iso).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
 
 /**
  * F-05 -- who changed what.

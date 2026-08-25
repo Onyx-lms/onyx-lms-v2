@@ -46,7 +46,7 @@ export default async function VerifyCertificate(
               <Row label="Course" value={result!.certificate!.course_title ?? '-'} />
               <Row label="Issued"
                 value={result!.certificate!.issued_at
-                  ? new Date(result!.certificate!.issued_at).toLocaleDateString() : '-'} />
+                  ? new Date(result!.certificate!.issued_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-'} />
               <Row label="Certificate ID" value={result!.certificate!.identifier} mono />
             </dl>
 

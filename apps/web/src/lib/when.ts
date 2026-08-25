@@ -1,7 +1,7 @@
 /**
  * One way to write a date, on the server and in the browser.
  *
- * `new Date(x).toLocaleString()` looks harmless and is the single largest
+ * `new Date(x).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })` looks harmless and is the single largest
  * source of hydration failures in this app. With no locale and no time zone it
  * resolves both from the *environment*, and a server-rendered page has a
  * different environment from the browser that hydrates it: Node runs with an

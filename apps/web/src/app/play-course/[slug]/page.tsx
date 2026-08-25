@@ -83,7 +83,7 @@ export default async function PlayerPage(
                 <span>{c.class_topic}</span>
                 <span className="text-xs text-slate-500">
                   {c.class_date_and_time
-                    ? new Date(c.class_date_and_time).toLocaleString()
+                    ? new Date(c.class_date_and_time).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
                     : ''}
                 </span>
                 {c.join_window.open ? (

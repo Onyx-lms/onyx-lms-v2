@@ -12,6 +12,7 @@ import {
   Buckets, Card, DataTable, EmptyRow, ListRow, RowList, SectionHead, StackBar,
   StatTile, relativeDue,
 } from '@/components/onyx-ui';
+import { dayNumber } from '@/lib/onyx-time';
 
 export const metadata: Metadata = { title: 'Finance' };
 
@@ -29,7 +30,8 @@ function daysLate(due: string | null, now = Date.now()): number {
   const t = Date.parse(due);
   if (!Number.isFinite(t)) return 0;
   const startOf = (ms: number) => {
-    const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime();
+    // Institution midnight, not the runtime's -- see lib/onyx-time.ts.
+    return dayNumber(ms) * 86_400_000;
   };
   return Math.max(0, Math.round((startOf(now) - startOf(t)) / 86_400_000));
 }

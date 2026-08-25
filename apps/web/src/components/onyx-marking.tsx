@@ -190,7 +190,7 @@ export function OnyxIntegrityTimeline({ timeline }: { timeline: ProctorTimeline 
             and logs a hydration failure over a difference that is the point. */}
         <span className="text-xs text-muted" suppressHydrationWarning>
           {timeline.consented_at
-            ? 'Consented ' + new Date(timeline.consented_at).toLocaleString()
+            ? 'Consented ' + new Date(timeline.consented_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
             : 'No consent recorded'}
         </span>
         <div className="ml-auto flex gap-2">

@@ -29,7 +29,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ invoic
             <p className="mt-1 font-mono text-sm text-slate-500">{invoice.invoice}</p>
           </div>
           <div className="text-right text-sm text-slate-600">
-            {invoice.issued_at && <div>{new Date(invoice.issued_at).toLocaleDateString()}</div>}
+            {invoice.issued_at && <div>{new Date(invoice.issued_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>}
             <div className="capitalize">{invoice.payment_type}</div>
           </div>
         </div>

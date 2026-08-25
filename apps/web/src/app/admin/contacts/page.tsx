@@ -51,7 +51,7 @@ export default async function AdminContacts(
                 <p className="mt-2 whitespace-pre-line text-sm text-slate-700">{e.message}</p>
                 <p className="mt-2 text-xs text-slate-500">
                   {[e.phone, e.address].filter(Boolean).join(' - ')}
-                  {e.created_at ? ' - ' + new Date(e.created_at).toLocaleDateString() : ''}
+                  {e.created_at ? ' - ' + new Date(e.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : ''}
                 </p>
               </div>
               <ContactInbox enquiry={e} />

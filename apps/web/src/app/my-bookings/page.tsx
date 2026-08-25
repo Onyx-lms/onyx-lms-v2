@@ -21,7 +21,7 @@ const navFor = (role: string) =>
   role === 'admin' ? ADMIN_NAV : role === 'instructor' ? INSTRUCTOR_NAV : STUDENT_NAV;
 
 const when = (seconds: number | null) =>
-  seconds ? new Date(Number(seconds) * 1000).toLocaleString() : '';
+  seconds ? new Date(Number(seconds) * 1000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '';
 
 function Group({ title, rows, asTutor }: {
   title: string; rows: Booking[]; asTutor: boolean;

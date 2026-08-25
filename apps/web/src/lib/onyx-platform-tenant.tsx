@@ -238,7 +238,7 @@ export function WhenCell({ at, status }: { at: string | null; status: string }) 
     return (
       <Pill tone="neutral">
         {future
-          ? new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+          ? new Date(at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' })
           : ago(at)}
       </Pill>
     );
@@ -372,8 +372,7 @@ export function clockTime(at: string | null | undefined): string {
   if (!at) return '—';
   const d = new Date(at);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString('en-IN', {
-    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
+  return d.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
     timeZone: 'Asia/Kolkata',
   });
 }

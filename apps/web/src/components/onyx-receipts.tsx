@@ -174,8 +174,7 @@ export function ReceiptsReport({ data, showLearner = true, emptyNote }: {
                 format -- the same call this file's siblings already make
                 (onyx-workspace's `since`, onyx-marking's consent line). */}
             <td className="whitespace-nowrap text-muted" suppressHydrationWarning>
-              {new Date(r.at).toLocaleDateString(undefined,
-                { day: 'numeric', month: 'short', year: 'numeric' })}
+              {new Date(r.at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}
             </td>
             {showLearner ? (
               <td>

@@ -33,7 +33,7 @@ export function LiveRefresh({ seconds = 15, label = 'This page' }: {
     const tick = () => {
       if (document.visibilityState !== 'visible') return;
       router.refresh();
-      setAt(new Date().toLocaleTimeString());
+      setAt(new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' }));
     };
     const timer = setInterval(tick, Math.max(5, seconds) * 1000);
     return () => clearInterval(timer);

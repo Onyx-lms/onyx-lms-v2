@@ -59,7 +59,7 @@ export default async function CourseBuilderPage({ params }: { params: Promise<{ 
                   <div className="font-medium">{c.class_topic}</div>
                   <p className="mt-0.5 text-xs text-slate-500">
                     {c.class_date_and_time
-                      ? new Date(c.class_date_and_time).toLocaleString()
+                      ? new Date(c.class_date_and_time).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
                       : 'No date'}
                     {' - '}{c.provider}
                     {c.join_window.open ? ' - open now' : ''}

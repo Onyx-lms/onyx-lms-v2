@@ -309,8 +309,7 @@ export default async function OnyxPlatformTimetablePage(
                   {a.course?.code ?? 'No course'}
                 </span>
                 <span className="font-mono text-[12px] tabular-nums text-muted">
-                  closes {new Date(a.closes_at!).toLocaleString('en-IN', {
-                    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+                  closes {new Date(a.closes_at!).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
                     hour12: false, timeZone: 'Asia/Kolkata',
                   })}
                 </span>

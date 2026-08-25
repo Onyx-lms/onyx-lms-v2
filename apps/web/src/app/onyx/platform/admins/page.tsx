@@ -53,8 +53,7 @@ export default async function OnyxPlatformAdminsPage() {
                 <span className="block truncate text-[12.5px] text-muted">
                   {a.user?.email}
                   {' · granted '}
-                  {new Date(a.created_at).toLocaleDateString(undefined,
-                    { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {new Date(a.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
               </span>
               {admins.length > 1

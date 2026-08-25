@@ -8,6 +8,7 @@ import { isStaff, type AttendanceRecord, type AttendanceSession } from '@/lib/on
 import {
   Banner, Card, Empty, Icon, Meter, SectionHead, State, StatTile,
 } from '@/components/onyx-ui';
+import { dayNumber } from '@/lib/onyx-time';
 
 export const metadata: Metadata = { title: 'Session' };
 
@@ -31,23 +32,24 @@ function since(iso: string | null, now: number): string {
   if (mins < 60) return mins + (mins === 1 ? ' minute ago' : ' minutes ago');
   const hours = Math.round(mins / 60);
   if (hours < 24) return hours + (hours === 1 ? ' hour ago' : ' hours ago');
-  return new Date(t).toLocaleString(undefined,
-    { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return new Date(t).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 /** When the session is, relative first. */
 function when(iso: string, now: number): string {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return 'No date';
-  const clock = new Date(t).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  const startOf = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const clock = new Date(t).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
+  // Midnight in the institution's zone, not the runtime's -- see
+  // `dayNumber` in lib/onyx-time.ts for what that fixed.
+  const startOf = (ms: number) => dayNumber(ms) * 86_400_000;
   const d = Math.round((startOf(now) - startOf(t)) / 86_400_000);
   if (d === 0) return 'Today, ' + clock;
   if (d === 1) return 'Yesterday, ' + clock;
   if (d === -1) return 'Tomorrow, ' + clock;
   if (d < 0) return 'In ' + Math.abs(d) + ' days, ' + clock;
   if (d <= 13) return d + ' days ago, ' + clock;
-  return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+  return new Date(t).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' })
     + ', ' + clock;
 }
 
