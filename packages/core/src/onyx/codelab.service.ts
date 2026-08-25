@@ -17,6 +17,9 @@
 import type { OnyxDb } from './db.ts';
 import type { Role } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
+// The one definition of what a web answer is, so a practice submission and an
+// examination answer cannot disagree about the shape of the same three files.
+import { normaliseWebAnswer } from './assess.service.ts';
 import { slugify } from '../authoring/slug.ts';
 import { peopleFor, UNKNOWN_PERSON } from './directory.ts';
 import type { AcademicsService } from './academics.service.ts';
@@ -26,10 +29,13 @@ import {
   type ExecutionProvider, type Language, type RunResult,
 } from './execution.provider.ts';
 
-const PROBLEM_COLUMNS = 'id, tenant_id, course_id, title, slug, statement, difficulty, topic, tags, languages, starter_code, time_limit_ms, memory_limit_kb, solution_rule, solution_after_attempts, solution_after, status, created_by, created_at';
+/** What a problem is answered with. See 0041's header for why these differ. */
+export type ProblemKind = 'code' | 'web';
+
+const PROBLEM_COLUMNS = 'id, tenant_id, course_id, kind, title, slug, statement, difficulty, topic, tags, languages, starter_code, preview_entry, time_limit_ms, memory_limit_kb, solution_rule, solution_after_attempts, solution_after, status, created_by, created_at';
 const TEST_COLUMNS = 'id, tenant_id, problem_id, name, stdin, expected_stdout, is_hidden, weight, sort';
 const HINT_COLUMNS = 'id, tenant_id, problem_id, body, sort, penalty_percent';
-const SUBMISSION_COLUMNS = 'id, tenant_id, problem_id, user_id, language, source, mode, status, score, max_score, passed, total, compile_output, error, runtime_ms, memory_kb, queued_at, graded_at';
+const SUBMISSION_COLUMNS = 'id, tenant_id, problem_id, user_id, language, source, mode, status, score, max_score, passed, total, compile_output, error, runtime_ms, memory_kb, queued_at, graded_at, kind, files';
 /** What a filtered feed of submissions needs. Deliberately without `source`. */
 const FEED_COLUMNS = 'id, tenant_id, problem_id, user_id, language, mode, status, score, max_score, passed, total, error, runtime_ms, memory_kb, queued_at, graded_at';
 const CASE_COLUMNS = 'id, tenant_id, submission_id, test_id, name, is_hidden, passed, weight, runtime_ms, memory_kb, stdout, error';
@@ -109,6 +115,12 @@ export class CodeLabService {
   // ---- LAB-04: authoring the bank ----
 
   async createProblem(tenantId: number, createdBy: string, input: {
+    /**
+     * `code` is written and run against tests. `web` is three files and a
+     * browser, marked by a person looking at the result. See 0041.
+     */
+    kind?: ProblemKind;
+    preview_entry?: string;
     title: string; slug?: string; statement?: string | null;
     difficulty?: Difficulty; topic?: string | null; tags?: string[];
     languages?: Language[]; starter_code?: Record<string, string>;
@@ -132,9 +144,13 @@ export class CodeLabService {
     }
     if (input.course_id) await this.#academics.course(tenantId, input.course_id);
 
+    const kind: ProblemKind = input.kind === 'web' ? 'web' : 'code';
+
     const { data, error } = await this.#db.from('onyx_problems').insert({
       tenant_id: tenantId,
       course_id: input.course_id ?? null,
+      kind,
+      preview_entry: input.preview_entry?.trim() || 'index.html',
       title: input.title.trim(),
       slug,
       statement: input.statement ?? null,
@@ -172,6 +188,15 @@ export class CodeLabService {
     title?: string; statement?: string | null;
     difficulty?: Difficulty; topic?: string | null; tags?: string[];
     languages?: Language[]; course_id?: number | null;
+    /**
+     * The starter, which this could not edit at all before.
+     *
+     * For a code problem that was a gap; for a web problem it would be fatal,
+     * because the files ARE the problem -- authoring one and then finding its
+     * HTML unchangeable would mean deleting it and starting again.
+     */
+    starter_code?: Record<string, string>;
+    preview_entry?: string;
     time_limit_ms?: number; memory_limit_kb?: number;
     solution?: string | null; solution_rule?: SolutionRule;
     solution_after_attempts?: number; solution_after?: string | null;
@@ -200,6 +225,10 @@ export class CodeLabService {
     if (input.topic !== undefined) patch.topic = input.topic;
     if (input.tags !== undefined) patch.tags = input.tags;
     if (input.languages !== undefined) patch.languages = input.languages;
+    if (input.starter_code !== undefined) patch.starter_code = input.starter_code;
+    if (input.preview_entry !== undefined) {
+      patch.preview_entry = input.preview_entry.trim() || 'index.html';
+    }
     if (input.course_id !== undefined) patch.course_id = input.course_id;
     if (input.time_limit_ms !== undefined) patch.time_limit_ms = input.time_limit_ms;
     if (input.memory_limit_kb !== undefined) patch.memory_limit_kb = input.memory_limit_kb;
@@ -275,6 +304,29 @@ export class CodeLabService {
 
   async publishProblem(tenantId: number, problemId: number) {
     const problem = await this.#problem(tenantId, problemId);
+
+    /*
+     * A web problem is checked for a PAGE, not for tests.
+     *
+     * It has no test cases and never will -- what is being assessed is the
+     * page, and a person marks it. What it must have is the document the
+     * preview opens: publishing one without an index.html would put a
+     * candidate in front of a blank frame after the paper had started, which
+     * is precisely the class of surprise the code check exists to prevent.
+     */
+    if (problem.kind === 'web') {
+      const files = (problem.starter_code ?? {}) as unknown as Record<string, string>;
+      const entry = String(problem.preview_entry ?? 'index.html');
+      if (typeof files[entry] !== 'string') {
+        throw new HttpError(422, 'Add ' + entry + ' before publishing: without it there is '
+          + 'nothing for the preview to open.');
+      }
+      await this.#db.from('onyx_problems')
+        .update({ status: 'published', updated_at: new Date(this.#now()).toISOString() })
+        .eq('tenant_id', tenantId).eq('id', problemId);
+      return { ...problem, status: 'published' };
+    }
+
     const tests = await this.#tests(tenantId, problemId);
     // A problem with no cases would accept anything and score it zero.
     if (!tests.length) throw new HttpError(422, 'Add test cases before publishing.');
@@ -441,6 +493,52 @@ export class CodeLabService {
       tenantId, kind: mode === 'run' ? 'code.run' : 'code.grade',
       payload: { submission_id: Number(data!.id) },
     });
+    return data!;
+  }
+
+  /**
+   * Hand in a web page for practice.
+   *
+   * Deliberately not `submit()` with a flag. That method queues work for a
+   * sandbox; this one has nothing to run and nothing to wait for, so it writes
+   * a finished record straight away rather than a `queued` one that a worker
+   * would pick up, find nothing to do with, and mark done.
+   *
+   * The score stays zero and `total` stays zero, which is the honest reading:
+   * there were no cases, so nothing passed and nothing failed. Anything
+   * showing a mark here would be inventing one. What this row IS for is the
+   * work -- kept, listed for the learner, and readable by their lecturer.
+   */
+  async submitWeb(tenantId: number, problemId: number, userId: string, input: {
+    files: Record<string, string>;
+  }) {
+    const problem = await this.#problem(tenantId, problemId);
+    if (problem.status !== 'published') throw new HttpError(404, 'Problem not found.');
+    if (problem.kind !== 'web') {
+      throw new HttpError(422, 'That is a programming problem. Submit it as code.');
+    }
+    const files = normaliseWebAnswer(input.files);
+    if (!files) {
+      throw new HttpError(422, 'A web answer is the three files this problem is built from.');
+    }
+    const bytes = Object.values(files).reduce((n, text) => n + text.length, 0);
+    if (bytes > 400_000) throw new HttpError(422, 'That page is too large to store.');
+
+    const { data, error } = await this.#db.from('onyx_code_submissions').insert({
+      tenant_id: tenantId, problem_id: problemId, user_id: userId,
+      kind: 'web',
+      // Named for what it is rather than left to default to a language nobody
+      // wrote in: this column is read on listings.
+      language: 'web',
+      source: null,
+      files: files as never,
+      mode: 'submit',
+      // Finished on arrival: there is no worker and no queue in this path.
+      status: 'done',
+      score: 0, max_score: 0, passed: 0, total: 0,
+      graded_at: new Date(this.#now()).toISOString(),
+    }).select(SUBMISSION_COLUMNS).maybeSingle();
+    if (error) throw new HttpError(500, 'Could not keep your page: ' + error.message);
     return data!;
   }
 

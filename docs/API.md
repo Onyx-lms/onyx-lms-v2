@@ -212,6 +212,7 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/problems/:id` | any member |
 | `POST` | `/api/onyx/problems/:id/hint` | any member |
 | `POST` | `/api/onyx/problems/:id/submit` | any member |
+| `POST` | `/api/onyx/problems/:id/submit-web` | any member |
 | `GET` | `/api/onyx/submissions/code/:id` | any member |
 | `GET` | `/api/onyx/problems/:id/submissions` | any member |
 | `GET` | `/api/onyx/problems/:id/attempts` | admin, faculty |
@@ -505,4 +506,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_419 endpoints across 9 route files._
+_420 endpoints across 9 route files._

@@ -336,7 +336,15 @@ export interface ProblemRow {
   id: number; tenant_id: number; course_id: number | null;
   title: string; slug: string; statement: string | null;
   difficulty: string; topic: string | null; tags: unknown; languages: unknown;
-  starter_code: unknown; time_limit_ms: number; memory_limit_kb: number;
+  /**
+   * For a `code` problem, keyed by language. For a `web` one, keyed by path --
+   * index.html, index.css, index.js (0041).
+   */
+  starter_code: unknown;
+  /** What this problem is answered with: run against tests, or built as a page. */
+  kind: 'code' | 'web';
+  /** `web` only: the document the preview opens. */
+  preview_entry: string; time_limit_ms: number; memory_limit_kb: number;
   solution: string | null; solution_rule: string;
   solution_after_attempts: number; solution_after: string | null;
   status: string; created_by: number | null;
@@ -361,7 +369,18 @@ export interface HintRevealRow {
 
 export interface CodeSubmissionRow {
   id: number; tenant_id: number; problem_id: number; user_id: number;
-  language: string; source: string; mode: SubmissionMode; status: JobStatus;
+  /**
+   * `code` was run against test cases; `web` is three files a person marks
+   * (0041). A web row's `score`, `passed` and `total` are all zero and mean
+   * "there were no cases", not "they got nothing right".
+   */
+  kind: 'code' | 'web';
+  /** `web` only: index.html, index.css, index.js as handed in. */
+  files: unknown;
+  language: string;
+  /** Null on a `web` row: three files are not one string. */
+  source: string | null;
+  mode: SubmissionMode; status: JobStatus;
   score: number; max_score: number; passed: number; total: number;
   compile_output: string | null; error: string | null;
   runtime_ms: number | null; memory_kb: number | null;

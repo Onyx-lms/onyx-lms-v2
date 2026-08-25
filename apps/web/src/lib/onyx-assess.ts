@@ -30,7 +30,7 @@ export interface Assessment {
 
 export interface PaperQuestion {
   question_id: number;
-  type: 'single' | 'multiple' | 'truefalse' | 'short' | 'essay' | 'code';
+  type: 'single' | 'multiple' | 'truefalse' | 'short' | 'essay' | 'code' | 'web';
   prompt: string;
   options: { id: string; text: string }[];
   points: number;
@@ -49,8 +49,16 @@ export interface PaperQuestion {
   comment?: string | null;
   /** `code` only: what the candidate needs in order to answer. Never the tests. */
   problem?: {
-    id: number; title: string; statement: string | null;
-    languages: string[]; starter_code: Record<string, string>; time_limit_ms: number;
+    id: number;
+    /** `code` is run against tests; `web` is three files and a preview (0041). */
+    kind?: 'code' | 'web';
+    title: string; statement: string | null;
+    languages: string[];
+    /** For `code`, keyed by language. For `web`, keyed by path. */
+    starter_code: Record<string, string>;
+    /** `web` only: the document the preview opens. */
+    preview_entry?: string;
+    time_limit_ms: number;
   };
 }
 

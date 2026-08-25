@@ -35,7 +35,7 @@ import { Icon } from '@/components/onyx-ui';
  */
 
 export type BankQuestionType =
-  'single' | 'multiple' | 'truefalse' | 'short' | 'essay' | 'code';
+  'single' | 'multiple' | 'truefalse' | 'short' | 'essay' | 'code' | 'web';
 
 const TYPES: { value: BankQuestionType; label: string }[] = [
   { value: 'single', label: 'Multiple choice — one answer' },
@@ -44,6 +44,7 @@ const TYPES: { value: BankQuestionType; label: string }[] = [
   { value: 'short', label: 'Short answer (matched against a list)' },
   { value: 'essay', label: 'Descriptive (marked by hand)' },
   { value: 'code', label: 'Write code (marked by running tests)' },
+  { value: 'web', label: 'Build a web page (HTML, CSS and JavaScript)' },
 ];
 
 const CHOICE: BankQuestionType[] = ['single', 'multiple'];
@@ -61,6 +62,15 @@ interface Draft {
   correctMany: string[];
   accepted: string;
   problemId: string;
+  /**
+   * The web draft, kept beside the code one rather than replacing it.
+   *
+   * Somebody trying "code", typing a statement, then switching to "web" should
+   * not have their work quietly converted into a starter page -- and switching
+   * back should find the code problem as they left it. Two drafts, one shown.
+   */
+  webProblemId: string;
+  webProblem: ProblemDraft;
   problem: ProblemDraft;
   manualOnly: boolean;
 }
@@ -68,7 +78,9 @@ interface Draft {
 const blank = (): Draft => ({
   type: 'single', prompt: '', points: '2',
   options: ['', '', '', ''], correct: '', correctMany: [], accepted: '',
-  problemId: NEW_PROBLEM, problem: blankProblemDraft(), manualOnly: false,
+  problemId: NEW_PROBLEM, problem: blankProblemDraft('code'),
+  webProblemId: NEW_PROBLEM, webProblem: blankProblemDraft('web'),
+  manualOnly: false,
 });
 
 interface SetDraft { questions: Draft[] }
@@ -87,7 +99,7 @@ export function BankComposer({
   /** `onyx/banks` for an institution, or the console's tenant-scoped path. */
   basePath: string;
   courses: { id: number; label: string }[];
-  problems?: { id: number; title: string; status: string }[];
+  problems?: { id: number; title: string; status: string; kind?: string }[];
   /** Where to go when it is built. Defaults to refreshing the page. */
   onDone?: (bankId: number) => void;
   /**
@@ -116,7 +128,12 @@ export function BankComposer({
   const [stage, setStage] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
-  const usableProblems = problems.filter((p) => String(p.status) === 'published');
+  // Published, and split by what they are: binding a web question to a code
+  // problem would put a Python starter in three HTML tabs, and the API refuses
+  // it -- so the picker never offers it.
+  const published = problems.filter((p) => String(p.status) === 'published');
+  const usableProblems = published.filter((p) => (p.kind ?? 'code') !== 'web');
+  const webProblems = published.filter((p) => p.kind === 'web');
   const set = sets[active] ?? sets[0]!;
 
   const patchQuestion = (i: number, patch: Partial<Draft>) =>
@@ -184,6 +201,13 @@ export function BankComposer({
         if (wrong) return where + ': ' + short + ' — ' + wrong;
       }
     }
+    if (q.type === 'web') {
+      if (!q.webProblemId) return where + ': ' + short + ' needs a page to build from.';
+      if (q.webProblemId === NEW_PROBLEM) {
+        const wrong = problemDraftError(q.webProblem);
+        if (wrong) return where + ': ' + short + ' — ' + wrong;
+      }
+    }
     return null;
   }
 
@@ -230,10 +254,15 @@ export function BankComposer({
     const authored = new Map<string, number>();
     for (const [si, sx] of sets.entries()) {
       for (const [qi, q] of sx.questions.entries()) {
-        if (!written(q) || q.type !== 'code' || q.problemId !== NEW_PROBLEM) continue;
+        const drafting = q.type === 'code'
+          ? (q.problemId === NEW_PROBLEM ? q.problem : null)
+          : q.type === 'web'
+            ? (q.webProblemId === NEW_PROBLEM ? q.webProblem : null)
+            : null;
+        if (!written(q) || !drafting) continue;
         setStage('Set ' + (si + 1) + ': creating the problem for question ' + (qi + 1) + '…');
         const made = await createProblemFromDraft(send, basePath.replace(/banks$/, 'problems'),
-          q.problem);
+          drafting);
         if ('error' in made) {
           setStage(null);
           setError('Set ' + (si + 1) + ', question ' + (qi + 1) + ': ' + made.error);
@@ -284,7 +313,12 @@ export function BankComposer({
                     ...base,
                     problem_id: authored.get(si + ':' + qi) ?? Number(q.problemId),
                   }
-                  : base;
+                  : q.type === 'web'
+                    ? {
+                      ...base,
+                      problem_id: authored.get(si + ':' + qi) ?? Number(q.webProblemId),
+                    }
+                    : base;
 
         const made = await send(basePath + '/' + bankId + '/questions', body);
         if (!made.ok) {
@@ -569,6 +603,36 @@ export function BankComposer({
                     <ProblemDraftFields draft={q.problem}
                       onChange={(patch) => patchQuestion(i, {
                         problem: { ...q.problem, ...patch },
+                      })}
+                      inputClass={field + ' text-xs'}
+                      labelClass={label} />
+                  </div>
+                ) : null}
+              </div>
+            ) : q.type === 'web' ? (
+              <div className="mt-2">
+                <label className={label} htmlFor={'bc-web-' + i}>Built from</label>
+                <select id={'bc-web-' + i} value={q.webProblemId}
+                  className={field + ' mt-1 text-xs'}
+                  onChange={(e) => patchQuestion(i, { webProblemId: e.target.value })}>
+                  <option value={NEW_PROBLEM}>Write the brief and the starter files here</option>
+                  {webProblems.length ? (
+                    <optgroup label="Or reuse a published web problem">
+                      {webProblems.map((pr) => (
+                        <option key={pr.id} value={pr.id}>{pr.title}</option>
+                      ))}
+                    </optgroup>
+                  ) : null}
+                </select>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted">
+                  Marked by a person. They see the candidate&apos;s page rendered and can read
+                  all three files.
+                </p>
+                {q.webProblemId === NEW_PROBLEM ? (
+                  <div className="mt-2">
+                    <ProblemDraftFields draft={q.webProblem}
+                      onChange={(patch) => patchQuestion(i, {
+                        webProblem: { ...q.webProblem, ...patch },
                       })}
                       inputClass={field + ' text-xs'}
                       labelClass={label} />

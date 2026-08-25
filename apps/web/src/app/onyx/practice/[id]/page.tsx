@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxCodeLab } from '@/components/onyx-codelab';
+import { OnyxWebLab } from '@/components/onyx-web-lab';
 import { Card, CodeBlock, Icon, Pill, SectionHead } from '@/components/onyx-ui';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
@@ -44,6 +45,7 @@ export default async function OnyxProblemPage({ params }: { params: Promise<{ id
       me.role === 'admin' ? '/api/onyx/courses?all=1' : '/api/onyx/my/courses')
     : null;
 
+  const isWeb = problem.kind === 'web';
   const visible = problem.tests.filter((t) => !t.is_hidden);
   const hidden = problem.tests.length - visible.length;
   const difficulty = DIFFICULTY_LABELS[problem.difficulty] ?? problem.difficulty;
@@ -56,8 +58,10 @@ export default async function OnyxProblemPage({ params }: { params: Promise<{ id
       title={problem.title}
       subtitle={difficulty
         + (problem.topic ? ', ' + problem.topic : '')
-        + ', ' + problem.time_limit_ms.toLocaleString('en-IN') + 'ms and '
-        + memoryMb + 'MB per case'
+        + (isWeb
+          ? ' — a page built in HTML, CSS and JavaScript'
+          : ', ' + problem.time_limit_ms.toLocaleString('en-IN') + 'ms and '
+            + memoryMb + 'MB per case')
         + (problem.attempts
           ? ' · ' + problem.attempts + ' attempt' + (problem.attempts === 1 ? '' : 's')
             + (problem.solved ? ', solved' : ' so far')
@@ -110,22 +114,45 @@ export default async function OnyxProblemPage({ params }: { params: Promise<{ id
 
             <hr className="my-4 border-line" />
 
-            <SectionHead title="Constraints" />
+            <SectionHead title={isWeb ? 'What this is' : 'Constraints'} />
+            {/*
+              * A web problem is constrained by none of this.
+              *
+              * There is no time per case because there are no cases, no memory
+              * limit because nothing is executed on a server, and no language
+              * to choose because the three are fixed. Printing "2,000 ms" and
+              * "0 test cases" against a page-building exercise would be four
+              * facts that are all false in the same direction: they would
+              * imply somebody is going to run it.
+              */}
             <dl className="grid gap-2">
-              <Constraint k="Time per case"
-                v={problem.time_limit_ms.toLocaleString('en-IN') + ' ms'} />
-              <Constraint k="Memory per case" v={memoryMb + ' MB'} />
-              <Constraint k="Languages"
-                v={(problem.languages ?? []).length
-                  ? problem.languages.join(', ') : 'Any offered by the editor'} />
-              <Constraint k="Test cases"
-                v={problem.tests.length + ' · ' + visible.length + ' visible'} />
+              {isWeb ? (
+                <>
+                  <Constraint k="Answered with" v="HTML, CSS and JavaScript" />
+                  <Constraint k="Preview" v="In your browser, as you type" />
+                  <Constraint k="Marked by" v="A person, who sees your page" />
+                </>
+              ) : (
+                <>
+                  <Constraint k="Time per case"
+                    v={problem.time_limit_ms.toLocaleString('en-IN') + ' ms'} />
+                  <Constraint k="Memory per case" v={memoryMb + ' MB'} />
+                  <Constraint k="Languages"
+                    v={(problem.languages ?? []).length
+                      ? problem.languages.join(', ') : 'Any offered by the editor'} />
+                  <Constraint k="Test cases"
+                    v={problem.tests.length + ' · ' + visible.length + ' visible'} />
+                </>
+              )}
             </dl>
           </Card>
 
           {/* Worked examples come from the visible test cases themselves, so
               what is printed here is exactly what Run will check. The count of
               hidden cases is stated but never their content. */}
+          {/* Examples ARE the visible test cases, so a problem with none has
+              nothing to show here -- and a web problem has none by design. */}
+          {isWeb ? null : (
           <section>
             <SectionHead title="Examples" />
             {visible.length ? (
@@ -155,10 +182,15 @@ export default async function OnyxProblemPage({ params }: { params: Promise<{ id
               </p>
             ) : null}
           </section>
+          )}
         </div>
 
         <div className="min-w-0">
-          <OnyxCodeLab problem={problem} />
+          {/* A web problem has no language, no cases and no verdict, so it
+              gets the tool that matches: three files and a live preview. */}
+          {problem.kind === 'web'
+            ? <OnyxWebLab problem={problem} />
+            : <OnyxCodeLab problem={problem} />}
         </div>
       </div>
     </OnyxShell>

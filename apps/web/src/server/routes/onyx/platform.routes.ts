@@ -18,6 +18,7 @@ import {
 } from '@onyx/core';
 import type { Role } from '@onyx/types';
 import type { AppContext } from '../../app-context.ts';
+import { QUESTION_TYPES, type OnyxQuestionType } from '@onyx/core';
 import { syncExamAssessmentWindow } from '../../exam-window.ts';
 
 const asReq = (req: ReqLike) => ({
@@ -40,6 +41,18 @@ const RoleSchema = z.enum(ROLES as [Role, ...Role[]]);
  * second place for it to drift.
  */
 const ProblemBody = z.object({
+  /**
+   * What this problem is answered with (0041).
+   *
+   * `code` is written and run against tests; `web` is HTML, CSS and
+   * JavaScript, previewed in a browser and marked by a person. The two demand
+   * different things at publish time, which is why the kind is set here and
+   * not inferred from whether anybody happened to add a test.
+   */
+  kind: z.enum(['code', 'web']).optional(),
+  preview_entry: z.string().max(200).optional(),
+  /** For `code`, keyed by language. For `web`, keyed by path. */
+  starter_code: z.record(z.string().max(200), z.string().max(200_000)).optional(),
   statement: z.string().max(50_000).nullish(),
   difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
   topic: z.string().max(100).nullish(),
@@ -979,7 +992,16 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
   app.post('/api/onyx/platform/tenants/:id/banks/:bankId/questions', async (req) => {
     const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     const body = validate(z.object({
-      type: z.enum(['single', 'multiple', 'truefalse', 'short', 'essay', 'code']).optional(),
+      /*
+       * Derived, not re-typed.
+       *
+       * This was a second hand-written copy of the list of question types, and
+       * it drifted the moment a seventh was added: the console could author
+       * every kind of question except the new one, and said only "the given
+       * data was invalid". The service owns the list; this reads it.
+       */
+      type: z.enum(
+        QUESTION_TYPES as unknown as [OnyxQuestionType, ...OnyxQuestionType[]]).optional(),
       prompt: z.string().min(1).max(20_000),
       options: z.array(z.object({
         id: z.string().min(1).max(20),

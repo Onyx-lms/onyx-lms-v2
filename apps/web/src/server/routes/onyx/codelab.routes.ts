@@ -63,7 +63,12 @@ export function registerOnyxCodeLabRoutes(app: Router, ctx: AppContext): void {
       topic: z.string().max(100).nullish(),
       tags: z.array(z.string().max(50)).max(20).optional(),
       languages: z.array(LanguageSchema).max(8).optional(),
-      starter_code: z.record(z.string(), z.string().max(20_000)).optional(),
+      // 0041: `code` is run against tests, `web` is three files and a preview.
+      kind: z.enum(['code', 'web']).optional(),
+      preview_entry: z.string().max(200).optional(),
+      // For `code`, keyed by language. For `web`, keyed by path -- and a page
+      // is a good deal longer than a starter snippet, hence the larger cap.
+      starter_code: z.record(z.string().max(200), z.string().max(200_000)).optional(),
       course_id: z.number().int().positive().nullish(),
       time_limit_ms: z.number().int().min(100).max(30_000).optional(),
       memory_limit_kb: z.number().int().min(16_384).max(1_048_576).optional(),
@@ -200,6 +205,22 @@ export function registerOnyxCodeLabRoutes(app: Router, ctx: AppContext): void {
     }
     return ok(await ctx.onyxCodeLab.submit(claims.tenant_id, idOf(req), claims.user_id, body),
       'Queued.');
+  });
+
+  /**
+   * Hand in a web page for practice.
+   *
+   * Its own route rather than a flag on `/submit`, because it is a different
+   * act: nothing is queued, nothing is run, and there is no sandbox to be
+   * unavailable. What arrives is three files; what is kept is three files.
+   */
+  app.post('/api/onyx/problems/:id/submit-web', async (req) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      files: z.record(z.string().max(200), z.string().max(200_000)),
+    }), req.body);
+    return ok(await ctx.onyxCodeLab.submitWeb(
+      claims.tenant_id, idOf(req), claims.user_id, body), 'Kept.');
   });
 
   app.get('/api/onyx/submissions/code/:id', async (req) => {

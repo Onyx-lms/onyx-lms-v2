@@ -1,5 +1,8 @@
 'use client';
 
+import { WebEditor } from '@/components/onyx-web-editor';
+import { startingFiles } from '@/lib/onyx-web-preview';
+
 /**
  * Authoring a coding problem from inside a question paper.
  *
@@ -33,6 +36,15 @@
  */
 
 export interface ProblemDraft {
+  /**
+   * What the problem is answered with (0041).
+   *
+   * `code` needs languages, limits and test cases; `web` needs three files and
+   * none of the rest. They share this one shape because they are authored in
+   * the same place, and everything below branches on this field rather than
+   * pretending a web problem has a memory limit.
+   */
+  kind: 'code' | 'web';
   title: string;
   statement: string;
   difficulty: string;
@@ -41,6 +53,8 @@ export interface ProblemDraft {
   timeLimit: string;
   memoryLimit: string;
   cases: { name: string; stdin: string; expected: string; hidden: boolean }[];
+  /** `web` only: index.html, index.css, index.js as the candidate starts them. */
+  files: Record<string, string>;
 }
 
 export const PROBLEM_LANGUAGES =
@@ -54,20 +68,41 @@ export const PROBLEM_LANGUAGES =
  * no VISIBLE case, and starting from a shape that satisfies both is kinder
  * than discovering each rule from an error.
  */
-export function blankProblemDraft(): ProblemDraft {
+export function blankProblemDraft(kind: 'code' | 'web' = 'code'): ProblemDraft {
   return {
+    kind,
     title: '', statement: '', difficulty: 'easy', topic: '',
     languages: ['python'], timeLimit: '5', memoryLimit: '256',
     cases: [
       { name: 'Example', stdin: '', expected: '', hidden: false },
       { name: 'Hidden', stdin: '', expected: '', hidden: true },
     ],
+    // A page that already renders, for the reason startingFiles gives: the gap
+    // between a blank editor and "my page appeared" is where people conclude
+    // the tool is broken.
+    files: startingFiles(null),
   };
 }
 
 /** What is wrong with this draft, said the way the API would say it. */
 export function problemDraftError(draft: ProblemDraft): string | null {
   if (!draft.title.trim()) return 'The new problem needs a title.';
+
+  /*
+   * A web problem is checked for a PAGE, not for cases.
+   *
+   * The same split the API makes at publish time, said here first so an author
+   * finds out while they are still typing rather than at the moment the bank
+   * is written.
+   */
+  if (draft.kind === 'web') {
+    if (!(draft.files['index.html'] ?? '').trim()) {
+      return 'The new web problem needs an index.html — without one there is nothing for '
+        + 'the preview to open.';
+    }
+    return null;
+  }
+
   if (!draft.languages.length) return 'The new problem needs at least one language.';
   const filled = draft.cases.filter((c) => c.expected.trim() !== '' || c.stdin.trim() !== '');
   if (!filled.length) return 'The new problem needs at least one test case.';
@@ -95,7 +130,38 @@ export async function createProblemFromDraft(
   const invalid = problemDraftError(draft);
   if (invalid) return { error: invalid };
 
+  /*
+   * A web problem is created and published in two steps, not three.
+   *
+   * There are no cases to key, so the middle step is skipped entirely rather
+   * than called with an empty list -- which the tests route would refuse, and
+   * rightly.
+   */
+  if (draft.kind === 'web') {
+    const page = await send(base, {
+      kind: 'web',
+      title: draft.title.trim(),
+      statement: draft.statement.trim() || null,
+      difficulty: draft.difficulty,
+      topic: draft.topic.trim() || null,
+      starter_code: draft.files,
+      preview_entry: 'index.html',
+      solution_rule: 'never',
+    });
+    if (!page.ok || !page.data?.id) {
+      return { error: page.message ?? 'The problem could not be created.' };
+    }
+    const id = Number(page.data.id);
+    const live = await send(base + '/' + id + '/publish', {});
+    if (!live.ok) {
+      return { error: 'The problem was created but could not be published: '
+        + (live.message ?? 'that did not work.') };
+    }
+    return { id };
+  }
+
   const made = await send(base, {
+    kind: 'code',
     title: draft.title.trim(),
     statement: draft.statement.trim() || null,
     difficulty: draft.difficulty,
@@ -155,11 +221,16 @@ export function ProblemDraftFields({ draft, onChange, inputClass, labelClass }: 
   const setCase = (i: number, patch: Partial<ProblemDraft['cases'][number]>) =>
     onChange({ cases: draft.cases.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
 
+  const web = draft.kind === 'web';
+
   return (
     <div className="grid gap-3 rounded-xl border border-line bg-slate-50/60 p-3">
       <p className="text-[12px] text-muted">
-        Created and published as part of saving this question. Its test cases are what mark
-        the answer — there is no separate key to type.
+        {web
+          ? 'Created and published as part of saving this question. There are no test '
+            + 'cases: a candidate builds the page and a person marks what they built.'
+          : 'Created and published as part of saving this question. Its test cases are what '
+            + 'marks the answer — there is no separate key to type.'}
       </p>
 
       <div>
@@ -172,7 +243,10 @@ export function ProblemDraftFields({ draft, onChange, inputClass, labelClass }: 
       <div>
         <label className={labelClass} htmlFor="np-statement">Description</label>
         <textarea id="np-statement" rows={4} value={draft.statement}
-          placeholder="What the program must do, the shape of its input and its output."
+          placeholder={web
+            ? 'What the page must show and do — the layout, the styling and what should '
+              + 'happen when somebody interacts with it.'
+            : 'What the program must do, the shape of its input and its output.'}
           onChange={(e) => onChange({ statement: e.target.value })}
           className={inputClass + ' mt-1 w-full'} />
         <p className="mt-1 text-[12px] text-muted">
@@ -198,21 +272,48 @@ export function ProblemDraftFields({ draft, onChange, inputClass, labelClass }: 
             onChange={(e) => onChange({ topic: e.target.value })}
             className={inputClass + ' mt-1 w-full'} />
         </div>
-        <div>
-          <label className={labelClass} htmlFor="np-time">Time per case (s)</label>
-          <input id="np-time" type="number" min={0.1} max={30} step="0.1" value={draft.timeLimit}
-            onChange={(e) => onChange({ timeLimit: e.target.value })}
-            className={inputClass + ' mt-1 w-full'} />
-        </div>
-        <div>
-          <label className={labelClass} htmlFor="np-memory">Memory per case (MB)</label>
-          <input id="np-memory" type="number" min={16} max={1024} value={draft.memoryLimit}
-            onChange={(e) => onChange({ memoryLimit: e.target.value })}
-            className={inputClass + ' mt-1 w-full'} />
-        </div>
+        {/* Neither figure exists on a web problem: nothing runs on a server,
+            so there is no time per case and no memory per case to bound. */}
+        {web ? null : (
+          <>
+            <div>
+              <label className={labelClass} htmlFor="np-time">Time per case (s)</label>
+              <input id="np-time" type="number" min={0.1} max={30} step="0.1"
+                value={draft.timeLimit}
+                onChange={(e) => onChange({ timeLimit: e.target.value })}
+                className={inputClass + ' mt-1 w-full'} />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="np-memory">Memory per case (MB)</label>
+              <input id="np-memory" type="number" min={16} max={1024} value={draft.memoryLimit}
+                onChange={(e) => onChange({ memoryLimit: e.target.value })}
+                className={inputClass + ' mt-1 w-full'} />
+            </div>
+          </>
+        )}
       </div>
 
-      <fieldset>
+      {/*
+        * The files a candidate starts from, authored the way they will be
+        * answered: same three tabs, same live preview. A setter who cannot see
+        * their own starter render is writing it blind, and the first person to
+        * find out it was broken would be a candidate under exam conditions.
+        */}
+      {web ? (
+        <div>
+          <span className={labelClass}>The files a candidate starts from</span>
+          <p className="mb-1.5 mt-1 text-[12px] leading-relaxed text-muted">
+            Give them a page to build on — a skeleton, a heading, a comment saying what to
+            do. Whatever is here is what they open when the paper starts.
+          </p>
+          <WebEditor
+            value={draft.files}
+            onChange={(files) => onChange({ files })}
+          />
+        </div>
+      ) : null}
+
+      <fieldset className={web ? 'hidden' : undefined}>
         <legend className={labelClass}>Languages it may be answered in</legend>
         <div className="mt-1 flex flex-wrap gap-1.5">
           {PROBLEM_LANGUAGES.map((lang) => {
@@ -235,7 +336,7 @@ export function ProblemDraftFields({ draft, onChange, inputClass, labelClass }: 
         </div>
       </fieldset>
 
-      <fieldset>
+      <fieldset className={web ? 'hidden' : undefined}>
         <legend className={labelClass}>Test cases</legend>
         <p className="mb-2 mt-1 text-[12px] text-muted">
           A hidden case is the answer key: its input, its expected output and whatever a

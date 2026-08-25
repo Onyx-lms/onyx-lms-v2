@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { WebAnswerView } from '@/components/onyx-web-editor';
+import { isWebAnswer } from '@/lib/onyx-web-preview';
 import { useRouter } from 'next/navigation';
 import { EVENT_LABELS, type MarkerPaper, type ProctorTimeline } from '@/lib/onyx-assess';
 
@@ -67,9 +69,30 @@ export function OnyxMarker({ paper }: { paper: MarkerPaper }) {
 
             <div className="mt-3 rounded-lg bg-slate-50 p-3">
               <div className="text-xs uppercase tracking-wide text-muted">Answer given</div>
-              <p className="mt-1 whitespace-pre-wrap break-words text-sm">
-                {formatResponse(q.response, q.options) || <span className="text-muted">Nothing</span>}
-              </p>
+              {/*
+                * A page is shown as a page, and code as code.
+                *
+                * Both used to fall through to `String(value)`, which for an
+                * object is the string "[object Object]" -- so a marker opening
+                * a coding question was shown that, and nothing else, on the
+                * screen where they award the marks. A web answer would have
+                * done the same.
+                */}
+              {isWebAnswer(q.response) ? (
+                <div className="mt-1">
+                  <WebAnswerView files={q.response} title={'Page submitted for question ' + (i + 1)} />
+                </div>
+              ) : isCodeAnswer(q.response) ? (
+                <pre className="mt-1 max-h-[24rem] overflow-auto rounded-lg border border-line
+                                bg-white p-3 font-mono text-[12px] leading-relaxed">
+                  {codeText(q.response)}
+                </pre>
+              ) : (
+                <p className="mt-1 whitespace-pre-wrap break-words text-sm">
+                  {formatResponse(q.response, q.options)
+                    || <span className="text-muted">Nothing</span>}
+                </p>
+              )}
             </div>
 
             {q.objective ? (
@@ -302,6 +325,19 @@ export function OnyxPublishResults({ assessmentId, published, moderationRequired
       </p>
     </div>
   );
+}
+
+/** A code answer, as opposed to a web one or a plain value. */
+function isCodeAnswer(value: unknown): boolean {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+    && typeof (value as { source?: unknown }).source === 'string';
+}
+
+/** The source, with the language named above it the way a listing reads. */
+function codeText(value: unknown): string {
+  const given = value as { source?: string; language?: string };
+  const language = given.language ? '// ' + given.language + '\n' : '';
+  return language + (given.source ?? '');
 }
 
 /** Turns a stored response into something a marker can read. */

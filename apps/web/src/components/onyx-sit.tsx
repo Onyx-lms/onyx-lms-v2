@@ -6,6 +6,8 @@ import {
   formatClock, type Assessment, type CandidateAttempt, type PaperQuestion,
 } from '@/lib/onyx-assess';
 import { ProctorMedia, ProctorPreflight, type DeviceState } from '@/components/onyx-proctor';
+import { WebEditor } from '@/components/onyx-web-editor';
+import { filesOf, isWebAnswer, startingFiles, type WebFiles } from '@/lib/onyx-web-preview';
 import { CandidateCamera } from '@/components/onyx-proctor-live';
 
 /**
@@ -545,6 +547,41 @@ function QuestionInput({ question, value, onChange }: {
           Marked by running it against the problem&apos;s tests, including ones you
           cannot see. Read input from standard input and print to standard output.
         </p>
+      </div>
+    );
+  }
+
+  /*
+   * A web question: three files and a preview, in the paper.
+   *
+   * The same editor practice uses, so nothing about the tool is new on the day
+   * it counts -- and unlike the coding question above there IS a preview here,
+   * because previewing a page is not "running it against the visible cases".
+   * It is looking at the thing you are being asked to build. Withholding it
+   * would be assessing whether somebody can write CSS blindfolded.
+   *
+   * Marked by a person. Nothing about a page can be judged by a machine here,
+   * and the note says so rather than leaving a candidate to wonder what score
+   * appeared and why.
+   */
+  if (question.type === 'web') {
+    const starter = startingFiles(question.problem?.starter_code as WebFiles | undefined);
+    const answered = isWebAnswer(value) ? filesOf(value) : starter;
+    return (
+      <div className="space-y-2.5">
+        {question.problem?.statement ? (
+          <div className="whitespace-pre-wrap rounded-xl border border-line bg-canvas p-3
+                          text-[13px] leading-relaxed">
+            {question.problem.statement}
+          </div>
+        ) : null}
+        <WebEditor
+          value={answered}
+          entry={question.problem?.preview_entry}
+          onChange={(files) => onChange({ files })}
+          note={'Marked by a person, who sees your page rendered exactly as it is here and '
+            + 'can read all three files.'}
+        />
       </div>
     );
   }

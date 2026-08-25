@@ -42,7 +42,7 @@ const GRADE_COLUMNS = 'id, tenant_id, attempt_id, role, marker_id, manual_score,
 export const ASSESSMENT_STATUSES = ['draft', 'published', 'closed'] as const;
 
 export const QUESTION_TYPES = [
-  'single', 'multiple', 'truefalse', 'short', 'essay', 'code',
+  'single', 'multiple', 'truefalse', 'short', 'essay', 'code', 'web',
 ] as const;
 export type OnyxQuestionType = (typeof QUESTION_TYPES)[number];
 
@@ -55,6 +55,44 @@ export type OnyxQuestionType = (typeof QUESTION_TYPES)[number];
  * scoreObjective cannot execute anything. Code scoring has its own path.
  */
 const OBJECTIVE: OnyxQuestionType[] = ['single', 'multiple', 'truefalse', 'short'];
+
+/**
+ * The three files a web question is answered in.
+ *
+ * Fixed, and deliberately: a candidate under exam conditions should not be
+ * deciding on a file layout, and a marker opening thirty submissions should
+ * find the same three tabs in the same order every time. The entry document
+ * comes first because it is the one that has to exist.
+ */
+export const WEB_FILES = ['index.html', 'index.css', 'index.js'] as const;
+export type WebFiles = Record<string, string>;
+
+/**
+ * A web answer in the one shape a preview can be built from, or nothing.
+ *
+ * The same rule `normaliseCodeAnswer` follows and for the same reason: a
+ * response of the wrong shape is a client that has misunderstood the question,
+ * and the honest answers are "render it" or "refuse it" -- never "store it and
+ * mark it zero", which is a candidate's work silently lost.
+ *
+ * Unknown paths are dropped rather than kept. The preview composes exactly the
+ * three files above; anything else would be stored, never rendered, and
+ * marked against a page that did not include it.
+ */
+export function normaliseWebAnswer(response: unknown): WebFiles | null {
+  if (!response || typeof response !== 'object') return null;
+  const given = (response as { files?: unknown }).files ?? response;
+  if (!given || typeof given !== 'object' || Array.isArray(given)) return null;
+  const source = given as Record<string, unknown>;
+  const out: WebFiles = {};
+  for (const path of WEB_FILES) {
+    const value = source[path];
+    if (typeof value === 'string') out[path] = value;
+  }
+  // Nothing recognisable at all is a misunderstanding, not an empty answer:
+  // a candidate who wrote nothing still sends three empty strings.
+  return Object.keys(out).length ? out : null;
+}
 export const isObjective = (type: string) => OBJECTIVE.includes(type as OnyxQuestionType);
 
 /**
@@ -124,10 +162,19 @@ export interface PaperEntry {
    */
   problem?: {
     id: number;
+    /** `code` runs against tests; `web` is three files and a preview. */
+    kind?: 'code' | 'web';
     title: string;
     statement: string | null;
     languages: string[];
+    /**
+     * For `code`, keyed by language. For `web`, keyed by path -- the files the
+     * candidate starts from, snapshotted onto the paper like everything else
+     * so editing the problem afterwards does not change what was asked.
+     */
     starter_code: Record<string, string>;
+    /** `web` only: which file the preview renders. */
+    preview_entry?: string;
     time_limit_ms: number;
   };
 }
@@ -219,6 +266,7 @@ const QUESTION_LABELS: Record<string, string> = {
   short: 'Short answer',
   essay: 'Descriptive',
   code: 'Programming',
+  web: 'Web page',
 };
 
 /**
@@ -244,8 +292,8 @@ function renderAnswer(type: string, value: unknown, options: unknown): string {
   if (type === 'short') {
     return (Array.isArray(value) ? value : [value]).map((v) => String(v)).join('   /   ');
   }
-  // A code answer is printed as code, not here.
-  if (type === 'code') return '';
+  // A code or web answer is printed as source, not here.
+  if (type === 'code' || type === 'web') return '';
   return String(value);
 }
 
@@ -273,6 +321,23 @@ function codeOf(response: unknown): string {
   if (typeof r.source !== 'string') return '';
   const lang = typeof r.language === 'string' && r.language ? r.language : '';
   return (lang ? '// ' + lang + '\n' : '') + r.source;
+}
+
+/**
+ * A web answer as one printable listing.
+ *
+ * Three files with their names above them, in the order they are edited, so a
+ * printed script reads the way the screen did. A page cannot be printed as a
+ * page -- so what goes on paper is what was written, and the marker who wants
+ * to see it rendered opens the submission instead.
+ */
+function webOf(response: unknown): string {
+  const files = normaliseWebAnswer(response);
+  if (!files) return '';
+  return WEB_FILES
+    .filter((path) => files[path] !== undefined)
+    .map((path) => '/* ' + path + ' */\n' + (files[path] ?? '').trimEnd())
+    .join('\n\n');
 }
 
 export class AssessService {
@@ -398,13 +463,19 @@ export class AssessService {
       if (!input.problem_id) throw new HttpError(422, 'A code question needs a problem.');
       await this.#assertProblemMarkable(tenantId, input.problem_id);
     }
+    if (type === 'web') {
+      if (!input.problem_id) {
+        throw new HttpError(422, 'A web question needs a problem to build from.');
+      }
+      await this.#assertProblemPreviewable(tenantId, input.problem_id);
+    }
 
     const { data, error } = await this.#db.from('onyx_questions').insert({
       tenant_id: tenantId, bank_id: bankId, type,
       // 1 unless told otherwise: a bank nobody has divided is a one-set bank,
       // and deals exactly as it always did.
       set_number: Math.max(1, Math.min(50, Math.trunc(Number(input.set_number ?? 1)) || 1)),
-      problem_id: type === 'code' ? input.problem_id : null,
+      problem_id: type === 'code' || type === 'web' ? input.problem_id : null,
       prompt: input.prompt.trim(),
       options: (input.options ?? []) as never,
       answer: (input.answer ?? null) as never,
@@ -446,6 +517,9 @@ export class AssessService {
     if (type === 'code') {
       if (!problemId) throw new HttpError(422, 'A code question needs a problem.');
       await this.#assertProblemMarkable(tenantId, Number(problemId));
+    }
+    if (type === 'web' && problemId) {
+      await this.#assertProblemPreviewable(tenantId, Number(problemId));
     }
 
     const next = Number(current.version) + 1;
@@ -1078,7 +1152,10 @@ export class AssessService {
         // Absent, not blank-because-unknown: `expected` is only ever populated
         // on a view whose reader is entitled to it.
         expected: renderAnswer(q.type as string, q.expected, q.options),
-        code: codeOf(q.response),
+        // Both kinds print as source. A page cannot be printed as a page, so
+        // what goes on paper is what was written -- three files, named -- and
+        // a marker who wants it rendered opens the submission instead.
+        code: String(q.type) === 'web' ? webOf(q.response) : codeOf(q.response),
         /*
          * The two views name the mark differently, and both are handled.
          *
@@ -1266,6 +1343,23 @@ export class AssessService {
     // first. `mode: 'submit'` runs the hidden cases too; a Run would only check
     // what the candidate can already see.
     let submissionId: number | null = existing ? Number(existing.submission_id ?? 0) || null : null;
+    /*
+     * A web answer is checked for shape and then simply stored.
+     *
+     * There is no sandbox in this branch because there is nothing to run: the
+     * page is rendered in the marker's own browser, and the mark is a person's
+     * judgement of it. What IS worth doing is the same refusal the code path
+     * makes -- a response of the wrong shape is a client misunderstanding the
+     * question, and storing it would lose the candidate's work behind a shrug.
+     */
+    if (entry.type === 'web' && input.response !== undefined && input.response !== null) {
+      if (!normaliseWebAnswer(input.response)) {
+        throw new HttpError(422,
+          'A web answer is the three files this question is built from. Nothing else was '
+          + 'saved, so try again rather than leaving it as it is.');
+      }
+    }
+
     if (entry.type === 'code' && entry.problem?.id && this.#code && input.response) {
       const given = normaliseCodeAnswer(input.response, entry.problem.languages ?? []);
       /*
@@ -1780,6 +1874,40 @@ export class AssessService {
     return problem;
   }
 
+  /**
+   * A problem a web question can actually be built from.
+   *
+   * The web twin of `#assertProblemMarkable`, and it checks a different thing
+   * on purpose. A code problem must have TESTS, because nothing else could
+   * mark an answer to it. A web problem must have an ENTRY DOCUMENT, because
+   * nothing else could render one -- a preview with no index.html is a blank
+   * frame, and a candidate would find that out after starting the paper.
+   *
+   * It must also be a web problem. Binding a web question to a code problem
+   * would put a Python starter in three HTML tabs and mark it by hand.
+   */
+  async #assertProblemPreviewable(tenantId: number, problemId: number) {
+    const { data: problem } = await this.#db.from('onyx_problems')
+      .select('id, title, status, kind, starter_code, preview_entry')
+      .eq('tenant_id', tenantId).eq('id', problemId).maybeSingle();
+    if (!problem) throw new HttpError(422, 'That problem does not exist.');
+    if (problem.kind !== 'web') {
+      throw new HttpError(422, '"' + problem.title + '" is a programming problem, not a web '
+        + 'one. A web question is answered with HTML, CSS and JavaScript.');
+    }
+    if (problem.status !== 'published') {
+      throw new HttpError(422, 'A web question needs a published problem: "'
+        + problem.title + '" is still a draft.');
+    }
+    const files = (problem.starter_code ?? {}) as unknown as Record<string, string>;
+    const entry = String(problem.preview_entry ?? 'index.html');
+    if (typeof files[entry] !== 'string') {
+      throw new HttpError(422, '"' + problem.title + '" has no ' + entry
+        + ', so there would be nothing to preview.');
+    }
+    return problem;
+  }
+
   #validateQuestion(type: OnyxQuestionType, options: { id: string; text: string }[], answer: unknown) {
     if (!QUESTION_TYPES.includes(type)) throw new HttpError(422, 'That is not a question type.');
     if (type === 'single' || type === 'multiple') {
@@ -1951,17 +2079,24 @@ export class AssessService {
         // The tests are NOT here: hidden cases are the whole value of an
         // auto-graded coding question, and the attempt row is readable by the
         // candidate.
-        if (q.type === 'code' && q.problem_id) {
+        // A web question needs the same thing for the same reason: the three
+        // files it starts from are what the candidate opens, and they are
+        // snapshotted so an edit to the problem cannot change a paper being
+        // sat. There are no hidden tests to withhold on a web problem -- there
+        // are no tests at all; a person marks it.
+        if ((q.type === 'code' || q.type === 'web') && q.problem_id) {
           const { data: problem } = await this.#db.from('onyx_problems')
-            .select('id, title, statement, languages, starter_code, time_limit_ms')
+            .select('id, kind, title, statement, languages, starter_code, preview_entry, time_limit_ms')
             .eq('tenant_id', tenantId).eq('id', Number(q.problem_id)).maybeSingle();
           if (problem) {
             entry.problem = {
               id: Number(problem.id),
+              kind: (problem.kind === 'web' ? 'web' : 'code'),
               title: String(problem.title),
               statement: (problem.statement ?? null) as string | null,
               languages: (problem.languages ?? []) as unknown as string[],
               starter_code: (problem.starter_code ?? {}) as unknown as Record<string, string>,
+              preview_entry: String(problem.preview_entry ?? 'index.html'),
               time_limit_ms: Number(problem.time_limit_ms ?? 5000),
             };
           }

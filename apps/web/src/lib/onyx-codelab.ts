@@ -2,6 +2,17 @@
 
 export interface Problem {
   id: number;
+  /**
+   * What this problem is answered with (0041).
+   *
+   * `code` is written in one language and run against test cases. `web` is
+   * three files -- HTML, CSS and JavaScript -- previewed in a browser and
+   * marked by a person. Absent on rows written before the distinction existed,
+   * which are all code.
+   */
+  kind?: 'code' | 'web';
+  /** `web` only: the document the preview opens. */
+  preview_entry?: string;
   course_id: number | null;
   title: string;
   slug: string;
