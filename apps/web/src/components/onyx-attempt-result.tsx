@@ -54,7 +54,27 @@ export function OnyxAttemptResult({ assessment, attempt }: {
    */
   const submission = (
     <section>
-      <SectionHead title="Your submission" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <SectionHead title="Your submission" />
+        {/*
+          * Their own script, as a document they can keep.
+          *
+          * What was already downloadable was the COHORT report -- a row per
+          * candidate with their total -- which is the examinations office's
+          * document, not the candidate's. This is what they actually wrote,
+          * what it earned, and the correct answer beside each where the paper
+          * allows them to see it.
+          */}
+        <a
+          href={'/api/proxy/onyx/attempts/' + attempt.id + '/script.pdf'}
+          download
+          className="inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border
+                     border-line bg-white px-3 text-[13px] font-semibold hover:bg-brand-50"
+        >
+          <Icon name="download" className="h-4 w-4" />
+          Download my answers
+        </a>
+      </div>
       <Card className="p-0">
         <ol className="divide-y divide-line">
           {attempt.questions.map((q, i) => (

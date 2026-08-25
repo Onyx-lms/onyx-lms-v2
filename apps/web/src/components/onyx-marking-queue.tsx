@@ -25,11 +25,19 @@ export function since(iso: string | null, now: number): string {
   return weeks === 1 ? 'a week ago' : weeks + ' weeks ago';
 }
 
-export function MarkingQueue({ queue, resultsHref }: {
+export function MarkingQueue({ queue, resultsHref, assessmentId }: {
   queue: MarkingQueueRow[];
   /** Where "see the results" goes once nothing is left to mark -- an
    *  assessment's own results page, or the exam page that shows its marks. */
   resultsHref: string;
+  /**
+   * The paper these scripts belong to, for the download-all.
+   *
+   * Optional because an exam page renders this queue too and reaches its
+   * scripts through the sitting rather than the paper; where it is absent the
+   * bundle is simply not offered rather than pointing at nothing.
+   */
+  assessmentId?: number;
 }) {
   const now = Date.now();
 
@@ -60,15 +68,44 @@ export function MarkingQueue({ queue, resultsHref }: {
           : todo.length + (todo.length === 1 ? ' script left' : ' scripts left')}
         sub={marked.length + ' of ' + queue.length + ' marked'
           + (flagged.length ? ' · ' + flagged.length + ' carry integrity flags' : '')}
-        actions={next ? (
-          <Link href={'/onyx/attempts/' + next.id + '/mark'}
-            className="inline-flex min-h-[42px] items-center gap-2 rounded-2xl bg-white px-4
-                       text-[14px] font-bold text-brand-700 hover:bg-brand-50">
-            Mark next script
-            <Icon name="arrow" className="h-4 w-4" />
-          </Link>
-        ) : (
-          <ActionLink href={resultsHref} label="See the results" />
+        actions={(
+          <span className="flex flex-wrap items-center gap-2">
+            {next ? (
+              <Link href={'/onyx/attempts/' + next.id + '/mark'}
+                className="inline-flex min-h-[42px] items-center gap-2 rounded-2xl bg-white px-4
+                           text-[14px] font-bold text-brand-700 hover:bg-brand-50">
+                Mark next script
+                <Icon name="arrow" className="h-4 w-4" />
+              </Link>
+            ) : (
+              <ActionLink href={resultsHref} label="See the results" />
+            )}
+            {assessmentId ? (
+              <>
+            {/*
+              * Every script in one document, whether or not marking is
+              * finished. A marker wanting the scripts before they are all
+              * marked is the ordinary case -- moderation, a query, a printed
+              * set to work from -- so this is not conditional on being done.
+              *
+              * One file rather than an archive: a zip needs a compressor this
+              * project does not carry, and it hands a marker forty files to
+              * open one at a time. Each script starts on a fresh sheet, so the
+              * bundle prints exactly as the individual reports do.
+              */}
+            <a
+              href={'/api/proxy/onyx/assessments/' + assessmentId + '/scripts.pdf'}
+              download
+              className="inline-flex min-h-[42px] items-center gap-1.5 rounded-2xl border
+                         border-white/40 px-3.5 text-[13px] font-bold text-white
+                         hover:bg-white/10"
+            >
+              <Icon name="download" className="h-4 w-4" />
+              Download every script
+            </a>
+              </>
+            ) : null}
+          </span>
         )}
       >
         <Meter percent={percent} tone="light"
@@ -131,6 +168,27 @@ export function MarkingQueue({ queue, resultsHref }: {
                           {a.integrity_flags} {a.integrity_flags === 1 ? 'point' : 'points'}
                         </Link>
                       ) : null}
+                      {/*
+                        * This candidate's script, as a document.
+                        *
+                        * On the row because "give me that one back" is asked
+                        * about a specific person, and a marker holding a query
+                        * about one script should not have to open it, find a
+                        * menu and come back. Not destructive, so the rule that
+                        * keeps deletes off list rows does not apply.
+                        */}
+                      <a
+                        href={'/api/proxy/onyx/attempts/' + a.id + '/marker-script.pdf'}
+                        download
+                        aria-label={'Download the script for ' + nameOf(a)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex min-h-[30px] shrink-0 items-center gap-1
+                                   rounded-full border border-line px-2.5 text-[12.5px]
+                                   font-semibold text-muted hover:bg-brand-50 hover:text-ink"
+                      >
+                        <Icon name="download" className="h-3.5 w-3.5" />
+                        PDF
+                      </a>
                       {done ? <Score value={a.score!} outOf={a.max_score} /> : null}
                     </div>
                   }

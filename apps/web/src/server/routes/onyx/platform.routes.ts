@@ -13,7 +13,7 @@ import { z } from 'zod';
 import {
   validate, ok, requirePlatformAdmin, ROLES, HttpError,
   CAPABILITIES, CAPABILITY_AREAS, holdersOf, normaliseOverrides, normalisePersonal, can,
-  GREEK_SECTIONS, LETTER_SECTIONS,
+  GREEK_SECTIONS, LETTER_SECTIONS, pdfScript, pdfScriptBundle,
   type PermissionOverrides,
 } from '@onyx/core';
 import type { Role } from '@onyx/types';
@@ -472,6 +472,74 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
     }), req.body);
     return ok(await ctx.onyxPlatform.updateExamMark(
       idOf(req), subIdOf(req, 'markId'), claims.user_id, body), 'Mark updated.');
+  });
+
+  /**
+   * One candidate's script, from the console.
+   *
+   * The marker's view: the answers, the key beside each, the marks and any
+   * note written against them. An operator is acting with an institution
+   * administrator's authority here, which is the authority every other write
+   * in this file already exercises.
+   */
+  app.get('/api/onyx/platform/tenants/:id/attempts/:attemptId/script.pdf',
+    async (req, reply) => {
+      await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+      const tenantId = idOf(req);
+      const attemptId = subIdOf(req, 'attemptId');
+      const [script, tenant] = await Promise.all([
+        ctx.onyxAssess.scriptFor(tenantId, attemptId, null),
+        ctx.onyxTenancy.tenant(tenantId),
+      ]);
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition',
+        'attachment; filename="script-' + attemptId + '.pdf"');
+      return reply.send(pdfScript({ ...script, institution: tenant?.name ?? '' }));
+    });
+
+  /** Every script on one paper, in one document. See the tenant-side route. */
+  app.get('/api/onyx/platform/tenants/:id/assessments/:assessmentId/scripts.pdf',
+    async (req, reply) => {
+      await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+      const tenantId = idOf(req);
+      const assessmentId = subIdOf(req, 'assessmentId');
+      const [scripts, tenant] = await Promise.all([
+        ctx.onyxAssess.scriptsFor(tenantId, assessmentId),
+        ctx.onyxTenancy.tenant(tenantId),
+      ]);
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition',
+        'attachment; filename="assessment-' + assessmentId + '-scripts.pdf"');
+      return reply.send(pdfScriptBundle(
+        scripts.map((sx) => ({ ...sx, institution: tenant?.name ?? '' }))));
+    });
+
+  /**
+   * Every script sat under one EXAMINATION.
+   *
+   * A sitting is scheduled on a paper, so this resolves the paper first and
+   * then reports on it. Offered separately because an operator looking at the
+   * examinations list is thinking about the sitting, not about which
+   * assessment id it happens to be linked to -- and an exam with no online
+   * paper is answered plainly rather than with an empty document.
+   */
+  app.get('/api/onyx/platform/tenants/:id/exams/:examId/scripts.pdf', async (req, reply) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const tenantId = idOf(req);
+    const exam = await ctx.onyxExams.exam(tenantId, subIdOf(req, 'examId'));
+    if (!exam.assessment_id) {
+      throw new HttpError(422, 'This sitting is marked by hand — it has no online paper, '
+        + 'so there are no scripts to report on.');
+    }
+    const [scripts, tenant] = await Promise.all([
+      ctx.onyxAssess.scriptsFor(tenantId, Number(exam.assessment_id)),
+      ctx.onyxTenancy.tenant(tenantId),
+    ]);
+    reply.header('Content-Type', 'application/pdf');
+    reply.header('Content-Disposition',
+      'attachment; filename="exam-' + subIdOf(req, 'examId') + '-scripts.pdf"');
+    return reply.send(pdfScriptBundle(
+      scripts.map((sx) => ({ ...sx, institution: tenant?.name ?? '' }))));
   });
 
   app.patch('/api/onyx/platform/tenants/:id/attempts/:attemptId', async (req) => {

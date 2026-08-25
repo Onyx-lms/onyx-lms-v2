@@ -67,7 +67,9 @@ export default async function OnyxExamMarkingPage({ params }: { params: Promise<
         <span>Marking</span>
       </nav>
 
-      <MarkingQueue queue={queue} resultsHref={'/onyx/exams/' + id} />
+      {/* The sitting is scheduled on a paper, so the bundle is that paper's. */}
+      <MarkingQueue queue={queue} resultsHref={'/onyx/exams/' + id}
+        assessmentId={Number(exam.assessment_id)} />
     </OnyxShell>
   );
 }

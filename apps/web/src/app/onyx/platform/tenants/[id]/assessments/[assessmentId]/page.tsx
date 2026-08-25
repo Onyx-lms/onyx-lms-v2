@@ -150,7 +150,29 @@ export default async function OnyxPlatformAssessmentPage(
       </div>
 
       <section>
-        <SectionHead title="Attempts" />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <SectionHead title="Attempts" />
+          {/*
+            * Every script on this paper, in one document.
+            *
+            * The console already had the cohort report -- a row per candidate
+            * with their total. This is what they actually wrote, which is the
+            * document an operator is asked for when a mark is queried.
+            */}
+          {attempts.length ? (
+            <a
+              href={'/api/proxy/onyx/platform/tenants/' + tenantId + '/assessments/'
+                + assessmentId + '/scripts.pdf'}
+              download
+              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border
+                         border-slate-300 bg-white px-3 text-[13px] font-semibold
+                         hover:bg-slate-50"
+            >
+              <Icon name="download" className="h-4 w-4" />
+              Download every script
+            </a>
+          ) : null}
+        </div>
         <div tabIndex={0} role="region" aria-label="Attempts" className={SCROLLER}>
           <DataTable
             caption="Everyone who sat this paper, what they scored and what the invigilation console recorded."
@@ -167,6 +189,7 @@ export default async function OnyxPlatformAssessmentPage(
                 <th scope="col">Started</th>
                 <th scope="col">Handed in</th>
                 <th scope="col">Took</th>
+                <th scope="col">&nbsp;</th>
               </>
             }
           >
@@ -211,6 +234,25 @@ export default async function OnyxPlatformAssessmentPage(
                 </td>
                 <td className="whitespace-nowrap text-[12.5px] tabular-nums">
                   {tookFor(t.started_at, t.submitted_at)}
+                </td>
+                <td className="text-right">
+                  {/* This one candidate's script. Asked for by name when a
+                      mark is queried, so it is on the row rather than one
+                      click further in. */}
+                  {t.status === 'in_progress' ? null : (
+                    <a
+                      href={'/api/proxy/onyx/platform/tenants/' + tenantId + '/attempts/'
+                        + t.id + '/script.pdf'}
+                      download
+                      aria-label={'Download the script for ' + (t.student?.name ?? 'this candidate')}
+                      className="inline-flex min-h-[30px] items-center gap-1 rounded-lg border
+                                 border-slate-300 px-2.5 text-[12.5px] font-semibold text-muted
+                                 hover:bg-slate-50 hover:text-ink"
+                    >
+                      <Icon name="download" className="h-3.5 w-3.5" />
+                      PDF
+                    </a>
+                  )}
                 </td>
               </tr>
             ))}

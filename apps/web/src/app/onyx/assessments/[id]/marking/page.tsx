@@ -41,7 +41,8 @@ export default async function OnyxMarkingPage({ params }: { params: Promise<{ id
         <span>Marking</span>
       </nav>
 
-      <MarkingQueue queue={queue} resultsHref={'/onyx/assessments/' + id + '/results'} />
+      <MarkingQueue queue={queue} resultsHref={'/onyx/assessments/' + id + '/results'}
+        assessmentId={Number(id)} />
     </OnyxShell>
   );
 }

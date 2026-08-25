@@ -10,7 +10,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { csvCell, csvDocument } from '../src/format/csv.ts';
-import { pdfTable, pdfResume } from '../src/format/pdf.ts';
+import { pdfTable, pdfResume, pdfScript, pdfScriptBundle } from '../src/format/pdf.ts';
 import { isLatin1 } from '../src/onyx/resume.service.ts';
 
 // ---------------------------------------------------------------------------
@@ -72,8 +72,13 @@ test('a one-page table is a well-formed PDF whose xref resolves', () => {
   assert.ok(pdf.toString('latin1').endsWith('%%EOF\n'));
   const { objects, bad } = xrefResolves(pdf);
   assert.equal(bad, 0, 'a cross-reference offset does not land on its object');
-  // Catalog, pages, resources, one page + its stream, two fonts.
-  assert.equal(objects, 7);
+  // Catalog, pages, resources, one page + its stream, three fonts.
+  //
+  // Three because submitted code prints in Courier: a proportional face turns
+  // a candidate's indentation into something they did not write. Every
+  // document carries the font table whether or not it uses all of it, which
+  // costs one object and keeps `serialise` free of per-document branching.
+  assert.equal(objects, 8);
 });
 
 test('a long table paginates, and every page is numbered against the total', () => {
@@ -215,4 +220,119 @@ test('a name the font cannot set does not throw, and is flagged before it is dra
   // warning has to mean something, and flagging every non-ASCII name would
   // make it noise.
   assert.equal(isLatin1('José Álvarez'), true);
+});
+
+// ---------------------------------------------------------------- scripts
+
+/** One script, with every kind of question a paper can carry. */
+function script(over: Record<string, unknown> = {}) {
+  return {
+    institution: 'Demo University',
+    assessment: 'Programming Fundamentals — Final',
+    course: 'CS101 — Programming',
+    candidate: 'Priya Sharma',
+    rollNumber: 'CS-2024-018',
+    attemptNumber: 1,
+    startedAt: '25 Aug 2026, 1:35 pm',
+    submittedAt: '25 Aug 2026, 2:20 pm',
+    score: 7,
+    maxScore: 10,
+    status: 'published',
+    questions: [
+      { number: 1, type: 'Multiple choice', prompt: 'Which keyword declares a constant?',
+        answer: 'B.  const', expected: 'B.  const', code: '', awarded: 2, points: 2,
+        comment: '' },
+      { number: 2, type: 'Descriptive', prompt: 'Explain garbage collection.',
+        answer: 'It frees memory nothing points at any more.', expected: '', code: '',
+        awarded: 3, points: 5, comment: 'Correct, but says nothing about when it runs.' },
+      { number: 3, type: 'Programming', prompt: 'Add two numbers.', answer: '', expected: '',
+        code: '// python\ndef add(a, b):\n    return a + b\n', awarded: 2, points: 3,
+        comment: '' },
+    ],
+    ...over,
+  };
+}
+
+test('a script is a well-formed PDF that names the candidate and their mark', () => {
+  const pdf = pdfScript(script());
+  assert.ok(pdf.subarray(0, 8).toString('latin1').startsWith('%PDF-1.4'));
+  assert.ok(pdf.toString('latin1').endsWith('%%EOF\n'));
+  const { bad } = xrefResolves(pdf);
+  assert.equal(bad, 0, 'a cross-reference offset does not land on its object');
+
+  const body = pdf.toString('latin1');
+  assert.ok(body.includes('Priya Sharma'), 'the candidate is not on their own script');
+  assert.ok(body.includes('CS-2024-018'), 'the roll number is missing');
+  assert.ok(body.includes('7 / 10'), 'the mark is missing');
+});
+
+test('a script prints submitted code in the monospaced face, unwrapped', () => {
+  // A proportional face turns a candidate's indentation into something they
+  // did not write, and reflowing on word boundaries produces code they did
+  // not submit.
+  const pdf = pdfScript(script()).toString('latin1');
+  assert.ok(/\/F3 /.test(pdf), 'code is not set in Courier');
+  // Parentheses are escaped in a PDF string, so the source appears as
+  // `def add\(a, b\):`. Asserting the raw form would pass only on code that
+  // happens to contain no brackets.
+  assert.ok(pdf.includes(String.raw`def add\(a, b\):`),
+    'the submitted source is not in the document');
+  // The claim that matters: leading whitespace survives. Reflowing a
+  // submission on word boundaries produces code the candidate did not write.
+  assert.ok(pdf.includes('(    return a + b)'), 'indentation was not preserved');
+});
+
+test('a script shows a marker comment, which is the part worth reading', () => {
+  const pdf = pdfScript(script()).toString('latin1');
+  assert.ok(/says nothing about when it runs/.test(pdf),
+    'the marker note is missing from the script');
+});
+
+test('a script withholds the key when the caller passed none', () => {
+  // The entitlement is decided upstream: `expected` is empty on a candidate's
+  // copy while they still have a sitting left. The builder must not invent it.
+  const withheld = script({
+    questions: [{
+      number: 1, type: 'Multiple choice', prompt: 'Which keyword declares a constant?',
+      answer: 'A.  let', expected: '', code: '', awarded: 0, points: 2, comment: '',
+    }],
+  });
+  const pdf = pdfScript(withheld).toString('latin1');
+  assert.ok(!/Correct answer/.test(pdf),
+    'a script with no key printed a "Correct answer" heading anyway');
+});
+
+test('an unmarked question prints a dash, not a zero', () => {
+  // Zero is a mark somebody was given. A question nobody has marked has no
+  // mark at all, and printing 0 tells a candidate they scored nothing.
+  const pdf = pdfScript(script({
+    score: null,
+    questions: [{
+      number: 1, type: 'Descriptive', prompt: 'Explain.', answer: 'Words.',
+      expected: '', code: '', awarded: null, points: 5, comment: '',
+    }],
+  })).toString('latin1');
+  assert.ok(/Not marked yet/.test(pdf), 'an unmarked script does not say so');
+});
+
+test('a bundle carries every script, each starting on its own sheet', () => {
+  const two = pdfScriptBundle([
+    script({ candidate: 'Priya Sharma' }),
+    script({ candidate: 'Arun Mehta' }),
+  ]);
+  const body = two.toString('latin1');
+  assert.ok(body.includes('Priya Sharma') && body.includes('Arun Mehta'));
+  // Two scripts, so at least two pages -- a bundle that concatenated onto one
+  // sheet would run one candidate's answers into the next.
+  const pages = (body.match(/\/Type \/Page[^s]/g) ?? []).length;
+  assert.ok(pages >= 2, 'the bundle collapsed two scripts onto one page');
+});
+
+test('an empty bundle is a readable document, not an unopenable file', () => {
+  // "Nobody has sat this yet" is a real and common answer, and a zero-page
+  // PDF is one a reader cannot open to find that out.
+  const pdf = pdfScriptBundle([]);
+  assert.ok(pdf.subarray(0, 8).toString('latin1').startsWith('%PDF-1.4'));
+  assert.equal(xrefResolves(pdf).bad, 0);
+  assert.ok(pdf.toString('latin1').includes('No submissions yet'));
 });

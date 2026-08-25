@@ -123,7 +123,28 @@ export default async function OnyxPlatformExamPage(
           wrote down by hand. */}
       {paper ? (
         <section>
-          <SectionHead title="Sat in the browser" />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <SectionHead title="Sat in the browser" />
+            {/*
+              * Every script sat under this examination.
+              *
+              * Offered from the sitting as well as from the paper, because an
+              * operator looking at the examinations list is thinking about the
+              * sitting, not about which assessment id it happens to be linked
+              * to. The route resolves the paper itself.
+              */}
+            <a
+              href={'/api/proxy/onyx/platform/tenants/' + tenantId + '/exams/'
+                + examId + '/scripts.pdf'}
+              download
+              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border
+                         border-slate-300 bg-white px-3 text-[13px] font-semibold
+                         hover:bg-slate-50"
+            >
+              <Icon name="download" className="h-4 w-4" />
+              Download every script
+            </a>
+          </div>
           <p className="mb-2 text-[13px] text-muted">
             This sitting is tied to{' '}
             <Link href={'/onyx/platform/tenants/' + tenantId + '/assessments/' + paper.assessment.id}

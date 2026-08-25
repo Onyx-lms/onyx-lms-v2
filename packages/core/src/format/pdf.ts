@@ -169,6 +169,19 @@ function text(x: number, y: number, value: string, size: number, bold: boolean):
     + num(x) + ' ' + num(y) + ' Td (' + escapeText(value) + ') Tj ET';
 }
 
+/**
+ * A line of code, in the monospaced face.
+ *
+ * Separate from `text` rather than a flag on it, because everything else about
+ * a code line differs too: it is never wrapped on whitespace, never fitted to a
+ * width by dropping words, and never shaded. Folding those into `text` would
+ * put four unrelated branches in the one function every other builder uses.
+ */
+function mono(x: number, y: number, value: string, size: number): string {
+  return 'BT /F3 ' + num(size) + ' Tf 1 0 0 1 ' + num(x) + ' ' + num(y)
+    + ' Tm (' + escapeText(value) + ') Tj ET';
+}
+
 function rule(x1: number, y: number, x2: number, lineWidth: number, shade: number): string {
   return num(lineWidth) + ' w ' + num(shade) + ' G '
     + num(x1) + ' ' + num(y) + ' m ' + num(x2) + ' ' + num(y) + ' l S 0 G';
@@ -266,8 +279,11 @@ function serialise(streams: string[], page: { width: number; height: number }): 
   objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
   objects[2] = '<< /Type /Pages /Kids [' + pageIds.map((id) => id + ' 0 R').join(' ')
     + '] /Count ' + streams.length + ' >>';
+  // F3 is Courier, for submitted code. A proportional face turns aligned
+  // columns and indentation into something the candidate did not write, and
+  // indentation is the one thing a reader of code needs intact.
   objects[3] = '<< /Font << /F1 ' + (4 + streams.length * 2) + ' 0 R /F2 '
-    + (5 + streams.length * 2) + ' 0 R >> >>';
+    + (5 + streams.length * 2) + ' 0 R /F3 ' + (6 + streams.length * 2) + ' 0 R >> >>';
 
   streams.forEach((stream, i) => {
     const id = pageIds[i]!;
@@ -282,6 +298,8 @@ function serialise(streams: string[], page: { width: number; height: number }): 
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
   objects[5 + streams.length * 2] =
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+  objects[6 + streams.length * 2] =
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>';
 
   const chunks: Buffer[] = [Buffer.from('%PDF-1.4\n', 'latin1')];
   let offset = chunks[0]!.length;
@@ -554,4 +572,209 @@ export function pdfResume(resume: PdfResume): Buffer {
 
   pages.push(out);
   return serialise(pages.map((p) => p.join('\n')), page);
+}
+
+/** One question on a script: what was asked, what was answered, what was right. */
+export interface PdfScriptQuestion {
+  /** 1-based, as it was printed on the paper. */
+  number: number;
+  type: string;
+  prompt: string;
+  /** What the candidate put. Already rendered to text by the caller. */
+  answer: string;
+  /**
+   * The correct answer, or empty where there is none to show.
+   *
+   * Empty for an essay, and empty on a candidate's own copy while the paper
+   * still allows them another attempt -- handing over the key early makes the
+   * second attempt meaningless, and banks are shared between papers.
+   */
+  expected: string;
+  /** Code submissions print as written. Empty for every other type. */
+  code: string;
+  awarded: number | null;
+  points: number;
+  /** A marker's note, where one was written. */
+  comment: string;
+}
+
+export interface PdfScript {
+  institution: string;
+  assessment: string;
+  course: string;
+  /** Who sat it. Empty where the paper is marked anonymously. */
+  candidate: string;
+  rollNumber: string;
+  attemptNumber: number;
+  startedAt: string;
+  submittedAt: string;
+  score: number | null;
+  maxScore: number;
+  status: string;
+  questions: PdfScriptQuestion[];
+}
+
+/**
+ * One candidate's script: what they were asked, what they answered, what was
+ * right, and what it earned.
+ *
+ * Deliberately not `pdfTable`. A table paginates on fixed-height rows and
+ * repeats column headers; a script is prose of wildly varying length -- a
+ * one-word short answer beside forty lines of submitted code -- and the only
+ * sane pagination is "start a new sheet when this one is full", checked before
+ * every write rather than after. A line placed below the bottom margin does not
+ * error; it renders off the page, which is how content silently disappears from
+ * a generated document.
+ *
+ * Code is printed in the monospaced face and NOT wrapped on whitespace. Wrapping
+ * a submission on word boundaries reflows it into something the candidate did
+ * not write, and indentation is the one thing a reader of code needs intact --
+ * so long lines are cut at the margin with a marker rather than folded.
+ *
+ * The same builder serves the candidate's own copy and the marker's, because
+ * they are the same document with different fields filled in: `expected` and
+ * `comment` are simply empty where the reader may not see them. Two builders
+ * would be two chances for one of them to leak a key the other withholds.
+ */
+export function pdfScript(script: PdfScript): Buffer {
+  return serialise(scriptPages(script).map((page) => page.join('\n')), A4_PORTRAIT);
+}
+
+/**
+ * Every script in one document, for the whole cohort.
+ *
+ * One file rather than a zip: a zip needs a compressor this project does not
+ * have and gives a marker forty files to open. Each script starts on a fresh
+ * sheet, so the bundle prints and reads exactly as the individual reports do.
+ */
+export function pdfScriptBundle(scripts: PdfScript[]): Buffer {
+  const pages: string[][] = [];
+  for (const script of scripts) pages.push(...scriptPages(script));
+  if (!pages.length) {
+    // A document that says why it is empty, rather than an unopenable file of
+    // zero pages. "Nobody has sat this yet" is a real and common answer.
+    const y = A4_PORTRAIT.height - MARGIN - 40;
+    pages.push([text(MARGIN + 12, y, 'No submissions yet.', 14, true)]);
+  }
+  return serialise(pages.map((page) => page.join('\n')), A4_PORTRAIT);
+}
+
+/** The pages of one script, so a bundle can concatenate what a single report is. */
+function scriptPages(script: PdfScript): string[][] {
+  const page = A4_PORTRAIT;
+  const left = MARGIN + 12;
+  const right = page.width - MARGIN - 12;
+  const inner = right - left;
+
+  const pages: string[][] = [];
+  let out: string[] = [];
+  let y = page.height - MARGIN - 24;
+
+  const room = (needed: number) => {
+    if (y - needed >= MARGIN + 24) return;
+    pages.push(out);
+    out = [];
+    y = page.height - MARGIN - 12;
+  };
+  const line = (value: string, size: number, bold: boolean, shade?: number) => {
+    room(size + 4);
+    y -= size + 4;
+    out.push(shade === undefined
+      ? text(left, y, value, size, bold)
+      : shaded(shade, text(left, y, value, size, bold)));
+  };
+
+  // ---- the head: whose script this is, and what it scored -----------------
+  out.push(text(left, y, script.assessment, 16, true));
+  y -= 15;
+  out.push(shaded(0.35, text(left, y,
+    fit([script.course, script.institution].filter(Boolean).join('   ·   '), inner, 10, false),
+    10, false)));
+
+  y -= 15;
+  const who = [
+    script.candidate || 'Anonymous',
+    script.rollNumber,
+    'Attempt ' + script.attemptNumber,
+  ].filter(Boolean).join('   ·   ');
+  out.push(text(left, y, fit(who, inner, 10.5, true), 10.5, true));
+
+  y -= 13;
+  const when = [
+    script.startedAt ? 'Started ' + script.startedAt : '',
+    script.submittedAt ? 'Handed in ' + script.submittedAt : '',
+    script.status,
+  ].filter(Boolean).join('   ·   ');
+  out.push(shaded(0.42, text(left, y, fit(when, inner, 9, false), 9, false)));
+
+  // The mark, right-aligned against the rule below it: it is the first thing
+  // read on a returned script and should not be hunted for.
+  const mark = script.score === null
+    ? 'Not marked yet'
+    : String(script.score) + ' / ' + String(script.maxScore);
+  out.push(text(right - width(mark, 13, true), y + 13, mark, 13, true));
+
+  y -= 10;
+  out.push(rule(left, y, right, 0.8, 0.6));
+
+  // ---- the questions ------------------------------------------------------
+  for (const q of script.questions) {
+    // The number and the first line of the prompt stay together: a question
+    // number alone at the foot of a page is the pagination fault a reader
+    // notices.
+    room(52);
+    y -= 20;
+    const head = String(q.number) + '.  ' + q.type;
+    out.push(text(left, y, head, 10, true));
+    const earned = q.awarded === null
+      ? '— / ' + String(q.points)
+      : String(q.awarded) + ' / ' + String(q.points);
+    out.push(text(right - width(earned, 10, true), y, earned, 10, true));
+
+    for (const l of wrap(q.prompt, inner, 10, false)) line(l, 10, false);
+
+    if (q.answer) {
+      line('Answer', 8.5, true, 0.45);
+      for (const l of wrap(q.answer, inner - 10, 9.5, false)) line(l, 9.5, false);
+    } else if (!q.code) {
+      line('Not answered', 9.5, false, 0.5);
+    }
+
+    if (q.code) {
+      line('Submitted code', 8.5, true, 0.45);
+      /*
+       * Not wrapped on whitespace.
+       *
+       * Reflowing a submission on word boundaries produces something the
+       * candidate did not write, and indentation is the one thing a reader of
+       * code needs intact. Long lines are cut at the margin with a marker, so
+       * what is shown is always a true prefix of what was submitted.
+       */
+      for (const raw of q.code.split('\n')) {
+        room(12);
+        y -= 12;
+        const shown = width(raw, 8.5, false) > inner - 12
+          ? fit(raw, inner - 20, 8.5, false) + ' …'
+          : raw;
+        out.push(mono(left + 8, y, shown, 8.5));
+      }
+    }
+
+    if (q.expected) {
+      line('Correct answer', 8.5, true, 0.45);
+      for (const l of wrap(q.expected, inner - 10, 9.5, false)) line(l, 9.5, false);
+    }
+
+    if (q.comment) {
+      line('Marker', 8.5, true, 0.45);
+      for (const l of wrap(q.comment, inner - 10, 9.5, false)) line(l, 9.5, false, 0.25);
+    }
+
+    room(8);
+    y -= 8;
+    out.push(rule(left, y, right, 0.4, 0.85));
+  }
+
+  pages.push(out);
+  return pages;
 }

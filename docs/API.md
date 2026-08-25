@@ -62,6 +62,9 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/assessments/:id/results` | admin, faculty, exams |
 | `GET` | `/api/onyx/assessments/:id/items` | admin, faculty, exams |
 | `GET` | `/api/onyx/courses/:id/benchmark` | admin, faculty, exams |
+| `GET` | `/api/onyx/attempts/:id/script.pdf` | any member |
+| `GET` | `/api/onyx/attempts/:id/marker-script.pdf` | admin, faculty, exams |
+| `GET` | `/api/onyx/assessments/:id/scripts.pdf` | admin, faculty, exams |
 | `GET` | `/api/onyx/assessments/:id/results.csv` | admin, faculty, exams |
 | `GET` | `/api/onyx/assessments/:id/results.pdf` | admin, faculty, exams |
 | `GET` | `/api/onyx/my/assessments` | any member |
@@ -381,6 +384,9 @@ docs:check` fails the build if it has.
 | `POST` | `/api/onyx/platform/tenants/:id/fee-structures/:structureId/status` | platform admin |
 | `PATCH` | `/api/onyx/platform/tenants/:id/members/:memberId` | platform admin |
 | `PATCH` | `/api/onyx/platform/tenants/:id/exam-marks/:markId` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/attempts/:attemptId/script.pdf` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/assessments/:assessmentId/scripts.pdf` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/exams/:examId/scripts.pdf` | platform admin |
 | `PATCH` | `/api/onyx/platform/tenants/:id/attempts/:attemptId` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/attempts/:attemptId` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/submissions/:submissionId` | platform admin |
@@ -487,4 +493,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_401 endpoints across 9 route files._
+_407 endpoints across 9 route files._

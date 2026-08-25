@@ -209,6 +209,70 @@ export interface CodeGrader {
   Promise<{ status: string; score: number; max_score: number } | null>;
 }
 
+/** What each question type is called on a printed script. */
+const QUESTION_LABELS: Record<string, string> = {
+  single: 'Multiple choice',
+  multiple: 'Multiple choice (several answers)',
+  truefalse: 'True or false',
+  short: 'Short answer',
+  essay: 'Descriptive',
+  code: 'Programming',
+};
+
+/**
+ * An answer as a reader sees it, not as it is stored.
+ *
+ * A choice question stores option ids -- "b", or ["a","c"] -- which mean
+ * nothing on paper. Printing the id and not the text is the difference between
+ * a script somebody can check and a column of letters, so the option text is
+ * looked up and the id kept beside it for anyone comparing against the paper.
+ */
+function renderAnswer(type: string, value: unknown, options: unknown): string {
+  if (value === null || value === undefined || value === '') return '';
+  const list = Array.isArray(options)
+    ? (options as { id?: unknown; text?: unknown }[]) : [];
+  const label = (id: unknown) => {
+    const found = list.find((o) => String(o.id) === String(id));
+    return found ? String(id).toUpperCase() + '.  ' + String(found.text) : String(id);
+  };
+  if (type === 'single' || type === 'truefalse') return label(value);
+  if (type === 'multiple') {
+    return (Array.isArray(value) ? value : [value]).map(label).join('   ');
+  }
+  if (type === 'short') {
+    return (Array.isArray(value) ? value : [value]).map((v) => String(v)).join('   /   ');
+  }
+  // A code answer is printed as code, not here.
+  if (type === 'code') return '';
+  return String(value);
+}
+
+/**
+ * What one question earned, from whichever view the caller was given.
+ *
+ * Null only when nothing has been marked at all: zero is a mark somebody was
+ * given, and printing a dash for it would tell a candidate their answer had
+ * not been looked at.
+ */
+function awardedOf(q: Record<string, unknown>): number | null {
+  if (q.awarded !== undefined && q.awarded !== null) return Number(q.awarded);
+  const auto = q.auto_points;
+  const manual = q.manual_points;
+  if ((auto === undefined || auto === null) && (manual === undefined || manual === null)) {
+    return null;
+  }
+  return Number(auto ?? 0) + Number(manual ?? 0);
+}
+
+/** The source a candidate submitted, where the answer is a code submission. */
+function codeOf(response: unknown): string {
+  if (!response || typeof response !== 'object') return '';
+  const r = response as { source?: unknown; language?: unknown };
+  if (typeof r.source !== 'string') return '';
+  const lang = typeof r.language === 'string' && r.language ? r.language : '';
+  return (lang ? '// ' + lang + '\n' : '') + r.source;
+}
+
 export class AssessService {
   #db: OnyxDb;
   #academics: AcademicsService;
@@ -811,6 +875,128 @@ export class AssessService {
    * The attempt as the candidate may see it: the paper, their answers so far,
    * and how long is left according to the server.
    */
+  /**
+   * One script, in the shape the PDF builder takes.
+   *
+   * Assembled from `attemptForCandidate` or `attemptForMarker` rather than from
+   * a third query, deliberately: those two already decide what each reader may
+   * see, and the hardest rule in this file lives inside one of them. A
+   * candidate is shown the answer key only once they have no sittings left --
+   * a paper allowing two attempts that hands over the key after the first is a
+   * paper whose second attempt means nothing, and banks are shared between
+   * papers, so a key given away early leaks into other papers drawn from it.
+   *
+   * Reading the answers again here would be a second, quieter path to the same
+   * data with none of that reasoning applied. So the document is built from
+   * whichever view the caller was already entitled to, and a field the reader
+   * may not see is simply absent from it.
+   *
+   * `viewer` is the candidate for their own copy, or null for a marker's.
+   */
+  /**
+   * One attempt row, for a caller that must know its paper before acting.
+   *
+   * A thin public read over the private one, so a route can check that the
+   * person asking may teach this course BEFORE the script is assembled --
+   * building it first and checking afterwards would do the work for somebody
+   * about to be refused, and it is the assembly that touches the answers.
+   */
+  async attemptRow(tenantId: number, attemptId: number) {
+    return this.#attempt(tenantId, attemptId);
+  }
+
+  async scriptFor(tenantId: number, attemptId: number, viewer: string | null) {
+    const attempt = await this.#attempt(tenantId, attemptId);
+    const assessment = await this.assessment(tenantId, Number(attempt.assessment_id));
+    const view = viewer
+      ? await this.attemptForCandidate(tenantId, attemptId, viewer)
+      : await this.attemptForMarker(tenantId, attemptId);
+
+    const course = assessment.course_id
+      ? (await this.#db.from('onyx_courses').select('code, title')
+        .eq('tenant_id', tenantId).eq('id', assessment.course_id).maybeSingle()).data
+      : null;
+
+    /*
+     * The candidate's name, unless the paper is marked anonymously.
+     *
+     * On a MARKER's copy that anonymity is the point -- `attemptForMarker`
+     * already withholds the user id for such a paper. On the candidate's own
+     * copy it is their own script and their own name, which anonymity was
+     * never meant to hide from them.
+     */
+    let candidate = { name: '', roll: '' };
+    const subject = viewer ?? (view as { user_id?: string | null }).user_id ?? null;
+    if (subject) {
+      const [{ data: user }, { data: membership }] = await Promise.all([
+        this.#db.from('onyx_users').select('name').eq('id', subject).maybeSingle(),
+        this.#db.from('onyx_memberships').select('roll_number')
+          .eq('tenant_id', tenantId).eq('user_id', subject).maybeSingle(),
+      ]);
+      candidate = {
+        name: user?.name ? String(user.name) : '',
+        roll: membership?.roll_number ? String(membership.roll_number) : '',
+      };
+    }
+
+    const questions = ((view as { questions?: unknown[] }).questions ?? []).map((raw, i) => {
+      const q = raw as Record<string, unknown>;
+      return {
+        number: i + 1,
+        type: QUESTION_LABELS[String(q.type)] ?? String(q.type),
+        prompt: String(q.prompt ?? ''),
+        answer: renderAnswer(q.type as string, q.response, q.options),
+        // Absent, not blank-because-unknown: `expected` is only ever populated
+        // on a view whose reader is entitled to it.
+        expected: renderAnswer(q.type as string, q.expected, q.options),
+        code: codeOf(q.response),
+        /*
+         * The two views name the mark differently, and both are handled.
+         *
+         * A candidate's view carries `awarded` -- one number, already the sum
+         * -- because that is all a candidate is shown. A marker's carries
+         * `auto_points` and `manual_points` separately, because a marker acts
+         * on them separately. Reading only the first printed a dash on every
+         * marker's copy, which reads as "nobody has marked this" on a script
+         * that was fully marked.
+         */
+        awarded: awardedOf(q),
+        points: Number(q.points ?? 0),
+        comment: String(q.comment ?? q.marker_comment ?? ''),
+      };
+    });
+
+    return {
+      institution: '',
+      assessment: String(assessment.title),
+      course: course ? String(course.code) + ' — ' + String(course.title) : '',
+      candidate: candidate.name,
+      rollNumber: candidate.roll,
+      attemptNumber: Number(attempt.attempt ?? 1),
+      startedAt: attempt.started_at ? String(attempt.started_at) : '',
+      submittedAt: attempt.submitted_at ? String(attempt.submitted_at) : '',
+      score: (view as { score?: number | null }).score ?? null,
+      maxScore: Number(attempt.max_score ?? 0),
+      status: String(attempt.status),
+      questions,
+    };
+  }
+
+  /** Every script on one paper, for the marker who wants them all at once. */
+  async scriptsFor(tenantId: number, assessmentId: number) {
+    const { data } = await this.#db.from('onyx_assessment_attempts')
+      .select('id, status').eq('tenant_id', tenantId).eq('assessment_id', assessmentId)
+      .order('id');
+    const out = [];
+    for (const row of data ?? []) {
+      // An attempt still in progress has nothing to report and would print a
+      // page of blanks between two real scripts.
+      if (String(row.status) === 'in_progress') continue;
+      out.push(await this.scriptFor(tenantId, Number(row.id), null));
+    }
+    return out;
+  }
+
   async attemptForCandidate(tenantId: number, attemptId: number, userId: string) {
     const attempt = await this.#attempt(tenantId, attemptId);
     if (String(attempt.user_id) !== userId) throw new HttpError(403, 'That is not your attempt.');

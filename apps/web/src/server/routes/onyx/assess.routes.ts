@@ -22,6 +22,7 @@ import { z } from 'zod';
 import {
   validate, ok, HttpError, requireOnyx, requireOnyxRole,
   QUESTION_TYPES, EVENT_KINDS, ASSESSMENT_STATUSES,
+  pdfScript, pdfScriptBundle,
 } from '@onyx/core';
 import type { OnyxQuestionType, MarkRole } from '@onyx/core';
 import type { AppContext } from '../../app-context.ts';
@@ -621,6 +622,98 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
   app.get('/api/onyx/courses/:id/benchmark', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
     return ok(await ctx.onyxAssessAnalytics.benchmark(claims.tenant_id, idOf(req)));
+  });
+
+  // ===========================================================================
+  // Scripts -- one candidate's answers, as a document
+  //
+  // What existed was the COHORT report: results.csv and results.pdf, a row per
+  // candidate with their total. Neither shows what anybody actually wrote, so a
+  // candidate asking "which ones did I get wrong" and a marker wanting a
+  // returnable script were both unserved.
+  // ===========================================================================
+
+  /**
+   * A candidate's own script.
+   *
+   * Their answers, what those earned, and -- only where they are entitled to
+   * see it -- the correct answer beside each. That entitlement is decided by
+   * `attemptForCandidate`, which `scriptFor` builds on rather than re-reading
+   * the answers: a paper allowing two attempts does not hand over its key
+   * after the first, and question banks are shared between papers, so a key
+   * given away early leaks into every paper drawn from that bank.
+   *
+   * Staff reach the same document through the route below. This one is for the
+   * candidate and refuses anybody else's attempt, which `attemptForCandidate`
+   * enforces by user id rather than by role.
+   */
+  app.get('/api/onyx/attempts/:id/script.pdf', async (req, reply) => {
+    const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
+    const script = await ctx.onyxAssess.scriptFor(claims.tenant_id, idOf(req), claims.user_id);
+    const tenant = await ctx.onyxTenancy.tenant(claims.tenant_id);
+    const pdf = pdfScript({ ...script, institution: tenant?.name ?? '' });
+
+    reply.header('Content-Type', 'application/pdf');
+    reply.header('Content-Disposition',
+      'attachment; filename="attempt-' + idOf(req) + '.pdf"');
+    return reply.send(pdf);
+  });
+
+  /**
+   * One candidate's script, for whoever marks it.
+   *
+   * `attemptForMarker` decides what a marker sees, anonymity included: a paper
+   * marked anonymously withholds the candidate from this document exactly as
+   * it does from the marking screen.
+   */
+  app.get('/api/onyx/attempts/:id/marker-script.pdf', async (req, reply) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    // Faculty may only reach the papers of the courses they teach. Read first
+    // so the course is known before anything is built.
+    const attempt = await ctx.onyxAssess.attemptRow(claims.tenant_id, idOf(req));
+    const assessment = await ctx.onyxAssess.assessment(
+      claims.tenant_id, Number(attempt.assessment_id));
+    if (assessment.course_id) {
+      await ctx.onyxAcademics.assertCanTeach(claims.tenant_id, Number(assessment.course_id),
+        claims.user_id, claims.tenant_role);
+    }
+
+    const script = await ctx.onyxAssess.scriptFor(claims.tenant_id, idOf(req), null);
+    const tenant = await ctx.onyxTenancy.tenant(claims.tenant_id);
+    const pdf = pdfScript({ ...script, institution: tenant?.name ?? '' });
+
+    reply.header('Content-Type', 'application/pdf');
+    reply.header('Content-Disposition',
+      'attachment; filename="script-' + idOf(req) + '.pdf"');
+    return reply.send(pdf);
+  });
+
+  /**
+   * Every script on one paper, in one document.
+   *
+   * One file rather than an archive: a zip needs a compressor this project
+   * does not carry, and it hands a marker forty files to open one at a time.
+   * Each script starts on a fresh sheet, so the bundle prints exactly as the
+   * individual reports do.
+   */
+  app.get('/api/onyx/assessments/:id/scripts.pdf', async (req, reply) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    const assessment = await ctx.onyxAssess.assessment(claims.tenant_id, idOf(req));
+    if (assessment.course_id) {
+      await ctx.onyxAcademics.assertCanTeach(claims.tenant_id, Number(assessment.course_id),
+        claims.user_id, claims.tenant_role);
+    }
+
+    const [scripts, tenant] = await Promise.all([
+      ctx.onyxAssess.scriptsFor(claims.tenant_id, idOf(req)),
+      ctx.onyxTenancy.tenant(claims.tenant_id),
+    ]);
+    const pdf = pdfScriptBundle(scripts.map((sx) => ({ ...sx, institution: tenant?.name ?? '' })));
+
+    reply.header('Content-Type', 'application/pdf');
+    reply.header('Content-Disposition',
+      'attachment; filename="assessment-' + idOf(req) + '-scripts.pdf"');
+    return reply.send(pdf);
   });
 
   /** ASS-04b -- the CSV an exams office actually wants. */
