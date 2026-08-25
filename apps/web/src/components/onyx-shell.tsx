@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 import type { Me, Role, Tenant } from '@/lib/onyx-session';
-import { ROLE_LABELS, navFor, tabsFor, type OnyxNavGroup } from '@/lib/onyx-nav';
+import {
+  ROLE_LABELS, navFor, tabsFor, currentNavHref, type OnyxNavGroup,
+} from '@/lib/onyx-nav';
 import { Icon } from '@/components/onyx-ui';
 import { NotificationBell } from '@/components/onyx-inbox';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -74,7 +76,7 @@ export function OnyxShell({ me, title, subtitle, children, action }: {
               with the role still to choose. */}
           <nav className="mt-4" aria-label="Main">
             {groups.map((g, i) => (
-              <NavGroup key={g.label ?? i} group={g} />
+              <NavGroup key={g.label ?? i} group={g} groups={groups} />
             ))}
           </nav>
           <div className="rail-card mt-4 rounded-2xl border border-line bg-white p-3">
@@ -149,13 +151,18 @@ function Header({ me, onMenu }: { me: Me; onMenu: () => void }) {
 
 /* -------------------------------------------------------------- navigation */
 
-function NavGroup({ group }: { group: OnyxNavGroup }) {
+function NavGroup({ group, groups }: { group: OnyxNavGroup; groups: OnyxNavGroup[] }) {
   const pathname = usePathname();
-  // A handful of items (Students/Faculty) are the same page with a
-  // different query string, so the plain pathname match every other item
-  // uses would light both up together. Only those need the query compared.
   const searchParams = useSearchParams();
-  const currentFull = pathname + (searchParams.toString() ? '?' + searchParams.toString() : '');
+  /*
+   * Decided across the WHOLE nav, not per item.
+   *
+   * An item cannot tell on its own whether a better match exists, and two of
+   * them do sit one under the other: standing on `/onyx/practice/submissions`
+   * lit Practice and Submissions together. `currentNavHref` returns the single
+   * longest match, so exactly one item is ever current.
+   */
+  const current = currentNavHref(groups, pathname, searchParams.toString());
   return (
     <div className="mb-4">
       {group.label ? (
@@ -165,9 +172,7 @@ function NavGroup({ group }: { group: OnyxNavGroup }) {
         </div>
       ) : null}
       {group.items.map((item) => {
-        const active = item.href.includes('?')
-          ? currentFull === item.href
-          : pathname === item.href || pathname.startsWith(item.href + '/');
+        const active = item.href === current;
         return (
           <Link
             key={item.href + item.label}
@@ -206,7 +211,7 @@ function MobileMenu({ me, groups, onClose }: {
         </div>
         <TenantCard tenant={me.tenant} role={me.role} memberships={me.memberships} />
         <nav className="mt-4 flex-1" aria-label="All sections" onClick={onClose}>
-          {groups.map((g, i) => <NavGroup key={g.label ?? i} group={g} />)}
+          {groups.map((g, i) => <NavGroup key={g.label ?? i} group={g} groups={groups} />)}
         </nav>
         <div className="rounded-2xl border border-line p-3">
           <div className="truncate text-xs text-muted" title={me.email}>{me.email}</div>
@@ -220,6 +225,9 @@ function MobileMenu({ me, groups, onClose }: {
 /** Five destinations, thumb-reachable. The full menu stays in the header. */
 function TabBar({ tabs }: { tabs: ReturnType<typeof tabsFor> }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  // The tab bar is one group of items, so it is scanned as one group.
+  const currentTab = currentNavHref([{ items: tabs }], pathname, searchParams.toString());
   if (tabs.length < 2) return null;
   return (
     // w-screen/max-w-full rather than relying on inset-x-0 alone: a fixed
@@ -231,8 +239,10 @@ function TabBar({ tabs }: { tabs: ReturnType<typeof tabsFor> }) {
       className="fixed bottom-0 left-0 z-40 grid w-screen max-w-full border-t border-line
                  bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
       style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+      {/* The same single-winner rule as the sidebar: the tab bar carries five
+          items and two of them can sit one under the other. */}
       {tabs.map((t) => {
-        const active = pathname === t.href || pathname.startsWith(t.href + '/');
+        const active = t.href === currentTab;
         return (
           <Link key={t.href + t.label} href={t.href}
             aria-current={active ? 'page' : undefined}

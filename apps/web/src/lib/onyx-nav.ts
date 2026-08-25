@@ -213,6 +213,46 @@ const NAV: Record<Role, OnyxNavGroup[]> = {
   ],
 };
 
+/**
+ * The one navigation item that is current, out of all of them.
+ *
+ * **The bug this fixes.** Each item decided for itself, with
+ * `pathname === href || pathname.startsWith(href + '/')`. The prefix half is
+ * right and worth keeping — a course detail page should keep Courses lit — but
+ * it breaks the moment one item's route sits UNDER another's. `/onyx/practice`
+ * and `/onyx/practice/submissions` are both items, so standing on Submissions
+ * lit up Practice as well and the sidebar showed two current pages.
+ *
+ * Deciding per item cannot fix that, because no item can see whether a better
+ * match exists. So the whole nav is scanned and the LONGEST matching href wins:
+ * Submissions beats Practice on its own page, and a page that is nobody's item
+ * still lights the section it belongs to.
+ *
+ * Exact-match items with a query string are compared whole. Students and
+ * Faculty are the same path with a different `?role=`, so a pathname
+ * comparison would light both — the same class of fault, one level down.
+ */
+export function currentNavHref(
+  groups: OnyxNavGroup[],
+  pathname: string,
+  search = '',
+): string | null {
+  const full = pathname + (search ? '?' + search : '');
+  let best: string | null = null;
+  for (const group of groups) {
+    for (const item of group.items) {
+      const matches = item.href.includes('?')
+        ? full === item.href
+        : pathname === item.href || pathname.startsWith(item.href + '/');
+      if (!matches) continue;
+      // Longest wins. A query-string item is the most specific thing there is,
+      // so it is never displaced by the plain path it is built on.
+      if (best === null || item.href.length > best.length) best = item.href;
+    }
+  }
+  return best;
+}
+
 export function navFor(role: Role): OnyxNavGroup[] {
   return NAV[role] ?? NAV.student;
 }

@@ -94,4 +94,39 @@ test.describe('role-aware navigation', () => {
     await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /remove/i })).toHaveCount(0);
   });
+  test('exactly one navigation item is ever marked current', async ({ page }) => {
+    /*
+     * Two used to be. Each item decided for itself with
+     * `pathname === href || pathname.startsWith(href + '/')`, and two items sit
+     * one under the other: standing on /onyx/practice/submissions lit Practice
+     * AND Submissions, so the sidebar showed two current pages at once.
+     *
+     * The prefix rule itself is right and is checked below — a detail page that
+     * is nobody's nav item still has to light the section it belongs to.
+     */
+    await signInViaForm(page, facultyEmail);
+    for (const path of ['/onyx/practice', '/onyx/practice/submissions', '/onyx/exams']) {
+      await page.goto(path);
+      const current = page.locator('nav[aria-label="Main"] a[aria-current="page"]');
+      await expect(current, path + ' should mark exactly one item current').toHaveCount(1);
+    }
+    // The more specific item wins where both would match.
+    await page.goto('/onyx/practice/submissions');
+    await expect(
+      page.locator('nav[aria-label="Main"] a[aria-current="page"]'),
+    ).toHaveAttribute('href', '/onyx/practice/submissions');
+    // And a page that is nobody's item keeps its section lit rather than
+    // leaving the sidebar with nothing current at all.
+    await page.goto('/onyx/practice');
+    const problem = page.locator('a[href^="/onyx/practice/"]').first();
+    if (await problem.count()) {
+      const href = await problem.getAttribute('href');
+      if (href && href !== '/onyx/practice/submissions') {
+        await page.goto(href);
+        await expect(
+          page.locator('nav[aria-label="Main"] a[aria-current="page"]'),
+        ).toHaveCount(1);
+      }
+    }
+  });
 });
