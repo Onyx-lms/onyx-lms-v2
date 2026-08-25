@@ -1478,8 +1478,34 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       pass_marks: z.number().min(0).optional(),
       status: z.string().max(20).optional(),
     }), req.body);
-    return ok(await ctx.onyxPlatform.updateExam(
-      idOf(req), subIdOf(req, 'examId'), claims.user_id, body), 'Updated.');
+    const exam = await ctx.onyxPlatform.updateExam(
+      idOf(req), subIdOf(req, 'examId'), claims.user_id, body);
+
+    /*
+     * MOVE THE PAPER WITH THE SITTING.
+     *
+     * An examination sat in a browser is an online paper whose window is
+     * pinned to the sitting's slot, so a candidate cannot start it early or
+     * late. The institution's own reschedule route has re-synced that window
+     * since the link existed; this one never did -- so an operator moving a
+     * sitting from the console moved the sitting and left the paper open at
+     * the old hour. The list, the timetable and the register would all agree
+     * on the new time, and the one thing that decides whether anybody can sit
+     * it would still be on the old one.
+     *
+     * Re-synced only when there is something to re-sync for: no linked paper,
+     * or an edit that touched neither the time nor the duration nor cancelled
+     * it, leaves the window alone.
+     */
+    const linked = (exam as { assessment_id?: number | null } | null)?.assessment_id;
+    if (linked
+      && (body.starts_at !== undefined || body.duration_minutes !== undefined
+        || body.status === 'cancelled')) {
+      await syncExamAssessmentWindow(ctx, idOf(req), Number(linked),
+        exam as unknown as Parameters<typeof syncExamAssessmentWindow>[3],
+        { userId: claims.user_id, role: 'admin' });
+    }
+    return ok(exam, 'Updated.');
   });
 
   app.patch('/api/onyx/platform/tenants/:id/assessments/:assessmentId', async (req) => {

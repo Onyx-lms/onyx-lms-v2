@@ -250,6 +250,41 @@ test('ASS-12 pass and fail are decided once, against the sitting’s own pass ma
   assert.equal(register[2]!.final_marks, null);
 });
 
+test('ASS-12 the academics list says which sittings are sat in a browser', async () => {
+  /*
+   * The mapping used to select `assessment_id` and `section_id` and then drop
+   * both on the way out. Nothing errored: the console's invigilation list,
+   * which shows exactly the sittings that HAVE an online paper, simply showed
+   * none -- at every institution. A field that is queried and then quietly
+   * discarded is the worst kind of missing, because the query reads correctly.
+   */
+  const w = world();
+  const platform = new PlatformService(w.db as unknown as OnyxDb, undefined, w.assess);
+  const paper = await w.assess.createAssessment(T, ACTOR, {
+    title: 'Online', course_id: 1, duration_minutes: 30, section_id: 10,
+  });
+  await w.exams.schedule(T, ACTOR, {
+    semester_id: null, course_id: 1, title: 'Sat in a browser',
+    starts_at: new Date(1_800_100_000_000).toISOString(),
+    assessment_id: Number(paper!.id), section_id: 10,
+  });
+  await w.exams.schedule(T, ACTOR, {
+    semester_id: null, course_id: 1, title: 'Sat in a hall',
+    starts_at: new Date(1_800_200_000_000).toISOString(),
+  });
+
+  const { exams } = await platform.tenantAcademics(T);
+  const online = exams.find((e) => e.title === 'Sat in a browser');
+  const hall = exams.find((e) => e.title === 'Sat in a hall');
+  assert.equal(online?.assessment_id, Number(paper!.id),
+    'the sitting does not say which paper it is sat on');
+  assert.equal(online?.section_id, 10, 'the sitting does not say which division sits it');
+  // The other half of the same claim: a hall sitting must read as having
+  // neither, not as missing data.
+  assert.equal(hall?.assessment_id, null);
+  assert.equal(hall?.section_id, null);
+});
+
 test('ASS-12 a seat with no mark still appears, with the seat on it', async () => {
   const w = world();
   const { platform, examId } = await sitting(w);

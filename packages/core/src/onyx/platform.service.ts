@@ -303,14 +303,34 @@ export class PlatformService {
       .select(TENANT_COLUMNS).eq('id', id).maybeSingle();
     if (!data) throw new HttpError(404, 'No such institution.');
 
-    const { data: memberships } = await this.#db.from('onyx_memberships')
-      .select('role').eq('tenant_id', id).eq('status', 1);
-    const byRole: Record<string, number> = {};
-    for (const m of memberships ?? []) {
-      byRole[String(m.role)] = (byRole[String(m.role)] ?? 0) + 1;
-    }
-
     const head = { count: 'exact' as const, head: true };
+
+    /*
+     * COUNTED, not tallied from the rows.
+     *
+     * This used to select every membership row and add them up in a loop --
+     * with no limit, which reads as "all of them" and is not: PostgREST caps a
+     * request that names no limit at a thousand rows. So an institution with
+     * 1,440 students had its own overview report 995 of them, under a heading
+     * that says how many people are there, with nothing anywhere hinting the
+     * number had been truncated. It was right for every institution small
+     * enough not to notice and wrong for exactly the ones where the count
+     * matters.
+     *
+     * One exact head count per role instead -- the same `count: 'exact', head:
+     * true` every other figure on this screen already uses, and no rows come
+     * back at all. Seven small counts in parallel, rather than a thousand rows
+     * over the wire to be re-counted here.
+     */
+    const roleCounts = await Promise.all(ROLES.map(async (role) => {
+      const { count } = await this.#db.from('onyx_memberships')
+        .select('id', head).eq('tenant_id', id).eq('status', 1).eq('role', role);
+      return [role, count ?? 0] as const;
+    }));
+    const byRole: Record<string, number> = {};
+    // Absent rather than zero: a role nobody holds is not worth a row on the
+    // overview, which is how this read before and what the screen expects.
+    for (const [role, n] of roleCounts) if (n > 0) byRole[role] = n;
     const [
       courses, assessments, assignments, enrollments,
       programs, batches, exams, examMarks, submissions, attempts,
@@ -677,6 +697,19 @@ export class PlatformService {
         max_marks: num(e.max_marks),
         pass_marks: num(e.pass_marks),
         status: String(e.status),
+        /*
+         * The two facts the row is READ for, which it was selecting and then
+         * dropping on the way out.
+         *
+         * `assessment_id` is what says a sitting is sat in a browser rather
+         * than in a hall -- so the invigilation console, which lists exactly
+         * those, listed nothing at all. `section_id` is which division is
+         * sitting it. Both are on the row; only this mapping was silent about
+         * them, which is the worst way for a field to be missing: the query
+         * looks right and the screen is simply empty.
+         */
+        assessment_id: e.assessment_id == null ? null : num(e.assessment_id),
+        section_id: e.section_id == null ? null : num(e.section_id),
         seats_allocated: seatCount.get(num(e.id)) ?? 0,
         marks_entered: markTotal.get(num(e.id)) ?? 0,
         marks_published: markPublished.get(num(e.id)) ?? 0,
@@ -1744,8 +1777,18 @@ export class PlatformService {
     title?: string; starts_at?: string | null; duration_minutes?: number;
     max_marks?: number; pass_marks?: number; status?: string;
   }) {
+    /*
+     * `course_id` and `assessment_id` are read but never patched.
+     *
+     * They are here because the caller needs them after the write: moving a
+     * sitting has to move the window of the online paper it is sat on, and
+     * that re-sync needs to know which paper and on which course. The loop
+     * below only ever writes the six keys it names, so widening this select
+     * changes nothing about what is saved.
+     */
+    // eslint-disable-next-line max-len -- one literal; a concatenated select collapses the row type.
     const { data: e } = await this.#db.from('onyx_exams')
-      .select('id, tenant_id, title, starts_at, duration_minutes, max_marks, pass_marks, status')
+      .select('id, tenant_id, course_id, assessment_id, title, starts_at, duration_minutes, max_marks, pass_marks, status')
       .eq('id', examId).maybeSingle();
     if (!e || Number(e.tenant_id) !== tenantId) throw new HttpError(404, 'No such exam.');
 
