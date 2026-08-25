@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/onyx-ui';
 import {
-  ProblemDraftFields, blankProblemDraft, createProblemFromDraft,
+  ProblemDraftFields, blankProblemDraft, createProblemFromDraft, problemDraftError,
   type ProblemDraft,
 } from '@/components/onyx-code-problem';
 
@@ -2661,8 +2661,14 @@ interface PaperQuestion {
   correctMany: string[];
   /** For 'short': the accepted answers, one per line. */
   accepted: string;
-  /** For 'code': the published Code Lab problem whose tests mark it. */
+  /**
+   * For 'code': the Code Lab problem whose tests mark it — an existing
+   * published one, or NEW_PAPER_PROBLEM to write one as part of saving the
+   * paper.
+   */
   problemId: string;
+  /** `code` only, and only when problemId is NEW_PAPER_PROBLEM. */
+  draft: ProblemDraft;
   manualOnly: boolean; // a keyed type with no key -- marked by hand, not auto-graded
 }
 
@@ -2679,13 +2685,29 @@ const PAPER_QUESTION_TYPES: { value: PaperQuestionType; label: string }[] = [
 /** The types that carry a list of options to choose between. */
 const CHOICE_TYPES: PaperQuestionType[] = ['single', 'multiple'];
 
+/**
+ * "Write the problem here", as a problemId.
+ *
+ * A picker of published problems was the only way to set a coding question, and
+ * it is the wrong front door: the person most likely to need a coding problem
+ * is the one writing a paper that does not have one yet, and an institution
+ * that has never published one saw an empty dropdown and a dead end. Writing
+ * one on this form is the way out of exactly that, so it leads and is chosen by
+ * default; reuse stays underneath, which is the better answer whenever the bank
+ * already has the problem — it has been practised, its tests are trusted, and a
+ * candidate's history with it stays in one place.
+ */
+const NEW_PAPER_PROBLEM = '__new__';
+
 // correct starts blank, not 'a' -- option A used to come pre-checked on the
 // wire before anyone had looked at the question, so typing four options and
 // never touching the radios still silently locked in "A is correct". Now
 // nothing is correct until someone says so.
 const blankQuestion = (): PaperQuestion => ({
   type: 'single', prompt: '', points: '10', options: ['', '', '', ''],
-  correct: '', correctMany: [], accepted: '', problemId: '', manualOnly: false,
+  correct: '', correctMany: [], accepted: '',
+  // The picker is the fallback, not the front door.
+  problemId: NEW_PAPER_PROBLEM, draft: blankProblemDraft(), manualOnly: false,
 });
 
 /**
@@ -2781,9 +2803,43 @@ export function CreatePaper({ courses, problems = [] }: {
             // A code question is marked by running a problem's tests. Without
             // one there is nothing to run, and the paper would deal a question
             // no machine and no marker could score.
-            setError(short + ' — choose the Code Lab problem whose tests mark it.');
+            setError(short + ' needs a problem to be marked against — pick one, or write '
+              + 'a new one.');
             return;
           }
+          // A drafted problem is checked here with everything else, before the
+          // first request goes out. The point of this pre-flight is that a
+          // paper is never left half-made: a problem drafted on question three
+          // that turns out to have no visible test case must not be discovered
+          // after the bank and two questions already exist.
+          if (q.type === 'code' && q.problemId === NEW_PAPER_PROBLEM) {
+            const wrong = problemDraftError(q.draft);
+            if (wrong) { setError(short + ': ' + wrong); return; }
+          }
+        }
+
+        /*
+         * 0. Any problem written on this form is made FIRST, before the bank.
+         *
+         * It has to be: a code question cannot be bound to a problem that does
+         * not exist, and only a PUBLISHED problem can mark one -- so each
+         * drafted problem is created, given its test cases and published, and
+         * the id it comes back with is what the question carries.
+         *
+         * Before the bank rather than alongside the questions, so a refusal
+         * here costs nothing: the only rows written by then are problems,
+         * which are worth keeping even if the paper is abandoned. The reverse
+         * order would leave an empty question bank behind every failed attempt.
+         */
+        const authored = new Map<number, number>();
+        for (const [i, q] of clean.entries()) {
+          if (q.type !== 'code' || q.problemId !== NEW_PAPER_PROBLEM) continue;
+          const made = await createProblemFromDraft(send, 'problems', q.draft);
+          if ('error' in made) {
+            setError('Question ' + (i + 1) + ': ' + made.error);
+            return;
+          }
+          authored.set(i, made.id);
         }
 
         // 1. A bank to hold this paper's questions -- one per paper, so
@@ -2793,7 +2849,7 @@ export function CreatePaper({ courses, problems = [] }: {
         const bankId = bank.data.id as number;
 
         // 2. Every question, in order.
-        for (const q of clean) {
+        for (const [qi, q] of clean.entries()) {
           const base = {
             type: q.type, prompt: q.prompt, points: Number(q.points) || 10,
           };
@@ -2821,7 +2877,11 @@ export function CreatePaper({ courses, problems = [] }: {
                       .map((a) => a.trim()).filter(Boolean),
                   }
                   : q.type === 'code'
-                    ? { ...base, problem_id: Number(q.problemId) }
+                    ? {
+                      ...base,
+                      // The problem just written, or the one picked.
+                      problem_id: authored.get(qi) ?? Number(q.problemId),
+                    }
                     : base;
           const made = await send(`banks/${bankId}/questions`, body);
           if (!made.ok) { setError(made.message ?? 'Could not add a question.'); return; }
@@ -2906,37 +2966,55 @@ export function CreatePaper({ courses, problems = [] }: {
       </div>
 
       <div className="mt-4 space-y-3">
-        <h4 className="text-[13px] font-bold text-slate-700">Questions</h4>
+        {/* The running total beside the heading, because "how many marks is
+            this paper" is the question a setter asks constantly and used to be
+            answerable only by adding up the boxes by eye. */}
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h4 className="text-[13px] font-bold text-slate-700">Questions</h4>
+          <span className="text-[12px] tabular-nums text-muted">
+            {questions.filter((q) => q.prompt.trim()).length} written
+            {' · '}
+            {questions.filter((q) => q.prompt.trim())
+              .reduce((n, q) => n + (Number(q.points) || 0), 0)} marks
+          </span>
+        </div>
         {questions.map((q, i) => (
-          <div key={i} className="rounded-xl border border-line p-3">
-            <div className="flex items-center justify-between gap-2">
-              <select value={q.type} className={input + ' text-xs'}
+          <div key={i} className="rounded-xl border border-line bg-slate-50/60 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* The number first and always, so a validation message naming
+                  "question 3" can be found without counting. */}
+              <span className="font-mono text-[12px] font-bold text-muted">
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <select value={q.type} className={input + ' min-w-0 flex-1 text-xs'}
                 aria-label={'Type for question ' + (i + 1)}
                 onChange={(e) => setQuestion(i, { type: e.target.value as PaperQuestionType })}>
                 {PAPER_QUESTION_TYPES.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
+              <label className="text-xs font-semibold text-slate-700" htmlFor={'pp-pts-' + i}>
+                Marks
+              </label>
+              <input id={'pp-pts-' + i} type="number" min={1} value={q.points}
+                className={input + ' w-16 text-xs'}
+                onChange={(e) => setQuestion(i, { points: e.target.value })} />
               {questions.length > 1 ? (
                 <button type="button" aria-label={'Remove question ' + (i + 1)}
-                  className="text-xs font-semibold text-rose-700 hover:underline"
+                  className="rounded-lg border border-line bg-white px-2 py-1 text-[11.5px]
+                             font-semibold text-rose-700"
                   onClick={() => setQuestions((qs) => qs.filter((_, j) => j !== i))}>
                   Remove
                 </button>
               ) : null}
             </div>
-            <label className="mt-2 block text-xs font-semibold" htmlFor={'pp-q-' + i}>
+            <label className="mt-2 block text-xs font-semibold sr-only" htmlFor={'pp-q-' + i}>
               Question {i + 1}
             </label>
             <textarea id={'pp-q-' + i} rows={2} value={q.prompt}
-              className={input + ' mt-1 w-full text-sm'}
+              placeholder={'Question ' + (i + 1)}
+              className={input + ' mt-2 w-full bg-white text-sm'}
               onChange={(e) => setQuestion(i, { prompt: e.target.value })} />
-            <div className="mt-2 flex items-center gap-2">
-              <label className="text-xs font-semibold" htmlFor={'pp-pts-' + i}>Points</label>
-              <input id={'pp-pts-' + i} type="number" min={1} value={q.points}
-                className={input + ' w-20 text-xs'}
-                onChange={(e) => setQuestion(i, { points: e.target.value })} />
-            </div>
             {CHOICE_TYPES.includes(q.type) ? (
               <div className="mt-2 space-y-1.5">
                 {OPTION_IDS.map((id, oi) => (
@@ -3032,22 +3110,30 @@ export function CreatePaper({ courses, problems = [] }: {
                 <label className="block text-xs font-semibold" htmlFor={'pp-prob-' + i}>
                   Marked by
                 </label>
-                {usableProblems.length ? (
-                  <select id={'pp-prob-' + i} value={q.problemId}
-                    className={input + ' w-full text-xs'}
-                    onChange={(e) => setQuestion(i, { problemId: e.target.value })}>
-                    <option value="">Choose a Code Lab problem…</option>
-                    {usableProblems.map((pr) => (
-                      <option key={pr.id} value={pr.id}>{pr.title}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <p className="text-[11px] text-amber-800">
-                    There are no published Code Lab problems yet. Publish one under Practice
-                    first — a coding question is marked by running its tests, so there has to
-                    be something to run.
-                  </p>
-                )}
+                <select id={'pp-prob-' + i} value={q.problemId}
+                  className={input + ' w-full text-xs'}
+                  onChange={(e) => setQuestion(i, { problemId: e.target.value })}>
+                  {/* First, and the default: the problem for a question being
+                      written now usually does not exist yet, and an institution
+                      that has never published one used to meet an empty
+                      dropdown and a dead end. */}
+                  <option value={NEW_PAPER_PROBLEM}>Write the problem here</option>
+                  {usableProblems.length ? (
+                    <optgroup label="Or reuse a published problem">
+                      {usableProblems.map((pr) => (
+                        <option key={pr.id} value={pr.id}>{pr.title}</option>
+                      ))}
+                    </optgroup>
+                  ) : null}
+                </select>
+                {q.problemId === NEW_PAPER_PROBLEM ? (
+                  <div className="mt-2">
+                    <ProblemDraftFields draft={q.draft}
+                      onChange={(patch) => setQuestion(i, { draft: { ...q.draft, ...patch } })}
+                      inputClass={input + ' text-xs'}
+                      labelClass="block text-xs font-semibold text-slate-700" />
+                  </div>
+                ) : null}
                 <p className="text-[11px] text-muted">
                   Marked by running that problem's tests, hidden cases included — the same
                   grader Code Lab practice uses, so a paper and the practice for it cannot
