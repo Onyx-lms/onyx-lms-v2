@@ -18,6 +18,9 @@ import { money } from '@/lib/onyx-money';
 
 export interface TenantDetail {
   id: number; name: string; slug: string; status: number; plan: string | null;
+  /** The invite shown as a button on this institution's Jobs page, if any. */
+  community_url?: string | null;
+  community_label?: string | null;
   created_at: string; members_by_role: Record<string, number>; member_count: number;
   counts: {
     courses: number; assessments: number; assignments: number; enrollments: number;

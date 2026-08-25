@@ -1436,7 +1436,10 @@ export function ExamEditToggle({ tenantId, exam }: {
 
 /** Edit the institution's own name, address and plan label. */
 export function TenantEditForm({ tenant }: {
-  tenant: { id: number; name: string; slug: string; plan: string | null };
+  tenant: {
+    id: number; name: string; slug: string; plan: string | null;
+    community_url?: string | null; community_label?: string | null;
+  };
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -1464,6 +1467,10 @@ export function TenantEditForm({ tenant }: {
             name: String(data.get('name') ?? ''),
             slug: String(data.get('slug') ?? ''),
             plan: String(data.get('plan') ?? '') || null,
+            // Empty clears it, which is why these are sent as '' rather than
+            // omitted: an operator deleting the link means to delete it.
+            community_url: String(data.get('community_url') ?? ''),
+            community_label: String(data.get('community_label') ?? ''),
           });
           if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
           setOpen(false);
@@ -1487,6 +1494,34 @@ export function TenantEditForm({ tenant }: {
         <input id="t-plan" name="plan" defaultValue={tenant.plan ?? ''} maxLength={50}
           className={smallField} />
       </div>
+      {/*
+        * The community link, from the console.
+        *
+        * It was reachable only from an institution's OWN settings screen, so an
+        * operator could not set it for an institution whose administrator had
+        * not got round to it -- and the Jobs page then showed no button at all,
+        * with nothing anywhere saying why. Refused here unless it is an http or
+        * https address, by the same check the institution's own route uses.
+        */}
+      <div className="col-span-full border-t border-line pt-3">
+        <label className={smallLabel} htmlFor="t-community">Community link</label>
+        <input id="t-community" name="community_url" type="url"
+          defaultValue={tenant.community_url ?? ''} maxLength={500}
+          placeholder="https://chat.whatsapp.com/…"
+          className={smallField} />
+        <p className="mt-1 text-[12px] leading-relaxed text-muted">
+          Shown as a button on this institution&rsquo;s Jobs page. A WhatsApp, Telegram or
+          Discord invite — anything on http or https. Leave it empty for no button.
+        </p>
+      </div>
+      <div className="col-span-full sm:col-span-2">
+        <label className={smallLabel} htmlFor="t-community-label">Button wording</label>
+        <input id="t-community-label" name="community_label"
+          defaultValue={tenant.community_label ?? ''} maxLength={120}
+          placeholder="Join our WhatsApp community"
+          className={smallField} />
+      </div>
+
       <div className="col-span-full flex gap-2">
         <button type="submit" disabled={pending} className={saveButton}>
           {pending ? 'Saving…' : 'Save'}

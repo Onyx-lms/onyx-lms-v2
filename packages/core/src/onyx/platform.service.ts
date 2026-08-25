@@ -18,7 +18,7 @@ import type { OnyxDb } from './db.ts';
 import { onyxAuthAdmin, onyxAuthClientFresh } from './db.ts';
 import { HttpError } from '../http/errors.ts';
 import { slugify } from '../authoring/slug.ts';
-import { ROLES } from './tenancy.service.ts';
+import { ROLES, normaliseCommunityUrl } from './tenancy.service.ts';
 import { gradeFor } from './examinations.service.ts';
 // The same two tests the marker applies, so the count an operator reads and
 // the decision `#finalise` makes can never drift apart.
@@ -30,7 +30,7 @@ import { isObjective, hasKey } from './assess.service.ts';
 import { normaliseCurriculumUrl } from './domains.service.ts';
 import { resolveCourseAccess, type CourseAccess } from './academics.service.ts';
 
-const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, created_at, updated_at';
+const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, community_url, community_label, created_at, updated_at';
 const ADMIN_COLUMNS = 'id, user_id, granted_by, created_at';
 
 /**
@@ -1050,8 +1050,22 @@ export class PlatformService {
   // -------------------------------------------------------------------------
 
   /** Edit a tenant's own identity: its name, its address, or its plan label. */
+  /**
+   * Edit an institution from the console.
+   *
+   * `community_url` is here because it was reachable ONLY from an institution's
+   * own Settings screen, so an operator could not set the link for an
+   * institution whose administrator had not got round to it -- and the Jobs
+   * page simply showed no button, with nothing anywhere saying why.
+   *
+   * Validated by the same `normaliseCommunityUrl` the institution's own route
+   * uses rather than a second check written here. The check is what stops
+   * `javascript:` reaching an anchor, and a security check with two
+   * implementations has one that is out of date.
+   */
   async updateTenant(id: number, actorId: string | null, patch: {
     name?: string; slug?: string; plan?: string | null;
+    community_url?: string | null; community_label?: string | null;
   }) {
     const { data: tenant } = await this.#db.from('onyx_tenants')
       .select(TENANT_COLUMNS).eq('id', id).maybeSingle();
@@ -1074,6 +1088,18 @@ export class PlatformService {
     }
     if (patch.plan !== undefined && patch.plan !== tenant.plan) {
       before.plan = tenant.plan; after.plan = patch.plan;
+    }
+    if (patch.community_url !== undefined) {
+      const url = normaliseCommunityUrl(patch.community_url);
+      if (url !== tenant.community_url) {
+        before.community_url = tenant.community_url; after.community_url = url;
+      }
+    }
+    if (patch.community_label !== undefined) {
+      const label = String(patch.community_label ?? '').trim() || null;
+      if (label !== tenant.community_label) {
+        before.community_label = tenant.community_label; after.community_label = label;
+      }
     }
     if (!Object.keys(after).length) return tenant;
 

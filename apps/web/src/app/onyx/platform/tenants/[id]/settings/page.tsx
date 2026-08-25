@@ -55,10 +55,26 @@ export default async function OnyxPlatformTenantSettingsPage(
               {tenant.plan ?? <span className="text-muted">Not set</span>}
             </dd>
           </div>
+          <div className="sm:col-span-3">
+            <dt className="text-[11px] font-bold uppercase tracking-[.06em] text-muted">
+              Community link
+            </dt>
+            <dd className="mt-0.5 break-all">
+              {tenant.community_url
+                ? <span className="font-mono text-[12.5px]">{tenant.community_url}</span>
+                : <span className="text-muted">
+                    Not set — no button on their Jobs page
+                  </span>}
+            </dd>
+          </div>
         </dl>
         <div className="mt-3">
           <TenantEditForm
-            tenant={{ id: tenant.id, name: tenant.name, slug: tenant.slug, plan: tenant.plan }}
+            tenant={{
+              id: tenant.id, name: tenant.name, slug: tenant.slug, plan: tenant.plan,
+              community_url: tenant.community_url ?? null,
+              community_label: tenant.community_label ?? null,
+            }}
           />
         </div>
       </Card>

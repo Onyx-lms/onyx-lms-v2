@@ -95,6 +95,40 @@ export const ROLES: Role[] = [
   'student', 'faculty', 'exams', 'placement', 'employer', 'admin', 'guardian',
 ];
 
+/**
+ * A community link, or null, or a refusal.
+ *
+ * **The protocol check is the load-bearing part.** The result is rendered as an
+ * anchor to a third party, and `javascript:` in an href is stored XSS with
+ * extra steps -- so the scheme is checked by NAME and anything else is refused
+ * out loud rather than quietly dropped. The host is deliberately not restricted
+ * to WhatsApp: an institution running its community on Telegram or Discord is
+ * not doing anything wrong, and a host allow-list breaks the first time
+ * somebody uses a chat.whatsapp.com short link.
+ *
+ * Exported because two callers set this now -- an institution's own Settings
+ * screen and the platform console acting on its behalf -- and a second copy of
+ * a security check is a second copy that can drift from the first.
+ *
+ * `parsed.toString()` keeps the query string. A WhatsApp invite carries its
+ * attribution there (`?s=cl&p=i&mlu=4`), so a normaliser that dropped it would
+ * break the link's tracking silently while appearing to work.
+ */
+export function normaliseCommunityUrl(input: string | null | undefined): string | null {
+  const raw = String(input ?? '').trim();
+  if (!raw) return null;
+  // A person pastes "chat.whatsapp.com/ABC" as often as the full thing.
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : 'https://' + raw;
+  let parsed: URL;
+  try { parsed = new URL(withScheme); } catch { throw new HttpError(422, 'That is not a link.'); }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new HttpError(422,
+      'A community link has to be an http or https address. "' + parsed.protocol
+      + '" is not one.');
+  }
+  return parsed.toString();
+}
+
 export class TenancyService {
   #db: OnyxDb;
   #authAdminOverride: SupabaseClient | undefined;
@@ -1135,23 +1169,7 @@ export class TenancyService {
   async setCommunity(tenantId: number, input: { url?: string | null; label?: string | null }) {
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
-    if (input.url !== undefined) {
-      const raw = String(input.url ?? '').trim();
-      if (!raw) {
-        patch.community_url = null;
-      } else {
-        // A person pastes "chat.whatsapp.com/ABC" as often as the full thing.
-        const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : 'https://' + raw;
-        let parsed: URL;
-        try { parsed = new URL(withScheme); } catch { throw new HttpError(422, 'That is not a link.'); }
-        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-          throw new HttpError(422,
-            'A community link has to be an http or https address. "' + parsed.protocol
-            + '" is not one.');
-        }
-        patch.community_url = parsed.toString();
-      }
-    }
+    if (input.url !== undefined) patch.community_url = normaliseCommunityUrl(input.url);
     if (input.label !== undefined) {
       const label = String(input.label ?? '').trim();
       patch.community_label = label || null;

@@ -208,6 +208,11 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       name: z.string().min(1).max(255).optional(),
       slug: z.string().max(255).optional(),
       plan: z.string().max(50).nullish(),
+      // The community link shown beside an institution's jobs. Nullable rather
+      // than merely optional: clearing it is a thing an operator does, and
+      // `undefined` reads as "leave it alone".
+      community_url: z.string().max(500).nullish(),
+      community_label: z.string().max(120).nullish(),
     }), req.body);
     return ok(await ctx.onyxPlatform.updateTenant(idOf(req), claims.user_id, body), 'Updated.');
   });
