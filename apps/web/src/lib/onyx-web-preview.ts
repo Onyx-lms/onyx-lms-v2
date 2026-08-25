@@ -14,10 +14,21 @@
  * page the candidate never saw. So there is one function and three callers.
  */
 
-/** The files a web answer is made of, in the order they are edited. */
-export const WEB_FILES = ['index.html', 'index.css', 'index.js'] as const;
-export type WebFile = (typeof WEB_FILES)[number];
-export type WebFiles = Partial<Record<WebFile, string>> & Record<string, string | undefined>;
+/*
+ * The files, and the page they start as, come from one place.
+ *
+ * `@onyx/core/web-starter` has no imports of its own, so pulling it into a
+ * browser bundle costs three strings rather than the service barrel. Both
+ * sides need these -- the editor to fill empty tabs, the API to seed a web
+ * problem created without files -- and when they were two copies, a problem
+ * authored through the API could never be published.
+ */
+export {
+  WEB_FILES, startingFiles, DEFAULT_HTML, DEFAULT_CSS, DEFAULT_JS, type WebFile,
+} from '@onyx/core/web-starter';
+import { WEB_FILES as FILES, type WebFile as File } from '@onyx/core/web-starter';
+
+export type WebFiles = Partial<Record<File, string>> & Record<string, string | undefined>;
 
 /** What each file is for, in the words shown above its editor. */
 export const WEB_FILE_HINT: Record<string, string> = {
@@ -114,56 +125,16 @@ export function composePreview(files: WebFiles, entry = 'index.html'): string {
   return out;
 }
 
-/** The three files a problem starts from, with nothing missing. */
-export function startingFiles(starter: WebFiles | null | undefined): Record<WebFile, string> {
-  const from = starter ?? {};
-  return {
-    'index.html': typeof from['index.html'] === 'string' ? from['index.html'] : DEFAULT_HTML,
-    'index.css': typeof from['index.css'] === 'string' ? from['index.css'] : DEFAULT_CSS,
-    'index.js': typeof from['index.js'] === 'string' ? from['index.js'] : DEFAULT_JS,
-  };
-}
-
-/**
- * What an empty web problem starts as.
- *
- * A page, not a blank file. Somebody opening their first web question should
- * see something render immediately — the gap between "blank editor" and "my
- * page appeared" is where a lot of people decide the tool is broken.
- */
-export const DEFAULT_HTML = `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>My page</title>
-  </head>
-  <body>
-    <h1>Hello</h1>
-    <p>Edit the three files and press Preview.</p>
-  </body>
-</html>
-`;
-
-export const DEFAULT_CSS = `body {
-  font-family: system-ui, sans-serif;
-  margin: 2rem;
-}
-`;
-
-export const DEFAULT_JS = `// Runs once the page has loaded.
-console.log('ready');
-`;
-
 /** True when a response is a web answer rather than a code one or a string. */
 export function isWebAnswer(value: unknown): value is WebFiles {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const files = (value as { files?: unknown }).files ?? value;
   if (!files || typeof files !== 'object') return false;
-  return WEB_FILES.some((path) => typeof (files as Record<string, unknown>)[path] === 'string');
+  return FILES.some((path) => typeof (files as Record<string, unknown>)[path] === 'string');
 }
 
 /** The files out of a stored response, whichever shape it arrived in. */
-export function filesOf(value: unknown): Record<WebFile, string> {
+export function filesOf(value: unknown): Record<File, string> {
   const source = (value && typeof value === 'object'
     ? ((value as { files?: unknown }).files ?? value)
     : {}) as WebFiles;

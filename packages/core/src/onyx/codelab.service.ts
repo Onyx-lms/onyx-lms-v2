@@ -20,6 +20,9 @@ import { HttpError } from '../http/errors.ts';
 // The one definition of what a web answer is, so a practice submission and an
 // examination answer cannot disagree about the shape of the same three files.
 import { normaliseWebAnswer } from './assess.service.ts';
+// The one definition of the page a web problem starts from -- shared with the
+// editor, so what a candidate opens is what the API seeded.
+import { startingFiles } from './web-starter.ts';
 import { slugify } from '../authoring/slug.ts';
 import { peopleFor, UNKNOWN_PERSON } from './directory.ts';
 import type { AcademicsService } from './academics.service.ts';
@@ -146,6 +149,22 @@ export class CodeLabService {
 
     const kind: ProblemKind = input.kind === 'web' ? 'web' : 'code';
 
+    /*
+     * A web problem always has three files, even when nobody supplied any.
+     *
+     * The editor filled empty tabs with a starter page client-side, so a
+     * problem authored in the browser had one and a problem authored through
+     * the API had none -- and the second could never be published, because
+     * publishing demands an index.html. The default belongs to the PRODUCT,
+     * not to one of its screens.
+     *
+     * Whatever the author did supply wins, file by file: a problem set only as
+     * HTML keeps that HTML and gains a stylesheet and a script to write into.
+     */
+    const starter = kind === 'web'
+      ? startingFiles(input.starter_code ?? null)
+      : (input.starter_code ?? {});
+
     const { data, error } = await this.#db.from('onyx_problems').insert({
       tenant_id: tenantId,
       course_id: input.course_id ?? null,
@@ -158,7 +177,7 @@ export class CodeLabService {
       topic: input.topic ?? null,
       tags: (input.tags ?? []) as never,
       languages: (input.languages ?? []) as never,
-      starter_code: (input.starter_code ?? {}) as never,
+      starter_code: starter as never,
       time_limit_ms: input.time_limit_ms ?? 2000,
       memory_limit_kb: input.memory_limit_kb ?? DEFAULT_LIMITS.memoryKb,
       solution: input.solution ?? null,

@@ -86,7 +86,8 @@ export function WebEditor({ value, onChange, onRun, entry, readOnly, busy, note 
     // object on every render would otherwise restart the timer forever.
   }, [files['index.html'], files['index.css'], files['index.js'], auto]);
 
-  const set = (path: WebFile, text: string) => onChange({ ...files, [path]: text });
+  const set = (path: WebFile, text: string) =>
+    onChange({ ...files, [path]: text } as Record<WebFile, string>);
 
   return (
     <div className="space-y-2">

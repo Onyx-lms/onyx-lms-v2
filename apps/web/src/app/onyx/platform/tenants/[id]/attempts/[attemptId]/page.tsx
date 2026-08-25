@@ -3,6 +3,9 @@ import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import { attempt as read, Unavailable, clockTime, tookFor, ago } from '@/lib/onyx-platform-tenant';
 import { Card, Icon, Pill, SectionHead } from '@/components/onyx-ui';
+import { WebAnswerView } from '@/components/onyx-web-editor';
+import { isWebAnswer } from '@/lib/onyx-web-preview';
+import { ConsoleMarkPanel } from '@/components/onyx-console-marking';
 
 export const metadata: Metadata = { title: 'Attempt' };
 
@@ -54,6 +57,9 @@ function answerText(q: Question): { text: string; blank: boolean } {
     const given = r as { language?: string; source?: string };
     return { text: String(given?.source ?? r), blank: false };
   }
+  // A web answer is three files and is rendered rather than described; this
+  // exists so nothing falls through to String(object).
+  if (q.type === 'web') return { text: 'A page, shown below', blank: false };
   const text = String(r).trim();
   return text ? { text, blank: false } : { text: 'Left blank', blank: true };
 }
@@ -137,6 +143,23 @@ export default async function OnyxPlatformAttemptPage(
       </Card>
 
       <section>
+        {/*
+          * Marking, where the answers are.
+          *
+          * An operator reading a page and wanting to award seven for it should
+          * not have to leave for another screen and match question numbers by
+          * eye. The same service call a lecturer makes, so the mark releases
+          * to the candidate the same way.
+          */}
+        <ConsoleMarkPanel
+          tenantId={tenantId}
+          attemptId={Number(a.id)}
+          questions={a.questions.map((q) => ({
+            question_id: q.question_id, prompt: q.prompt, points: q.points,
+            awarded: q.manual_points ?? q.auto_points ?? null,
+          }))}
+        />
+
         <SectionHead title="What they answered" />
         {a.questions.length === 0 ? (
           <Card className="p-5 text-center text-[13px] text-muted">
@@ -166,7 +189,13 @@ export default async function OnyxPlatformAttemptPage(
                           <div className={'mt-1 rounded-xl px-3 py-2 text-[13.5px] leading-relaxed '
                             + (given.blank ? 'bg-slate-50 italic text-muted'
                               : 'bg-slate-50 text-slate-800')}>
-                            {q.type === 'code' || q.type === 'essay' ? (
+                            {/* A page is shown as a page here too, so an
+                                operator and a marker are looking at the same
+                                thing when a mark is queried. */}
+                            {q.type === 'web' || isWebAnswer(q.response) ? (
+                              <WebAnswerView files={q.response}
+                                title={'Page submitted for question ' + (i + 1)} />
+                            ) : q.type === 'code' || q.type === 'essay' ? (
                               <pre className="overflow-x-auto whitespace-pre-wrap break-words
                                               font-mono text-[12.5px]">{given.text}</pre>
                             ) : given.text}

@@ -692,6 +692,36 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       scripts.map((sx) => ({ ...sx, institution: tenant?.name ?? '' }))));
   });
 
+  /**
+   * Mark one attempt, question by question, from the console.
+   *
+   * The PATCH below sets a TOTAL, which is the right tool for correcting a
+   * figure and the wrong one for marking. A web question -- and an essay, and
+   * a code question the sandbox misjudged -- is marked per question, with a
+   * comment against each, and the total is then derived rather than typed.
+   *
+   * The same service call a lecturer's marking screen makes, so what happens
+   * afterwards is identical: the marks recompute, the attempt is released, and
+   * the candidate sees the corrected figure rather than the old one.
+   */
+  app.post('/api/onyx/platform/tenants/:id/attempts/:attemptId/mark', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      marks: z.array(z.object({
+        question_id: z.number().int().positive(),
+        points: z.number().min(0),
+        comment: z.string().max(5000).nullish(),
+      })).min(1).max(200),
+      comment: z.string().max(5000).nullish(),
+    }), req.body);
+    const tenantId = idOf(req);
+    const attemptId = subIdOf(req, 'attemptId');
+    const marked = await ctx.onyxAssess.mark(tenantId, attemptId, claims.user_id, body);
+    await ctx.onyxPlatform.recordAction(claims.user_id, 'marks.overridden', 'attempt',
+      attemptId, null, { questions: body.marks.length });
+    return ok(marked, 'Marked.');
+  });
+
   app.patch('/api/onyx/platform/tenants/:id/attempts/:attemptId', async (req) => {
     const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     const body = validate(z.object({ score: z.number().min(0) }), req.body);

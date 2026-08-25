@@ -1,4 +1,8 @@
+'use client';
+
 import { Icon, Pill, Score } from '@/components/onyx-ui';
+import { WebAnswerView } from '@/components/onyx-web-editor';
+import { isWebAnswer } from '@/lib/onyx-web-preview';
 import type { PaperQuestion } from '@/lib/onyx-assess';
 
 /**
@@ -52,12 +56,29 @@ function answerOf(q: PaperQuestion): { text: string; blank: boolean } {
     return { text: chosen.map((id) => labelFor(q, id)).join(', '), blank: false };
   }
   if (q.type === 'code') {
-    // The submission itself, not a summary. It is what they wrote.
-    return { text: String(r), blank: false };
+    /*
+     * The source they wrote, not `String(response)`.
+     *
+     * A code answer is `{ language, source }` -- an object -- so this printed
+     * the literal text "[object Object]" on the candidate's own result screen,
+     * which is the exact failure the note above this function warns about.
+     * The one thing a coding result is for is seeing what you submitted.
+     */
+    const given = (r ?? {}) as { language?: unknown; source?: unknown };
+    const source = typeof given.source === 'string' ? given.source : '';
+    if (!source.trim()) return { text: 'You left this blank', blank: true };
+    const language = typeof given.language === 'string' && given.language
+      ? '// ' + given.language + '\n' : '';
+    return { text: language + source, blank: false };
   }
   // short and essay are free text.
   const text = String(r).trim();
   return text ? { text, blank: false } : { text: 'You left this blank', blank: true };
+}
+
+/** True when this question was answered with a page rather than a value. */
+function isWebQuestion(q: PaperQuestion): boolean {
+  return q.type === 'web' || isWebAnswer(q.response);
 }
 
 /** The key, in the same shape — so the two lines read as a pair. */
@@ -107,7 +128,19 @@ export function OnyxAttemptReview({ question, index }: {
                 : verdict === 'right' ? 'bg-green-50 text-green-900'
                   : verdict === 'wrong' ? 'bg-red-50 text-red-900'
                     : 'bg-slate-50 text-slate-800')}>
-              {question.type === 'code' || question.type === 'essay' ? (
+              {/*
+                * A page is shown as a page, on the candidate's own result.
+                *
+                * Reading back "index.html: <!doctype html>..." as a wall of
+                * text is not seeing what you built. The render comes first and
+                * the three files are a click away underneath, which is the
+                * same arrangement the marker was given -- so a candidate
+                * querying their mark is looking at what the marker looked at.
+                */}
+              {isWebQuestion(question) ? (
+                <WebAnswerView files={question.response}
+                  title={'The page you submitted for question ' + (index + 1)} />
+              ) : question.type === 'code' || question.type === 'essay' ? (
                 // Kept as written: whitespace is meaningful in code, and
                 // paragraphing is meaningful in prose.
                 <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono

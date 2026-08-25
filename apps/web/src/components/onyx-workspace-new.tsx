@@ -3,14 +3,21 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Course } from '@/lib/onyx-learn';
+import { WEB_FILES, startingFiles } from '@/lib/onyx-web-preview';
 
 const field = 'rounded-lg border border-slate-300 px-3 py-2 text-sm '
   + 'focus:border-slate-900 focus:outline-none';
 
 /** Default entry file per language, so a new project opens on something. */
 const ENTRY: Record<string, string> = {
+  web: 'index.html',
   python: 'main.py', javascript: 'index.js', typescript: 'index.ts',
   java: 'Main.java', c: 'main.c', cpp: 'main.cpp', go: 'main.go', rust: 'main.rs',
+};
+
+/** How each is described in the picker, where "web" needs more than its name. */
+const LABEL: Record<string, string> = {
+  web: 'web — HTML, CSS and JavaScript',
 };
 
 export function OnyxNewWorkspace({ courses }: { courses: Course[] }) {
@@ -35,6 +42,22 @@ export function OnyxNewWorkspace({ courses }: { courses: Course[] }) {
               language,
               entry_path: ENTRY[language] ?? 'main.txt',
               course_id: data.get('course_id') ? Number(data.get('course_id')) : null,
+              /*
+               * A web project starts as three files, not one empty one.
+               *
+               * Every other language opens on a single entry file, which is
+               * right: a Python project is one file until it is not. A web
+               * page is three from the first second -- markup, styling and
+               * behaviour -- and starting with an empty index.html would leave
+               * somebody wondering where to put their CSS.
+               */
+              ...(language === 'web'
+                ? {
+                  files: WEB_FILES.map((path) => ({
+                    path, content: startingFiles(null)[path],
+                  })),
+                }
+                : {}),
             }),
           });
           const body = await res.json().catch(() => ({}));
@@ -50,8 +73,10 @@ export function OnyxNewWorkspace({ courses }: { courses: Course[] }) {
           the validation error to. */}
       <input name="title" required maxLength={255} placeholder="Project name"
         aria-label="Project name" className={field} />
-      <select name="language" defaultValue="python" aria-label="Language" className={field}>
-        {Object.keys(ENTRY).map((l) => <option key={l} value={l}>{l}</option>)}
+      <select name="language" defaultValue="web" aria-label="Language" className={field}>
+        {Object.keys(ENTRY).map((l) => (
+          <option key={l} value={l}>{LABEL[l] ?? l}</option>
+        ))}
       </select>
       <select name="course_id" defaultValue="" aria-label="Course" className={field}>
         <option value="">Not for a course</option>

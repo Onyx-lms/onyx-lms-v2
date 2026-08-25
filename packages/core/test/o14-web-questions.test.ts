@@ -243,6 +243,41 @@ test('ASS-14 and a web question with no problem at all is refused', async () => 
     (e: unknown) => e instanceof HttpError && e.status === 422);
 });
 
+test('ASS-14 a web problem created with no files still has a page in it', async () => {
+  /*
+   * The default belongs to the product, not to one of its screens.
+   *
+   * The editor filled three empty tabs client-side, so a problem authored in
+   * the browser had a starter page and one authored through the API had none
+   * -- and the second could never be published, because publishing a web
+   * problem demands an index.html. Every web problem seeded by a script, an
+   * import or an integration was a draft nobody could publish.
+   */
+  const { CodeLabService } = await import('../src/onyx/codelab.service.ts');
+  const w = world();
+  const academics = new AcademicsService(w.db as unknown as OnyxDb);
+  const lab = new CodeLabService(w.db as unknown as OnyxDb, academics,
+    { enqueue: async () => undefined } as never, undefined, () => 1_800_000_000_000);
+
+  const made = await lab.createProblem(T, ACTOR.userId, {
+    kind: 'web', title: 'Seeded by a script',
+  }) as { id: number; starter_code: Record<string, string> };
+  for (const path of WEB_FILES) {
+    assert.equal(typeof made.starter_code[path], 'string',
+      path + ' was not seeded, so this problem could never be published');
+  }
+  assert.match(made.starter_code['index.html'] ?? '', /Onyx EduTech/,
+    'the starter page is not the one the editor shows');
+
+  // And what the author DID give is kept, file by file.
+  const partial = await lab.createProblem(T, ACTOR.userId, {
+    kind: 'web', title: 'Half given', starter_code: { 'index.html': '<h1>Mine</h1>' },
+  }) as { starter_code: Record<string, string> };
+  assert.equal(partial.starter_code['index.html'], '<h1>Mine</h1>');
+  assert.ok((partial.starter_code['index.css'] ?? '').length > 0,
+    'a problem set only as HTML got no stylesheet to write into');
+});
+
 test('ASS-14 a bank counts a web question as needing a marker', async () => {
   // What the bank listing tells a setter before they schedule from it: this
   // paper will not mark itself.

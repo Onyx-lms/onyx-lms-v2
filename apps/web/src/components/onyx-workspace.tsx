@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { OnyxEditor } from './onyx-editor';
 import { Banner, Card, Empty, Icon, SectionHead } from './onyx-ui';
 import type { WorkspaceRunResult } from '@/lib/onyx-codelab';
+import { WebPreview } from '@/components/onyx-web-editor';
 
 /**
  * A past date, said the way a person says it.
@@ -107,6 +108,19 @@ export function OnyxWorkspace({ workspace, isOwner, canReview }: {
 
   const current = files.find((f) => f.path === active);
 
+  /*
+   * A web project has nothing to run, and everything to look at.
+   *
+   * There is no sandbox call, no queue and no exit code: the three files ARE
+   * the output, composed into a document and rendered here. So the run console
+   * below is replaced by the page itself, and "Run" means "show me what I have
+   * built" -- which is what a learner pressing it wants either way.
+   */
+  const isWeb = workspace.language === 'web';
+  const webFiles = Object.fromEntries(files.map((f) => [f.path, f.content]));
+  const [previewAt, setPreviewAt] = useState(0);
+  const [shownPreview, setShownPreview] = useState(webFiles);
+
   const call = (path: string, init: RequestInit, ok: string, after?: () => void) =>
     start(async () => {
       setError(null);
@@ -145,6 +159,21 @@ export function OnyxWorkspace({ workspace, isOwner, canReview }: {
       });
       const saveBody = await saveRes.json().catch(() => ({}));
       if (!saveBody.ok) { setRunError(saveBody.message ?? 'Could not save before running.'); return; }
+
+      /*
+       * A web project stops here, and that is the whole of "running" it.
+       *
+       * The files are saved and the preview is re-rendered from what is now on
+       * screen. There is no `/run` to call: the sandbox executes a program and
+       * reports stdout, and a page has neither. Asking it to would queue work
+       * that could only come back as "that language is not supported".
+       */
+      if (isWeb) {
+        setShownPreview(webFiles);
+        setPreviewAt((n) => n + 1);
+        router.refresh();
+        return;
+      }
 
       const res = await fetch('/api/proxy/onyx/workspaces/' + workspace.id + '/run', {
         method: 'POST',
@@ -245,7 +274,7 @@ export function OnyxWorkspace({ workspace, isOwner, canReview }: {
                   ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2
                                       border-white/30 border-t-white" />
                   : <Icon name="play" className="h-3.5 w-3.5" />}
-                {running ? 'Running…' : 'Run'}
+                {running ? (isWeb ? 'Saving…' : 'Running…') : (isWeb ? 'Save + Preview' : 'Run')}
               </button>
             </div>
           ) : (
@@ -341,7 +370,36 @@ export function OnyxWorkspace({ workspace, isOwner, canReview }: {
                 {runError}
               </p>
             ) : null}
-            {runResult ? (
+            {isWeb ? (
+              <div className="border-t border-slate-800 bg-slate-950/40 p-3">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-300">Preview</span>
+                  <span className="flex-1" />
+                  <button type="button"
+                    onClick={() => { setShownPreview(webFiles); setPreviewAt((n) => n + 1); }}
+                    className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1
+                               text-xs font-semibold text-slate-200 hover:bg-slate-800">
+                    Reload the preview
+                  </button>
+                </div>
+                {/*
+                  * Keyed so Reload genuinely reloads: React reuses an iframe
+                  * whose props look unchanged, and a page whose script has
+                  * already run would otherwise sit there doing nothing.
+                  */}
+                <WebPreview
+                  key={previewAt}
+                  files={shownPreview}
+                  entry={workspace.entry_path}
+                  title={'Preview of ' + workspace.title}
+                  className="h-[26rem] w-full rounded-lg border border-slate-700 bg-white"
+                />
+                <p className="mt-2 text-[11.5px] leading-relaxed text-slate-500">
+                  Your page runs in a sandbox: it cannot reach the internet or the rest of
+                  this site. Press Reload after editing, or Save to keep the files.
+                </p>
+              </div>
+            ) : runResult ? (
               <RunConsole result={runResult} onClear={() => setRunResult(null)} />
             ) : isOwner ? (
               <div className="flex items-center gap-1.5 border-t border-slate-800 bg-slate-950/40
