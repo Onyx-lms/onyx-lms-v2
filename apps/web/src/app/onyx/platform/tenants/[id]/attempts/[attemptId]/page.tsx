@@ -16,6 +16,10 @@ interface ProctorEvent {
   id: number; kind: string; weight: number; detail: unknown; created_at: string;
 }
 interface AttemptDetail {
+  /** Set when the departure rule stopped this paper. */
+  terminated_at?: string | null;
+  terminated_reason?: string | null;
+  breach_count?: number;
   id: number; assessment_id: number; attempt: number; status: string;
   started_at: string | null; submitted_at: string | null;
   auto_score: number | null; manual_score: number | null;

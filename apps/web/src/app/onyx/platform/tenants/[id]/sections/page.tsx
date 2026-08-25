@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { requirePlatformSession } from '@/lib/onyx-platform-session';
 import { attempt, Unavailable, SCROLLER } from '@/lib/onyx-platform-tenant';
+import Link from 'next/link';
 import { SectionManager, SectionPicker, type SectionRow } from '@/components/onyx-sections';
 import { Card, DataTable, EmptyRow, Pill, SectionHead } from '@/components/onyx-ui';
 import type { PeoplePayload } from '@/lib/onyx-platform-tenant';
@@ -25,28 +26,34 @@ export const metadata: Metadata = { title: 'Sections' };
  * to do, and a dialog per person turns a morning's work into an afternoon's.
  */
 export default async function OnyxPlatformSectionsPage(
-  { params, searchParams }: {
-    params: Promise<{ id: string }>;
-    searchParams: Promise<{ section?: string }>;
-  },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   await requirePlatformSession();
   const { id } = await params;
-  const { section } = await searchParams;
   const tenantId = Number(id);
   const base = '/api/onyx/platform/tenants/' + encodeURIComponent(id);
+  const at = '/onyx/platform/tenants/' + tenantId;
 
   const [sections, people] = await Promise.all([
     attempt<SectionRow[]>(base + '/sections'),
-    attempt<PeoplePayload>(base + '/people?role=student&limit=200'
-      + (section ? '&section_id=' + encodeURIComponent(section) : '')),
+    /*
+     * Only the people in NO division.
+     *
+     * `section_id=none` is a question the API already answers, and asking it
+     * is the difference between this page listing the twelve people who need
+     * placing and listing all 1,440 with a dropdown on each. The count beside
+     * the heading is then a count of the right set, too -- filtering a page of
+     * 200 answered "how many of these two hundred" when the question is "how
+     * many of the roll".
+     */
+    attempt<PeoplePayload>(base + '/people?role=student&limit=200&section_id=none'),
   ]);
 
   if (sections === null) return <Unavailable what="sections" />;
   const live = sections.filter((sx) => sx.status === 1);
   const assigned = sections.reduce((n, sx) => n + (sx.member_count ?? 0), 0);
-  const students = people?.people ?? [];
-  const unassigned = students.filter((p) => !p.section).length;
+  const placeless = people?.people ?? [];
+  const unassigned = people?.total ?? placeless.length;
 
   return (
     <div className="min-w-0 space-y-5">
@@ -67,7 +74,7 @@ export default async function OnyxPlatformSectionsPage(
             {/* The number worth acting on. A learner in no section is dealt
                 only the papers set for everybody, so they quietly miss any
                 examination set for a division. */}
-            on this page with no section
+            in no division at all
           </div>
         </Card>
       </div>
@@ -87,46 +94,108 @@ export default async function OnyxPlatformSectionsPage(
       </section>
 
       <section>
-        <SectionHead title={'Students · ' + students.length} />
-        <div tabIndex={0} role="region" aria-label="Students by section" className={SCROLLER}>
+        <SectionHead title="Who is where" />
+        <p className="mb-2 max-w-3xl text-[13px] leading-relaxed text-muted">
+          Open a division to see its roll, move people between divisions, and see what has
+          been set for it. Every student on it opens onto their own record.
+        </p>
+        <div tabIndex={0} role="region" aria-label="Divisions" className={SCROLLER}>
           <DataTable
-            caption="Every student, and the teaching division they are in."
+            caption="Each teaching division and how many people are in it."
             head={
               <>
-                <th scope="col">Student</th>
-                <th scope="col">Roll no.</th>
-                <th scope="col">Section</th>
+                <th scope="col">Division</th>
+                <th scope="col">Code</th>
+                <th scope="col">People</th>
+                <th scope="col">State</th>
+                <th scope="col">&nbsp;</th>
               </>
             }
           >
-            {students.length === 0 ? (
-              <EmptyRow colSpan={3} icon="users">
-                No students to place yet.
+            {sections.length === 0 ? (
+              <EmptyRow colSpan={5} icon="layers">
+                No divisions yet. Add them above — until there are some, every paper is set
+                for the whole cohort and a student registering cannot say where they are.
               </EmptyRow>
-            ) : students.map((p) => (
-              <tr key={p.user_id} className="align-top">
+            ) : sections.map((sx) => (
+              <tr key={sx.id} className="align-top">
                 <td>
-                  <div className="font-semibold">{p.name}</div>
-                  <div className="break-all text-[12.5px] text-muted">{p.email}</div>
+                  <Link href={at + '/sections/' + sx.id} className="font-semibold hover:underline">
+                    {sx.name}
+                  </Link>
                 </td>
-                <td className="font-mono text-[13px] tabular-nums">
-                  {p.roll_number ?? <span className="text-muted">—</span>}
-                </td>
+                <td className="font-mono text-[12.5px] text-muted">{sx.code}</td>
+                <td className="tabular-nums">{sx.member_count ?? 0}</td>
                 <td>
-                  {live.length ? (
-                    <SectionPicker
-                      basePath={'onyx/platform/tenants/' + tenantId + '/members'}
-                      membershipId={p.membership_id}
-                      sections={live}
-                      current={p.section?.id ?? null}
-                    />
-                  ) : <Pill tone="late">No sections yet</Pill>}
+                  {sx.status === 1
+                    ? <Pill tone="good">Running</Pill>
+                    : <Pill tone="neutral">Retired</Pill>}
+                </td>
+                <td className="text-right">
+                  <Link href={at + '/sections/' + sx.id}
+                    className="inline-flex min-h-[30px] items-center gap-1 rounded-lg border
+                               border-line px-2.5 text-[12.5px] font-semibold
+                               hover:bg-brand-50">
+                    Open the roll
+                  </Link>
                 </td>
               </tr>
             ))}
           </DataTable>
         </div>
       </section>
+
+      {/*
+        * The people in NO division, and only them.
+        *
+        * The whole roll used to sit here with a picker on every row -- right
+        * for placing somebody, useless at 1,440 students, and it buried the
+        * one group that actually needs acting on. A learner in no division is
+        * dealt only the papers set for everybody, so they quietly miss any
+        * examination set for a division, and nothing anywhere says so.
+        */}
+      {placeless.length ? (
+        <section>
+          <SectionHead title={'Nobody has placed these ' + placeless.length} />
+          <div tabIndex={0} role="region" aria-label="Students with no section"
+            className={SCROLLER}>
+            <DataTable
+              caption="Students in no teaching division, and the picker to put that right."
+              head={
+                <>
+                  <th scope="col">Student</th>
+                  <th scope="col">Roll no.</th>
+                  <th scope="col">Division</th>
+                </>
+              }
+            >
+              {placeless.map((p) => (
+                <tr key={p.user_id} className="align-top">
+                  <td>
+                    <Link href={at + '/students/' + p.user_id}
+                      className="font-semibold hover:underline">{p.name}</Link>
+                    <div className="break-all text-[12.5px] text-muted">{p.email}</div>
+                  </td>
+                  <td className="font-mono text-[13px] tabular-nums">
+                    {p.roll_number ?? <span className="font-sans text-muted">—</span>}
+                  </td>
+                  <td>
+                    {live.length ? (
+                      <SectionPicker
+                        basePath={'onyx/platform/tenants/' + tenantId + '/members'}
+                        membershipId={p.membership_id}
+                        sections={live}
+                        current={null}
+                      />
+                    ) : <Pill tone="late">No sections yet</Pill>}
+                  </td>
+                </tr>
+              ))}
+            </DataTable>
+          </div>
+        </section>
+      ) : null}
+
     </div>
   );
 }

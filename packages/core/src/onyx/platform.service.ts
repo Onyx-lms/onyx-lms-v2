@@ -301,16 +301,30 @@ export class PlatformService {
     }
     if (!rows.length) return [];
 
-    // One count query per table rather than a join, because these tables
-    // have no foreign key to lean on in a single request through PostgREST,
-    // and this page is read by one operator at a time, not per learner.
-    const { data: memberships } = await this.#db.from('onyx_memberships')
-      .select('tenant_id').in('tenant_id', rows.map((t) => Number(t.id))).eq('status', 1);
-    const counts = new Map<number, number>();
-    for (const m of memberships ?? []) {
-      const id = Number(m.tenant_id);
-      counts.set(id, (counts.get(id) ?? 0) + 1);
-    }
+    /*
+     * COUNTED per institution, not tallied from the rows.
+     *
+     * This fetched every membership row across every institution and added
+     * them up in a loop -- with no range, which reads as "all of them" and is
+     * not: PostgREST caps a request that names none at a thousand rows. So the
+     * directory reported an institution of 1,440 as 943, and the "members
+     * across every institution" figure above it -- which is this column summed
+     * -- came out at exactly 1000 however many people were really there. Both
+     * numbers were right for a platform small enough not to notice and wrong
+     * for the moment anybody wanted them.
+     *
+     * One exact head count per institution instead, in parallel, returning no
+     * rows at all. A handful of tiny counts beats a thousand rows over the
+     * wire to be re-counted here -- and this page is a directory of
+     * institutions, so "a handful" is what it will stay.
+     */
+    const counted = await Promise.all(rows.map(async (t) => {
+      const { count } = await this.#db.from('onyx_memberships')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', Number(t.id)).eq('status', 1);
+      return [Number(t.id), count ?? 0] as const;
+    }));
+    const counts = new Map(counted);
 
     return rows.map((t) => ({ ...t, member_count: counts.get(Number(t.id)) ?? 0 }));
   }
@@ -592,7 +606,7 @@ export class PlatformService {
       this.#db.from('onyx_assessments')
         // One literal, not a concatenation: supabase-js infers the row type
         // from the select string as a literal type, and `a + b` is just string.
-        .select('id, course_id, title, opens_at, closes_at, status, pass_mark, duration_minutes, attempts_allowed, sections, created_at')
+        .select('id, course_id, section_id, title, opens_at, closes_at, status, pass_mark, duration_minutes, attempts_allowed, sections, created_at')
         .eq('tenant_id', id).order('created_at', { ascending: false }).limit(limit + 1),
       // Examinations (CMP-02): scheduled papers, not the marks off them --
       // those are still tenantGrades()'s job, audited the same as ever.
@@ -759,6 +773,10 @@ export class PlatformService {
         opens_at: a.opens_at ? String(a.opens_at) : null,
         closes_at: a.closes_at ? String(a.closes_at) : null,
         status: String(a.status),
+        // Which division it is set for, and the same omission the exam rows
+        // had: a paper set for Alpha-CSE and one set for everybody are
+        // different papers, and the list could not tell them apart.
+        section_id: a.section_id == null ? null : num(a.section_id),
         pass_mark: a.pass_mark == null ? null : num(a.pass_mark),
         duration_minutes: num(a.duration_minutes),
         attempt_count: attTotal.get(num(a.id)) ?? 0,
@@ -1855,6 +1873,8 @@ export class PlatformService {
     attempts_allowed?: number;
     /** The section this paper is set for. Null or absent means every section. */
     section_id?: number | null;
+    /** Departures allowed before the paper is handed in. Zero is off. */
+    breach_limit?: number;
     shuffle_questions?: boolean; shuffle_options?: boolean;
     proctoring?: boolean; require_camera?: boolean; require_screen?: boolean;
     watch_camera?: boolean; anonymous_marking?: boolean; moderation_required?: boolean;
@@ -1904,6 +1924,9 @@ export class PlatformService {
       moderation_required: flag(input.moderation_required, false),
       instant_results: flag(input.instant_results, true),
       status: 'draft', created_by: actorId,
+      // Three: warn, warn, hand it in. An institution setting a paper from the
+      // console means an examination, and this is the rule they asked for.
+      breach_limit: input.breach_limit ?? 3,
       // With `section_id`: the row is written with one and the response did
       // not carry it back, so nothing could confirm which division a paper had
       // just been set for -- including the form that had only asked.
@@ -1930,16 +1953,26 @@ export class PlatformService {
     proctoring?: boolean; require_camera?: boolean; require_screen?: boolean;
     watch_camera?: boolean; anonymous_marking?: boolean; moderation_required?: boolean;
     instant_results?: boolean;
+    /**
+     * Departures allowed before the paper is handed in. Zero is off.
+     *
+     * Changeable after the fact on purpose: every paper written before 0040
+     * has it at zero, and an institution deciding to apply the rule should not
+     * have to rebuild the paper to do it.
+     */
+    breach_limit?: number;
   }) {
-    // eslint-disable-next-line max-len
-    const { data: a } = await this.#db.from('onyx_assessments').select('id, tenant_id, title, opens_at, closes_at, pass_mark, duration_minutes, attempts_allowed, status, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, watch_camera, anonymous_marking, moderation_required, instant_results').eq('id', assessmentId).maybeSingle();
+    // eslint-disable-next-line max-len -- one literal; a concatenated select collapses the row type.
+    const { data: a } = await this.#db.from('onyx_assessments').select('id, tenant_id, title, opens_at, closes_at, pass_mark, duration_minutes, attempts_allowed, breach_limit, status, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, watch_camera, anonymous_marking, moderation_required, instant_results').eq('id', assessmentId).maybeSingle();
     if (!a || Number(a.tenant_id) !== tenantId) throw new HttpError(404, 'No such assessment.');
 
     const before: Record<string, unknown> = {};
     const after: Record<string, unknown> = {};
     for (const key of
       ['title', 'opens_at', 'closes_at', 'pass_mark', 'duration_minutes',
-        'attempts_allowed', 'status'] as const) {
+        // A number, not a switch: it goes in the first loop, where a value is
+        // compared as it is rather than coerced to 0 or 1.
+        'attempts_allowed', 'breach_limit', 'status'] as const) {
       const value = patch[key];
       if (value !== undefined && value !== a[key]) { before[key] = a[key]; after[key] = value; }
     }
@@ -2630,7 +2663,7 @@ export class PlatformService {
   async assessmentDetail(tenantId: number, assessmentId: number) {
     const { data: assessment } = await this.#db.from('onyx_assessments')
       // eslint-disable-next-line max-len -- one literal, same reason as above.
-      .select('id, tenant_id, course_id, section_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, pass_mark, status, sections, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, watch_camera, anonymous_marking, moderation_required, instant_results, results_published_at, created_at')
+      .select('id, tenant_id, course_id, section_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, pass_mark, status, sections, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, watch_camera, anonymous_marking, moderation_required, instant_results, breach_limit, results_published_at, created_at')
       .eq('tenant_id', tenantId).eq('id', assessmentId).maybeSingle();
     if (!assessment) throw new HttpError(404, 'No such assessment.');
 
@@ -2837,6 +2870,141 @@ export class PlatformService {
           ? null
           : finals.filter((v) => v >= Number(exam.pass_marks)).length,
       },
+    };
+  }
+
+  /**
+   * ONE STUDENT, and everything the institution has of them.
+   *
+   * The console could list a roll and open a course and open a sitting, and
+   * had no way to answer the question anybody actually arrives with: what is
+   * going on with this person. Their section, their number, what they are
+   * enrolled in, what they have sat and what they were given for it -- four
+   * screens and a lot of scrolling, or this.
+   *
+   * Assembled from four reads rather than a join, the same way every other
+   * detail in this file is: the tables have no foreign key PostgREST can
+   * traverse in one request, and this is read one student at a time by a
+   * person, not per row of a list.
+   */
+  async studentRecord(tenantId: number, userId: string) {
+    const { data: membership } = await this.#db.from('onyx_memberships')
+      .select('id, tenant_id, user_id, role, status, roll_number, section_id, created_at')
+      .eq('tenant_id', tenantId).eq('user_id', userId).maybeSingle();
+    if (!membership) throw new HttpError(404, 'Nobody at this institution has that id.');
+
+    const [people, { data: section }] = await Promise.all([
+      peopleFor(this.#db, tenantId, [userId]),
+      membership.section_id
+        ? this.#db.from('onyx_sections').select('id, name, code')
+          .eq('tenant_id', tenantId).eq('id', Number(membership.section_id)).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+    const users = await this.#usersById([userId]);
+
+    const [{ data: enrolments }, { data: attempts }, { data: marks }] = await Promise.all([
+      this.#db.from('onyx_enrollments')
+        .select('id, course_id, status, created_at')
+        .eq('tenant_id', tenantId).eq('user_id', userId).limit(SCAN_CAP),
+      // eslint-disable-next-line max-len -- one literal; a concatenated select collapses the row type.
+      this.#db.from('onyx_assessment_attempts').select('id, assessment_id, attempt, status, started_at, submitted_at, score, max_score, integrity_flags, integrity_status, terminated_at, breach_count')
+        .eq('tenant_id', tenantId).eq('user_id', userId).order('id', { ascending: false })
+        .limit(SCAN_CAP),
+      this.#db.from('onyx_exam_marks')
+        .select('id, exam_id, raw_marks, moderation_delta, final_marks, grade, status')
+        .eq('tenant_id', tenantId).eq('user_id', userId).limit(SCAN_CAP),
+    ]);
+
+    /*
+     * The names of the things above, in one read each.
+     *
+     * A course id on an enrolment row is not an answer to "what are they
+     * enrolled in", and looking each one up per row is how a page about one
+     * person becomes forty round trips.
+     */
+    const courseIds = [...new Set((enrolments ?? []).map((e) => Number(e.course_id)))];
+    const paperIds = [...new Set((attempts ?? []).map((a) => Number(a.assessment_id)))];
+    const examIds = [...new Set((marks ?? []).map((m) => Number(m.exam_id)))];
+
+    const [{ data: courses }, { data: papers }, { data: exams }] = await Promise.all([
+      courseIds.length
+        ? this.#db.from('onyx_courses').select('id, code, title, access, status')
+          .eq('tenant_id', tenantId).in('id', courseIds)
+        : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+      paperIds.length
+        ? this.#db.from('onyx_assessments')
+          .select('id, title, course_id, duration_minutes, pass_mark, status')
+          .eq('tenant_id', tenantId).in('id', paperIds)
+        : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+      examIds.length
+        ? this.#db.from('onyx_exams').select('id, title, course_id, starts_at, max_marks, pass_marks')
+          .eq('tenant_id', tenantId).in('id', examIds)
+        : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+    ]);
+    const courseById = new Map((courses ?? []).map((c) => [Number(c.id), c]));
+    const paperById = new Map((papers ?? []).map((a) => [Number(a.id), a]));
+    const examById = new Map((exams ?? []).map((e) => [Number(e.id), e]));
+
+    /*
+     * Which sitting a paper belongs to, so an attempt reads as "the Python
+     * mid-term" rather than as an assessment id.
+     */
+    const { data: sittings } = paperIds.length
+      ? await this.#db.from('onyx_exams').select('id, title, assessment_id')
+        .eq('tenant_id', tenantId).in('assessment_id', paperIds)
+      : { data: [] as Record<string, unknown>[] };
+    const examOfPaper = new Map((sittings ?? [])
+      .map((e) => [Number(e.assessment_id), { id: Number(e.id), title: String(e.title) }]));
+
+    const person = people.get(userId);
+    return {
+      student: {
+        user_id: userId,
+        membership_id: Number(membership.id),
+        name: person?.name ?? users.get(userId)?.name ?? 'Unknown',
+        email: users.get(userId)?.email ?? null,
+        phone: users.get(userId)?.phone ?? null,
+        role: String(membership.role),
+        status: num(membership.status),
+        roll_number: person?.roll_number ?? null,
+        section: section ? { id: Number(section.id), name: String(section.name) } : null,
+        joined_at: membership.created_at ?? null,
+      },
+      enrolments: (enrolments ?? []).map((e) => ({
+        id: Number(e.id),
+        course_id: Number(e.course_id),
+        course: courseById.get(Number(e.course_id)) ?? null,
+        status: num(e.status),
+        since: e.created_at ?? null,
+      })).sort((a, b) => String(a.course?.code ?? '').localeCompare(String(b.course?.code ?? ''))),
+      attempts: (attempts ?? []).map((a) => ({
+        id: Number(a.id),
+        assessment_id: Number(a.assessment_id),
+        paper: paperById.get(Number(a.assessment_id)) ?? null,
+        // Where the paper is one an examination is sat on, the examination is
+        // what a person calls it.
+        exam: examOfPaper.get(Number(a.assessment_id)) ?? null,
+        attempt: num(a.attempt),
+        status: String(a.status),
+        started_at: a.started_at ?? null,
+        submitted_at: a.submitted_at ?? null,
+        score: a.score == null ? null : Number(a.score),
+        max_score: a.max_score == null ? null : Number(a.max_score),
+        integrity_flags: num(a.integrity_flags),
+        integrity_status: String(a.integrity_status ?? 'clean'),
+        terminated_at: a.terminated_at ?? null,
+        breaches: num(a.breach_count),
+      })),
+      exam_marks: (marks ?? []).map((m) => ({
+        id: Number(m.id),
+        exam_id: Number(m.exam_id),
+        exam: examById.get(Number(m.exam_id)) ?? null,
+        raw_marks: Number(m.raw_marks ?? 0),
+        moderation_delta: Number(m.moderation_delta ?? 0),
+        final_marks: Number(m.final_marks ?? 0),
+        grade: m.grade ?? null,
+        status: String(m.status ?? ''),
+      })),
     };
   }
 

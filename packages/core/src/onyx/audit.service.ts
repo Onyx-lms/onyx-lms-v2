@@ -58,7 +58,11 @@ export type AuditAction =
   | 'domain.registered'
   // Somebody watched a candidate's camera. Recorded because being watched is
   // an act that should be accountable afterwards, not only visible at the time.
-  | 'proctor.watched';
+  | 'proctor.watched'
+  // The product ending somebody's examination with no person in the loop, and
+  // a person putting them back into it. Two acts that must be answerable for.
+  | 'attempt.terminated'
+  | 'attempt.reinstated';
 
 export interface AuditEntry {
   action: AuditAction;

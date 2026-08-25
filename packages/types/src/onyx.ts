@@ -403,7 +403,17 @@ export interface WorkspaceCommentRow {
 // ---------------------------------------------------------------------------
 
 export type AttemptStatus =
-  | 'in_progress' | 'submitted' | 'expired' | 'graded' | 'moderated' | 'published';
+  | 'in_progress' | 'submitted' | 'expired' | 'graded' | 'moderated' | 'published'
+  /**
+   * Stopped by the departure rule (0040), not handed in by the candidate.
+   *
+   * Deliberately NOT one of the statuses the release rule accepts: a stopped
+   * paper is scored so an invigilator can see where the candidate had got to,
+   * and shown to the candidate only as "stopped" -- handing them the mark
+   * would give away the marking of a paper they may be about to carry on
+   * sitting.
+   */
+  | 'terminated';
 export type IntegrityStatus = 'clean' | 'review' | 'flagged' | 'cleared' | 'upheld';
 
 export interface QuestionBankRow {
@@ -439,6 +449,8 @@ export interface AssessmentRow {
   shuffle_questions: number; shuffle_options: number;
   proctoring: number; require_camera: number; require_screen: number;
   anonymous_marking: number; moderation_required: number;
+  /** Departures allowed before the paper is handed in. Zero is off (0040). */
+  breach_limit: number;
   pass_mark: number | null; status: string;
   results_published_at: string | null; created_by: number | null;
   created_at: string; updated_at: string;
@@ -452,6 +464,19 @@ export interface AttemptRow {
   score: number | null; max_score: number;
   consented_at: string | null;
   integrity_flags: number; integrity_status: IntegrityStatus;
+  /**
+   * The departure rule (0040): how many times this candidate left the paper,
+   * when it was stopped for it, and what was left on their clock at that
+   * moment. `remaining_ms` is what makes "carry on from where you were"
+   * possible -- `expires_at` is an absolute instant and keeps running while
+   * an invigilator decides.
+   */
+  breach_count: number;
+  terminated_at: string | null;
+  terminated_reason: string | null;
+  remaining_ms: number | null;
+  reinstated_at: string | null;
+  reinstated_by: string | null;
   created_at: string; updated_at: string;
 }
 

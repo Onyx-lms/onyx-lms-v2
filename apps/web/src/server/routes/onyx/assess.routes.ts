@@ -197,6 +197,10 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
       // The teaching division this paper is set for. Absent or null is
       // everybody, which is what every paper written before 0038 is.
       section_id: z.number().int().positive().nullish(),
+      // How many times a candidate may leave the paper before it is handed in
+      // for them. Zero switches the rule off entirely, which is how every
+      // paper written before 0040 behaves.
+      breach_limit: z.number().int().min(0).max(20).optional(),
     }), req.body);
     return ok(await ctx.onyxAssess.createAssessment(
       claims.tenant_id, { userId: claims.user_id, role: claims.tenant_role }, body),
@@ -544,6 +548,34 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
     }), req.body);
     return ok(await ctx.onyxProctor.review(claims.tenant_id, idOf(req), claims, body),
       'Reviewed.');
+  });
+
+  /**
+   * Let a stopped candidate carry on, from where they were.
+   *
+   * The counterpart to the rule that stops them: a paper handed in
+   * automatically after three departures is a judgement made by a counter, and
+   * a counter cannot tell a candidate switching to their email from a screen
+   * reader stealing focus. Somebody has to be able to look and disagree.
+   *
+   * Guarded by `assess.proctor` -- the same capability that lets somebody
+   * dismiss a flag or settle an attempt, because this is the same act at a
+   * larger size. The service restores the answers, the remaining minutes and
+   * a fresh set of warnings; nothing here decides any of that.
+   */
+  app.post('/api/onyx/attempts/:id/reinstate', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assess.proctor', claims.user_id);
+    const body = validate(z.object({
+      note: z.string().max(5000).nullish(),
+    }), req.body ?? {});
+    const restored = await ctx.onyxAssess.reinstate(
+      claims.tenant_id, idOf(req), { userId: claims.user_id });
+    await ctx.onyxAudit.record(claims, {
+      action: 'attempt.reinstated', entityType: 'attempt', entityId: idOf(req),
+      after: { note: body.note ?? null, expires_at: restored?.expires_at ?? null },
+    });
+    return ok(restored, 'They can carry on from where they were.');
   });
 
   app.post('/api/onyx/attempts/:id/integrity', async (req) => {

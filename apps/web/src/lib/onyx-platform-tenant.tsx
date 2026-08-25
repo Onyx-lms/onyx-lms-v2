@@ -82,6 +82,8 @@ export interface AssignmentRow {
 export interface AssessmentRow {
   id: number; title: string; course: { code: string; title: string } | null;
   course_id: number | null;
+  /** The teaching division it is set for. Null means the whole cohort. */
+  section_id: number | null;
   closes_at: string | null; opens_at: string | null; status: string; pass_mark: number | null;
   duration_minutes: number; attempt_count: number; submitted_count: number;
   /** What the paper draws. Empty means nobody can sit it. */

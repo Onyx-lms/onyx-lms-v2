@@ -5,6 +5,7 @@ import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
 import { LiveRefresh } from '@/components/onyx-live';
 import { WatchCandidate } from '@/components/onyx-proctor-live';
+import { ReinstateAttempt, StoppedBadge } from '@/components/onyx-reinstate';
 import type { Exam } from '@/lib/onyx-campus';
 import {
   ActionLink, Card, CardGrid, DataTable, EmptyRow, Icon, Meter, Pill, Score,
@@ -23,6 +24,16 @@ interface QueueRow {
   /** Whether this paper allows an invigilator to watch the camera live. */
   watch_camera?: boolean;
   tab_switches: number; started_at: string | null;
+  /**
+   * Departures counted against the RULE -- reset when somebody is reinstated,
+   * which is deliberately not the same number as `tab_switches`, the total
+   * ever recorded. One says how many lives are left, the other says what this
+   * candidate has been doing all morning.
+   */
+  breaches?: number;
+  /** Set when the departure rule stopped the paper. */
+  terminated_at?: string | null;
+  terminated_reason?: string | null;
 }
 
 /**
@@ -154,6 +165,15 @@ export default async function OnyxInvigilatePage(
   // are counted separately: a clean sitting in progress is not a flag, and a
   // console that adds them together tells an invigilator the room is on fire.
   const running = queue.filter((r) => r.status === 'in_progress');
+  /*
+   * Papers the departure rule has STOPPED.
+   *
+   * Pulled out and put at the top of this console, above everything else on
+   * it, because these are the only rows with a person sitting in front of them
+   * waiting to be told whether their examination is over. A flag can be read
+   * after the sitting; this cannot.
+   */
+  const stoppedPapers = queue.filter((r) => r.terminated_at);
   const flagged = queue.filter((r) => r.integrity_flags > 0);
   const openEvents = queue.reduce((n, r) => n + r.open_events, 0);
   const awaiting = queue.filter((r) => r.open_events > 0).length;
@@ -444,6 +464,57 @@ export default async function OnyxInvigilatePage(
         <StatTile label="Running now" value={running.length} note="papers still in progress" />
         <StatTile label="Decided" value={decided} note="cleared or upheld by a person" />
       </div>
+
+      {/*
+        * THE ONE THING ON THIS SCREEN THAT IS WAITING ON A PERSON.
+        *
+        * Shown above the summary tiles and both splits, whether or not the
+        * console is scoped to one paper. Everything else here is a record to
+        * read; this is a decision somebody is standing in a room waiting for.
+        */}
+      {stoppedPapers.length ? (
+        <section className="mb-7">
+          <SectionHead title="Stopped, and waiting on you" />
+          <p className="mb-2 max-w-3xl text-[13px] leading-relaxed text-muted">
+            These papers were handed in automatically because the candidate left the
+            examination more times than it allows. Everything they had written has been kept.
+            Letting one carry on restores their answers and the minutes that were left on
+            their clock — use it where what happened was not what it looked like.
+          </p>
+          <div tabIndex={0} role="region" aria-label="Stopped attempts">
+            <DataTable
+              caption="Papers stopped by the departure rule, and the way back from it"
+              head={
+                <>
+                  <th scope="col">Candidate</th>
+                  <th scope="col">Stopped</th>
+                  <th scope="col">Departures</th>
+                  <th scope="col">Flag score</th>
+                  <th scope="col"><span className="sr-only">Actions</span></th>
+                </>
+              }
+            >
+              {stoppedPapers.map((r) => (
+                <tr key={r.attempt_id} className="align-top">
+                  <td>
+                    <div className="font-semibold">{candidateOf(r, nameOf)}</div>
+                    <div className="text-[12.5px] text-muted">
+                      Attempt {r.attempt_id} · {paperLabel(r.assessment_id, examByAssessment).title}
+                    </div>
+                  </td>
+                  <td><StoppedBadge at={r.terminated_at} breaches={r.breaches} /></td>
+                  <td className="tabular-nums">{r.tab_switches} in all</td>
+                  <td><Score value={r.integrity_flags} band={severity(r.integrity_flags).band} /></td>
+                  <td className="text-right">
+                    <ReinstateAttempt attemptId={r.attempt_id}
+                      name={candidateOf(r, nameOf)} compact />
+                  </td>
+                </tr>
+              ))}
+            </DataTable>
+          </div>
+        </section>
+      ) : null}
 
       {scopedId ? (
         <>

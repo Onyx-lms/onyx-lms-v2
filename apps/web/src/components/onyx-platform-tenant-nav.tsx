@@ -137,6 +137,9 @@ const DETAIL_OF: Record<string, string> = {
   examinations: 'Examination', problems: 'Coding problem',
   // The drill-down is one SITTING being watched, not the console itself.
   invigilate: 'Sitting',
+  // Both of these are now destinations rather than rows on a longer list.
+  students: 'Student',
+  sections: 'Section',
 };
 
 export function sectionOf(pathname: string, tenantId: number): {

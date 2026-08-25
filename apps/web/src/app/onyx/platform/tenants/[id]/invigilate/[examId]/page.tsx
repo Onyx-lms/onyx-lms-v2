@@ -5,6 +5,7 @@ import { attempt as read, SCROLLER, Unavailable, ago, Workflow } from '@/lib/ony
 import { LiveRefresh } from '@/components/onyx-live';
 import { WatchCandidate } from '@/components/onyx-proctor-live';
 import { AttemptVerdict } from '@/components/onyx-console-proctor';
+import { ReinstateAttempt, StoppedBadge } from '@/components/onyx-reinstate';
 import { ExamRegister } from '@/components/onyx-exam-register';
 import {
   Card, DataTable, EmptyRow, Icon, Pill, Score, SectionHead, State, StatTile,
@@ -63,6 +64,14 @@ export default async function OnyxPlatformInvigilateExamPage(
     : [];
 
   const live = queue.filter((r) => r.status === 'in_progress');
+  /*
+   * Papers the rule has STOPPED, first on the page.
+   *
+   * There is a candidate sitting in front of each of these waiting to be told
+   * whether their examination is over. Nothing else on this screen is that
+   * urgent -- a flag can be read after the sitting; this cannot.
+   */
+  const stopped = queue.filter((r) => r.terminated_at);
   const flagged = queue.filter((r) => r.integrity_flags > 0)
     .sort((a, b) => b.open_events - a.open_events || b.integrity_flags - a.integrity_flags);
   const openEvents = queue.reduce((n, r) => n + Number(r.open_events ?? 0), 0);
@@ -129,6 +138,58 @@ export default async function OnyxPlatformInvigilateExamPage(
                 ? 'a required camera or screen is not reporting'
                 : 'every required device is reporting'} />
           </div>
+
+          {stopped.length ? (
+            <section>
+              <SectionHead title="Stopped, and waiting on you" />
+              <p className="mb-2 max-w-3xl text-[13px] leading-relaxed text-muted">
+                These papers were handed in automatically because the candidate left the
+                examination more times than it allows. Everything they had written is kept.
+                Letting one carry on restores their answers and the minutes that were left
+                on their clock — use it where what happened was not what it looked like.
+              </p>
+              <div tabIndex={0} role="region" aria-label="Stopped attempts" className={SCROLLER}>
+                <DataTable
+                  caption="Papers stopped by the departure rule, and the way back from it."
+                  head={
+                    <>
+                      <th scope="col">Candidate</th>
+                      <th scope="col">Stopped</th>
+                      <th scope="col">Departures</th>
+                      <th scope="col">Flags</th>
+                      <th scope="col">&nbsp;</th>
+                    </>
+                  }
+                >
+                  {stopped.map((r) => (
+                    <tr key={r.attempt_id} className="align-top">
+                      <td>
+                        <Link
+                          href={'/onyx/platform/tenants/' + tenantId + '/attempts/' + r.attempt_id}
+                          className="font-semibold hover:underline">
+                          {candidateOf(r)}
+                        </Link>
+                        <div className="text-[12px] text-muted">Attempt {r.attempt_id}</div>
+                      </td>
+                      <td><StoppedBadge at={r.terminated_at} breaches={r.breaches} /></td>
+                      <td className="tabular-nums">
+                        {r.tab_switches} in all
+                      </td>
+                      <td className="tabular-nums">{r.integrity_flags}</td>
+                      <td className="text-right">
+                        <ReinstateAttempt
+                          attemptId={r.attempt_id}
+                          name={candidateOf(r)}
+                          basePath={'onyx/platform/tenants/' + tenantId + '/attempts/'}
+                          compact
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </DataTable>
+              </div>
+            </section>
+          ) : null}
 
           <section>
             <SectionHead title="Sitting now" />

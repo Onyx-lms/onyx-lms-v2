@@ -144,6 +144,21 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
     }));
   });
 
+  /**
+   * One student's whole record at this institution.
+   *
+   * The console could list a roll, open a course and open a sitting, and had
+   * no way to answer the question anybody arrives with: what is going on with
+   * this person. Their division, their number, what they are enrolled in,
+   * what they have sat and what they were given for it.
+   */
+  app.get('/api/onyx/platform/tenants/:id/students/:userId', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const userId = String((req.params as Record<string, string>).userId ?? '');
+    if (!userId) throw new HttpError(422, 'Which student?');
+    return ok(await ctx.onyxPlatform.studentRecord(idOf(req), userId));
+  });
+
   app.get('/api/onyx/platform/tenants/:id/academics', async (req) => {
     await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     const q = validate(z.object({
@@ -327,6 +342,9 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       // Which teaching division the paper is set for. Absent or null means
       // every section.
       section_id: z.number().int().positive().nullish(),
+      // How many times a candidate may leave the paper before it is handed in
+      // for them. Zero switches the rule off.
+      breach_limit: z.number().int().min(0).max(20).optional(),
       // How the paper is sat. Absent means "not stated", which the service
       // reads as its default -- monitored, with camera and screen, for a paper
       // set by an institution rather than by a lecturer.
@@ -517,6 +535,25 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
     const tenantId = idOf(req);
     return ok(await ctx.onyxProctor.review(tenantId, subIdOf(req, 'eventId'),
       { tenant_id: tenantId, user_id: claims.user_id }, body), 'Reviewed.');
+  });
+
+  /**
+   * Let a stopped candidate carry on, from the console.
+   *
+   * The same act the institution's own invigilator can take, behind the
+   * platform guard -- and the same service call, so what is restored (the
+   * answers, the minutes that were left, a fresh set of warnings) is decided
+   * in one place rather than twice.
+   */
+  app.post('/api/onyx/platform/tenants/:id/attempts/:attemptId/reinstate', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const tenantId = idOf(req);
+    const attemptId = subIdOf(req, 'attemptId');
+    const restored = await ctx.onyxAssess.reinstate(tenantId, attemptId,
+      { userId: claims.user_id });
+    await ctx.onyxPlatform.recordAction(claims.user_id, 'attempt.reinstated', 'attempt',
+      attemptId, null, { expires_at: restored?.expires_at ?? null });
+    return ok(restored, 'They can carry on from where they were.');
   });
 
   /** Settle the whole attempt: cleared, or upheld. */
@@ -1530,6 +1567,10 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       anonymous_marking: z.boolean().optional(),
       moderation_required: z.boolean().optional(),
       instant_results: z.boolean().optional(),
+      // The departure rule, changeable after the fact -- every paper written
+      // before 0040 has it at zero, and an institution deciding to apply the
+      // rule should not have to rebuild the paper to do it.
+      breach_limit: z.number().int().min(0).max(20).optional(),
     }), req.body);
     return ok(await ctx.onyxPlatform.updateAssessment(
       idOf(req), subIdOf(req, 'assessmentId'), claims.user_id, body), 'Updated.');

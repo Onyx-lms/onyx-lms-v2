@@ -29,7 +29,7 @@ import { increment } from './metrics.ts';
 import type { AuditService } from './audit.service.ts';
 
 const EVENT_COLUMNS = 'id, tenant_id, attempt_id, kind, weight, detail, media_path, at, client_at, review, reviewed_by, reviewed_at, review_note';
-const ATTEMPT_COLUMNS = 'id, tenant_id, assessment_id, user_id, attempt, status, started_at, expires_at, submitted_at, integrity_flags, integrity_status, consented_at';
+const ATTEMPT_COLUMNS = 'id, tenant_id, assessment_id, user_id, attempt, status, started_at, expires_at, submitted_at, integrity_flags, integrity_status, consented_at, breach_count, terminated_at, terminated_reason';
 
 /**
  * What each kind of event is worth.
@@ -59,6 +59,55 @@ export const EVENT_KINDS = Object.keys(EVENT_WEIGHTS);
 /** Above this, an attempt goes to the review queue. */
 export const REVIEW_THRESHOLD = 5;
 
+/**
+ * What counts as LEAVING THE PAPER.
+ *
+ * One kind today, and the narrowness is the point: the rule an institution
+ * asked for is about switching away from the examination, and a candidate must
+ * be able to predict what will end their paper. Pasting is suspicious and
+ * weighted accordingly; it is not "you left". A set rather than a constant so
+ * a second kind can be added deliberately, by somebody who has thought about
+ * what a candidate would be told.
+ *
+ * `tab_focus` is not here, obviously -- coming back is not an offence, and the
+ * client already collapses a switch into ONE departure rather than the two
+ * events a browser fires for it.
+ */
+export const BREACH_KINDS = ['tab_blur'];
+
+/**
+ * What a candidate is told, in the words they are told it in.
+ *
+ * Written here rather than on the screen because the count and the sentence
+ * have to agree, and a message assembled in the browser from a number the
+ * server sent is a message that eventually says "warning 3 of 2".
+ */
+export function breachWarning(count: number, limit: number): string {
+  const left = limit - count;
+  if (left <= 0) {
+    return 'You left the examination ' + count + ' times. Your paper has been handed in.';
+  }
+  if (left === 1) {
+    return 'You left the examination. This is your final warning — leave it once more and '
+      + 'your paper will be handed in automatically.';
+  }
+  return 'You left the examination. This is warning ' + count + ' of ' + limit
+    + '. If you leave ' + left + ' more times your paper will be handed in automatically.';
+}
+
+/**
+ * How a paper is stopped, handed in rather than imported.
+ *
+ * Ending an attempt is AssessService's job -- it owns scoring, the paper and
+ * the clock -- and importing it here would make the two services a cycle. So
+ * the DECISION lives here, where the departures are counted, and the EFFECT
+ * arrives as one function, wired up where both services already exist. The
+ * same shape the notifier below uses, and for the same reason.
+ */
+export interface BreachStopper {
+  terminateForBreach(tenantId: number, attemptId: number, reason?: string): Promise<unknown>;
+}
+
 /** The part of NotifyService this needs. Narrow, so a test can pass a fake. */
 export interface ProctorNotifier {
   notify(tenantId: number, input: {
@@ -72,6 +121,17 @@ export class ProctorService {
   #audit: AuditService;
   #notify: ProctorNotifier | null;
   #now: () => number;
+  #stop: BreachStopper | null = null;
+
+  /**
+   * Told about the thing that ends papers, after construction.
+   *
+   * A setter rather than a constructor argument because AssessService is built
+   * from this one's siblings and the two would otherwise have to be ordered
+   * around each other. Absent means the old behaviour exactly: departures are
+   * counted and recorded, and nothing is ever stopped.
+   */
+  useStopper(stop: BreachStopper): void { this.#stop = stop; }
 
   /**
    * `notify` goes LAST, after `now`, and deliberately so.
@@ -136,7 +196,115 @@ export class ProctorService {
 
     if (weight > 0) await this.#rescore(tenantId, attemptId);
     increment('onyx_proctor_events_total', { kind: input.kind });
-    return { id: data!.id, kind: data!.kind, at: data!.at };
+
+    const breach = await this.#countBreach(tenantId, attempt, input.kind);
+    return { id: data!.id, kind: data!.kind, at: data!.at, ...breach };
+  }
+
+  /**
+   * Counting the departures, warning twice, and stopping on the third.
+   *
+   * The whole rule is here, and it is short on purpose: a candidate has to be
+   * able to hold it in their head. Leave the paper and you are told so, in
+   * words, on your own screen. Do it once more and you are told it is the last
+   * time. Do it again and the paper is handed in.
+   *
+   * The count lives on the ATTEMPT rather than being re-derived from the event
+   * log, because it is read on every event and because the log is not the same
+   * question: an invigilator dismissing a flag should not silently give
+   * somebody another life, and a rule whose count moves when somebody else
+   * clicks something is not a rule anybody can be held to.
+   *
+   * `breach_limit` of zero is off, which is what every paper written before
+   * this existed has. Nothing is stopped, and the return says so -- so a
+   * client written for the rule works unchanged against a paper without it.
+   */
+  async #countBreach(
+    tenantId: number, attempt: Record<string, unknown>, kind: string,
+  ): Promise<{
+    breaches: number; breach_limit: number;
+    warning: string | null; terminated: boolean;
+  }> {
+    const attemptId = Number(attempt.id);
+    const off = { breaches: Number(attempt.breach_count ?? 0), breach_limit: 0,
+      warning: null, terminated: false };
+    if (!BREACH_KINDS.includes(kind)) return off;
+
+    const { data: paper } = await this.#db.from('onyx_assessments')
+      .select('id, breach_limit, proctoring')
+      .eq('tenant_id', tenantId).eq('id', Number(attempt.assessment_id)).maybeSingle();
+    const limit = Number(paper?.breach_limit ?? 0);
+    // Not monitored, or the rule switched off: recorded and nothing more,
+    // which is exactly what this service did before.
+    if (!paper?.proctoring || limit <= 0) return off;
+
+    const count = Number(attempt.breach_count ?? 0) + 1;
+    await this.#db.from('onyx_assessment_attempts')
+      .update({ breach_count: count }).eq('id', attemptId);
+
+    if (count < limit) {
+      return {
+        breaches: count, breach_limit: limit, terminated: false,
+        warning: breachWarning(count, limit),
+      };
+    }
+
+    /*
+     * The third departure ends it -- and is written down as a decision.
+     *
+     * Audited rather than merely logged: this is the product ending somebody's
+     * examination without a person in the loop, and the one thing that makes
+     * that acceptable is that it can be looked at afterwards, by name, with
+     * the count that caused it.
+     */
+    if (this.#stop) await this.#stop.terminateForBreach(tenantId, attemptId, 'breach');
+    await this.#audit.record(
+      { tenant_id: tenantId, user_id: String(attempt.user_id) },
+      { action: 'attempt.terminated', entityType: 'attempt', entityId: attemptId,
+        after: { reason: 'breach', breaches: count, limit } });
+    await this.#alertStopped(tenantId, attempt, count);
+    increment('onyx_proctor_terminations_total', { reason: 'breach' });
+
+    return {
+      breaches: count, breach_limit: limit, terminated: true,
+      warning: breachWarning(count, limit),
+    };
+  }
+
+  /**
+   * Tells the people who invigilate that a paper has just been stopped.
+   *
+   * Louder than the review-threshold alert and for a different reason: that one
+   * says somebody should look eventually, this one says a candidate is sitting
+   * in front of a stopped paper right now, and the only way it starts again is
+   * if a person decides so. The link goes to the attempt, where that decision
+   * is taken.
+   */
+  async #alertStopped(tenantId: number, attempt: Record<string, unknown>, count: number) {
+    if (!this.#notify) return;
+    try {
+    const { data: staff } = await this.#db.from('onyx_memberships')
+      .select('user_id, role').eq('tenant_id', tenantId)
+      .in('role', ['admin', 'faculty', 'exams']);
+    const who = await peopleFor(this.#db, tenantId, [String(attempt.user_id)]);
+    const person = who.get(String(attempt.user_id));
+    const named = person?.roll_number
+      ? person.roll_number + ' · ' + person.name
+      : person?.name ?? 'A candidate';
+    for (const member of staff ?? []) {
+      await this.#notify.notify(tenantId, {
+        userId: String(member.user_id),
+        kind: 'assessment.integrity_review',
+        title: named + '’s paper was stopped',
+        body: 'They left the examination ' + count + ' times, so it was handed in '
+          + 'automatically. If that was not what it looked like, you can let them carry '
+          + 'on from where they were.',
+        link: '/onyx/attempts/' + Number(attempt.id) + '/integrity',
+      });
+    }
+    // Best effort, like the review alert: a message that cannot be delivered
+    // must not roll back the decision that earned it.
+    } catch { /* the paper is stopped and recorded; the message is best effort */ }
   }
 
   /** ASS-02b -- the per-attempt integrity timeline. */
@@ -198,9 +366,19 @@ export class ProctorService {
    * (as opposed to undefined) means "narrowed to nothing", not "no filter".
    */
   async reviewQueue(tenantId: number, assessmentIds?: number[]) {
+    /*
+     * Three things belong on this queue, and the third is new.
+     *
+     * Anything flagged, anything being sat right now -- and anything the rule
+     * has STOPPED. A stopped paper is not in progress and may carry no flags
+     * worth the name, so on the old filter it fell off the console entirely:
+     * the product would end somebody's examination and the person who could
+     * undo that would never see it. That is the one row on this screen with a
+     * candidate sitting in front of it waiting for an answer.
+     */
     let q = this.#db.from('onyx_assessment_attempts')
       .select(ATTEMPT_COLUMNS).eq('tenant_id', tenantId)
-      .or('integrity_flags.gt.0,status.eq.in_progress');
+      .or('integrity_flags.gt.0,status.eq.in_progress,terminated_at.not.is.null');
     if (assessmentIds) {
       if (!assessmentIds.length) return [];
       q = q.in('assessment_id', assessmentIds);
@@ -280,6 +458,18 @@ export class ProctorService {
         camera_on: camera.get(Number(a.id)) ?? null,
         screen_on: screen.get(Number(a.id)) ?? null,
         tab_switches: away.get(Number(a.id)) ?? 0,
+        /*
+         * Stopped, and how close to it everybody else is.
+         *
+         * `breaches` is the count the RULE goes on -- reset when somebody is
+         * reinstated -- which is deliberately not the same number as
+         * `tab_switches`, the total ever recorded. An invigilator needs both:
+         * one says how many lives are left, the other says what this candidate
+         * has actually been doing all morning.
+         */
+        breaches: Number(a.breach_count ?? 0),
+        terminated_at: a.terminated_at ?? null,
+        terminated_reason: a.terminated_reason ?? null,
         started_at: a.started_at,
       };
     });

@@ -172,6 +172,7 @@ export function createContext(): AppContext {
    * not a second one built from the same arguments.
    */
   const onyxAssess = new AssessService(onyxDb, onyxAcademics, Date.now, onyxCodeLab);
+
   const onyxAttendance = new AttendanceService(onyxDb, onyxAcademics);
   // Career reads across everything before it -- attendance, assessment,
   // practice, projects -- which is what makes a readiness score mean anything.
@@ -190,6 +191,21 @@ export function createContext(): AppContext {
     mail,
     onError: (m) => console.error('[onyx] ' + m),
   });
+
+  /*
+   * Proctoring is told HOW a paper is stopped, rather than importing it.
+   *
+   * The rule -- warn twice, stop on the third departure -- is decided in
+   * ProctorService, where the departures are counted. Ending the attempt is
+   * AssessService's job: it owns the paper, the clock and the scoring.
+   * Importing either into the other would make the two a cycle, so they are
+   * introduced here, where both already exist. Without this line proctoring
+   * behaves exactly as it did before the rule existed -- it records, and stops
+   * nothing.
+   */
+  const onyxProctor = new ProctorService(onyxDb, onyxAudit, Date.now, onyxNotify);
+  onyxProctor.useStopper(onyxAssess);
+
   const onyxExams = new ExaminationsService(onyxDb, onyxAudit);
   // Hoisted: the checkout service settles through it, so both need the
   // same instance rather than two with separate audit wiring.
@@ -287,7 +303,7 @@ export function createContext(): AppContext {
     // invigilator is told rather than something they must go and find. It is
     // the fourth argument; the third is the clock, stated explicitly here so
     // the two cannot be transposed again.
-    onyxProctor: new ProctorService(onyxDb, onyxAudit, Date.now, onyxNotify),
+    onyxProctor,
     onyxAssessAnalytics: new AssessAnalyticsService(onyxDb),
     onyxCareer,
     onyxResume: new ResumeService(onyxDb, {

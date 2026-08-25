@@ -55,6 +55,7 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/attempts/:id/proctor` | admin, faculty, exams |
 | `GET` | `/api/onyx/proctor/queue` | admin, faculty, exams |
 | `POST` | `/api/onyx/proctor/events/:id/review` | admin, faculty, exams |
+| `POST` | `/api/onyx/attempts/:id/reinstate` | admin, faculty, exams |
 | `POST` | `/api/onyx/attempts/:id/integrity` | admin, faculty, exams |
 | `GET` | `/api/onyx/assessments/:id/marking` | admin, faculty, exams |
 | `GET` | `/api/onyx/attempts/:id/paper` | admin, faculty, exams |
@@ -360,6 +361,7 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/platform/tenants/:id/permissions` | platform admin |
 | `PUT` | `/api/onyx/platform/tenants/:id/permissions` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/people` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/students/:userId` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/academics` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/timetable` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/grades` | platform admin |
@@ -388,6 +390,7 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/platform/tenants/:id/proctor/queue` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/attempts/:attemptId/proctor` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/proctor/events/:eventId/review` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/attempts/:attemptId/reinstate` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/attempts/:attemptId/integrity` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/attempts/:attemptId/watch` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/attempts/:attemptId/signal` | platform admin |
@@ -502,4 +505,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_416 endpoints across 9 route files._
+_419 endpoints across 9 route files._

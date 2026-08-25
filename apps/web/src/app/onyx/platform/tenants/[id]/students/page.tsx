@@ -32,7 +32,18 @@ export default async function OnyxPlatformStudentsPage(
    * whole roll" — and the count beside the heading would be a count of the
    * wrong set.
    */
-  const query = '?role=student&limit=200'
+  /*
+   * `/people`, which this had dropped.
+   *
+   * The query string was being hung straight off the tenant's own path, so the
+   * roll was fetched from `/tenants/:id?role=student` -- the INSTITUTION
+   * detail route, which happily ignores an unknown query and answers with the
+   * institution. That is a truthy object with no `people` and no `total`, so
+   * nothing threw and nothing said "unavailable": the page rendered an empty
+   * table under the words "undefined students at this institution", at an
+   * institution with 1,440 of them.
+   */
+  const query = '/people?role=student&limit=200'
     + (section ? '&section_id=' + encodeURIComponent(section) : '');
   const [people, sections] = await Promise.all([
     attempt<PeoplePayload>(base + query),

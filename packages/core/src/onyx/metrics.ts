@@ -28,6 +28,7 @@ export type MetricName =
   | 'onyx_grading_runs_total'
   | 'onyx_grading_failures_total'
   | 'onyx_proctor_events_total'
+  | 'onyx_proctor_terminations_total'
   | 'onyx_proctor_failures_total'
   | 'onyx_payments_total'
   | 'onyx_payment_failures_total'
@@ -43,6 +44,9 @@ export type MetricName =
 const HELP: Record<MetricName, string> = {
   onyx_grading_runs_total: 'Code Lab submissions taken off the queue and graded.',
   onyx_grading_failures_total: 'Grading passes that failed. Alert on any rate above zero.',
+  onyx_proctor_terminations_total:
+    'Examinations stopped automatically because a candidate left the paper too many times. '
+    + 'A rising rate usually means a rule set too tight, not a cohort suddenly cheating.',
   onyx_proctor_events_total: 'Proctoring events recorded during assessments.',
   onyx_proctor_failures_total: 'Proctoring events that could not be recorded.',
   onyx_payments_total: 'Payments settled, by whichever path got there first.',

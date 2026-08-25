@@ -77,7 +77,24 @@ export function OnyxSitPaper({ assessment, attempt }: {
     });
   }, [attempt.id, router]);
 
+  /*
+   * What the server said about leaving the paper.
+   *
+   * `breach` is the sentence to show; `stopped` is whether the paper is over.
+   * Both come from the server and neither is computed here, because the
+   * warning a candidate is shown and the count that stopped them have to be
+   * the same fact -- a message assembled in the browser eventually says
+   * "warning 3 of 2".
+   */
+  const [breach, setBreach] = useState<{ text: string; stopped: boolean } | null>(null);
+  const [stopped, setStopped] = useState(false);
+
   useEffect(() => {
+    // A stopped paper's clock stops with it. Counting down to an automatic
+    // hand-in on a paper that has already been handed in would submit it a
+    // second time and, worse, tell the candidate their time ran out when it
+    // did not.
+    if (stopped) return undefined;
     const tick = setInterval(() => {
       setRemaining((s) => {
         if (s <= 1) {
@@ -91,7 +108,7 @@ export function OnyxSitPaper({ assessment, attempt }: {
       });
     }, 1000);
     return () => clearInterval(tick);
-  }, [submit]);
+  }, [submit, stopped]);
 
   // A local countdown drifts, and a wound-back clock would drift on purpose.
   useEffect(() => {
@@ -134,12 +151,31 @@ export function OnyxSitPaper({ assessment, attempt }: {
 
   useEffect(() => {
     if (!assessment.proctoring) return;
-    const send = (kind: string, detail?: unknown) => {
-      void fetch('/api/proxy/onyx/attempts/' + attempt.id + '/proctor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind, detail, client_at: new Date().toISOString() }),
-      });
+    /*
+     * The reply matters now, so it is read.
+     *
+     * This used to fire and forget, which was right when proctoring only
+     * recorded. It decides things now: the server counts the departures, and
+     * answers with the warning to show or the news that the paper has been
+     * stopped. The count is NOT kept in the browser -- a rule a candidate can
+     * reset with a refresh is not a rule.
+     */
+    const send = async (kind: string, detail?: unknown) => {
+      try {
+        const res = await fetch('/api/proxy/onyx/attempts/' + attempt.id + '/proctor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kind, detail, client_at: new Date().toISOString() }),
+        });
+        const body = await res.json().catch(() => ({}));
+        const said = body?.data ?? {};
+        if (said.warning) setBreach({ text: String(said.warning), stopped: Boolean(said.terminated) });
+        if (said.terminated) setStopped(true);
+      } catch {
+        // A dropped request must not take the paper down with it. The server
+        // is the authority on the count; a missed event is a missed count, not
+        // a broken sitting.
+      }
     };
 
     // Switching tabs fires BOTH `visibilitychange` and `blur`, so the old code
@@ -152,12 +188,12 @@ export function OnyxSitPaper({ assessment, attempt }: {
       away = true;
       departures.current += 1;
       setDepartures(departures.current);
-      send('tab_blur', { how, count: departures.current });
+      void send('tab_blur', { how, count: departures.current });
     };
     const arrive = () => {
       if (!away) return;
       away = false;
-      send('tab_focus');
+      void send('tab_focus');
       // Told on return rather than on leaving: a warning drawn while the tab is
       // hidden is a warning nobody reads.
       setWarnAway(true);
@@ -169,9 +205,9 @@ export function OnyxSitPaper({ assessment, attempt }: {
     const onBlur = () => leave('window_blur');
     const onFocus = () => { if (document.visibilityState === 'visible') arrive(); };
     const onPaste = (e: ClipboardEvent) =>
-      send('paste', { length: e.clipboardData?.getData('text')?.length ?? 0 });
-    const onCopy = () => send('copy');
-    const onFullscreen = () => { if (!document.fullscreenElement) send('fullscreen_exit'); };
+      void send('paste', { length: e.clipboardData?.getData('text')?.length ?? 0 });
+    const onCopy = () => void send('copy');
+    const onFullscreen = () => { if (!document.fullscreenElement) void send('fullscreen_exit'); };
 
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('blur', onBlur);
@@ -218,12 +254,69 @@ export function OnyxSitPaper({ assessment, attempt }: {
         />
       ) : null}
 
+      {/*
+        * THE RULE, in the candidate's own words, at the moment it applies.
+        *
+        * This is what makes it a rule rather than a trap: they are told they
+        * left, told how many that makes, and told exactly what happens if they
+        * do it again -- before it happens, not afterwards. The sentence comes
+        * from the server, which is also the thing counting, so the two cannot
+        * disagree.
+        *
+        * Not dismissable on the last warning. "I understand" is fine for a
+        * note; it is not fine for the sentence that says the next one ends
+        * your examination.
+        */}
+      {breach ? (
+        <div role="alert"
+          className={'flex flex-wrap items-center gap-3 rounded-xl border p-3 text-sm '
+            + (breach.stopped
+              ? 'border-rose-400 bg-rose-50 text-rose-900'
+              : 'border-amber-400 bg-amber-50 text-amber-900')}>
+          <span className="min-w-0 flex-1 font-semibold">{breach.text}</span>
+          {breach.stopped ? null : (
+            <button type="button" onClick={() => setBreach(null)}
+              className="rounded-lg border border-amber-400 bg-white px-3 py-1 text-xs
+                         font-semibold hover:bg-amber-100">
+              I understand
+            </button>
+          )}
+        </div>
+      ) : null}
+
+      {/*
+        * Stopped, and what happens next.
+        *
+        * The paper is gone from under them, so the screen says so plainly and
+        * says the one thing they will want to know: somebody can put them
+        * back. Not a promise that somebody will -- an invigilator decides --
+        * but the difference between "your exam is over" and "your exam is
+        * over and nothing can be done" is the difference between a rule and a
+        * disaster.
+        */}
+      {stopped ? (
+        <div role="alert" className="rounded-2xl border border-rose-400 bg-rose-50 p-4">
+          <h2 className="text-[16px] font-bold text-rose-900">
+            Your paper has been handed in.
+          </h2>
+          <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-rose-900">
+            You left the examination more times than this paper allows, so it was handed in
+            automatically. Everything you had answered has been kept.
+          </p>
+          <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-rose-900">
+            Your invigilator can see what happened and can let you carry on from exactly
+            where you were, with the time you had left. Speak to them before leaving the
+            room.
+          </p>
+        </div>
+      ) : null}
+
       {/* You left the paper, and the invigilator knows.
           Said plainly and once per departure, with the running count, because a
           candidate who does not know a switch was recorded cannot choose to
           stop -- and a flag nobody was warned about is a trap rather than a
           rule. Dismissable: it is a warning, not a punishment. */}
-      {warnAway ? (
+      {warnAway && !breach ? (
         <div role="alert"
           className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-400
                      bg-amber-50 p-3 text-sm text-amber-900">
@@ -258,7 +351,7 @@ export function OnyxSitPaper({ assessment, attempt }: {
             aria-live={low ? 'polite' : 'off'}
             aria-atomic="true"
           >
-            {formatClock(remaining)}
+            {stopped ? '—' : formatClock(remaining)}
           </div>
         </div>
         <div className="text-sm text-muted">
@@ -271,7 +364,7 @@ export function OnyxSitPaper({ assessment, attempt }: {
         ) : null}
         <button
           type="button"
-          disabled={pending}
+          disabled={pending || stopped}
           onClick={() => {
             if (window.confirm('Hand in now? You cannot change your answers afterwards.')) {
               submit();
@@ -295,7 +388,7 @@ export function OnyxSitPaper({ assessment, attempt }: {
           owns it and pausing on demand would be a way to buy thinking time --
           which is why the panel above stays interactive so the candidate can
           fix it immediately. */}
-      {missing.length ? (
+      {stopped ? null : missing.length ? (
         <div role="alert"
           className="rounded-2xl border-2 border-rose-300 bg-rose-50 p-6 text-center">
           <p className="text-base font-bold text-rose-900">

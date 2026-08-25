@@ -27,6 +27,16 @@ export interface QueueRow {
   watch_camera?: boolean;
   tab_switches: number;
   started_at: string | null;
+  /**
+   * Departures counted against the RULE -- reset when somebody is reinstated,
+   * which is deliberately not the same number as `tab_switches`, the total
+   * ever recorded. One says how many lives are left, the other says what this
+   * candidate has been doing all morning.
+   */
+  breaches?: number;
+  /** Set when the rule stopped the paper. Null on every ordinary attempt. */
+  terminated_at?: string | null;
+  terminated_reason?: string | null;
 }
 
 /** How one sitting is doing, read off its rows. */

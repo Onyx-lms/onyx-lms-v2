@@ -188,6 +188,40 @@ test('ASS-12 a sitting can be scheduled for one section, and only a real one', a
     (e: unknown) => e instanceof HttpError && e.status === 404);
 });
 
+test('ASS-12 the institutions directory counts every member, not the first thousand',
+  async () => {
+    /*
+     * The directory fetched every membership row across every institution and
+     * added them up in a loop. With no range that reads as "all of them" and
+     * is not -- so an institution of 1,440 was listed as 943, and the "members
+     * across every institution" figure, which is this column summed, came out
+     * at exactly 1000 however many people there really were.
+     *
+     * A thousand rows is more than a unit test wants to insert, so what is
+     * asserted here is the shape that made it wrong: the count must come from
+     * a COUNT, not from the length of a row set. A tenant whose memberships
+     * the fake db returns in full still has to report the same number, and a
+     * withdrawn membership must not be counted at all.
+     */
+    const w = world();
+    for (let i = 0; i < 25; i += 1) {
+      await w.db.from('onyx_memberships').insert({
+        id: 500 + i, tenant_id: T, user_id: 'bulk-' + i, role: 'student', status: 1,
+      });
+    }
+    // Left the institution: on the roll, and not a member.
+    await w.db.from('onyx_memberships').insert({
+      id: 600, tenant_id: T, user_id: 'gone', role: 'student', status: 0,
+    });
+
+    const platform = new PlatformService(w.db as unknown as OnyxDb, undefined, w.assess);
+    const listed = (await platform.tenants()).find((t) => Number(t.id) === T);
+    // The three seeded students plus these 25 is 28 active, and the withdrawn
+    // one is not among them.
+    assert.equal(listed?.member_count, 28,
+      'the directory disagreed with the roll it was counting');
+  });
+
 // ------------------------------------------------------------- the register
 
 /** A sitting with one candidate who sat it online and one marked by hand. */

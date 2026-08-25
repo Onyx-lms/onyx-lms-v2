@@ -33,8 +33,8 @@ const BANK_COLUMNS = 'id, tenant_id, course_id, name, description, created_by, c
 // eslint-disable-next-line max-len -- one literal: a concatenated select collapses the row type.
 const QUESTION_COLUMNS = 'id, tenant_id, bank_id, set_number, type, prompt, options, answer, explanation, points, difficulty, tags, version, status, problem_id, created_at';
 const VERSION_COLUMNS = 'id, tenant_id, question_id, version, type, prompt, options, answer, explanation, points, problem_id';
-const ASSESSMENT_COLUMNS = 'id, tenant_id, course_id, section_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, sections, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, watch_camera, instant_results, anonymous_marking, moderation_required, pass_mark, status, results_published_at, created_by, created_at';
-const ATTEMPT_COLUMNS = 'id, tenant_id, assessment_id, user_id, attempt, paper, status, started_at, expires_at, submitted_at, auto_score, manual_score, score, max_score, consented_at, integrity_flags, integrity_status, updated_at';
+const ASSESSMENT_COLUMNS = 'id, tenant_id, course_id, section_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, sections, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, watch_camera, instant_results, anonymous_marking, moderation_required, breach_limit, pass_mark, status, results_published_at, created_by, created_at';
+const ATTEMPT_COLUMNS = 'id, tenant_id, assessment_id, user_id, attempt, paper, status, started_at, expires_at, submitted_at, auto_score, manual_score, score, max_score, consented_at, integrity_flags, integrity_status, terminated_at, terminated_reason, remaining_ms, breach_count, reinstated_at, reinstated_by, updated_at';
 const ANSWER_COLUMNS = 'id, tenant_id, attempt_id, question_id, version, response, auto_points, manual_points, marker_comment, flagged_for_review, submission_id, updated_at';
 const GRADE_COLUMNS = 'id, tenant_id, attempt_id, role, marker_id, manual_score, comment, created_at';
 
@@ -586,6 +586,12 @@ export class AssessService {
      * already existed (0038, `isForSection`); only the way in was missing.
      */
     section_id?: number | null;
+    /**
+     * How many times a candidate may leave the paper before it is handed in
+     * for them. Zero is off, and off is what every paper written before this
+     * rule existed does.
+     */
+    breach_limit?: number;
     shuffle_questions?: boolean; shuffle_options?: boolean;
     proctoring?: boolean; require_camera?: boolean; require_screen?: boolean;
     watch_camera?: boolean;
@@ -609,6 +615,7 @@ export class AssessService {
       tenant_id: tenantId,
       course_id: input.course_id ?? null,
       section_id: sectionId,
+      breach_limit: input.breach_limit ?? 3,
       title: input.title.trim(),
       instructions: input.instructions ?? null,
       opens_at: input.opens_at ?? null,
@@ -984,6 +991,10 @@ export class AssessService {
       expires_at: new Date(expires).toISOString(),
       max_score: paper.reduce((t, q) => t + q.points, 0),
       consented_at: opts.consent ? new Date(now).toISOString() : null,
+      // Written rather than left to the column default: this is the number the
+      // departure rule counts against, and a row that reads `null` because
+      // nothing filled it in is a row whose first departure is its third.
+      breach_count: 0,
     }).select(ATTEMPT_COLUMNS).maybeSingle();
     if (error) throw new HttpError(500, 'Could not start the attempt: ' + error.message);
     return this.attemptForCandidate(tenantId, Number(data!.id), userId);
@@ -1991,7 +2002,9 @@ export class AssessService {
     return Boolean(assessment?.results_published_at) || Boolean(assessment?.instant_results);
   }
 
-  async #finalise(tenantId: number, attemptId: number, status: 'submitted' | 'expired') {
+  async #finalise(
+    tenantId: number, attemptId: number, status: 'submitted' | 'expired' | 'terminated',
+  ) {
     const attempt = await this.#attempt(tenantId, attemptId);
     // Needed for the release decision at the end of this method, and read here
     // rather than there so there is one read whichever branch is taken.
@@ -2103,7 +2116,17 @@ export class AssessService {
     const instant = Boolean(assessment.instant_results)
       && !needsMarking
       && !humanMarkable
-      && !assessment.moderation_required;
+      && !assessment.moderation_required
+      /*
+       * NEVER for a paper that was stopped.
+       *
+       * A stopped paper is scored so an invigilator can see where the
+       * candidate had got to -- but handing that mark to the candidate would
+       * give away the marking of a paper they may be about to carry on
+       * sitting. It is the one ending where the score exists and must not be
+       * shown.
+       */
+      && status !== 'terminated';
 
     await this.#db.from('onyx_assessment_attempts').update({
       status: instant ? 'published' : status,
@@ -2116,6 +2139,108 @@ export class AssessService {
     }).eq('id', attemptId);
 
     return this.attemptForCandidate(tenantId, attemptId, String(attempt.user_id));
+  }
+
+  /**
+   * Stops a paper because the candidate left it too many times.
+   *
+   * The rule is stated on the paper (`breach_limit`) and applied by the
+   * proctor service, which counts the departures; this is only the effect. It
+   * does three things and the order matters:
+   *
+   *   * the time left is written down FIRST, because `expires_at` is an
+   *     absolute instant and it keeps running while an invigilator decides
+   *     whether to let them carry on. Without this, "continue from where you
+   *     were" would mean "continue with however long the argument took";
+   *   * the paper is scored, exactly as a hand-in is, so the invigilation
+   *     console shows a real mark rather than an empty row -- and if nobody
+   *     reinstates it, that mark is what the candidate gets, which is what
+   *     "it is handed in" means;
+   *   * the status is `terminated`, which the release rule does not accept, so
+   *     the candidate is shown that they were stopped and NOT what they
+   *     scored.
+   *
+   * Answers are untouched. Everything the candidate wrote is still there,
+   * which is the whole point of being able to put them back.
+   */
+  async terminateForBreach(tenantId: number, attemptId: number, reason = 'breach') {
+    const attempt = await this.#attempt(tenantId, attemptId);
+    if (String(attempt.status) !== 'in_progress') return attempt;
+
+    const left = Math.max(0, Date.parse(String(attempt.expires_at)) - this.#now());
+    await this.#db.from('onyx_assessment_attempts').update({
+      remaining_ms: left,
+      terminated_at: new Date(this.#now()).toISOString(),
+      terminated_reason: reason,
+    }).eq('id', attemptId);
+
+    await this.#finalise(tenantId, attemptId, 'terminated');
+    return await this.#attempt(tenantId, attemptId);
+  }
+
+  /**
+   * Lets a stopped candidate carry on, from exactly where they were.
+   *
+   * An invigilator looking at a stopped paper is deciding one thing: was that
+   * a person cheating, or a person whose screen reader stole focus three
+   * times. Where it was the second, the answer cannot be "start again" -- so
+   * this restores the attempt rather than making a new one:
+   *
+   *   * the same row, so every answer they had written is still against it;
+   *   * `expires_at` set to now plus the minutes they had left, so they get
+   *     back what they had and not a minute more -- however long the decision
+   *     took;
+   *   * the provisional score cleared, because the paper is not finished and a
+   *     mark against an unfinished paper is a mark that will be wrong;
+   *   * the breach count reset, so the warnings start again. Reinstating
+   *     somebody into their third and final strike would be reinstating them
+   *     into being stopped by the next notification, which is not a decision
+   *     anybody meant to take.
+   *
+   * Who did it is recorded. Overriding an automatic rule is exactly the kind
+   * of act that has to be answerable afterwards.
+   */
+  async reinstate(tenantId: number, attemptId: number, actor: { userId: string }) {
+    const attempt = await this.#attempt(tenantId, attemptId);
+    if (!attempt.terminated_at) {
+      throw new HttpError(422, 'That attempt was not stopped, so there is nothing to restore.');
+    }
+    const assessment = await this.assessment(tenantId, Number(attempt.assessment_id));
+    if (assessment.status !== 'published') {
+      throw new HttpError(422, 'That paper is no longer open, so nobody can carry on sitting it.');
+    }
+    /*
+     * A minute is the floor, not zero.
+     *
+     * Somebody stopped on their last breath of time would be reinstated
+     * straight back into an expired paper -- a click that appears to do
+     * nothing. If there is genuinely no time left, say so instead.
+     */
+    const left = Number(attempt.remaining_ms ?? 0);
+    if (left < 1000) {
+      throw new HttpError(422,
+        'There was no time left on that attempt when it was stopped, so there is nothing '
+        + 'to carry on with. Its marks stand as they are.');
+    }
+
+    const at = new Date(this.#now()).toISOString();
+    await this.#db.from('onyx_assessment_attempts').update({
+      status: 'in_progress',
+      expires_at: new Date(this.#now() + left).toISOString(),
+      submitted_at: null,
+      auto_score: null,
+      manual_score: null,
+      score: null,
+      terminated_at: null,
+      terminated_reason: null,
+      remaining_ms: null,
+      breach_count: 0,
+      reinstated_at: at,
+      reinstated_by: actor.userId,
+      updated_at: at,
+    }).eq('id', attemptId);
+
+    return await this.#attempt(tenantId, attemptId);
   }
 
   /**
