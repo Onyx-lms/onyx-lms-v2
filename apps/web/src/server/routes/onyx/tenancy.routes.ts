@@ -700,6 +700,9 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
       // The institution's own number for this person. Optional: an institution
       // that does not use roll numbers must not be blocked from adding people.
       roll_number: z.string().max(40).nullish(),
+      // And the division they are taught with. Absent leaves them in none,
+      // which is a real answer for staff and a quiet trap for a student.
+      section_id: z.number().int().positive().nullish(),
     }), req.body);
 
     const result = await ctx.onyxTenancy.invite(claims.tenant_id, body);

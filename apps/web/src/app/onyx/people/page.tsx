@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxPeople, type Member } from '@/components/onyx-people';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxPageRole, onyxApi, type Me } from '@/lib/onyx-session';
+import { requireOnyxPageRole, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
 import { CreatePanel } from '@/components/onyx-create';
 import { SectionHead, StatTile } from '@/components/onyx-ui';
 
@@ -21,9 +21,12 @@ export default async function OnyxPeoplePage(
 ) {
   const claims = await requireOnyxPageRole('admin', 'faculty');
   const { role } = await searchParams;
-  const [me, members] = await Promise.all([
+  const [me, members, sections] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
     onyxApi<Member[]>('/api/onyx/members'),
+    // For the add form's division picker. Safe if it fails: an institution
+    // that runs no sections simply is not offered one.
+    onyxApiSafe<{ id: number; name: string; status: number }[]>('/api/onyx/sections'),
   ]);
   const initialRole = role as Member['role'] | undefined;
 
@@ -57,7 +60,9 @@ export default async function OnyxPeoplePage(
 
       <SectionHead title="Roster" />
       <OnyxPeople members={members} canEdit={claims.tenant_role === 'admin'}
-        initialRole={initialRole} tenantName={me.tenant.name} />
+        initialRole={initialRole} tenantName={me.tenant.name}
+        sections={(sections ?? []).filter((sx) => sx.status === 1)
+          .map((sx) => ({ id: Number(sx.id), name: String(sx.name) }))} />
 
       {/* CMP-04: a guardian is a member of the institution in their own right,
           linked to a student. The link starts unaccepted -- the guardian

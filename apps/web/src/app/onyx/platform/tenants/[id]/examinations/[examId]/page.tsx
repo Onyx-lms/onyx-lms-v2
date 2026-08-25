@@ -160,9 +160,8 @@ export default async function OnyxPlatformExamPage(
         </div>
         <ExamRegister
           rows={register}
-          attemptHref={(r) => '/onyx/platform/tenants/' + tenantId + '/attempts/' + r.attempt_id}
-          scriptHref={(r) => '/api/proxy/onyx/platform/tenants/' + tenantId
-            + '/attempts/' + r.attempt_id + '/script.pdf'}
+          attemptBase={'/onyx/platform/tenants/' + tenantId + '/attempts/'}
+          scriptBase={'/api/proxy/onyx/platform/tenants/' + tenantId + '/attempts/'}
           outOf={exam.max_marks}
         />
       </section>

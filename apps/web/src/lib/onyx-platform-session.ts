@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { callApi } from '@/lib/onyx-inprocess';
 import { redirect } from 'next/navigation';
 import { appOrigin } from '@/lib/app-origin';
 
@@ -74,15 +75,10 @@ export async function requirePlatformSession(): Promise<PlatformClaims> {
 
 export async function platformApi<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getPlatformToken();
-  const res = await fetch(API + path, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: 'Bearer ' + token } : {}),
-      ...(init?.headers ?? {}),
-    },
-    cache: 'no-store',
-  });
+  // In process rather than over the application's own public hostname -- the
+  // console reads three or four times per screen and each one was paying for a
+  // CDN hop, a TLS handshake and a second invocation. See lib/onyx-inprocess.ts.
+  const res = await callApi(path, { ...init, token });
   const body = await res.json().catch(() => ({ ok: false, message: 'Bad response' }));
   if (!body.ok) throw new Error(body.message || 'Request failed: ' + path);
   return body.data as T;

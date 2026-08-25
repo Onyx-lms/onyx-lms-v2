@@ -264,6 +264,10 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       email: z.string().email(),
       role: RoleSchema,
       password: z.string().min(8).max(255).optional(),
+      // Set as they are added, so a student never arrives in no division --
+      // which is how somebody comes to miss every section-targeted paper.
+      roll_number: z.string().max(40).nullish(),
+      section_id: z.number().int().positive().nullish(),
     }), req.body);
     return ok(await ctx.onyxPlatform.addMember(idOf(req), claims.user_id, body), 'Member added.');
   });

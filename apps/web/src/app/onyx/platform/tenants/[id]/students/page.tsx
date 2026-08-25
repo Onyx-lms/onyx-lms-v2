@@ -69,7 +69,7 @@ export default async function OnyxPlatformStudentsPage(
           />
           <div tabIndex={0} role="region" aria-label="Students" className={SCROLLER}>
             <DataTable
-              caption="Students at this institution, with their batch and how much they are enrolled in."
+              caption="Students at this institution, their division and how much they are enrolled in."
               head={
                 <>
                   <th scope="col">Student</th>
@@ -77,14 +77,20 @@ export default async function OnyxPlatformStudentsPage(
                       and is what somebody holding a register is reading
                       from. */}
                   <th scope="col">Roll no.</th>
-                  {/* Before Batch, because it is the finer division and the
-                      one a programme office is actually working from: a
-                      timetable is drawn per section, not per cohort. */}
+                  {/* The division a timetable is drawn per, and the one a
+                      paper can be set for. */}
                   <th scope="col">Section</th>
-                  <th scope="col">Batch</th>
-                  {/* Least essential above sm -- a phone reads Student, Batch,
-                      Enrolments, Account and the actions without them. */}
-                  <th scope="col" className="hidden sm:table-cell">Programme</th>
+                  {/*
+                    * Batch and Programme are gone from this table.
+                    *
+                    * Both were empty for every student at every institution
+                    * using the product -- they belong to a cohort structure
+                    * nobody here has filled in -- so they were two columns of
+                    * dashes pushing Enrolments and Account off a laptop
+                    * screen. Neither field is deleted; both still exist on the
+                    * record and on the person's own page, where a dash means
+                    * "not set" rather than "this table has nothing to say".
+                    */}
                   <th scope="col">Enrolments</th>
                   <th scope="col">Account</th>
                   <th scope="col" className="hidden sm:table-cell">Joined</th>
@@ -92,8 +98,10 @@ export default async function OnyxPlatformStudentsPage(
                 </>
               }
             >
+              {/* Seven, matching the header exactly: an empty row spanning more
+                  columns than the table has stretches it. */}
               {students.length === 0 ? (
-                <EmptyRow colSpan={9} icon="users">
+                <EmptyRow colSpan={7} icon="users">
                   {q || section
                     ? 'Nobody on this roll matches that.'
                     : 'No students yet. A new institution starts with its administrator and nobody else — students arrive once someone invites or imports them.'}
@@ -111,13 +119,6 @@ export default async function OnyxPlatformStudentsPage(
                     {p.section
                       ? <Pill tone="neutral">{p.section.name}</Pill>
                       : <span className="text-[12.5px] text-muted">No section</span>}
-                  </td>
-                  <td>{p.batch
-                    ? <Pill tone="brand">{p.batch.code}</Pill>
-                    : <span className="text-[12.5px] text-muted">Unassigned</span>}
-                  </td>
-                  <td className="hidden text-[13px] sm:table-cell">
-                    {p.programme?.name ?? <span className="text-muted">—</span>}
                   </td>
                   <td className="tabular-nums">{p.enrollment_count}</td>
                   <td><AccountState status={p.account_status} /></td>

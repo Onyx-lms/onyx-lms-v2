@@ -66,10 +66,18 @@ const NOUN: Record<Role, string> = {
   admin: 'an administrator',
 };
 
-export function OnyxPeople({ members, canEdit, initialRole, tenantName }: {
+export function OnyxPeople({ members, canEdit, initialRole, tenantName, sections = [] }: {
   members: Member[]; canEdit: boolean; initialRole?: Role;
   /** Named in the remove panel, so the consequence is not stated in the abstract. */
   tenantName: string;
+  /**
+   * The institution's teaching divisions, for the add form.
+   *
+   * Passed in rather than fetched: the page above already reads them for its
+   * own filter, and a second request for the same list is a second answer that
+   * can disagree with the first.
+   */
+  sections?: { id: number; name: string }[];
 }) {
   const router = useRouter();
   const [search, setSearch] = useState('');
@@ -201,6 +209,19 @@ export function OnyxPeople({ members, canEdit, initialRole, tenantName }: {
                 role: addRole ?? String(data.get('role') ?? 'student'),
                 password: String(data.get('password') ?? '') || undefined,
                 roll_number: String(data.get('roll_number') ?? '') || null,
+                /*
+                 * The division, set as they are added.
+                 *
+                 * A student who arrives in none is dealt only the papers set
+                 * for everybody, so every examination set for a section passes
+                 * them by -- silently, and with nothing on any screen saying
+                 * it needs putting right. Sent only for a learner: a section
+                 * on a staff membership is a number nothing reads.
+                 */
+                section_id: (addRole ?? String(data.get('role') ?? 'student')) === 'student'
+                  && data.get('section_id')
+                  ? Number(data.get('section_id'))
+                  : null,
               }),
             }, 'Added.', () => setAdding(false));
             form.reset();
@@ -237,6 +258,21 @@ export function OnyxPeople({ members, canEdit, initialRole, tenantName }: {
             <input id="ap-roll" name="roll_number" maxLength={40} autoComplete="off"
               className={field + ' w-full'} />
           </Labelled>
+          {/* The division they are taught with, offered where the institution
+              runs any. A paper set for one section is only sat by the people
+              in it, so this is the field that decides what they will see. */}
+          {sections.length ? (
+            <Labelled label="Section" htmlFor="ap-section"
+              hint="A paper set for one section is only sat by the people in it.">
+              <select id="ap-section" name="section_id" defaultValue=""
+                className={field + ' w-full'}>
+                <option value="">No section yet</option>
+                {sections.map((sx) => (
+                  <option key={sx.id} value={sx.id}>{sx.name}</option>
+                ))}
+              </select>
+            </Labelled>
+          ) : null}
           <Labelled label="Temporary password" htmlFor="ap-password"
             hint="Leave blank and they set their own on first sign-in.">
             <PasswordField id="ap-password" name="password" minLength={8}

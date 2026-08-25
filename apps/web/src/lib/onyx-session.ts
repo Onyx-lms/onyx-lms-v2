@@ -1,4 +1,5 @@
 import { cookies, headers } from 'next/headers';
+import { callApi } from '@/lib/onyx-inprocess';
 import { redirect, notFound } from 'next/navigation';
 import { appOrigin } from '@/lib/app-origin';
 
@@ -124,15 +125,17 @@ export async function getOnyxSession(): Promise<OnyxClaims | null> {
 
 export async function onyxApi<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getOnyxToken();
-  const res = await fetch(API + path, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: 'Bearer ' + token } : {}),
-      ...(init?.headers ?? {}),
-    },
-    cache: 'no-store',
-  });
+  /*
+   * In process, not over the wire.
+   *
+   * This used to `fetch` the application's own public hostname: out through
+   * the CDN, a TLS handshake, a second serverless invocation, and back --
+   * 250-350ms before a single row was read, on every one of the three or four
+   * calls a page makes. `callApi` invokes the same route handler directly, so
+   * the guards, the envelope and the audit are identical and the round trip is
+   * gone. See lib/onyx-inprocess.ts.
+   */
+  const res = await callApi(path, { ...init, token });
   const body = await res.json().catch(() => ({ ok: false, message: 'Bad response' }));
   if (!body.ok) throw new Error(body.message || 'Request failed: ' + path);
   return body.data as T;

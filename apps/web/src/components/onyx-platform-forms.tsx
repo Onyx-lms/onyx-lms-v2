@@ -307,11 +307,31 @@ export function CreateProfileForm({ lockedTenant, defaultType, only, cta }: {
   const [type, setType] = useState<ProfileType>(only ?? defaultType ?? 'student');
   const [tenants, setTenants] = useState<TenantOption[] | null>(null);
   const [loadingTenants, setLoadingTenants] = useState(false);
+  /**
+   * The institution's teaching divisions, fetched when the dialog opens.
+   *
+   * Not passed in as a prop: this form is mounted on five different screens
+   * and only one of them already holds the section list, so threading it
+   * through would mean four callers fetching something they do not otherwise
+   * need. One request, on open, only when a student is being added.
+   */
+  const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   async function openModal() {
     setOpen(true);
+    // The divisions of the institution being added to, where there is one.
+    if (lockedTenant && !sections.length) {
+      const got = await fetch('/api/proxy/onyx/platform/tenants/'
+        + lockedTenant.id + '/sections');
+      const rows = await got.json().catch(() => ({ ok: false }));
+      if (rows.ok) {
+        setSections((rows.data as { id: number; name: string; status: number }[])
+          .filter((sx) => sx.status === 1)
+          .map((sx) => ({ id: Number(sx.id), name: String(sx.name) })));
+      }
+    }
     if (lockedTenant || tenants !== null) return;
     setLoadingTenants(true);
     const res = await fetch('/api/proxy/onyx/platform/tenants');
@@ -359,8 +379,17 @@ export function CreateProfileForm({ lockedTenant, defaultType, only, cta }: {
                   : await (async () => {
                     const tenantId = lockedTenant?.id ?? Number(data.get('tenant_id') ?? '');
                     if (!tenantId) return { ok: false, message: 'Choose an institution.' };
-                    return post('onyx/platform/tenants/' + tenantId + '/members',
-                      { name, email, role: type, password });
+                    return post('onyx/platform/tenants/' + tenantId + '/members', {
+                      name, email, role: type, password,
+                      // Both only mean anything for a learner, and both are
+                      // sent as they are typed rather than left for a second
+                      // screen: a student added into no division is dealt only
+                      // the papers set for everybody, and nothing says so.
+                      roll_number: type === 'student'
+                        ? (String(data.get('roll_number') ?? '').trim() || null) : null,
+                      section_id: type === 'student' && data.get('section_id')
+                        ? Number(data.get('section_id')) : null,
+                    });
                   })();
 
                 if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
@@ -421,6 +450,44 @@ export function CreateProfileForm({ lockedTenant, defaultType, only, cta }: {
               <PasswordField id="cp-password" name="password" required minLength={8}
                 autoComplete="new-password" className={field} />
             </div>
+
+            {/*
+              * A learner's number and their division, on the form that creates
+              * them.
+              *
+              * Neither was here, and the division mattered most: somebody added
+              * from the console landed in NO division, so every examination set
+              * for a section passed them by silently. The alternative was
+              * finding them again on the sections screen -- if you knew to.
+              *
+              * Shown only for a student, because only a learner has either.
+              */}
+            {type === 'student' ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className={label} htmlFor="cp-roll">Roll number</label>
+                  <input id="cp-roll" name="roll_number" maxLength={40} autoComplete="off"
+                    placeholder="MRD-ALPHA-CSE-001" className={field} />
+                  <p className="mt-1 text-[12px] text-muted">
+                    Optional. It is what a register and a script are ordered by.
+                  </p>
+                </div>
+                <div>
+                  <label className={label} htmlFor="cp-section">Section</label>
+                  <select id="cp-section" name="section_id" defaultValue="" className={field}>
+                    <option value="">No section yet</option>
+                    {sections.map((sx) => (
+                      <option key={sx.id} value={sx.id}>{sx.name}</option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                    {sections.length
+                      ? 'A paper set for one section is only sat by the people in it.'
+                      : 'This institution runs no sections yet.'}
+                  </p>
+                </div>
+              </div>
+            ) : null}
             <div className="flex gap-2 pt-1">
               <button type="submit" disabled={pending} className={button}>
                 {pending ? 'Creating…' : 'Create'}

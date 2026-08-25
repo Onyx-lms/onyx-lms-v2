@@ -388,9 +388,8 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
                         section: r.section ?? null,
                         integrity_flags: r.integrity_flags,
                       }))}
-                      markHref={(r) => '/onyx/attempts/' + r.id + '/mark'}
-                      scriptHref={(r) => '/api/proxy/onyx/attempts/' + r.id
-                        + '/marker-script.pdf'}
+                      markBase="/onyx/attempts/"
+                      scriptBase="/api/proxy/onyx/attempts/"
                       bundleHref={markingQueue.length
                         ? '/api/proxy/onyx/assessments/' + exam.assessment_id + '/scripts.pdf'
                         : undefined}

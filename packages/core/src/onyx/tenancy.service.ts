@@ -361,9 +361,19 @@ export class TenancyService {
   /** F-06 -- invite by email, creating the identity if it is new. */
   async invite(tenantId: number, input: {
     name: string; email: string; role: Role; password?: string; roll_number?: string | null;
+    /**
+     * The division they are taught with.
+     *
+     * `addMember` has taken one since sections existed; this never passed it,
+     * so everybody invited through the institution's own screens arrived in no
+     * division -- dealt only the papers set for everybody, and quietly missing
+     * any examination set for a section.
+     */
+    section_id?: number | null;
   }) {
     const user = await this.upsertUser(input);
-    const membership = await this.addMember(tenantId, user.id, input.role, input.roll_number);
+    const membership = await this.addMember(
+      tenantId, user.id, input.role, input.roll_number, input.section_id);
     return { user: { id: user.id, email: user.email, name: user.name }, membership };
   }
 

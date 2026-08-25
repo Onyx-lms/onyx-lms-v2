@@ -38,14 +38,32 @@ export interface ExamRegisterRow {
  * They live in component state rather than the URL for the same reason: this
  * is a lens held for thirty seconds, not a question for the server.
  */
-export function ExamRegister({ rows, attemptHref, scriptHref, outOf }: {
+/*
+ * Base paths, not functions.
+ *
+ * These props used to be `(row) => string`, and a server component cannot pass
+ * a function to a client one -- React refuses to serialise it, and the whole
+ * page answers 500. It did: three screens in the console and on the
+ * institution's own side were dead, and nothing on any of them said why,
+ * because the failure is thrown while the page is being serialised rather than
+ * while it is being written.
+ *
+ * A prefix is a string, so it crosses the boundary, and the row's id is
+ * appended here -- where the row already is.
+ */
+export function ExamRegister({ rows, attemptBase, scriptBase, scriptSuffix, outOf }: {
   rows: ExamRegisterRow[];
-  /** Where a candidate's script opens to be read and marked. */
-  attemptHref: (row: ExamRegisterRow) => string;
-  scriptHref: (row: ExamRegisterRow) => string;
+  /** Where a candidate's script opens to be read and marked; the id is added. */
+  attemptBase: string;
+  /** Where one script is downloaded from; the id and the suffix are added. */
+  scriptBase: string;
+  scriptSuffix?: string;
   /** The sitting's total, for rows marked by hand rather than by the engine. */
   outOf: number | null;
 }) {
+  const attemptHref = (row: ExamRegisterRow) => attemptBase + row.attempt_id;
+  const scriptHref = (row: ExamRegisterRow) =>
+    scriptBase + row.attempt_id + (scriptSuffix ?? '/script.pdf');
   const [q, setQ] = useState('');
   const [section, setSection] = useState('');
   const [only, setOnly] = useState<'' | 'unmarked' | 'sitting' | 'flagged'>('');

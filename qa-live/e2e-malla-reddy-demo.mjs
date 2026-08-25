@@ -89,9 +89,14 @@ const exams = academics?.exams ?? [];
 const banks = (await call(base + '/banks', { token: pt })).data ?? [];
 check('Exam schedule lists the sittings', exams.length === 3,
   exams.map((e) => e.title.replace(/^[A-Z ]+— /, '')).join(' · '));
+// A count, not an exact total: banks accumulate as the institution is used,
+// and asserting "exactly four" made this fail the first time somebody added a
+// fifth -- which is a demo being used, not a product breaking.
 check('Exam paper lists the banks, with their sets',
-  banks.length === 4 && banks.filter((b) => Number(b.set_count) === 10).length === 3,
-  banks.map((b) => b.set_count + '×').join(' '));
+  banks.length >= 4 && banks.filter((b) => Number(b.set_count) === 10).length >= 3
+  && banks.every((b) => b.set_count !== undefined),
+  banks.length + ' banks, ' + banks.filter((b) => Number(b.set_count) === 10).length
+  + ' of ten sets');
 
 const online = exams.filter((e) => e.assessment_id != null);
 check('Invigilate can tell which sittings are sat in a browser', online.length === 3,
@@ -172,10 +177,9 @@ check('and sees the courses they teach', mine.length === 2,
 
 const facultyBanks = (await call('/api/onyx/banks', { token: ft })).data ?? [];
 check('the bank listing tells them the sets and the marking',
-  facultyBanks.length === 4
+  facultyBanks.length >= 4
   && facultyBanks.every((b) => b.set_count !== undefined && b.needs_marking !== undefined),
-  facultyBanks.map((b) => b.set_count + '×' + (b.question_count / (b.set_count || 1)))
-    .join(' '));
+  facultyBanks.length + ' banks, every one reporting its sets and its marking');
 
 const facultySections = (await call('/api/onyx/sections', { token: ft })).data ?? [];
 check('and can set a paper for one division', facultySections.length === 24,

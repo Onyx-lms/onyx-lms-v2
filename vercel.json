@@ -4,5 +4,5 @@
   "installCommand": "npm install",
   "buildCommand": "npm run build:web",
   "outputDirectory": "apps/web/.next",
-  "regions": ["sin1"]
+  "regions": ["bom1"]
 }

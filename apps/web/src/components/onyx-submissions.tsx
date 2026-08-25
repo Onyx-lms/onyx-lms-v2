@@ -33,18 +33,38 @@ export interface SubmissionRow {
  * search box lag behind the typing. The roll is already on the page — this is
  * a lens over it, not a different question for the server.
  */
+/*
+ * Base paths, not functions.
+ *
+ * These props used to be `(row) => string`, and a server component cannot pass
+ * a function to a client one -- React refuses to serialise it, and the whole
+ * page answers 500. It did: three screens in the console and on the
+ * institution's own side were dead, and nothing on any of them said why,
+ * because the failure is thrown while the page is being serialised rather than
+ * while it is being written.
+ *
+ * A prefix is a string, so it crosses the boundary, and the row's id is
+ * appended here -- where the row already is.
+ */
 export function SubmissionsTable({
-  rows, markHref, scriptHref, bundleHref, caption,
+  rows, markBase, markSuffix, scriptBase, scriptSuffix, bundleHref, caption,
 }: {
   rows: SubmissionRow[];
-  /** Where a row opens to be marked. Omitted where the reader cannot mark. */
-  markHref?: (row: SubmissionRow) => string;
-  /** Where one script is downloaded from. */
-  scriptHref: (row: SubmissionRow) => string;
+  /** Where a row opens to be marked; the id is added. Omitted where nobody can. */
+  markBase?: string;
+  markSuffix?: string;
+  /** Where one script is downloaded from; the id and the suffix are added. */
+  scriptBase: string;
+  scriptSuffix?: string;
   /** Where every script is downloaded from, when the reader may have them. */
   bundleHref?: string;
   caption: string;
 }) {
+  const markHref = markBase
+    ? (row: SubmissionRow) => markBase + row.id + (markSuffix ?? '/mark')
+    : undefined;
+  const scriptHref = (row: SubmissionRow) =>
+    scriptBase + row.id + (scriptSuffix ?? '/marker-script.pdf');
   const [q, setQ] = useState('');
   const [section, setSection] = useState('');
 

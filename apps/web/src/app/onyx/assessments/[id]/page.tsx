@@ -206,8 +206,8 @@ export default async function OnyxAssessmentPage({ params }: { params: Promise<{
                       section: r.section ?? null,
                       integrity_flags: r.integrity_flags,
                     }))}
-                    markHref={(r) => '/onyx/attempts/' + r.id + '/mark'}
-                    scriptHref={(r) => '/api/proxy/onyx/attempts/' + r.id + '/marker-script.pdf'}
+                    markBase="/onyx/attempts/"
+                    scriptBase="/api/proxy/onyx/attempts/"
                     bundleHref={submissions.length
                       ? '/api/proxy/onyx/assessments/' + id + '/scripts.pdf' : undefined}
                   />
