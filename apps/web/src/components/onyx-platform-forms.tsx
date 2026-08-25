@@ -1358,6 +1358,9 @@ export function ExamEditToggle({ tenantId, exam }: {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // Held in state so the echo below the field updates as it is changed, and
+  // seeded from the stored instant IN LOCAL TIME -- see `toLocalInput`.
+  const [starts, setStarts] = useState(() => toLocalInput(exam.starts_at));
 
   if (!open) {
     return <button type="button" onClick={() => setOpen(true)} className={linkButton}>Edit</button>;
@@ -1395,8 +1398,9 @@ export function ExamEditToggle({ tenantId, exam }: {
         <div>
           <label className={smallLabel} htmlFor={'ex-starts-' + exam.id}>Starts</label>
           <input id={'ex-starts-' + exam.id} name="starts_at" type="datetime-local"
-            defaultValue={exam.starts_at ? exam.starts_at.slice(0, 16) : ''}
+            value={starts} onChange={(e) => setStarts(e.target.value)}
             className={smallField} />
+          <WhenEcho value={starts} />
         </div>
         <div>
           <label className={smallLabel} htmlFor={'ex-dur-' + exam.id}>Minutes</label>
@@ -1435,6 +1439,61 @@ export function ExamEditToggle({ tenantId, exam }: {
 }
 
 /** Edit the institution's own name, address and plan label. */
+/**
+ * A stored instant, as a `datetime-local` input needs it.
+ *
+ * **This is the bug that moved a real examination.** The edit form fed
+ * `starts_at.slice(0, 16)` straight into the input — that is the UTC
+ * wall-clock, and a `datetime-local` input reads its value as LOCAL time. So an
+ * operator in India opened a sitting scheduled for 13:35 and was shown 08:05;
+ * saving it without touching anything then stored 08:05 IST, moving the exam
+ * five and a half hours earlier. Every open-and-save moved it again.
+ *
+ * Built from the local parts rather than by arithmetic on the ISO string, so
+ * the browser's own zone — including half-hour offsets and any daylight-saving
+ * change between now and the exam — is what decides.
+ */
+function toLocalInput(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+    + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+/**
+ * What the operator just typed, read back to them in words.
+ *
+ * A `datetime-local` control gives no feedback about what it understood, and on
+ * a twelve-hour picker "01:35" and "13:35" are one mis-click apart. An
+ * examination was scheduled for 1:35 in the morning that way, ten hours before
+ * the operator meant, and nothing on the screen said so — not the form, not the
+ * list, not the learner's timetable.
+ *
+ * So the resolved instant is echoed with its weekday, and a time already past
+ * is called out. The zone is named because the server stores UTC and the reader
+ * is not obliged to know that.
+ */
+function WhenEcho({ value }: { value: string }) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  const past = d.getTime() < Date.now();
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const text = d.toLocaleString(undefined, {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+  return (
+    <p className={'mt-1 text-[12px] leading-relaxed '
+      + (past ? 'font-semibold text-amber-800' : 'text-muted')}>
+      {past ? 'That is in the past: ' : ''}{text}
+      <span className="text-muted"> · {zone}</span>
+    </p>
+  );
+}
+
 export function TenantEditForm({ tenant }: {
   tenant: {
     id: number; name: string; slug: string; plan: string | null;
@@ -2016,6 +2075,8 @@ export function CreateExamForm({ tenantId, courses, papers = [] }: {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Held in state so the echo under the field updates as it is typed.
+  const [starts, setStarts] = useState('');
   const [pending, start] = useTransition();
   const [courseId, setCourseId] = useState<number | null>(courses[0]?.id ?? null);
   // A course is all that is genuinely required.
@@ -2072,7 +2133,13 @@ export function CreateExamForm({ tenantId, courses, papers = [] }: {
       </div>
       <div>
         <label className={label} htmlFor="ce-starts">Starts</label>
-        <input id="ce-starts" name="starts_at" type="datetime-local" required className={field} />
+        <input id="ce-starts" name="starts_at" type="datetime-local" required className={field}
+          value={starts} onChange={(e) => setStarts(e.target.value)} />
+        {/* The echo that would have caught a real mistake: an examination was
+            set for 01:35 when 13:35 was meant -- one mis-click apart on a
+            twelve-hour picker -- and nothing on this form, the list, or the
+            learner's timetable said it had been scheduled ten hours ago. */}
+        <WhenEcho value={starts} />
       </div>
 
       {/*
