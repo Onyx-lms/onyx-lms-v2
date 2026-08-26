@@ -139,6 +139,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/batches/:id/members', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty', 'exams');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'academics.batches', claims.user_id);
     const body = validate(z.object({
       user_ids: z.array(z.string().uuid()).min(1).max(1000),
     }), req.body);
@@ -222,6 +223,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.patch('/api/onyx/courses/:id', async (req) => {
     const claims = await requireCourseManager(req, idOf(req));
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.author', claims.user_id);
     const body = validate(z.object({
       code: z.string().min(1).max(50).optional(),
       title: z.string().min(1).max(255).optional(),
@@ -286,6 +288,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
    */
   app.delete('/api/onyx/courses/:id', async (req) => {
     const claims = await requireCourseManager(req, idOf(req));
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.author', claims.user_id);
     const course = await ctx.onyxAcademics.course(claims.tenant_id, idOf(req));
     await ctx.onyxAcademics.remove(claims.tenant_id, idOf(req), claims.tenant_role);
     await ctx.onyxAudit.record(claims, {
@@ -311,6 +314,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
    */
   app.post('/api/onyx/courses/:id/publish', async (req) => {
     const claims = await requireCourseManager(req, idOf(req));
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.publish', claims.user_id);
     const course = await ctx.onyxAcademics.updateCourse(claims.tenant_id, idOf(req),
       { status: 1 });
     await ctx.onyxAudit.record(claims, {
@@ -322,6 +326,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/courses/:id/close', async (req) => {
     const claims = await requireCourseManager(req, idOf(req));
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.publish', claims.user_id);
     return ok(await ctx.onyxAcademics.updateCourse(claims.tenant_id, idOf(req),
       { status: 0 }), 'Course closed.');
   });
@@ -361,6 +366,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
   /** The other half of assigning -- freeing a slot back below the cap of two. */
   app.delete('/api/onyx/courses/:id/faculty/:userId', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.assign_faculty', claims.user_id);
     const removed = await ctx.onyxAcademics.removeFaculty(
       claims.tenant_id, idOf(req), userIdOf(req, 'userId'));
     await ctx.onyxAudit.record(claims, {
@@ -533,6 +539,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.delete('/api/onyx/courses/:id/enroll/:userId', async (req) => {
     const claims = await requireCourseManager(req, idOf(req));
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'academics.enrol', claims.user_id);
     const userId = userIdOf(req, 'userId');
     const result = await ctx.onyxAcademics.withdraw(claims.tenant_id, idOf(req), userId);
     await ctx.onyxAudit.record(claims, {
@@ -862,6 +869,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/courses/:id/resources', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.author', claims.user_id);
     await ctx.onyxAcademics.assertCanTeach(
       claims.tenant_id, idOf(req), claims.user_id, claims.tenant_role);
     const body = validate(z.object({
@@ -885,6 +893,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
    */
   app.post('/api/onyx/courses/:id/uploads/sign', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.author', claims.user_id);
     await ctx.onyxAcademics.assertCanTeach(
       claims.tenant_id, idOf(req), claims.user_id, claims.tenant_role);
     const body = validate(z.object({
@@ -901,6 +910,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
    */
   app.post('/api/onyx/courses/:id/resources/upload', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.author', claims.user_id);
     await ctx.onyxAcademics.assertCanTeach(
       claims.tenant_id, idOf(req), claims.user_id, claims.tenant_role);
 
@@ -973,6 +983,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/attendance/:id/mark', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'attendance.take', claims.user_id);
     const session = await ctx.onyxAttendance.session(claims.tenant_id, idOf(req));
     await ctx.onyxAcademics.assertCanTeach(
       claims.tenant_id, Number(session.course_id), claims.user_id, claims.tenant_role);
@@ -996,6 +1007,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/attendance/:id/close', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'attendance.take', claims.user_id);
     const session = await ctx.onyxAttendance.session(claims.tenant_id, idOf(req));
     await ctx.onyxAcademics.assertCanTeach(
       claims.tenant_id, Number(session.course_id), claims.user_id, claims.tenant_role);
@@ -1096,6 +1108,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/courses/:id/assignments', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assignments.set', claims.user_id);
     await ctx.onyxAcademics.assertCanTeach(
       claims.tenant_id, idOf(req), claims.user_id, claims.tenant_role);
     const body = validate(z.object({
@@ -1125,6 +1138,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.put('/api/onyx/assignments/:id/rubric', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assignments.set', claims.user_id);
     const assignment = await ctx.onyxAssignments.assignment(claims.tenant_id, idOf(req));
     await ctx.onyxAcademics.assertCanTeach(
       claims.tenant_id, Number(assignment.course_id), claims.user_id, claims.tenant_role);
@@ -1164,6 +1178,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/assignments/:id/publish', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assignments.set', claims.user_id);
     const assignment = await ctx.onyxAssignments.assignment(claims.tenant_id, idOf(req));
     await ctx.onyxAcademics.assertCanTeach(
       claims.tenant_id, Number(assignment.course_id), claims.user_id, claims.tenant_role);
@@ -1210,6 +1225,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/submissions/:id/grade', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assignments.grade', claims.user_id);
     const submission = await ctx.onyxAssignments.submissionDetail(claims.tenant_id, idOf(req));
     const assignment = await ctx.onyxAssignments.assignment(
       claims.tenant_id, Number(submission.assignment_id));
@@ -1237,6 +1253,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/submissions/:id/return', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assignments.grade', claims.user_id);
     const submission = await ctx.onyxAssignments.submissionDetail(claims.tenant_id, idOf(req));
     const assignment = await ctx.onyxAssignments.assignment(
       claims.tenant_id, Number(submission.assignment_id));
@@ -1253,6 +1270,7 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/assignments/:id/return-all', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assignments.grade', claims.user_id);
     const assignment = await ctx.onyxAssignments.assignment(claims.tenant_id, idOf(req));
     await ctx.onyxAcademics.assertCanTeach(
       claims.tenant_id, Number(assignment.course_id), claims.user_id, claims.tenant_role);

@@ -95,6 +95,7 @@ export function registerOnyxCodeLabRoutes(app: Router, ctx: AppContext): void {
    */
   app.patch('/api/onyx/problems/:id', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'lab.problems', claims.user_id);
     const body = validate(z.object({
       title: z.string().min(1).max(255).optional(),
       statement: z.string().max(100_000).nullish(),

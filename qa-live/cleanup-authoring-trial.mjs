@@ -15,7 +15,8 @@ const { rows: [t] } = await client.query(
 if (t?.slug !== 'malla-reddy-demo') throw new Error('Refusing: tenant is ' + t?.slug);
 
 const banks = await client.query(
-  `select id from public."onyx_question_banks" where tenant_id = $1 and name like 'Faculty bank fac-%'`,
+  `select id from public."onyx_question_banks" where tenant_id = $1
+     and (name like 'Faculty bank fac-%' or name like 'Permission probe perm-%')`,
   [TENANT]);
 const ids = banks.rows.map((r) => r.id);
 console.log('banks to remove:', ids.join(', ') || 'none');
@@ -46,9 +47,30 @@ for (const [label, table] of [
 }
 
 const probs = await client.query(
-  `delete from public."onyx_problems" where tenant_id = $1 and title like 'Faculty web problem fac-%'`,
+  `delete from public."onyx_problems" where tenant_id = $1
+     and (title like 'Faculty web problem fac-%' or title like 'Permission probe perm-%')`,
   [TENANT]);
 console.log('problems:', probs.rowCount);
+
+/*
+ * And what permissions-bite.mjs leaves when a revocation FAILS to bite.
+ *
+ * That suite is written so a passing run creates almost nothing -- the whole
+ * point is that the first attempt is refused. A run where the switch does not
+ * work creates one of everything, which is the run you most want swept before
+ * trying again: an examination left on the calendar makes the next attempt
+ * clash, and the suite then reports a permission failure that is really a
+ * scheduling one.
+ */
+for (const [label, table] of [
+  ['probe assignments', 'onyx_assignments'], ['probe sittings', 'onyx_exams'],
+]) {
+  const r = await client.query(
+    'delete from public."' + table + '" where tenant_id = $1 and title like $2',
+    [TENANT, 'Permission probe perm-%'])
+    .catch((e) => ({ rowCount: 'skipped (' + e.code + ')' }));
+  console.log(label + ' removed:', r.rowCount);
+}
 
 for (const [label, sql] of [
   ['banks', 'select count(*)::int n from public."onyx_question_banks" where tenant_id = $1'],

@@ -147,6 +147,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/allocations', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...REGISTRY);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'exams.seating', claims.user_id);
     const body = validate(z.object({
       semester_id: z.number().int().positive(),
       course_id: z.number().int().positive(),
@@ -547,6 +548,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
   /** Override one mark directly -- a dispute or a data-entry fix. */
   app.patch('/api/onyx/exam-marks/:id', async (req) => {
     const { claims, viewer } = await viewerOf(req);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'exams.marks', claims.user_id);
     const body = validate(z.object({
       raw_marks: z.number().min(0).optional(),
       final_marks: z.number().min(0).optional(),
@@ -682,6 +684,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/exams/:id/marks/sync-from-paper', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...MARKERS);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'exams.marks', claims.user_id);
     const viewer = { role: claims.tenant_role, userId: claims.user_id };
     const exam = await ctx.onyxExams.exam(claims.tenant_id, idOf(req));
     await assertCanRunExam(
@@ -848,6 +851,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/fee-structures/:id/publish', async (req) => {
     const { claims, viewer } = await viewerOf(req);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'fees.structures', claims.user_id);
     return ok(await ctx.onyxFinance.publishStructure(claims.tenant_id, idOf(req), viewer));
   });
 

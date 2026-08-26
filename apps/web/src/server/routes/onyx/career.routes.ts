@@ -97,6 +97,7 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/certificates/:id/revoke', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...ISSUERS);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.certificates', claims.user_id);
     const body = validate(z.object({ reason: z.string().min(1).max(500) }), req.body);
     const revoked = await ctx.onyxCareer.revokeCertificate(claims.tenant_id, idOf(req), body.reason);
     await ctx.onyxAudit.record(claims, {
@@ -301,6 +302,7 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
 
   app.patch('/api/onyx/employers/:id', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...PLACEMENT);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.employers', claims.user_id);
     const body = validate(z.object({
       name: z.string().min(1).max(255).optional(),
       website: z.string().max(255).nullish(),
@@ -502,6 +504,7 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/rounds/:id/results', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...PLACEMENT);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'careers.drives', claims.user_id);
     const body = validate(z.object({
       entries: z.array(z.object({
         user_id: z.string().uuid(),
@@ -562,6 +565,7 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/contests/:id/publish', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty', 'placement');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'lab.contests', claims.user_id);
     return ok(await ctx.onyxContests.publish(claims.tenant_id, idOf(req)), 'Published.');
   });
 

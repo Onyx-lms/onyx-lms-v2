@@ -121,6 +121,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
   /** Editing writes a new version; the old one stays as it was sat. */
   app.patch('/api/onyx/questions/:id', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assess.banks', claims.user_id);
     const body = validate(z.object({
       type: TypeSchema.optional(),
       prompt: z.string().min(1).max(20_000).optional(),
@@ -139,6 +140,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
 
   app.delete('/api/onyx/questions/:id', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assess.banks', claims.user_id);
     return ok(await ctx.onyxAssess.retireQuestion(
       claims.tenant_id, idOf(req), { userId: claims.user_id, role: claims.tenant_role }),
       'Retired.');
@@ -225,6 +227,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
   /** Correct an assessment's own fields -- title, window, pass mark, duration. */
   app.patch('/api/onyx/assessments/:id', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assess.papers', claims.user_id);
     const body = validate(z.object({
       title: z.string().min(1).max(255).optional(),
       opens_at: z.string().nullish(),
@@ -287,6 +290,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
    */
   app.delete('/api/onyx/assessments/:id', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assess.papers', claims.user_id);
     const assessment = await ctx.onyxAssess.assessment(claims.tenant_id, idOf(req));
     if (assessment.course_id) {
       await ctx.onyxAcademics.assertCanTeach(claims.tenant_id, Number(assessment.course_id),
@@ -310,6 +314,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
   /** Override one attempt's score directly -- a dispute or a data-entry fix. */
   app.patch('/api/onyx/attempts/:id/score', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assess.mark', claims.user_id);
     const body = validate(z.object({ score: z.number().min(0) }), req.body);
     const result = await ctx.onyxAssess.overrideScore(claims.tenant_id, idOf(req), body.score);
     await ctx.onyxAudit.record(claims, {
@@ -467,6 +472,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
    */
   app.post('/api/onyx/attempts/:id/watch', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assess.proctor', claims.user_id);
     return ok(await ctx.onyxProctor.startWatch(
       claims.tenant_id, idOf(req), { userId: claims.user_id }));
   });
@@ -580,6 +586,7 @@ export function registerOnyxAssessRoutes(app: Router, ctx: AppContext): void {
 
   app.post('/api/onyx/attempts/:id/integrity', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, ...STAFF);
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'assess.proctor', claims.user_id);
     const body = validate(z.object({
       decision: z.enum(['cleared', 'upheld']),
       note: z.string().max(5000).nullish(),

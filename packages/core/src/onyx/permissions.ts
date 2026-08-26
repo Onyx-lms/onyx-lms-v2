@@ -52,6 +52,8 @@ export type CapabilityKey =
   // Courses and content
   | 'courses.create' | 'courses.author' | 'courses.publish' | 'courses.assign_faculty'
   | 'attendance.take'
+  // Assignments
+  | 'assignments.set' | 'assignments.grade'
   // Live Classes
   | 'domains.manage'
   // Assessment
@@ -139,6 +141,31 @@ export const CAPABILITIES: Capability[] = [
   A('attendance.take', 'Courses', 'Take attendance',
     'Open a session, mark the register and close it.',
     ['admin', 'faculty'], ['faculty', 'exams']),
+
+  // ---- Assignments --------------------------------------------------------
+  // Two keys, not six, and not one.
+  //
+  // Not six, for the reason assess.banks and domains.manage give: create, edit
+  // and publish on the same object are only ever granted together, and three
+  // switches an administrator always flips at once is three chances to leave
+  // one behind.
+  //
+  // Not one, because SETTING work and MARKING it are genuinely different jobs
+  // done by different people -- a teaching assistant marks what they did not
+  // set, a lecturer on leave hands marking over without handing over the
+  // course. Assessment already splits exactly here (assess.papers /
+  // assess.mark) and assignments were the one place that did not.
+  //
+  // These are new keys, so every institution gets the defaults below -- which
+  // are the roles that could already do this before the keys existed. Nobody
+  // loses a power they were using; migration 0023 stores only diffs, so the
+  // defaults arrive switched on everywhere.
+  A('assignments.set', 'Assignments', 'Set assignments',
+    'Create an assignment on a course, write its rubric, and publish it to learners.',
+    ['admin', 'faculty'], ['faculty']),
+  A('assignments.grade', 'Assignments', 'Grade assignments',
+    'Score submitted work against the rubric and return it.',
+    ['admin', 'faculty'], ['faculty']),
 
   // ---- Live Classes -------------------------------------------------------
   // One key for the whole of it, not three. Create, edit and remove on the same
