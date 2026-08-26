@@ -327,6 +327,20 @@ check('with the marker’s reason beside the question',
 
 // ---------------------------------------------------------------------------
 
+/*
+ * The web problem this suite builds is scaffolding, not content. Left
+ * published, one more "Build a welcome card mt9x..." joined the practice bank
+ * on every run -- and the bank is the first thing a prospect opens.
+ */
+if (problem?.id) {
+  // Through the console route it was created with. The operator's token is not
+  // a member of the institution, so the tenant-scoped path answers 401.
+  const off = await call(base + '/problems/' + problem.id + '/unpublish',
+    { method: 'POST', token: pt });
+  check('takes its scaffolding problem off the practice list', off.status === 200,
+    'HTTP ' + off.status);
+}
+
 startPhase('7. what is left for testing by hand');
 
 console.log('   web problem  ' + problem.id + '  "' + problem.title + '"');

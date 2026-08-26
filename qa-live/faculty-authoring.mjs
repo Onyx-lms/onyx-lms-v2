@@ -146,7 +146,10 @@ check('sees the bank with its sets and marking', banks.some((x) => Number(x.id) 
  * run that leaves a thirteenth bank behind turns the NEXT suite red for a
  * reason that has nothing to do with it. Banks and Code Lab problems have no
  * DELETE route by design -- a bank a paper was drawn from is not something the
- * product destroys -- so those two are left for cleanup-authoring-trial.mjs.
+ * product destroys, and a problem somebody has answered holds their answer. So
+ * the bank is left for cleanup-authoring-trial.mjs, and the problem is
+ * unpublished below: the row keeps its history and stops appearing on the
+ * practice list a prospect opens.
  */
 const admin = await login('admin@mrdemo.test', 'MrDemo#2026!');
 for (const [what, path] of [
@@ -157,6 +160,20 @@ for (const [what, path] of [
   const r = await post(path, undefined, admin, 'DELETE');
   check('clears the ' + what + ' it made', r.status === 200, 'HTTP ' + r.status);
 }
-console.log('\nleft for cleanup-authoring-trial.mjs: bank=' + bankId + ' problem=' + probId);
+
+/*
+ * A problem cannot be deleted -- submissions reference it -- but it CAN be
+ * taken off the list. Forty machine-titled problems had piled up on the demo
+ * institution before anybody noticed, because "no DELETE route" was read as
+ * "nothing to be done" when unpublishing was right there. A prospect opening
+ * Code Lab saw four-fifths litter.
+ */
+if (probId) {
+  const off = await post('/api/onyx/problems/' + probId + '/unpublish', undefined, admin);
+  check('takes its practice problem off the list', off.status === 200, 'HTTP ' + off.status);
+}
+console.log('');
+console.log('left for cleanup-authoring-trial.mjs: bank=' + bankId
+  + ' (problem ' + probId + ' is unpublished, so no learner is shown it)');
 const failed = results.filter((r) => !r.pass);
 console.log('\n' + results.filter((r) => r.pass).length + ' pass, ' + failed.length + ' fail');

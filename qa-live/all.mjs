@@ -36,6 +36,9 @@ const SUITES = [
   ['a company sees who applied to it', 'employer-sees-applicants.mjs'],
   ['the report’s own defects, re-tested', 'defects-report1.mjs'],
   ['axe over the screens people live in', 'accessibility-live.mjs'],
+  ['a contest and an interview, actually run', 'careers-have-something-to-show.mjs'],
+  ['a guardian sees their child', 'a-guardian-sees-their-child.mjs'],
+  ['the practice bank is worth opening', 'practice-bank-is-usable.mjs'],
   ['every screen works on a phone', 'responsive-live.mjs'],
 ];
 

@@ -103,7 +103,12 @@ const CASES = [
       && call('/api/onyx/exams/' + r.body.data.id, undefined, admin, 'DELETE') },
   { key: 'lab.problems', what: 'author a Code Lab problem',
     run: () => call('/api/onyx/problems', { kind: 'code', title: 'Permission probe ' + tag,
-      languages: ['python'], difficulty: 'easy' }, fac) },
+      languages: ['python'], difficulty: 'easy' }, fac),
+    // No DELETE for a problem -- submissions reference it -- but unpublishing
+    // keeps the probe off the practice bank a prospect opens.
+    undo: (r) => r?.body?.data?.id
+      && call('/api/onyx/problems/' + r.body.data.id + '/unpublish',
+        undefined, admin) },
 ];
 
 for (const c of CASES) {
