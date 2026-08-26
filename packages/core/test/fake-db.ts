@@ -25,6 +25,9 @@ function compareCells(a: unknown, b: unknown): number {
   return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0;
 }
 
+/** What PostgREST returns for a request that names no range. */
+const POSTGREST_CAP = 1000;
+
 export class FakeDb {
   tables: Record<string, Row[]>;
   #uniques: Record<string, string[][]>;
@@ -123,7 +126,22 @@ export class FakeDb {
           return 0;
         });
       }
+      /*
+       * The server's own row cap, which is the point of emulating it.
+       *
+       * PostgREST answers a request that names no range with AT MOST
+       * `POSTGREST_CAP` rows. Reading that as "all of them" has now been the
+       * cause of five separate defects in this product -- an institution of
+       * 1,440 reported as 943, a roster of 1,000, a directory of 1,000, a
+       * members list of 1,000, and a catalogue that said one course had a
+       * thousand students and every other course none. Every one of them
+       * passed its tests, because the fake happily returned everything.
+       *
+       * So the fake stops being more generous than the real thing. A caller
+       * that wants every row has to page for it, here as in production.
+       */
       if (range) out = out.slice(range[0], range[1] + 1);
+      else if (out.length > POSTGREST_CAP) out = out.slice(0, POSTGREST_CAP);
       if (projection) {
         const keep = projection;
         out = out.map((r) => Object.fromEntries(

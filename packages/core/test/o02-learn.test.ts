@@ -1021,3 +1021,43 @@ test('locking a course that already has a price leaves the price alone', async (
   const locked = await academics.updateCourse(T, Number(priced.id), { access: 'locked' });
   assert.equal(Number(locked.price_minor), 149_900);
 });
+
+test('the catalogue counts every enrolment, not the first thousand', async () => {
+  /*
+   * The fifth time this cap has been the bug, and the first time a learner
+   * could see it.
+   *
+   * `courses()` reads the enrolment rows for every course at once and tallies
+   * them in memory. The read named no range, which reads as "every row" and is
+   * not: the server answers with at most a thousand. At an institution with
+   * 1,444 enrolments across 63 courses that single page happened to be almost
+   * entirely one course's, so the catalogue told a student that Python had
+   * "1000 enrolled" and that every other course -- including ones with a full
+   * register -- had none.
+   *
+   * The fake db now honours the same cap, so this test fails against the old
+   * unranged read rather than passing on a generosity production does not
+   * share.
+   */
+  const { db, academics } = world();
+  // 1,100 on course 1 and 60 on course 2: more than one page in total, and
+  // split so that a single page could not contain both.
+  let id = 1000;
+  for (let i = 0; i < 1100; i += 1) {
+    await db.from('onyx_enrollments').insert({
+      id: (id += 1), tenant_id: T, course_id: 1, user_id: 'bulk-' + i, batch_id: null, status: 1,
+    });
+  }
+  for (let i = 0; i < 60; i += 1) {
+    await db.from('onyx_enrollments').insert({
+      id: (id += 1), tenant_id: T, course_id: 2, user_id: 'other-' + i, batch_id: null, status: 1,
+    });
+  }
+
+  const listed = await academics.courses(T);
+  const byId = new Map(listed.map((c) => [Number(c.id), c]));
+  // 1,100 plus the two the world starts with.
+  assert.equal(byId.get(1)?.enrollment_count, 1102);
+  // The one that used to come back as zero, because the page ran out.
+  assert.equal(byId.get(2)?.enrollment_count, 60);
+});

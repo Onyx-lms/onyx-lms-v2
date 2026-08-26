@@ -334,15 +334,50 @@ export class AcademicsService {
     }
 
     const ids = rows.map((c) => Number(c.id));
-    const [enrolQ, facQ] = ids.length ? await Promise.all([
-      this.#db.from('onyx_enrollments').select('course_id')
-        .eq('tenant_id', tenantId).eq('status', 1).in('course_id', ids),
-      this.#db.from('onyx_course_faculty').select('course_id, user_id')
-        .eq('tenant_id', tenantId).in('course_id', ids),
-    ]) : [{ data: [] }, { data: [] }];
+
+    /*
+     * PAGED, because these two tallies are counted in memory.
+     *
+     * Both reads name no range, which reads as "every row" and is not: a
+     * request without one comes back capped at a thousand. The enrolment
+     * tally is the one that showed it -- an institution with 1,444 enrolments
+     * across 63 courses got a single page of a thousand, all of which
+     * happened to belong to one course, so the catalogue said "1000 enrolled"
+     * on Python and "0 enrolled" on every other course including ones with a
+     * register. Nothing threw; the numbers were simply wrong, and wrong in the
+     * direction that looks plausible.
+     *
+     * `.range()` in a loop rather than an exact COUNT per course: the tally is
+     * per course and there are sixty-three of them, so counting each would be
+     * sixty-three round trips to replace two.
+     */
+    const pageAll = async <T>(build: () => {
+      order: (c: string) => { range: (a: number, b: number) => PromiseLike<{ data: T[] | null }> };
+    }): Promise<T[]> => {
+      const out: T[] = [];
+      for (let from = 0; from < PAGE_CEILING; from += PAGE) {
+        // eslint-disable-next-line no-await-in-loop -- each page needs the one
+        // before it to have arrived before it knows whether to ask for another.
+        const { data } = await build().order('id').range(from, from + PAGE - 1);
+        const page = data ?? [];
+        out.push(...page);
+        if (page.length < PAGE) break;
+      }
+      return out;
+    };
+
+    const [enrolRows, facRows] = ids.length ? await Promise.all([
+      pageAll<{ course_id: number }>(() => this.#db.from('onyx_enrollments')
+        .select('course_id, id')
+        .eq('tenant_id', tenantId).eq('status', 1).in('course_id', ids) as never),
+      pageAll<{ course_id: number; user_id: string }>(() => this.#db.from('onyx_course_faculty')
+        .select('course_id, user_id, id')
+        .eq('tenant_id', tenantId).in('course_id', ids) as never),
+    ]) : [[], []];
+    const facQ = { data: facRows };
 
     const enrolCount = new Map<number, number>();
-    for (const e of enrolQ.data ?? []) {
+    for (const e of enrolRows) {
       const c = Number(e.course_id);
       enrolCount.set(c, (enrolCount.get(c) ?? 0) + 1);
     }
