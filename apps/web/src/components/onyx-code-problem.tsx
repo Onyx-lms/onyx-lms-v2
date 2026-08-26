@@ -234,6 +234,17 @@ export function ProblemDraftFields({
 
   const web = draft.kind === 'web';
 
+  /*
+   * Counted the same way the API counts them, so the strip and the refusal
+   * cannot disagree: a case with neither an input nor an expected output is
+   * not a case yet, and an EXAMPLE is what publishing requires at least one
+   * of. `problemDraftError` above applies exactly these two rules.
+   */
+  const filledCases = draft.cases.filter(
+    (c) => c.expected.trim() !== '' || c.stdin.trim() !== '').length;
+  const shown = draft.cases.filter(
+    (c) => !c.hidden && (c.expected.trim() !== '' || c.stdin.trim() !== '')).length;
+
   return (
     <div className="grid gap-3 rounded-xl border border-line bg-slate-50/60 p-3">
       <p className="text-[12px] text-muted">
@@ -355,24 +366,66 @@ export function ProblemDraftFields({
 
       <fieldset className={web ? 'hidden' : undefined}>
         <legend className={labelClass}>Test cases</legend>
-        <p className="mb-2 mt-1 text-[12px] text-muted">
-          A hidden case is the answer key: its input, its expected output and whatever a
-          candidate&rsquo;s program printed for it are never shown. At least one case has to be
-          visible.
-        </p>
+        {/*
+          * The cases, written the way they are READ.
+          *
+          * A candidate meets these twice: the examples sit on the problem while
+          * they work and Run checks exactly those; Submit then also runs the
+          * hidden ones. That is the shape people already know from every
+          * competitive-programming site, so the form says it in those words
+          * rather than offering a bare "Hidden" tickbox whose consequence --
+          * this case joins the answer key and its output is never shown -- a
+          * setter had to already know.
+          */}
+        <div className="mb-2 mt-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <p className="max-w-[62ch] text-[12px] leading-relaxed text-muted">
+            An <span className="font-semibold">example</span> is shown on the problem and is
+            what <span className="font-semibold">Run</span> checks. A{' '}
+            <span className="font-semibold">hidden</span> case is part of the answer key:
+            only <span className="font-semibold">Submit</span> runs it, and neither its
+            output nor the candidate&rsquo;s is ever shown.
+          </p>
+          {/* The publish rule, before it is broken rather than after. A problem
+              with no example cannot be published, and the only place that used
+              to be said was the refusal at the end. */}
+          <span className={'shrink-0 rounded-lg px-2 py-1 text-[11.5px] font-bold '
+            + (shown === 0 ? 'bg-amber-50 text-amber-900' : 'bg-slate-100 text-muted')}>
+            {shown === 0
+              ? 'Add an example \u2014 a problem with none cannot be published'
+              : filledCases + (filledCases === 1 ? ' case' : ' cases') + ' \u00b7 ' + shown + ' shown'}
+          </span>
+        </div>
         <div className="space-y-2">
           {draft.cases.map((c, i) => (
             <div key={i} className="rounded-lg border border-line bg-white p-2.5">
               <div className="flex flex-wrap items-center gap-2">
-                <input value={c.name} placeholder={'Case ' + (i + 1)}
+                {/* Numbered on screen, not only in a placeholder: a placeholder
+                    disappears the moment somebody types, so "case 3 is the one
+                    that is wrong" had nothing on screen to point at. */}
+                <span className="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[11.5px]
+                                 font-bold tabular-nums text-muted">
+                  Case {i + 1}
+                </span>
+                {/* Two named states rather than one tickbox: "Hidden" unticked
+                    leaves the other state unnamed, and that is the state whose
+                    consequence a setter most needs to see. */}
+                <div role="group" aria-label={'Is case ' + (i + 1) + ' shown to candidates'}
+                  className="inline-flex shrink-0 overflow-hidden rounded-lg border border-line">
+                  {([[false, 'Example'], [true, 'Hidden']] as const).map(([hidden, word]) => (
+                    <button key={word} type="button" aria-pressed={c.hidden === hidden}
+                      onClick={() => setCase(i, { hidden })}
+                      className={'px-2.5 py-1 text-[11.5px] font-bold '
+                        + (c.hidden === hidden
+                          ? (hidden ? 'bg-slate-700 text-white' : 'bg-brand-600 text-white')
+                          : 'bg-white text-muted hover:bg-slate-50')}>
+                      {word}
+                    </button>
+                  ))}
+                </div>
+                <input value={c.name} placeholder="Label (optional)"
                   aria-label={'Name of case ' + (i + 1)}
                   onChange={(e) => setCase(i, { name: e.target.value })}
-                  className={inputClass + ' max-w-[12rem]'} />
-                <label className="flex items-center gap-1.5 text-[12.5px] font-semibold">
-                  <input type="checkbox" checked={c.hidden}
-                    onChange={(e) => setCase(i, { hidden: e.target.checked })} />
-                  Hidden
-                </label>
+                  className={inputClass + ' min-w-0 max-w-[12rem] flex-1'} />
                 <span className="flex-1" />
                 {draft.cases.length > 1 ? (
                   <button type="button"
@@ -382,15 +435,30 @@ export function ProblemDraftFields({
                   </button>
                 ) : null}
               </div>
+              {/* Labelled above each box rather than inside it. A placeholder
+                  is gone as soon as there is content, which is exactly when
+                  "which of these two is the expected output" gets asked. */}
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                <textarea rows={2} value={c.stdin} placeholder="Input (stdin)"
-                  aria-label={'Input for case ' + (i + 1)}
-                  onChange={(e) => setCase(i, { stdin: e.target.value })}
-                  className={inputClass + ' w-full font-mono text-[12.5px]'} />
-                <textarea rows={2} value={c.expected} placeholder="Expected output"
-                  aria-label={'Expected output for case ' + (i + 1)}
-                  onChange={(e) => setCase(i, { expected: e.target.value })}
-                  className={inputClass + ' w-full font-mono text-[12.5px]'} />
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-bold uppercase
+                                   tracking-[.05em] text-muted">
+                    Input (stdin)
+                  </span>
+                  <textarea rows={3} value={c.stdin} placeholder="3 5"
+                    aria-label={'Input for case ' + (i + 1)}
+                    onChange={(e) => setCase(i, { stdin: e.target.value })}
+                    className={inputClass + ' w-full font-mono text-[12.5px]'} />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-bold uppercase
+                                   tracking-[.05em] text-muted">
+                    Expected output
+                  </span>
+                  <textarea rows={3} value={c.expected} placeholder="8"
+                    aria-label={'Expected output for case ' + (i + 1)}
+                    onChange={(e) => setCase(i, { expected: e.target.value })}
+                    className={inputClass + ' w-full font-mono text-[12.5px]'} />
+                </label>
               </div>
             </div>
           ))}

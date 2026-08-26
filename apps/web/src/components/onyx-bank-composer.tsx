@@ -85,7 +85,20 @@ const blank = (): Draft => ({
 
 interface SetDraft { questions: Draft[] }
 
-const field = 'w-full rounded-xl border border-line bg-white px-3 py-2 text-[13px] '
+/*
+ * No width in here, deliberately.
+ *
+ * This baked in `w-full`, so the one control that wanted to be small --
+ * `field + ' w-16'` on Marks -- emitted `w-full` and `w-16` together. Tailwind
+ * decides that by the order it happens to write the two rules, not by the
+ * order they are concatenated, and `w-full` won: a box for a number between 1
+ * and 1000 stretched the whole width of the composer and pushed the question
+ * itself onto the next line. `onyx-manage.tsx` has always kept width out of
+ * its `input` for exactly this reason.
+ *
+ * So width is now the caller's, always stated, and two widths can never fight.
+ */
+const field = 'rounded-xl border border-line bg-white px-3 py-2 text-[13px] '
   + 'focus:border-brand-500 focus:outline-none';
 const label = 'block text-[12.5px] font-semibold text-slate-700';
 const button = 'rounded-xl bg-brand-600 px-4 py-2 text-[13.5px] font-bold text-white '
@@ -379,13 +392,13 @@ export function BankComposer({
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div>
           <label className={label} htmlFor="bc-name">Bank name</label>
-          <input id="bc-name" value={name} maxLength={200} className={field + ' mt-1'}
+          <input id="bc-name" value={name} maxLength={200} className={field + ' mt-1 w-full'}
             placeholder="Python — mid-term, ten sets"
             onChange={(e) => setName(e.target.value)} />
         </div>
         <div>
           <label className={label} htmlFor="bc-course">Course</label>
-          <select id="bc-course" value={courseId} className={field + ' mt-1'}
+          <select id="bc-course" value={courseId} className={field + ' mt-1 w-full'}
             onChange={(e) => setCourseId(e.target.value)}>
             {courses.length === 0 ? <option value="">No courses</option> : null}
             {courses.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
@@ -505,8 +518,8 @@ export function BankComposer({
               <label className="text-xs font-semibold text-slate-700" htmlFor={'bc-p-' + i}>
                 Marks
               </label>
-              <input id={'bc-p-' + i} type="number" min={1} value={q.points}
-                className={field + ' w-16 text-xs'}
+              <input id={'bc-p-' + i} type="number" min={1} max={1000} value={q.points}
+                className={field + ' w-20 shrink-0 text-center text-xs tabular-nums'}
                 onChange={(e) => patchQuestion(i, { points: e.target.value })} />
               {set.questions.length > 1 ? (
                 <button type="button" aria-label={'Remove question ' + (i + 1)}
@@ -522,7 +535,7 @@ export function BankComposer({
 
             <textarea rows={2} value={q.prompt} placeholder={'Question ' + (i + 1)}
               aria-label={'Question ' + (i + 1)}
-              className={field + ' mt-2 text-sm'}
+              className={field + ' mt-2 w-full text-sm'}
               onChange={(e) => patchQuestion(i, { prompt: e.target.value })} />
 
             {CHOICE.includes(q.type) ? (
@@ -546,7 +559,7 @@ export function BankComposer({
                     />
                     <input value={q.options[oi] ?? ''} placeholder={'Option ' + id.toUpperCase()}
                       aria-label={'Option ' + id.toUpperCase()}
-                      className={field + ' text-xs'}
+                      className={field + ' w-full text-xs'}
                       onChange={(e) => setOption(i, oi, e.target.value)} />
                   </label>
                 ))}
@@ -578,7 +591,7 @@ export function BankComposer({
                 </label>
                 <textarea id={'bc-acc-' + i} rows={3} value={q.accepted}
                   disabled={q.manualOnly} placeholder={'preorder\npre-order'}
-                  className={field + ' mt-1 text-xs'}
+                  className={field + ' mt-1 w-full text-xs'}
                   onChange={(e) => patchQuestion(i, { accepted: e.target.value })} />
                 <p className="mt-1 text-[11px] text-muted">
                   Any one of these counts. List the spellings and synonyms you will take.
@@ -587,7 +600,7 @@ export function BankComposer({
             ) : q.type === 'code' ? (
               <div className="mt-2">
                 <label className={label} htmlFor={'bc-prob-' + i}>Marked by</label>
-                <select id={'bc-prob-' + i} value={q.problemId} className={field + ' mt-1 text-xs'}
+                <select id={'bc-prob-' + i} value={q.problemId} className={field + ' mt-1 w-full text-xs'}
                   onChange={(e) => patchQuestion(i, { problemId: e.target.value })}>
                   <option value={NEW_PROBLEM}>Write the problem here</option>
                   {usableProblems.length ? (
@@ -614,7 +627,7 @@ export function BankComposer({
               <div className="mt-2">
                 <label className={label} htmlFor={'bc-web-' + i}>Built from</label>
                 <select id={'bc-web-' + i} value={q.webProblemId}
-                  className={field + ' mt-1 text-xs'}
+                  className={field + ' mt-1 w-full text-xs'}
                   onChange={(e) => patchQuestion(i, { webProblemId: e.target.value })}>
                   <option value={NEW_PROBLEM}>Write the brief and the starter files here</option>
                   {webProblems.length ? (

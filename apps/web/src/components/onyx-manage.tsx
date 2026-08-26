@@ -1231,6 +1231,16 @@ const QUESTION_TYPES = [
   // the same grader Code Lab practice uses, so a paper and the practice for
   // it cannot disagree about the same submission.
   { value: 'code', label: 'Write code (marked by tests)' },
+  /*
+   * Build a web page, which this menu could not offer at all.
+   *
+   * The type has existed since 0041 and the console's bank composer has been
+   * able to write one since the day it shipped -- but an institution working
+   * on its OWN bank, which is where a lecturer actually builds a bank, had no
+   * way to reach it. A question type that only the platform can author is a
+   * question type an institution does not have.
+   */
+  { value: 'web', label: 'Build a web page (marked by a person)' },
 ] as const;
 
 /**
@@ -1256,10 +1266,31 @@ const QUESTION_TYPES = [
  */
 const NEW_PROBLEM = '__new__';
 
-export function AddQuestion({ bankId, problems = [] }: {
+export function AddQuestion({ bankId, problems = [], sets = [], nextSet = 1 }: {
   bankId: number;
-  /** Published Code Lab problems a `code` question can point at. */
-  problems?: { id: number; title: string; difficulty: string }[];
+  /**
+   * Published Code Lab problems a question can point at.
+   *
+   * `kind` splits them: a `code` question is marked by running tests, a `web`
+   * one by a person reading the page it renders. Offering either list to the
+   * other type is offering a binding the API refuses.
+   */
+  problems?: { id: number; title: string; difficulty: string; kind?: string }[];
+  /**
+   * The parallel sets this bank already holds, and the number a new one takes.
+   *
+   * This form could only ever write into Set 1, silently, because it never
+   * sent `set_number` -- so a bank built here was a bank of one paper however
+   * many the setter thought they were making, and the only way to build the
+   * other nine was the paper composer on a different screen.
+   *
+   * A set is not a row: it exists because a question carries its number. That
+   * is why there is no "add a set" button anywhere -- an empty Set 4 is not a
+   * thing this model can hold. Choosing "a new set" HERE is what brings one
+   * into being, which is also the honest way to say it.
+   */
+  sets?: number[];
+  nextSet?: number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -1274,19 +1305,41 @@ export function AddQuestion({ bankId, problems = [] }: {
   // A coding question starts as one you write; the picker underneath is for
   // reusing something the bank already has.
   const [problemId, setProblemId] = useState(NEW_PROBLEM);
+  // The last set worked on, so writing five questions into Set 3 is five
+  // choices of question and one choice of set.
+  const [setNumber, setSetNumber] = useState<string>(String(sets[sets.length - 1] ?? 1));
   const [draft, setDraft] = useState<ProblemDraft>(blankProblemDraft);
+  /*
+   * A SECOND draft, for the web question, rather than one draft that changes
+   * kind underneath the form.
+   *
+   * Somebody who writes two test cases, switches to a web question to look at
+   * it and switches back should find their two cases where they left them.
+   * One shared draft would have to either wipe them or carry them into a form
+   * that has no test cases at all.
+   */
+  const [webDraft, setWebDraft] = useState<ProblemDraft>(() => blankProblemDraft('web'));
+  const [webProblemId, setWebProblemId] = useState(NEW_PROBLEM);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   const choice = type === 'single' || type === 'multiple';
   const authoring = problemId === NEW_PROBLEM;
+  // Split by kind: a problem written for one is never a valid answer for the
+  // other, and a menu that offers it is a menu that produces a 422.
+  const codeProblems = problems.filter((pr) => (pr.kind ?? 'code') === 'code');
+  const webProblems = problems.filter((pr) => pr.kind === 'web');
+  const authoringWeb = webProblemId === NEW_PROBLEM;
 
   return (
     <Shell title="New question" cta="Add a question" open={open} setOpen={setOpen}
       pending={pending} error={error}
       onSubmit={() => start(async () => {
         setError(null);
-        const body: Record<string, unknown> = { type, prompt, points: Number(points) || 1 };
+        const body: Record<string, unknown> = {
+          type, prompt, points: Number(points) || 1,
+          set_number: Number(setNumber) || 1,
+        };
         if (choice) {
           const clean = options.filter((o) => o.text.trim());
           if (clean.length < 2) { setError('A choice question needs two options.'); return; }
@@ -1333,6 +1386,23 @@ export function AddQuestion({ bankId, problems = [] }: {
           } else {
             body.problem_id = Number(problemId);
           }
+        } else if (type === 'web') {
+          /*
+           * The same three-then-two step the console makes, in the same order.
+           *
+           * A web problem is created and published without a key -- there are
+           * no test cases to write, because a person marks what was built --
+           * and the question is only posted once that has worked. A question
+           * bound to a half-made problem is worse than a form left open with
+           * the reason on it.
+           */
+          if (authoringWeb) {
+            const made = await createProblemFromDraft(send, 'problems', webDraft);
+            if ('error' in made) { setError(made.error); return; }
+            body.problem_id = made.id;
+          } else {
+            body.problem_id = Number(webProblemId);
+          }
         }
         const res = await send('banks/' + bankId + '/questions', body);
         if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
@@ -1342,6 +1412,8 @@ export function AddQuestion({ bankId, problems = [] }: {
         setAnswer('false');
         setProblemId(NEW_PROBLEM);
         setDraft(blankProblemDraft());
+        setWebProblemId(NEW_PROBLEM);
+        setWebDraft(blankProblemDraft('web'));
         setOpen(false);
         router.refresh();
       })}>
@@ -1372,6 +1444,36 @@ export function AddQuestion({ bankId, problems = [] }: {
             <input id="q-points" type="number" min={1} max={1000} value={points}
               onChange={(e) => setPoints(e.target.value)} className={input + ' mt-1 w-full'} />
           </div>
+        </div>
+
+        {/*
+          * Which set this question joins.
+          *
+          * Shown whenever the bank has one -- including the very first, where
+          * the only choices are Set 1 and starting Set 2 -- because the moment
+          * to decide "this bank rotates" is while writing, not after twenty
+          * questions have silently landed in one pile.
+          */}
+        <div>
+          <label className="block text-[13px] font-semibold text-slate-700" htmlFor="q-set">
+            Set
+          </label>
+          <select id="q-set" value={setNumber} onChange={(e) => setSetNumber(e.target.value)}
+            className={input + ' mt-1 w-full'}>
+            {(sets.length ? sets : [1]).map((n) => (
+              <option key={n} value={n}>Set {n}</option>
+            ))}
+            {/* Not offered on an empty bank, where Set 1 IS the new set and
+                listing "Start Set 1" beside "Set 1" would be the same choice
+                twice under two names. */}
+            {sets.length ? (
+              <option value={nextSet}>Start Set {nextSet} — a new parallel paper</option>
+            ) : null}
+          </select>
+          <p className="mt-1 text-[12px] leading-relaxed text-muted">
+            Candidates are dealt one set each, rotating down the register, so parallel sets
+            should hold the same number of questions and the same shape of them.
+          </p>
         </div>
 
         {choice ? (
@@ -1438,10 +1540,10 @@ export function AddQuestion({ bankId, problems = [] }: {
                   -- but it is not what somebody writing a new question needs
                   first. */}
               <option value={NEW_PROBLEM}>Write the problem here</option>
-              {problems.length ? (
+              {codeProblems.length ? (
                 <optgroup label="Or reuse a published problem">
-                  {problems.map((p) => (
-                    <option key={p.id} value={p.id}>{p.title} ({p.difficulty})</option>
+                  {codeProblems.map((pr) => (
+                    <option key={pr.id} value={pr.id}>{pr.title} ({pr.difficulty})</option>
                   ))}
                 </optgroup>
               ) : null}
@@ -1458,6 +1560,39 @@ export function AddQuestion({ bankId, problems = [] }: {
               <div className="mt-3">
                 <ProblemDraftFields draft={draft} idPrefix="aq-draft"
                   onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
+                  inputClass={input} labelClass="block text-[13px] font-semibold text-slate-700" />
+              </div>
+            ) : null}
+          </div>
+        ) : type === 'web' ? (
+          <div>
+            <label className="block text-[13px] font-semibold text-slate-700" htmlFor="q-web">
+              Built from
+            </label>
+            <select id="q-web" value={webProblemId}
+              onChange={(e) => setWebProblemId(e.target.value)}
+              className={input + ' mt-1 w-full'}>
+              <option value={NEW_PROBLEM}>Write the brief and the starter files here</option>
+              {webProblems.length ? (
+                <optgroup label="Or reuse a published web problem">
+                  {webProblems.map((pr) => (
+                    <option key={pr.id} value={pr.id}>{pr.title}</option>
+                  ))}
+                </optgroup>
+              ) : null}
+            </select>
+            <p className="mt-1 text-xs leading-relaxed text-muted">
+              {authoringWeb
+                ? 'A candidate opens the three files below, edits them, and sees their page '
+                  + 'render as they type. There are no test cases: a person marks what was '
+                  + 'built, with the rendered page and all three files side by side.'
+                : 'Marked by a person, who sees the candidate\u2019s page rendered and can read '
+                  + 'all three files.'}
+            </p>
+            {authoringWeb ? (
+              <div className="mt-3">
+                <ProblemDraftFields draft={webDraft} idPrefix="aq-web"
+                  onChange={(patch) => setWebDraft((d) => ({ ...d, ...patch }))}
                   inputClass={input} labelClass="block text-[13px] font-semibold text-slate-700" />
               </div>
             ) : null}

@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: 'Question bank' };
 
 interface Question {
   id: number;
-  type: 'single' | 'multiple' | 'truefalse' | 'short' | 'essay' | 'code';
+  type: 'single' | 'multiple' | 'truefalse' | 'short' | 'essay' | 'code' | 'web';
   prompt: string;
   options: { id: string; text: string }[] | null;
   /** Fetched but not rendered in the read-only row -- see the page's own
@@ -25,6 +25,9 @@ interface Question {
   difficulty: string;
   version: number;
   status: string;
+  /** Which parallel set it belongs to. Absent means Set 1, which is where
+   *  every question written before sets existed lives. */
+  set_number?: number | null;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -55,12 +58,24 @@ export default async function OnyxBankPage({ params }: { params: Promise<{ id: s
   const me = await onyxApi<Me>('/api/onyx/me');
   if (!isExamsStaff(me.role)) redirect('/onyx/denied');
 
-  const [banks, questions, allProblems] = await Promise.all([
+  const [banks, questions, allProblems, setRows] = await Promise.all([
     onyxApi<{ id: number; name: string; description: string | null; course_id: number | null }[]>(
       '/api/onyx/banks'),
     onyxApiRecord<Question[]>('/api/onyx/banks/' + id + '/questions'),
-    onyxApiSafe<{ id: number; title: string; difficulty: string; status: string }[]>(
-      '/api/onyx/problems'),
+    onyxApiSafe<{
+      id: number; title: string; difficulty: string; status: string; kind?: string;
+    }[]>('/api/onyx/problems'),
+    /*
+     * The parallel sets this bank holds.
+     *
+     * A set is not a row anywhere -- it exists because questions carry a
+     * `set_number` -- so "how many sets are there" is a question only this
+     * endpoint answers, and this page had never asked. Every question
+     * therefore looked like it belonged to one undifferentiated pile, on a
+     * bank that might be dealing ten rotating papers.
+     */
+    onyxApiSafe<{ set_number: number; count: number; marks: number }[]>(
+      '/api/onyx/banks/' + id + '/sets'),
   ]);
   /*
    * Published only, and filtered HERE rather than relied on upstream.
@@ -78,6 +93,20 @@ export default async function OnyxBankPage({ params }: { params: Promise<{ id: s
   const marks = questions.reduce((sum, q) => sum + Number(q.points), 0);
   const objective = questions.filter((q) => OBJECTIVE.has(q.type)).length;
   const revised = questions.filter((q) => q.version > 1).length;
+
+  /*
+   * What the sets are, and what the next one would be.
+   *
+   * `sets` is what exists; `nextSet` is what "add a set" means here. There is
+   * no create-a-set call and there should not be: a set BECOMES real when a
+   * question is written into it, so offering an empty Set 4 to sit in the bank
+   * unfilled would be offering a thing the model cannot hold.
+   */
+  const sets = (setRows ?? []).map((sx) => ({
+    number: Number(sx.set_number), count: Number(sx.count), marks: Number(sx.marks),
+  }));
+  const nextSet = sets.reduce((n, sx) => Math.max(n, sx.number), 0) + 1;
+  const uneven = new Set(sets.map((sx) => sx.count)).size > 1;
 
   // Same course-ownership rule the API enforces (AssessService#assertCanAuthor):
   // admin and exams author anything, a bank with no course is open to any of
@@ -134,9 +163,54 @@ export default async function OnyxBankPage({ params }: { params: Promise<{ id: s
           note="earlier versions kept" />
       </CardGrid>
 
+      {/*
+        * The sets, said plainly.
+        *
+        * A bank of ten sets and a bank of one look identical in a list of
+        * questions, and they behave completely differently: ten sets rotate
+        * down the register so neighbours never hold the same paper, one set is
+        * one paper everybody sits. That distinction decides whether the bank
+        * can be scheduled at all, and this page did not mention it.
+        */}
+      {sets.length ? (
+        <section className="mt-5" aria-labelledby="bank-sets-h">
+          <h2 id="bank-sets-h" className="text-[12.5px] font-bold uppercase
+                                          tracking-[.07em] text-muted">
+            Sets
+          </h2>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {sets.map((sx) => (
+              <span key={sx.number}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-line
+                           bg-white px-2.5 py-1.5 text-[12.5px]">
+                <span className="font-bold">Set {sx.number}</span>
+                <span className="tabular-nums text-muted">
+                  {sx.count} {sx.count === 1 ? 'question' : 'questions'} · {sx.marks} marks
+                </span>
+              </span>
+            ))}
+          </div>
+          {uneven ? (
+            <p className="mt-2 max-w-[62ch] rounded-xl bg-amber-50 px-3 py-2 text-[12.5px]
+                          leading-relaxed text-amber-900">
+              These sets are different sizes. Candidates are dealt one set each, so unequal
+              sets mean unequal papers — even out the short ones before scheduling.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
       {canEdit ? (
         <div className="mt-5">
-          <AddQuestion problems={problems} bankId={Number(id)} />
+          {/*
+            * `sets` and `nextSet` are what turn "add a question" into "add a
+            * question, or start a new set". There is no separate Add-a-set
+            * button because there is nothing to add until a question is in it
+            * -- so the choice lives where the question is written, and picking
+            * "a new set" is what brings one into being.
+            */}
+          <AddQuestion problems={problems} bankId={Number(id)}
+            sets={sets.map((sx) => sx.number)} nextSet={nextSet} />
         </div>
       ) : null}
 
@@ -152,6 +226,7 @@ export default async function OnyxBankPage({ params }: { params: Promise<{ id: s
           head={<>
             <th scope="col" className="w-10">#</th>
             <th scope="col">Question</th>
+            {sets.length > 1 ? <th scope="col">Set</th> : null}
             <th scope="col">Type</th>
             <th scope="col">Difficulty</th>
             <th scope="col" className="text-right">Marks</th>
@@ -177,6 +252,11 @@ export default async function OnyxBankPage({ params }: { params: Promise<{ id: s
                   <div className="mt-2"><EditQuestionForm questionId={q.id} question={q} /></div>
                 ) : null}
               </td>
+              {sets.length > 1 ? (
+                <td className="whitespace-nowrap tabular-nums">
+                  <Pill tone="brand">Set {q.set_number ?? 1}</Pill>
+                </td>
+              ) : null}
               <td><Pill>{TYPE_LABELS[q.type] ?? q.type}</Pill></td>
               <td>
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -193,7 +273,7 @@ export default async function OnyxBankPage({ params }: { params: Promise<{ id: s
             </tr>
           ))}
           {questions.length === 0 ? (
-            <EmptyRow colSpan={canEdit ? 6 : 5} icon="edit">
+            <EmptyRow colSpan={(canEdit ? 6 : 5) + (sets.length > 1 ? 1 : 0)} icon="edit">
               Nothing here yet. A question added to this bank can be drawn into any paper.
             </EmptyRow>
           ) : null}
