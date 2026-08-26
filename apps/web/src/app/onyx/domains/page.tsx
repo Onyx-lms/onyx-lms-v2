@@ -5,6 +5,7 @@ import { DomainComposer } from '@/components/onyx-domain-composer';
 import { navFor } from '@/lib/onyx-nav';
 import { onyxApi, onyxApiSafe, requireOnyxSession, type Me } from '@/lib/onyx-session';
 import { Card, CardGrid, Empty, Icon, Pill } from '@/components/onyx-ui';
+import { RegisterForDomain } from '@/components/onyx-domain-register';
 import type { OnyxDomainRow } from '@/lib/onyx-domains';
 import { domainPrice } from '@/lib/onyx-domains';
 
@@ -25,7 +26,7 @@ export const metadata: Metadata = { title: 'Live Classes' };
 export default async function OnyxDomainsPage() {
   await requireOnyxSession();
 
-  const [me, domains, perms, mine] = await Promise.all([
+  const [me, domains, perms, mine, gateways] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
     // `?all=1` is safe to send always: the route honours it only for the roles
     // that could hide a domain in the first place, the same trick /courses uses.
@@ -34,8 +35,16 @@ export default async function OnyxDomainsPage() {
     // What this person has already signed up for, so a tile can say so rather
     // than quietly offering it to them a second time.
     onyxApiSafe<number[]>('/api/onyx/my/domains'),
+    /*
+     * Which of the two paths a tile offers, decided HERE and not in the
+     * browser -- the same rule the detail page and the course card follow. A
+     * client that could choose between the mock and a real gateway would be a
+     * client that could choose to pay nothing.
+     */
+    onyxApiSafe<{ identifier: string }[]>('/api/onyx/gateways'),
   ]);
   const registered = new Set((mine ?? []).map(Number));
+  const gateway = gateways?.[0]?.identifier ?? null;
 
   // Asked of the API rather than worked out here. The permissions endpoint
   // already returns what THIS caller may do, so the screen has no second,
@@ -124,6 +133,36 @@ export default async function OnyxDomainsPage() {
                     </span>
                   ) : null}
                 </div>
+
+                {/*
+                  * Signing up, from the tile.
+                  *
+                  * A course can be joined or bought without leaving the
+                  * catalogue and this could not: the price was advertised here
+                  * and the only way to act on it was to open the page behind
+                  * the tile and find the button again. A catalogue that shows a
+                  * price and offers no way to take it sends everybody one click
+                  * further for nothing.
+                  *
+                  * `relative z-10` for the reason the rest of this card body
+                  * has it: the whole tile is an overlay link, and a control
+                  * that does not sit above it is a control the link swallows.
+                  *
+                  * Staff are not offered it -- somebody who can edit what is
+                  * advertised is not the audience for signing up to it.
+                  */}
+                {me.role === 'student' && d.status === 1 && !mayManage ? (
+                  <div className="relative z-10">
+                    <RegisterForDomain
+                      domainId={Number(d.id)}
+                      title={String(d.title)}
+                      price={Number(d.price_minor ?? 0)}
+                      currency={String(d.currency ?? 'INR')}
+                      gateway={gateway}
+                      registered={registered.has(Number(d.id))}
+                    />
+                  </div>
+                ) : null}
               </div>
             </Card>
           ))}

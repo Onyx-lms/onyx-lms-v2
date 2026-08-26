@@ -75,6 +75,16 @@ export function canonicalise(payload: {
 export const checksumOf = (canonical: string) =>
   createHash('sha256').update(canonical).digest('hex');
 
+/**
+ * How a course's candidate list is read: one page, then the next.
+ *
+ * A thousand is what the server returns for a request naming no range, so it
+ * is the largest useful page. The ceiling is a runaway guard rather than a
+ * product limit.
+ */
+const CANDIDATE_PAGE = 1000;
+const CANDIDATE_CEILING = 100_000;
+
 export class ExaminationsService {
   #db: OnyxDb;
   #audit: AuditService;
@@ -99,9 +109,26 @@ export class ExaminationsService {
   async #candidates(tenantId: number, courseId: number): Promise<Set<string>> {
     // `status` is a smallint (1 = active), same as everywhere else in Onyx
     // Learn -- see academics.service.ts. It is not the string 'active'.
-    const { data } = await this.#db.from('onyx_enrollments').select('user_id')
-      .eq('tenant_id', tenantId).eq('course_id', courseId).eq('status', 1);
-    return new Set((data ?? []).map((e) => String(e.user_id)));
+    //
+    // PAGED, and it matters more here than almost anywhere: this set is what
+    // decides whether two sittings would put the same person in two halls at
+    // once. The read named no range, so a course of 1,440 answered with a
+    // thousand -- which under-counted the warning ("1000 learners are already
+    // sitting X") and, far worse, could clear a genuine clash for anybody
+    // past the thousandth row. A scheduling check that silently stops looking
+    // is a check that says yes when it means "I did not look".
+    const ids = new Set<string>();
+    for (let from = 0; from < CANDIDATE_CEILING; from += CANDIDATE_PAGE) {
+      // eslint-disable-next-line no-await-in-loop -- each page needs the one
+      // before it to have arrived before it knows whether to ask for another.
+      const { data } = await this.#db.from('onyx_enrollments').select('user_id, id')
+        .eq('tenant_id', tenantId).eq('course_id', courseId).eq('status', 1)
+        .order('id').range(from, from + CANDIDATE_PAGE - 1);
+      const page = data ?? [];
+      for (const e of page) ids.add(String(e.user_id));
+      if (page.length < CANDIDATE_PAGE) break;
+    }
+    return ids;
   }
 
   async schedule(tenantId: number, actor: { userId: string; role: Role }, input: {
