@@ -38,6 +38,17 @@ export interface AvatarStorage {
 
 const USER_COLUMNS = 'id, email, name, phone, photo, status, email_verified_at, created_at';
 const PROFILE_COLUMNS = 'id, email, name, phone, photo, status, created_at, username, headline, bio, skills_text, interests, experience, website, profile_public';
+/**
+ * How a roster is read: one page, then the next.
+ *
+ * A thousand is what the server returns for a request naming no range, so it
+ * is the largest useful page. The ceiling is a runaway guard rather than a
+ * product limit -- an institution with more members than this has a data
+ * problem, and stopping beats paging forever.
+ */
+const MEMBER_PAGE = 1000;
+const MEMBER_CEILING = 100_000;
+
 const MEMBERSHIP_COLUMNS = 'id, tenant_id, user_id, role, status, roll_number, section_id, permissions, created_at';
 
 /**
@@ -1240,6 +1251,37 @@ export class TenancyService {
    * are not directory lookups -- dropping staff entirely would turn those
    * screens back into raw ids to solve a problem they are not part of.
    */
+  /**
+   * How many members there are, without fetching any of them.
+   *
+   * A screen showing the first hundred still has to say "of 1,440", and
+   * counting the rows it was given would say "of 100". Exact head counts, one
+   * per role, returning no rows at all.
+   */
+  async memberCounts(tenantId: number, filters: {
+    role?: Role; sectionId?: number | 'none';
+  } = {}): Promise<{ total: number; by_role: Record<string, number> }> {
+    const head = { count: 'exact' as const, head: true };
+    const scoped = () => {
+      let q = this.#db.from('onyx_memberships')
+        .select('id', head).eq('tenant_id', tenantId).eq('status', 1);
+      if (filters.sectionId === 'none') q = q.is('section_id', null);
+      else if (filters.sectionId !== undefined) q = q.eq('section_id', filters.sectionId);
+      return q;
+    };
+
+    const perRole = await Promise.all(ROLES.map(async (role) => {
+      const { count } = await scoped().eq('role', role);
+      return [role, count ?? 0] as const;
+    }));
+    const by_role: Record<string, number> = {};
+    for (const [role, n] of perRole) if (n > 0) by_role[role] = n;
+    const total = filters.role
+      ? by_role[filters.role] ?? 0
+      : Object.values(by_role).reduce((sum, n) => sum + n, 0);
+    return { total, by_role };
+  }
+
   async members(tenantId: number, filters: {
     role?: Role; search?: string; onlyStudentsOn?: number[];
     /**
@@ -1250,6 +1292,14 @@ export class TenancyService {
      * make the people who most need moving the ones hardest to find.
      */
     sectionId?: number | 'none';
+    /**
+     * How many to return, for a screen that shows a page rather than a roll.
+     *
+     * Absent means everybody -- which is what the name lookups behind
+     * registers, marks and enrolment pickers need, and what they have always
+     * had. A screen asking for a page passes one and says so on the page.
+     */
+    limit?: number;
   } = {}) {
     /*
      * Members, not applicants.
@@ -1264,13 +1314,42 @@ export class TenancyService {
      * pendingMembers() is where they are, and the People screen shows that
      * list above this one.
      */
-    let query = this.#db.from('onyx_memberships')
-      .select(MEMBERSHIP_COLUMNS).eq('tenant_id', tenantId).eq('status', 1);
-    if (filters.role) query = query.eq('role', filters.role);
-    if (filters.sectionId === 'none') query = query.is('section_id', null);
-    else if (filters.sectionId !== undefined) query = query.eq('section_id', filters.sectionId);
-    const { data } = await query.order('id');
-    const rows = data ?? [];
+    const scoped = () => {
+      let query = this.#db.from('onyx_memberships')
+        .select(MEMBERSHIP_COLUMNS).eq('tenant_id', tenantId).eq('status', 1);
+      if (filters.role) query = query.eq('role', filters.role);
+      if (filters.sectionId === 'none') query = query.is('section_id', null);
+      else if (filters.sectionId !== undefined) query = query.eq('section_id', filters.sectionId);
+      return query;
+    };
+
+    /*
+     * PAGED, because "no limit" is not "all of them".
+     *
+     * This asked for the roster with no range, which reads as everybody and is
+     * not: a request naming none comes back capped at a thousand rows. An
+     * institution with 1,445 members therefore had a roster of 1,000 -- and
+     * this is the list behind the enrolment picker, the register name lookups
+     * and the member directory, so 445 people were absent from all three with
+     * nothing anywhere saying so.
+     *
+     * A caller that asked for a page gets exactly that page and no loop.
+     */
+    const rows: Awaited<ReturnType<typeof scoped>>['data'] extends (infer R)[] | null
+      ? R[] : never[] = [] as never;
+    if (filters.limit) {
+      const { data } = await scoped().order('id').range(0, filters.limit - 1);
+      rows.push(...(data ?? []));
+    } else {
+      for (let from = 0; from < MEMBER_CEILING; from += MEMBER_PAGE) {
+        // eslint-disable-next-line no-await-in-loop -- each page needs the last
+        // to have arrived before it knows whether to ask for another.
+        const { data } = await scoped().order('id').range(from, from + MEMBER_PAGE - 1);
+        const page = data ?? [];
+        rows.push(...page);
+        if (page.length < MEMBER_PAGE) break;
+      }
+    }
     if (!rows.length) return [];
 
     const ids = [...new Set(rows.map((r) => String(r.user_id)))];

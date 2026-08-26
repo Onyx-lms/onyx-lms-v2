@@ -500,6 +500,7 @@ docs:check` fails the build if it has.
 | `DELETE` | `/api/onyx/sections/:id` | admin |
 | `PUT` | `/api/onyx/members/:id/section` | admin, exams |
 | `GET` | `/api/onyx/members` | admin, faculty, exams |
+| `GET` | `/api/onyx/members/count` | admin, faculty, exams |
 | `POST` | `/api/onyx/members` | admin, exams, placement |
 | `PATCH` | `/api/onyx/members/:id` | admin, exams, placement, faculty |
 | `DELETE` | `/api/onyx/members/:id` | admin |
@@ -507,4 +508,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_421 endpoints across 9 route files._
+_422 endpoints across 9 route files._

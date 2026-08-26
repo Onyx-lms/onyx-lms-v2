@@ -212,11 +212,22 @@ export async function createProblemFromDraft(
  * different layouts around them, so the styles come in as props rather than
  * this component picking one and looking foreign in the other builder.
  */
-export function ProblemDraftFields({ draft, onChange, inputClass, labelClass }: {
+export function ProblemDraftFields({
+  draft, onChange, inputClass, labelClass, idPrefix = 'np',
+}: {
   draft: ProblemDraft;
   onChange: (patch: Partial<ProblemDraft>) => void;
   inputClass: string;
   labelClass: string;
+  /**
+   * Distinguishes one copy of this form from the next.
+   *
+   * A paper builder renders these fields once per question, and every `id`
+   * here used to be a constant -- so a ten-question paper had ten elements
+   * called `np-title`, every label pointed at the first of them, and clicking
+   * "Description" on question 7 put the cursor in question 1.
+   */
+  idPrefix?: string;
 }) {
   const setCase = (i: number, patch: Partial<ProblemDraft['cases'][number]>) =>
     onChange({ cases: draft.cases.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
@@ -234,15 +245,16 @@ export function ProblemDraftFields({ draft, onChange, inputClass, labelClass }: 
       </p>
 
       <div>
-        <label className={labelClass} htmlFor="np-title">Problem title</label>
-        <input id="np-title" value={draft.title} placeholder="Two Sum"
+        <label className={labelClass} htmlFor={idPrefix + '-title'}>Problem title</label>
+        <input id={idPrefix + '-title'} value={draft.title}
+          placeholder={web ? 'A landing page for the coding club' : 'Two Sum'}
           onChange={(e) => onChange({ title: e.target.value })}
           className={inputClass + ' mt-1 w-full'} />
       </div>
 
       <div>
-        <label className={labelClass} htmlFor="np-statement">Description</label>
-        <textarea id="np-statement" rows={4} value={draft.statement}
+        <label className={labelClass} htmlFor={idPrefix + '-statement'}>Description</label>
+        <textarea id={idPrefix + '-statement'} rows={4} value={draft.statement}
           placeholder={web
             ? 'What the page must show and do — the layout, the styling and what should '
               + 'happen when somebody interacts with it.'
@@ -250,15 +262,19 @@ export function ProblemDraftFields({ draft, onChange, inputClass, labelClass }: 
           onChange={(e) => onChange({ statement: e.target.value })}
           className={inputClass + ' mt-1 w-full'} />
         <p className="mt-1 text-[12px] text-muted">
-          Optional. Left blank, the candidate reads the question above and the visible test
-          cases, which is often enough for a short problem.
+          {web
+            ? 'Optional, and worth writing: a web page has no test cases to read, so this '
+              + 'brief and the question above are the whole of what the candidate is asked '
+              + 'for — and they are what you will mark against.'
+            : 'Optional. Left blank, the candidate reads the question above and the visible '
+              + 'test cases, which is often enough for a short problem.'}
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className={labelClass} htmlFor="np-difficulty">Difficulty</label>
-          <select id="np-difficulty" value={draft.difficulty}
+          <label className={labelClass} htmlFor={idPrefix + '-difficulty'}>Difficulty</label>
+          <select id={idPrefix + '-difficulty'} value={draft.difficulty}
             onChange={(e) => onChange({ difficulty: e.target.value })}
             className={inputClass + ' mt-1 w-full'}>
             <option value="easy">easy</option>
@@ -267,8 +283,9 @@ export function ProblemDraftFields({ draft, onChange, inputClass, labelClass }: 
           </select>
         </div>
         <div>
-          <label className={labelClass} htmlFor="np-topic">Topic</label>
-          <input id="np-topic" value={draft.topic} placeholder="Arrays"
+          <label className={labelClass} htmlFor={idPrefix + '-topic'}>Topic</label>
+          <input id={idPrefix + '-topic'} value={draft.topic}
+            placeholder={web ? 'Layout' : 'Arrays'}
             onChange={(e) => onChange({ topic: e.target.value })}
             className={inputClass + ' mt-1 w-full'} />
         </div>
@@ -277,15 +294,15 @@ export function ProblemDraftFields({ draft, onChange, inputClass, labelClass }: 
         {web ? null : (
           <>
             <div>
-              <label className={labelClass} htmlFor="np-time">Time per case (s)</label>
-              <input id="np-time" type="number" min={0.1} max={30} step="0.1"
+              <label className={labelClass} htmlFor={idPrefix + '-time'}>Time per case (s)</label>
+              <input id={idPrefix + '-time'} type="number" min={0.1} max={30} step="0.1"
                 value={draft.timeLimit}
                 onChange={(e) => onChange({ timeLimit: e.target.value })}
                 className={inputClass + ' mt-1 w-full'} />
             </div>
             <div>
-              <label className={labelClass} htmlFor="np-memory">Memory per case (MB)</label>
-              <input id="np-memory" type="number" min={16} max={1024} value={draft.memoryLimit}
+              <label className={labelClass} htmlFor={idPrefix + '-memory'}>Memory per case (MB)</label>
+              <input id={idPrefix + '-memory'} type="number" min={16} max={1024} value={draft.memoryLimit}
                 onChange={(e) => onChange({ memoryLimit: e.target.value })}
                 className={inputClass + ' mt-1 w-full'} />
             </div>

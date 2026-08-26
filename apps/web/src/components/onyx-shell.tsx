@@ -65,7 +65,7 @@ export function OnyxShell({ me, title, subtitle, children, action }: {
 
       <div className="grid gap-7 px-4 pb-24 pt-5
                       lg:grid-cols-[216px_minmax(0,1fr)] lg:items-start lg:px-7 lg:pb-10 lg:pt-7">
-        <aside className="hidden lg:sticky lg:top-[84px] lg:block" data-rail>
+        <aside className="rail-scroll hidden lg:sticky lg:top-[84px] lg:block" data-rail>
           <TenantCard tenant={me.tenant} role={me.role}
             memberships={me.memberships} />
           {/* Adding a person is not a navigation item. It used to be a

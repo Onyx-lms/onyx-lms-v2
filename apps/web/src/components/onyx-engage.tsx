@@ -59,7 +59,20 @@ export function OnyxNudges({ nudges }: { nudges: Nudge[] }) {
         >
           <div>
             {n.href ? (
-              <Link href={n.href} className="font-semibold hover:underline">{n.message}</Link>
+              /*
+               * `-my-0.5 py-0.5` is the hit area, not the look.
+               *
+               * A nudge's whole sentence is the link -- so it is a standing
+               * call to action, not a word inside prose, and WCAG 2.2 AA
+               * (2.5.8) wants 24px of it. At this size the line box is 19px,
+               * so it takes a full 4px each side to clear the floor -- 2px
+               * would land on 23 and still fail. The equal negative margin
+               * hands the space back, so the card is unmoved.
+               */
+              <Link href={n.href}
+                className="-my-1 inline-block py-1 font-semibold hover:underline">
+                {n.message}
+              </Link>
             ) : (
               <span className="font-semibold">{n.message}</span>
             )}

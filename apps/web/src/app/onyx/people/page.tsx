@@ -17,17 +17,40 @@ const ROLE_TITLE: Partial<Record<Member['role'], string>> = {
  * here with it set, rather than needing their own pages for what is the same
  * roster with a different starting filter. */
 export default async function OnyxPeoplePage(
-  { searchParams }: { searchParams: Promise<{ role?: string }> },
+  { searchParams }: { searchParams: Promise<{ role?: string; q?: string }> },
 ) {
   const claims = await requireOnyxPageRole('admin', 'faculty');
-  const { role } = await searchParams;
-  const [me, members, sections] = await Promise.all([
+  const { role, q } = await searchParams;
+  /*
+   * A PAGE of the roster, and a count of the whole of it.
+   *
+   * This used to fetch every member and render every one. At 1,445 people that
+   * was 1.8MB of HTML -- a browser parsing 1,445 table rows before anybody
+   * could read the first name -- and it was not even the whole roster: the
+   * read had no range, so it silently stopped at a thousand and 445 people
+   * were missing with nothing saying so.
+   *
+   * So the server searches and the server counts. `PAGE` rows arrive, the
+   * heading says how many there are in all, and the search box is a GET form
+   * -- the query lives in the URL, survives a reload, and can be sent to a
+   * colleague, which a box that filters an array in the browser cannot do.
+   */
+  const PAGE = 100;
+  const query = '?limit=' + PAGE
+    + (role ? '&role=' + encodeURIComponent(role) : '')
+    + (q ? '&search=' + encodeURIComponent(q) : '');
+  const [me, members, counts, sections] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
-    onyxApi<Member[]>('/api/onyx/members'),
+    onyxApi<Member[]>('/api/onyx/members' + query),
+    onyxApiSafe<{ total: number; by_role: Record<string, number> }>(
+      '/api/onyx/members/count' + (role ? '?role=' + encodeURIComponent(role) : '')),
     // For the add form's division picker. Safe if it fails: an institution
     // that runs no sections simply is not offered one.
     onyxApiSafe<{ id: number; name: string; status: number }[]>('/api/onyx/sections'),
   ]);
+  /** How many there are in all, which is not how many are on this page. */
+  const total = counts?.total ?? members.length;
+  const capped = members.length >= PAGE && total > members.length;
   const initialRole = role as Member['role'] | undefined;
 
   /**
@@ -39,8 +62,15 @@ export default async function OnyxPeoplePage(
    * the design shows -- active, invited, suspended -- have nothing behind
    * them: `/api/onyx/members` returns a role and a user, and no lifecycle.
    */
+  /*
+   * Counted by the server, not by the rows on this page.
+   *
+   * The strip used to tally the array it had been handed, which was right
+   * while that array was everybody and became a lie the moment it was a page:
+   * "100 students" under a heading saying 1,440.
+   */
   const count = (...roles: Member['role'][]) =>
-    members.filter((m) => roles.includes(m.role)).length;
+    roles.reduce((sum, r) => sum + (counts?.by_role?.[r] ?? 0), 0);
 
   return (
     <OnyxShell
@@ -61,6 +91,9 @@ export default async function OnyxPeoplePage(
       <SectionHead title="Roster" />
       <OnyxPeople members={members} canEdit={claims.tenant_role === 'admin'}
         initialRole={initialRole} tenantName={me.tenant.name}
+        search={q ?? ''}
+        total={total}
+        capped={capped}
         sections={(sections ?? []).filter((sx) => sx.status === 1)
           .map((sx) => ({ id: Number(sx.id), name: String(sx.name) }))} />
 

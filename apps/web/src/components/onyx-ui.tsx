@@ -389,9 +389,18 @@ export function ListRow({ icon, title, href, meta, chips, action, trailing, tone
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           {href ? (
-            // The whole title is the target, not a "view" link at the end of
-            // the row -- a five-pixel word is a poor thing to ask a thumb for.
-            <Link href={href} className="truncate text-[15px] font-semibold hover:underline">
+            /*
+             * The whole title is the target, not a "view" link at the end of
+             * the row -- a five-pixel word is a poor thing to ask a thumb for.
+             *
+             * `py-0.5 -my-0.5` is the hit area, not the look. At this size the
+             * line box is 23px tall and WCAG 2.2 AA (2.5.8) asks for 24; the
+             * padding takes the target to 27 and the equal negative margin
+             * gives the space back to the layout, so the row sits exactly
+             * where it did and the thumb gets four more pixels of it.
+             */
+            <Link href={href}
+              className="-my-0.5 truncate py-0.5 text-[15px] font-semibold hover:underline">
               {title}
             </Link>
           ) : (

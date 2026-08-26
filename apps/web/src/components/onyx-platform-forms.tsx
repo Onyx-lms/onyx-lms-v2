@@ -4543,6 +4543,7 @@ export function ConsoleCreatePaper({ tenantId, courses, problems = [] }: {
                       {q.problemId === NEW_CONSOLE_PROBLEM ? (
                         <div className="mt-2.5">
                           <ProblemDraftFields draft={q.draft}
+                            idPrefix={'console-draft-' + i}
                             onChange={(patch) => setQuestion(i,
                               { draft: { ...q.draft, ...patch } })}
                             inputClass={field} labelClass={label} />

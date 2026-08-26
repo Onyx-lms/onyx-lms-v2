@@ -515,4 +515,33 @@
   .rows-linked tbody tr > td:first-child a:first-of-type { position: static; }
   /* The whole row is a target, so it should look like one. */
   .rows-linked tbody tr:has(> td:first-child a) { cursor: pointer; }
+
+  /*
+   * A sidebar that scrolls on its own.
+   *
+   * Both rails are `position: sticky`, which is what keeps navigation beside
+   * the page instead of at the top of it -- and is also what made the bottom
+   * of a long menu unreachable. The console's rail carries an operator card,
+   * sixteen destinations and a sign-out; on a laptop that is taller than the
+   * viewport, and being pinned meant scrolling the page moved everything
+   * EXCEPT the one column with the items you were trying to reach. Settings
+   * and Permissions simply could not be clicked.
+   *
+   * So the rail gets its own scrollbar, and `overscroll-behavior: contain`
+   * keeps the two scrolls separate: reaching the end of the menu stops there
+   * rather than handing the wheel to the page underneath it.
+   *
+   * `--rail-top` is the offset the rail is pinned at, so the height is
+   * whatever is left of the screen below it, less a little breathing room.
+   */
+  @media (min-width: 1024px) {
+    .rail-scroll {
+      max-height: calc(100vh - var(--rail-top, 84px) - 1.25rem);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      /* Room for the scrollbar so it never sits on top of a label. */
+      padding-right: 0.35rem;
+      scrollbar-width: thin;
+    }
+  }
 }

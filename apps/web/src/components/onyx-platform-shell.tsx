@@ -125,7 +125,7 @@ export function OnyxPlatformShell({
 
       <div className="grid gap-7 px-4 pb-10 pt-5 lg:grid-cols-[216px_minmax(0,1fr)]
                       lg:items-start lg:px-7 lg:pt-7">
-        <aside className="hidden lg:sticky lg:top-[84px] lg:block">
+        <aside className="rail-scroll hidden lg:sticky lg:top-[84px] lg:block">
           <div className="rounded-2xl border border-line bg-white p-3.5">
             <div className="text-[10.5px] font-bold uppercase tracking-[.09em] text-muted">
               Operator

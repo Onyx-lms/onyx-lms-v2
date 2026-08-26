@@ -36,7 +36,24 @@ export function StorefrontChrome({ header, footer, children }: {
           focusable, so without it the skip link only scrolls, focus stays on
           the link, and a screen reader never announces the jump. -1 keeps it
           out of the normal Tab order; it is only ever focused by that link. */}
-      <main id="main" tabIndex={-1} className="flex-1">{children}</main>
+      {/*
+        * `min-w-0`, and it is load-bearing on every page in the product.
+        *
+        * A flex item's `min-width` defaults to `auto`, which means it refuses
+        * to shrink below its own content -- so anything wide inside this
+        * landmark (a long email, a table, a nowrap row) pushed the LANDMARK
+        * wider than the viewport instead of being contained by it. The whole
+        * document then scrolled sideways, which on a phone takes the header,
+        * the navigation and every button with it: you scroll to read a table
+        * cell and the menu button is no longer where your thumb left it.
+        *
+        * It was measured on a 360px screen and it was real -- /onyx/profile
+        * overflowed by 17-58px depending on the name in it. The fix is one
+        * class because the cause is one CSS default, and the pages inside were
+        * already careful: `min-w-0` appears on nearly every content column in
+        * this codebase. This is the one above all of them.
+        */}
+      <main id="main" tabIndex={-1} className="min-w-0 flex-1">{children}</main>
       {onyx ? null : footer}
     </>
   );

@@ -604,6 +604,7 @@ export function BankComposer({
                       onChange={(patch) => patchQuestion(i, {
                         problem: { ...q.problem, ...patch },
                       })}
+                      idPrefix={'bc-code-' + active + '-' + i}
                       inputClass={field + ' text-xs'}
                       labelClass={label} />
                   </div>
@@ -634,6 +635,7 @@ export function BankComposer({
                       onChange={(patch) => patchQuestion(i, {
                         webProblem: { ...q.webProblem, ...patch },
                       })}
+                      idPrefix={'bc-web-draft-' + active + '-' + i}
                       inputClass={field + ' text-xs'}
                       labelClass={label} />
                   </div>

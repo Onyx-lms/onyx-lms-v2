@@ -1512,9 +1512,13 @@ function ReadinessCard({ readiness }: { readiness: LearnerReadiness }) {
               here are still unearned &mdash; more than anywhere else.
             </p>
             {link ? (
+              // `min-h-[24px]`, and the same on "How this is worked out"
+              // below: both are standing calls to action rather than words
+              // inside a sentence, so the 24px floor in WCAG 2.5.8 applies to
+              // them with no exception to claim. Small type made them 19px.
               <Link href={link.href}
-                className="mt-1.5 inline-flex items-center gap-1 text-[12.5px] font-bold
-                           text-brand-600 hover:underline">
+                className="mt-1.5 inline-flex min-h-[24px] items-center gap-1 text-[12.5px]
+                           font-bold text-brand-600 hover:underline">
                 {link.verb}
                 <Icon name="chevron" className="h-3.5 w-3.5" />
               </Link>
@@ -1530,7 +1534,8 @@ function ReadinessCard({ readiness }: { readiness: LearnerReadiness }) {
 
         <div className="mt-3">
           <Link href="/onyx/profile"
-            className="text-[12.5px] font-bold text-brand-600 hover:underline">
+            className="inline-flex min-h-[24px] items-center text-[12.5px] font-bold
+                       text-brand-600 hover:underline">
             How this is worked out
           </Link>
         </div>

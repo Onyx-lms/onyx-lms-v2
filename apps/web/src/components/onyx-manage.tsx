@@ -1456,7 +1456,7 @@ export function AddQuestion({ bankId, problems = [] }: {
             </p>
             {authoring ? (
               <div className="mt-3">
-                <ProblemDraftFields draft={draft}
+                <ProblemDraftFields draft={draft} idPrefix="aq-draft"
                   onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
                   inputClass={input} labelClass="block text-[13px] font-semibold text-slate-700" />
               </div>
@@ -3128,7 +3128,7 @@ export function CreatePaper({ courses, problems = [] }: {
                 </select>
                 {q.problemId === NEW_PAPER_PROBLEM ? (
                   <div className="mt-2">
-                    <ProblemDraftFields draft={q.draft}
+                    <ProblemDraftFields draft={q.draft} idPrefix={'paper-draft-' + i}
                       onChange={(patch) => setQuestion(i, { draft: { ...q.draft, ...patch } })}
                       inputClass={input + ' text-xs'}
                       labelClass="block text-xs font-semibold text-slate-700" />

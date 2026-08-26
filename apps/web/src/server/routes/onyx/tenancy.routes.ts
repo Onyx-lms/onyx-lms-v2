@@ -673,7 +673,9 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
     // this" name lookup admin/faculty already had -- without it, Invigilate
     // could only ever show a candidate's raw id to that role.
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty', 'exams');
-    const q = req.query as { role?: Role; search?: string; section_id?: string };
+    const q = req.query as {
+      role?: Role; search?: string; section_id?: string; limit?: string;
+    };
     // A lecturer's directory is their own class lists. Admin and the
     // examinations office run the institution and keep the whole roster.
     const onlyStudentsOn = claims.tenant_role === 'faculty'
@@ -684,6 +686,33 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
       role: q.role, search: q.search,
       // `none` is the people in no section, which is the list somebody works
       // from at the start of a term.
+      sectionId: q.section_id === 'none' ? 'none'
+        : q.section_id ? Number(q.section_id) : undefined,
+      /*
+       * A page, when the caller asks for one.
+       *
+       * Absent means everybody, which is what the name lookups behind
+       * registers, marks and the enrolment picker need. The People screen asks
+       * for a page and says on the page how many there are in all -- 1,445
+       * table rows is 1.8MB of HTML for a browser to parse before anybody can
+       * read the first name.
+       */
+      limit: q.limit ? Math.max(1, Math.min(500, Number(q.limit) || 0)) || undefined : undefined,
+    }));
+  });
+
+  /**
+   * How many people are here, without listing them.
+   *
+   * Its own route because a count is a different question from a page: a
+   * screen showing the first hundred still has to say "of 1,440", and counting
+   * what it was given would say "of 100".
+   */
+  app.get('/api/onyx/members/count', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty', 'exams');
+    const q = req.query as { role?: Role; section_id?: string };
+    return ok(await ctx.onyxTenancy.memberCounts(claims.tenant_id, {
+      role: q.role,
       sectionId: q.section_id === 'none' ? 'none'
         : q.section_id ? Number(q.section_id) : undefined,
     }));

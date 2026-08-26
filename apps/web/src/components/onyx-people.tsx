@@ -66,7 +66,13 @@ const NOUN: Record<Role, string> = {
   admin: 'an administrator',
 };
 
-export function OnyxPeople({ members, canEdit, initialRole, tenantName, sections = [] }: {
+/** 1,445 rather than 1445 -- a roll is read at a glance, not parsed. */
+const count = (n: number) => n.toLocaleString('en-IN');
+
+export function OnyxPeople({
+  members, canEdit, initialRole, tenantName, sections = [],
+  search: serverSearch = '', total, capped = false,
+}: {
   members: Member[]; canEdit: boolean; initialRole?: Role;
   /** Named in the remove panel, so the consequence is not stated in the abstract. */
   tenantName: string;
@@ -78,9 +84,20 @@ export function OnyxPeople({ members, canEdit, initialRole, tenantName, sections
    * can disagree with the first.
    */
   sections?: { id: number; name: string }[];
+  /**
+   * The search the SERVER ran, and what it found.
+   *
+   * The roster is a page now, not the whole roll, so the search that matters
+   * is the one the server did -- a box filtering the hundred rows in front of
+   * you would answer "which of these hundred", when the question is "which of
+   * the 1,440". `total` is the whole institution; `capped` says this page is
+   * not all of it.
+   */
+  search?: string;
+  total?: number;
+  capped?: boolean;
 }) {
   const router = useRouter();
-  const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<Role | ''>(initialRole ?? '');
   const [notice, setNotice] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -120,19 +137,14 @@ export function OnyxPeople({ members, canEdit, initialRole, tenantName, sections
   // this used to make raced the modal's and sometimes lost.
   const openAdd = () => setAdding(true);
 
-  const needle = search.trim().toLowerCase();
-  const byRole = roleFilter ? members.filter((m) => m.role === roleFilter) : members;
-  // Roll number too. The API has searched by it since the roster existed --
-  // `TenancyService.members` says so in a comment about registers and hall
-  // tickets -- and this filter, which is the one a person actually types into,
-  // did not. So the same search behaved differently depending on whether it
-  // ran here or on the server.
-  const shown = needle
-    ? byRole.filter((m) =>
-      (m.user?.name ?? '').toLowerCase().includes(needle)
-      || (m.user?.email ?? '').toLowerCase().includes(needle)
-      || String(m.roll_number ?? '').toLowerCase().includes(needle))
-    : byRole;
+  /*
+   * The rows on this page, narrowed only by the role menu.
+   *
+   * Searching is the server's job now -- it has the other 1,340 people. The
+   * role menu stays local because it is a lens over what is already here and
+   * a round trip to hide four rows would be a round trip for nothing.
+   */
+  const shown = roleFilter ? members.filter((m) => m.role === roleFilter) : members;
 
   return (
     <div className="space-y-6">
@@ -153,13 +165,34 @@ export function OnyxPeople({ members, canEdit, initialRole, tenantName, sections
           somebody. Reading the roster is the common act, so the roster is what
           the screen leads with. */}
       <div className="flex flex-wrap items-center gap-2.5">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, roll number or email"
-          aria-label="Search people by name, roll number or email"
-          className={field + ' w-full sm:max-w-xs'}
-        />
+        {/*
+          * A GET form, so the search is in the URL.
+          *
+          * It survives a reload, it can be sent to a colleague, and -- the
+          * reason it had to change -- it reaches the whole roll rather than
+          * the hundred rows this page happens to be holding.
+          */}
+        <form method="get" className="flex w-full items-center gap-2 sm:w-auto">
+          {initialRole ? <input type="hidden" name="role" value={initialRole} /> : null}
+          <input
+            name="q"
+            defaultValue={serverSearch}
+            placeholder="Search by name, roll number or email"
+            aria-label="Search people by name, roll number or email"
+            className={field + ' w-full sm:max-w-xs'}
+          />
+          <button type="submit"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm
+                       font-semibold hover:bg-slate-50">
+            Search
+          </button>
+          {serverSearch ? (
+            <a href={initialRole ? '?role=' + initialRole : '?'}
+              className="text-sm font-semibold text-brand-700 hover:underline">
+              Clear
+            </a>
+          ) : null}
+        </form>
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value as Role | '')}
@@ -169,6 +202,24 @@ export function OnyxPeople({ members, canEdit, initialRole, tenantName, sections
           <option value="">Every role</option>
           {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
         </select>
+
+        {/*
+          * How many of how many, said where the rows are.
+          *
+          * A page of a hundred out of 1,440 that says nothing reads as an
+          * institution of a hundred -- and the roster used to stop silently at
+          * a thousand, so it was doing exactly that to 445 people.
+          */}
+        <span className="text-[12.5px] tabular-nums text-muted">
+          {capped
+            ? 'Showing ' + shown.length + ' of ' + count(total ?? shown.length)
+              + (serverSearch ? ' matches — narrow the search to see the rest'
+                : ' — search to reach the rest')
+            : serverSearch
+              ? shown.length + (shown.length === 1 ? ' match' : ' matches')
+              : count(total ?? shown.length) + ' here'}
+        </span>
+
         {canEdit ? (
           <button
             type="button"

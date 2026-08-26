@@ -536,9 +536,17 @@ export default async function OnyxTimetablePage(
                         * "any time before Friday". A deadline is what it
                         * actually is, so a deadline is what it looks like.
                         */}
+                      {/* `relative` on each of these, for the reason spelled out
+                          on the Time cell above: an `sr-only` span is absolutely
+                          positioned, and with no positioned ancestor it resolves
+                          against the document rather than this sideways-scrolling
+                          grid -- taking its static position, hundreds of pixels
+                          along, and dragging the PAGE's scroll width out to meet
+                          it. Measured on a 360px screen that was 58px of sideways
+                          scroll on the whole document. */}
                       {due.map((a) => (
                         <Link key={'due' + a.id} href={'/onyx/assessments/' + a.id}
-                          className="mt-1.5 block truncate rounded-md border-l-[3px]
+                          className="relative mt-1.5 block truncate rounded-md border-l-[3px]
                                      border-accent-500 bg-accent-50 px-1.5 py-1 text-[11px]
                                      font-semibold leading-tight text-accent-900
                                      hover:brightness-95">
@@ -596,6 +604,9 @@ export default async function OnyxTimetablePage(
                             {/* The day and time come from the block itself:
                                 the column header is a sibling div, not a table
                                 header, so a screen reader gets nothing from it. */}
+                            {/* Same rule as the two above: this span needs a
+                                positioned ancestor, and the block that wraps
+                                `body` provides it. */}
                             <span className="sr-only">
                               {block.kind === 'exam' ? 'Examination. ' : ''}
                               {WEEKDAYS[d - 1] ?? 'Day ' + d}, {at(block.fromMin)} to{' '}
