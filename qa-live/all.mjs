@@ -35,6 +35,7 @@ const SUITES = [
   ['a lecturer says how marks are earned', 'rubric-is-reachable.mjs'],
   ['a company sees who applied to it', 'employer-sees-applicants.mjs'],
   ['the report’s own defects, re-tested', 'defects-report1.mjs'],
+  ['axe over the screens people live in', 'accessibility-live.mjs'],
   ['every screen works on a phone', 'responsive-live.mjs'],
 ];
 

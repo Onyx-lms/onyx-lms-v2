@@ -15,10 +15,17 @@ import { Icon } from '@/components/onyx-ui';
  * page has to render for somebody whose session is fine and whose id is not,
  * for somebody who is signed out, and for a path that never existed. A page
  * whose error state can itself fail is not an error state.
+ *
+ * A `div`, not a `main`. The root layout's StorefrontChrome owns the one
+ * `<main id="main">` that the skip link targets, so rendering another one here
+ * put two main landmarks on the page -- and screen-reader landmark navigation
+ * lands on whichever comes first, which is the outer one wrapping the whole
+ * document. The pages that render no shell already carry this note; this was
+ * the one that did not.
  */
 export default function OnyxNotFound() {
   return (
-    <main className="grid min-h-[70vh] place-items-center px-6 py-16">
+    <div className="grid min-h-[70vh] place-items-center px-6 py-16">
       <div className="w-full max-w-md text-center">
         <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-brand-50
                          text-brand-700">
@@ -43,6 +50,6 @@ export default function OnyxNotFound() {
           </Link>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

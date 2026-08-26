@@ -87,7 +87,8 @@ export default async function OnyxIntegrityPage({ params }: { params: Promise<{ 
       me={me}
       nav={navFor(me.role)}
       title="Integrity review"
-      subtitle={'Attempt ' + timeline.attempt_id + ' · candidate ' + timeline.user_id}
+      subtitle={'Attempt ' + timeline.attempt_id + ' · '
+        + (timeline.candidate?.name ?? 'candidate ' + timeline.user_id)}
     >
       <nav aria-label="Breadcrumb" className="mb-3 flex flex-wrap items-center gap-1.5 text-sm text-muted">
         <Link href="/onyx/invigilate" className="font-semibold text-brand-600 hover:underline">
@@ -179,7 +180,17 @@ export default async function OnyxIntegrityPage({ params }: { params: Promise<{ 
             <Card className="p-4">
               <dl>
                 <Fact k="Attempt" v={<span className="tabular-nums">{timeline.attempt_id}</span>} />
-                <Fact k="Candidate" v={<span className="tabular-nums">{timeline.user_id}</span>} />
+                {/* A name, because this page asks somebody to judge a person.
+                    The id stays underneath it: two candidates can share a name,
+                    and an adjudication has to be unambiguous about which one. */}
+                <Fact k="Candidate" v={timeline.candidate ? (
+                  <>
+                    {timeline.candidate.name}
+                    <span className="mt-0.5 block text-[11.5px] font-normal text-muted">
+                      {timeline.candidate.email}
+                    </span>
+                  </>
+                ) : <span className="tabular-nums">{timeline.user_id}</span>} />
                 <Fact k="Started" v={stamp(timeline.started_at) ?? '—'} />
                 <Fact k="Handed in" v={stamp(timeline.submitted_at) ?? 'Not handed in'} />
                 <Fact k="Time taken"

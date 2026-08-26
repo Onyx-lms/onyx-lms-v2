@@ -314,9 +314,27 @@ export class ProctorService {
       .select(EVENT_COLUMNS).eq('tenant_id', tenantId).eq('attempt_id', attemptId).order('at');
     const events = data ?? [];
 
+    /*
+     * WHO IT IS, not which row it is.
+     *
+     * This screen asks a person to decide whether somebody cheated, and it
+     * identified that somebody by a raw UUID -- so the reviewer had to go and
+     * look the candidate up somewhere else before they could weigh anything,
+     * and the adjudication record they signed named a string of hex. A
+     * decision about a person should have the person's name on it.
+     *
+     * Nullable rather than absent: an attempt whose user has since been
+     * removed from the institution still has a timeline worth reading.
+     */
+    const { data: person } = await this.#db.from('onyx_users')
+      .select('id, name, email').eq('id', attempt.user_id).maybeSingle();
+
     return {
       attempt_id: attemptId,
       user_id: String(attempt.user_id),
+      candidate: person
+        ? { name: String(person.name), email: String(person.email) }
+        : null,
       consented_at: attempt.consented_at,
       started_at: attempt.started_at,
       // When the paper was due. Without it a reviewer cannot tell a long

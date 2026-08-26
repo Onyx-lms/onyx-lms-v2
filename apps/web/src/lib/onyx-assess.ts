@@ -169,6 +169,7 @@ export interface ProctorTimeline {
   attempt_id: number;
   // A Supabase Auth uuid since 0014, not a number. This declaration saying
   // otherwise is how `Number(user_id)` looked reasonable in the service and
+  candidate: { name: string; email: string } | null;
   // shipped "Candidate #null" to every row of the invigilation queue.
   user_id: string;
   consented_at: string | null; started_at: string;

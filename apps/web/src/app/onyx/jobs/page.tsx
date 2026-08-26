@@ -151,10 +151,39 @@ export default async function OnyxJobsPage() {
               ]}
             />
           ) : null}
-          {/* A post is created as a draft, and a draft is invisible to the
-              learners it is for. Opening it is the point of posting it, so it
-              happens in the same action rather than as a second step nobody
-              knew about. */}
+          {/*
+            * NO FORM THAT CANNOT BE FILLED.
+            *
+            * Post a job opened with Employer empty, required, and unexplained.
+            * A job belongs to a company, so with no company registered there
+            * is nothing to choose and no amount of care with the rest of the
+            * form produces a post. The only hint was help text shown solely to
+            * the employer role -- so the placement officer, the one person who
+            * can actually fix it, was the one told nothing.
+            *
+            * A door that opens onto a wall is worse than no door: it costs the
+            * time to walk through it and teaches nothing. This says what is
+            * missing and what to do instead.
+            */}
+          {!(employers ?? []).length ? (
+            <div className="rounded-2xl border border-dashed border-line bg-white p-4">
+              <p className="text-[13.5px] font-bold text-slate-800">
+                Register a company before posting a role
+              </p>
+              <p className="mt-1 max-w-[54ch] text-[13px] leading-relaxed text-muted">
+                {canManageEmployers
+                  ? 'Every post belongs to a company, and this institution has none yet. '
+                    + 'Add one with the panel beside this, and posting opens up.'
+                  : 'Every post belongs to a company, and none is linked to your account '
+                    + 'yet. The placement office can register yours and connect it to this '
+                    + 'sign-in.'}
+              </p>
+            </div>
+          ) : (
+          /* A post is created as a draft, and a draft is invisible to the
+             learners it is for. Opening it is the point of posting it, so it
+             happens in the same action rather than as a second step nobody
+             knew about. */
           <CreatePanel
             title="New opening" cta="Post a job" icon="briefcase" compact
             endpoint="jobs" thenPost="jobs/:id/publish"
@@ -162,9 +191,8 @@ export default async function OnyxJobsPage() {
               { name: 'employer_id', label: 'Employer', type: 'select', required: true,
                 numeric: true, wide: true,
                 options: (employers ?? []).map((e) => ({ value: String(e.id), label: e.name })),
-                help: me.role === 'employer' && !(employers ?? []).length
-                  ? 'No employer record is linked to your account yet -- ask the placement '
-                    + 'office to add one.' : undefined },
+                help: 'The company the role is with. Applicants are visible to this '
+                  + 'company and to the placement office.' },
               { name: 'title', label: 'Role', required: true, wide: true,
                 placeholder: 'Junior Developer' },
               { name: 'description', label: 'Description', type: 'textarea', rows: 3 },
@@ -174,6 +202,7 @@ export default async function OnyxJobsPage() {
               { name: 'closes_at', label: 'Closes', type: 'datetime' },
             ]}
           />
+          )}
         </div>
       ) : null}
 

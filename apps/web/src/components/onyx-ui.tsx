@@ -734,8 +734,12 @@ export function Segmented({ items }: {
           className={'whitespace-nowrap rounded-[10px] px-3 py-1.5 text-[13px] font-semibold '
             + (i.active ? 'bg-white text-ink shadow-card' : 'text-muted hover:text-ink')}>
           {i.label}
+          {/* Weight, not opacity. `opacity-60` over `text-muted` compounds to
+              2.36:1 on the chip's ground -- axe rates it serious, and it is the
+              number that says whether a filter is worth clicking. A lighter
+              face separates it from the label without taking the contrast. */}
           {i.count !== undefined
-            ? <span className="ml-1 tabular-nums opacity-60">{i.count}</span> : null}
+            ? <span className="ml-1 font-normal tabular-nums">{i.count}</span> : null}
         </Link>
       ))}
     </div>

@@ -291,9 +291,13 @@ export default async function OnyxCoursesPage() {
                     ? <Pill tone="brand">Open to join</Pill> : null}
                 </div>
 
+                {/* -my-1 py-1: the title's line box is 21.3px, and WCAG 2.2's
+                    24×24 target rule counts the box, not the text. The negative
+                    margin gives the padding back to the layout, so the card
+                    looks identical and the tap target clears the bar. */}
                 <Link href={'/onyx/courses/' + c.id}
-                  className="relative z-10 text-[15.5px] font-bold leading-snug
-                             group-hover:underline">
+                  className="relative z-10 -my-1 inline-block py-1 text-[15.5px] font-bold
+                             leading-snug group-hover:underline">
                   {c.title}
                 </Link>
 

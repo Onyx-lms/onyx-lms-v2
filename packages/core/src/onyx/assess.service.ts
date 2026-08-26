@@ -1656,6 +1656,14 @@ export class AssessService {
   }
 
   /** One paper to mark: the questions, the responses, and what is already awarded. */
+  /** One candidate's name, for a marker who is allowed to know it. */
+  async #candidate(tenantId: number, userId: string) {
+    const { data } = await this.#db.from('onyx_users')
+      .select('id, name, email').eq('id', userId).maybeSingle();
+    void tenantId;
+    return data ? { name: String(data.name), email: String(data.email) } : null;
+  }
+
   async attemptForMarker(tenantId: number, attemptId: number) {
     const attempt = await this.#attempt(tenantId, attemptId);
     const assessment = await this.assessment(tenantId, Number(attempt.assessment_id));
@@ -1675,6 +1683,19 @@ export class AssessService {
       max_score: attempt.max_score,
       anonymous: Boolean(assessment.anonymous_marking),
       user_id: assessment.anonymous_marking ? null : attempt.user_id,
+      /*
+       * The candidate's NAME when marking is not anonymous, and nothing at all
+       * when it is. A marker was given a UUID and had to look it up elsewhere,
+       * which is both slower and worse: an identifier a person cannot read is
+       * an identifier they can mis-transcribe.
+       *
+       * Anonymity is decided in exactly one place -- here -- rather than by
+       * each page remembering to check the flag. A screen that forgets leaks
+       * the thing the whole feature exists to hide.
+       */
+      candidate: assessment.anonymous_marking
+        ? null
+        : await this.#candidate(tenantId, String(attempt.user_id)),
       integrity_flags: attempt.integrity_flags,
       questions: paper.map((q) => {
         const answer = byQuestion.get(q.question_id);

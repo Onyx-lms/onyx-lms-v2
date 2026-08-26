@@ -93,9 +93,17 @@ export default async function OnyxCertificatesPage() {
             { name: 'title', label: 'What it certifies', required: true, wide: true,
               placeholder: 'Introduction to Programming',
               help: 'This appears on the public verification page, so write it for a stranger.' },
-            { name: 'kind', label: 'Kind', type: 'select', fallback: 'course',
-              options: ['course', 'assessment', 'contest', 'program']
-                .map((k) => ({ value: k, label: k })) },
+            /* The words a registrar uses, not the strings the column stores.
+               The picker offered "course / assessment / contest / program",
+               which is a database enum wearing a label. */
+            { name: 'kind', label: 'What kind of credential', type: 'select',
+              fallback: 'course',
+              options: [
+                { value: 'course', label: 'Course completion' },
+                { value: 'assessment', label: 'Assessment result' },
+                { value: 'contest', label: 'Contest placing' },
+                { value: 'program', label: 'Programme award' },
+              ] },
             { name: 'course_id', label: 'Course', type: 'select', numeric: true,
               options: (courses ?? []).map((c) => ({
                 value: String(c.id), label: c.code + ' — ' + c.title,

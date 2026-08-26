@@ -157,15 +157,19 @@ export default async function OnyxProblemPage({ params }: { params: Promise<{ id
             <SectionHead title="Examples" />
             {visible.length ? (
               <div className="space-y-2.5">
+                {/* slate-400, not slate-500. These labels sit on the code block's
+                    near-black ground, where #64748b lands at 3.55:1 -- the only
+                    serious contrast failure axe found anywhere in the product, and
+                    it was on the one screen people stare at for an hour at a time. */}
                 {visible.map((t) => (
                   <CodeBlock key={t.id} filename={t.name}>
                     {t.stdin ? (
                       <>
-                        <span className="text-slate-500"># stdin</span>{'\n'}
+                        <span className="text-slate-400"># stdin</span>{'\n'}
                         {t.stdin}{'\n'}
                       </>
                     ) : null}
-                    <span className="text-slate-500"># expected stdout</span>{'\n'}
+                    <span className="text-slate-400"># expected stdout</span>{'\n'}
                     <span className="text-green-300">{t.expected_stdout}</span>
                   </CodeBlock>
                 ))}
