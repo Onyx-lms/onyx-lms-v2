@@ -1,5 +1,7 @@
 'use client';
 
+import { Modal } from '@/components/onyx-modal';
+
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -37,6 +39,7 @@ export function OnyxSitPaper({ assessment, attempt }: {
   const [remaining, setRemaining] = useState(attempt.seconds_remaining);
   const [saved, setSaved] = useState<Record<number, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [pending, start] = useTransition();
   const timers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const submitting = useRef(false);
@@ -364,20 +367,65 @@ export function OnyxSitPaper({ assessment, attempt }: {
             Monitored
           </span>
         ) : null}
+        {/*
+          * The product's own modal, not `window.confirm`.
+          *
+          * Handing in is the single most consequential and irreversible thing
+          * a candidate does here, and it was the one action gated by a native
+          * browser dialog while lesser ones -- removing a lesson, withdrawing
+          * a learner -- got a proper one. A native confirm cannot say how many
+          * questions are still blank, cannot be styled to look like the
+          * product, cannot be tested, and on some browsers can be suppressed
+          * entirely by a checkbox the candidate ticked an hour ago.
+          */}
         <button
           type="button"
           disabled={pending || stopped}
-          onClick={() => {
-            if (window.confirm('Hand in now? You cannot change your answers afterwards.')) {
-              submit();
-            }
-          }}
+          onClick={() => setConfirming(true)}
           className="ml-auto rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
                      hover:bg-brand-700 disabled:opacity-50"
         >
           Hand in
         </button>
       </div>
+
+      {confirming ? (
+        <Modal title="Hand in this paper?" onClose={() => setConfirming(false)}>
+          <p className="text-[13.5px] leading-relaxed text-slate-700">
+            You cannot change your answers afterwards.
+          </p>
+          {/* The number that decides it. A candidate who has left three
+              questions blank should be told so HERE, at the moment it stops
+              being fixable, rather than discovering it on their result. */}
+          {answered < attempt.questions.length ? (
+            <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[13px] leading-relaxed
+                          text-amber-900">
+              <span className="font-bold">
+                {attempt.questions.length - answered} of {attempt.questions.length}
+                {attempt.questions.length - answered === 1
+                  ? ' question is' : ' questions are'} still unanswered.
+              </span>{' '}
+              They will be marked as blank.
+            </p>
+          ) : (
+            <p className="mt-2 text-[13px] text-muted">
+              All {attempt.questions.length} questions are answered.
+            </p>
+          )}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" disabled={pending}
+              onClick={() => { setConfirming(false); submit(); }}
+              className="rounded-xl bg-brand-600 px-4 py-2 text-[13.5px] font-bold text-white
+                         hover:bg-brand-700 disabled:opacity-60">
+              {pending ? 'Handing in…' : 'Hand in'}
+            </button>
+            <button type="button" onClick={() => setConfirming(false)}
+              className="rounded-xl border border-line px-4 py-2 text-[13.5px] font-semibold">
+              Keep working
+            </button>
+          </div>
+        </Modal>
+      ) : null}
 
       {error ? (
         <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>

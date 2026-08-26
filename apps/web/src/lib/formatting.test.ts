@@ -1,3 +1,4 @@
+import { todayInTz, weekdayInTz, isoWeekdayInTz } from './onyx-time.ts';
 /**
  * The two formatting rules the QA audit caught the product breaking.
  *
@@ -77,4 +78,35 @@ test('a missing or unparseable date is a dash, not "Invalid Date"', () => {
     assert.equal(formatDate(bad), '—');
     assert.equal(formatDateTime(bad), '—');
   }
+});
+
+test('the day is the institution’s, not the runtime’s', () => {
+  /*
+   * The bug: `new Date().getDay()` asks the runtime, and the runtime is a
+   * Vercel function in UTC. Between midnight and 05:30 IST the product was a
+   * day behind -- at 01:55 on Thursday 27 August the timetable headlined
+   * "TODAY · WEDNESDAY" and highlighted the 26th.
+   *
+   * 20:30 UTC on the 26th is 02:00 IST on the 27th. Any helper that reads the
+   * runtime's clock says Wednesday here; the institution's says Thursday, and
+   * that is the whole test.
+   */
+  const beforeDawnIST = new Date('2026-08-26T20:30:00Z');
+
+  assert.equal(todayInTz(beforeDawnIST), '2026-08-27',
+    'UTC still calls this the 26th; the institution is already on the 27th');
+  assert.equal(weekdayInTz(beforeDawnIST), 4, 'Thursday, counting Sunday as 0');
+  assert.equal(isoWeekdayInTz(beforeDawnIST), 4, 'Thursday, counting Monday as 1');
+
+  // And the other edge: 18:00 UTC is 23:30 IST the SAME day, so nothing has
+  // rolled over yet. A helper that simply added a day would fail here.
+  const lateEveningIST = new Date('2026-08-26T18:00:00Z');
+  assert.equal(todayInTz(lateEveningIST), '2026-08-26');
+  assert.equal(weekdayInTz(lateEveningIST), 3, 'still Wednesday');
+
+  // Sunday is 0 as JavaScript numbers it, and 7 as the timetable does. Getting
+  // this pair wrong is how a Sunday column lights up on a Monday.
+  const sundayIST = new Date('2026-08-30T06:00:00Z');
+  assert.equal(weekdayInTz(sundayIST), 0);
+  assert.equal(isoWeekdayInTz(sundayIST), 7);
 });

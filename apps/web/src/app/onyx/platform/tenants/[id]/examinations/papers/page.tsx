@@ -49,9 +49,14 @@ export default async function OnyxPlatformExamPapersPage(
             />
           )} />
 
+        {/* One bank has one page. This pointed at /examinations/papers/:id,
+            which never existed -- a second dead route for the same object, and
+            Next prefetches links in view, so opening this list fired a burst of
+            404s before anybody clicked one. */}
         <BankList banks={rows}
           courseName={(cid) => (cid == null ? null : byId.get(Number(cid)) ?? null)}
-          hrefFor={(b) => '/onyx/platform/tenants/' + tenantId + '/examinations/papers/' + b.id} />
+          hrefFor={(b) => '/onyx/platform/tenants/' + tenantId
+            + '/assessments/banks/' + b.id} />
       </div>
     </div>
   );

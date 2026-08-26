@@ -1,3 +1,4 @@
+import { isoWeekdayInTz } from '@/lib/onyx-time';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
@@ -281,7 +282,9 @@ export default async function OnyxTimetablePage(
   const busiest = roomLoad[0]?.mins ?? 0;
 
   // 0 is Sunday in JavaScript; day_of_week is 1 for Monday.
-  const todayNum = ((new Date().getDay() + 6) % 7) + 1;
+  // The institution's day, not the runtime's. Before this the timetable was a
+  // day behind between midnight and 05:30 IST -- see isoWeekdayInTz.
+  const todayNum = isoWeekdayInTz();
   const today = slots.filter((s) => s.day_of_week === todayNum)
     .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
 

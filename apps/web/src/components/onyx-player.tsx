@@ -18,6 +18,35 @@ import { Icon } from '@/components/onyx-ui';
  */
 const SAVE_EVERY_MS = 10_000;
 
+/**
+ * "I have read this", for a lesson nothing can observe.
+ *
+ * A video knows when it ended. A page of text, a diagram, a PDF opened in
+ * another tab -- none of them can tell anybody anything, so the learner says
+ * so. Once done it stays said rather than becoming a toggle: un-completing a
+ * lesson is not a thing anybody wants to do by accident on a page they came
+ * back to re-read.
+ */
+function MarkDone({ done, onDone }: { done: boolean; onDone: () => void }) {
+  if (done) {
+    return (
+      <p className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-green-50 px-3.5
+                    text-[13.5px] font-semibold text-green-800">
+        <Icon name="check" className="h-4 w-4" />
+        Done — this counts towards your progress
+      </p>
+    );
+  }
+  return (
+    <button type="button" onClick={onDone}
+      className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-brand-300
+                 bg-white px-3.5 text-[13.5px] font-bold text-brand-700 hover:bg-brand-50">
+      <Icon name="check" className="h-4 w-4" />
+      Mark as done
+    </button>
+  );
+}
+
 export function OnyxPlayer({ lesson }: { lesson: LessonDetail }) {
   const video = useRef<HTMLVideoElement>(null);
   const position = useRef(lesson.position_seconds);
@@ -51,11 +80,35 @@ export function OnyxPlayer({ lesson }: { lesson: LessonDetail }) {
     };
   }, [save]);
 
+  /*
+   * Everything that is not a video needs a way to say "done".
+   *
+   * Progress was only ever posted by the video element's `ended` event, and
+   * every other branch below returned before any progress call was made. So a
+   * learner could read all three lessons of a course and the page still said
+   * 0 of 3, 0% complete -- and that figure feeds the progress meter, the daily
+   * streak and the readiness score, none of which a learner can correct.
+   *
+   * A button rather than a scroll or a timer: reading is not observable from
+   * outside the reader, and a product that guesses gets it wrong in both
+   * directions -- marking a skim complete, and refusing to mark a careful
+   * read. Asking is honest and takes one click.
+   */
+  const markDone = (
+    <MarkDone
+      done={completed}
+      onDone={() => { setCompleted(true); save(true); }}
+    />
+  );
+
   if (lesson.type === 'text') {
     return (
-      <article className="prose max-w-none whitespace-pre-wrap text-sm text-slate-700">
-        {lesson.body}
-      </article>
+      <div className="space-y-4">
+        <article className="prose max-w-none whitespace-pre-wrap text-sm text-slate-700">
+          {lesson.body}
+        </article>
+        {markDone}
+      </div>
     );
   }
 
@@ -65,23 +118,30 @@ export function OnyxPlayer({ lesson }: { lesson: LessonDetail }) {
   // stored object.
   if (lesson.type === 'image') {
     return lesson.url ? (
-      // eslint-disable-next-line @next/next/no-img-element -- the source is a
-      // signed URL that changes on every load, so next/image cannot cache or
-      // optimise it, and its loader would strip the signature.
-      <img
-        src={lesson.url}
-        alt={lesson.title}
-        className="max-h-[70vh] w-full rounded-xl border border-line bg-white object-contain"
-      />
+      <div className="space-y-4">
+        {/* eslint-disable-next-line @next/next/no-img-element -- the source is
+            a signed URL that changes on every load, so next/image cannot cache
+            or optimise it, and its loader would strip the signature. */}
+        <img
+          src={lesson.url}
+          alt={lesson.title}
+          className="max-h-[70vh] w-full rounded-xl border border-line bg-white object-contain"
+        />
+        {markDone}
+      </div>
     ) : <p className="text-sm text-muted">This lesson has nothing attached.</p>;
   }
 
   if (lesson.type !== 'video') {
     return lesson.url ? (
-      <a href={lesson.url} target="_blank" rel="noreferrer"
-        className="inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white">
-        Open {lesson.type === 'document' ? 'the document' : 'the link'}
-      </a>
+      <div className="space-y-4">
+        <a href={lesson.url} target="_blank" rel="noreferrer"
+          className="inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white">
+          Open {lesson.type === 'document' ? 'the document' : 'the link'}
+          <span className="sr-only"> (opens in a new tab)</span>
+        </a>
+        {markDone}
+      </div>
     ) : <p className="text-sm text-muted">This lesson has nothing attached.</p>;
   }
 

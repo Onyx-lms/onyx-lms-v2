@@ -15,11 +15,23 @@ docs:check` fails the build if it has.
   web app is calling through its own proxy.
 - **Responses** are `{ ok, data, message }`. Errors carry `ok: false` and a
   `message` written for the person who will read it.
-- **Five endpoints take no token**, each deliberately: signing in and
-  creating an institution (there is no token yet), the platform sign-in, the
-  public credential verification page (a verifier has no account and never
-  will), and the payment webhook (a gateway cannot hold one -- the tenant
-  comes from an HMAC-signed reference instead). Nothing else.
+- **Everything else takes a token.** The endpoints below that do not are
+  listed one by one, with the reason each one cannot hold one. That list is
+  the only way a route reaches this document as public: a route whose guard
+  cannot be read fails `docs:check` rather than being described as open.
+
+  - `/api/onyx/auth/login` — signing in -- there is no token yet
+  - `/api/onyx/platform/login` — the operator sign-in, likewise
+  - `/api/onyx/auth/signup/start` — signing up -- the OTP is the credential
+  - `/api/onyx/auth/signup/verify` — signing up, second leg
+  - `/api/onyx/auth/signup/sections` — the sign-up form has to render before anyone has an account
+  - `/api/onyx/auth/signup/institutions` — likewise -- the institution picker
+  - `/api/onyx/auth/signup/institution` — likewise -- one institution by code
+  - `/api/onyx/verify/:credentialId` — a verifier has no account and never will
+  - `/api/onyx/p/:username` — a public profile is public on purpose
+  - `/api/onyx/catalogue` — the prospectus, read by people deciding whether to enrol
+  - `/api/onyx/c/:id` — one course in that prospectus
+  - `/api/onyx/payments/webhook/:tenantId/:gateway` — a gateway cannot hold a token -- the tenant comes from an HMAC-signed reference
 
 ## Assessment · _ASS-01 to ASS-04_
 
@@ -126,7 +138,7 @@ docs:check` fails the build if it has.
 | `PUT` | `/api/onyx/admin/gateways` | admin, exams, faculty |
 | `POST` | `/api/onyx/invoices/:id/checkout` | any member |
 | `POST` | `/api/onyx/payments/confirm` | any member |
-| `POST` | `/api/onyx/payments/webhook/:tenantId/:gateway` | **no token** — public by design |
+| `POST` | `/api/onyx/payments/webhook/:tenantId/:gateway` | **no token** — a gateway cannot hold a token -- the tenant comes from an HMAC-signed reference |
 | `POST` | `/api/onyx/guardians` | any member |
 | `POST` | `/api/onyx/guardians/:id/accept` | any member |
 | `POST` | `/api/onyx/guardians/:id/consent` | any member |
@@ -143,7 +155,7 @@ docs:check` fails the build if it has.
 
 | Method | Path | Who may call it |
 | --- | --- | --- |
-| `GET` | `/api/onyx/verify/:credentialId` | **no token** — public by design |
+| `GET` | `/api/onyx/verify/:credentialId` | **no token** — a verifier has no account and never will |
 | `POST` | `/api/onyx/certificates` | admin, exams, placement, faculty |
 | `POST` | `/api/onyx/certificates/:id/revoke` | admin, exams, placement |
 | `GET` | `/api/onyx/certificates` | admin, exams, placement |
@@ -248,13 +260,13 @@ docs:check` fails the build if it has.
 | `POST` | `/api/onyx/discussions/:id/reopen` | any member |
 | `POST` | `/api/onyx/discussions/:id/escalate` | any member |
 | `POST` | `/api/onyx/tickets` | any member |
-| `GET` | `/api/onyx/tickets` | **no token** — public by design |
-| `GET` | `/api/onyx/tickets/breaches` | **no token** — public by design |
-| `GET` | `/api/onyx/tickets/:id` | **no token** — public by design |
+| `GET` | `/api/onyx/tickets` | any member |
+| `GET` | `/api/onyx/tickets/breaches` | any member |
+| `GET` | `/api/onyx/tickets/:id` | any member |
 | `POST` | `/api/onyx/tickets/:id/assign` | admin, faculty, placement, exams |
-| `POST` | `/api/onyx/tickets/:id/respond` | **no token** — public by design |
-| `POST` | `/api/onyx/tickets/:id/resolve` | **no token** — public by design |
-| `POST` | `/api/onyx/tickets/:id/reopen` | **no token** — public by design |
+| `POST` | `/api/onyx/tickets/:id/respond` | any member |
+| `POST` | `/api/onyx/tickets/:id/resolve` | any member |
+| `POST` | `/api/onyx/tickets/:id/reopen` | any member |
 
 ## Learning · _LRN-01 to LRN-04_
 
@@ -273,10 +285,10 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/courses` | any member |
 | `GET` | `/api/onyx/courses/:id` | any member |
 | `POST` | `/api/onyx/courses` | admin, faculty |
-| `PATCH` | `/api/onyx/courses/:id` | **no token** — public by design |
-| `DELETE` | `/api/onyx/courses/:id` | **no token** — public by design |
-| `POST` | `/api/onyx/courses/:id/publish` | **no token** — public by design |
-| `POST` | `/api/onyx/courses/:id/close` | **no token** — public by design |
+| `PATCH` | `/api/onyx/courses/:id` | admin, or this course's own faculty |
+| `DELETE` | `/api/onyx/courses/:id` | admin, or this course's own faculty |
+| `POST` | `/api/onyx/courses/:id/publish` | admin, or this course's own faculty |
+| `POST` | `/api/onyx/courses/:id/close` | admin, or this course's own faculty |
 | `POST` | `/api/onyx/courses/:id/faculty` | admin, faculty |
 | `GET` | `/api/onyx/courses/:id/faculty` | admin, faculty |
 | `DELETE` | `/api/onyx/courses/:id/faculty/:userId` | admin |
@@ -285,9 +297,9 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/my/learning-overview` | any member |
 | `GET` | `/api/onyx/courses/:id/roster` | admin, faculty |
 | `POST` | `/api/onyx/courses/:id/enroll` | any member |
-| `DELETE` | `/api/onyx/courses/:id/enroll/:userId` | **no token** — public by design |
-| `GET` | `/api/onyx/catalogue` | **no token** — public by design |
-| `GET` | `/api/onyx/c/:id` | **no token** — public by design |
+| `DELETE` | `/api/onyx/courses/:id/enroll/:userId` | admin, or this course's own faculty |
+| `GET` | `/api/onyx/catalogue` | **no token** — the prospectus, read by people deciding whether to enrol |
+| `GET` | `/api/onyx/c/:id` | **no token** — one course in that prospectus |
 | `POST` | `/api/onyx/courses/:id/purchase` | any member |
 | `POST` | `/api/onyx/courses/:id/checkout` | any member |
 | `GET` | `/api/onyx/my/purchases` | any member |
@@ -355,7 +367,7 @@ docs:check` fails the build if it has.
 
 | Method | Path | Who may call it |
 | --- | --- | --- |
-| `POST` | `/api/onyx/platform/login` | **no token** — public by design |
+| `POST` | `/api/onyx/platform/login` | **no token** — the operator sign-in, likewise |
 | `GET` | `/api/onyx/platform/me` | platform admin |
 | `GET` | `/api/onyx/platform/tenants` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id` | platform admin |
@@ -475,7 +487,7 @@ docs:check` fails the build if it has.
 
 | Method | Path | Who may call it |
 | --- | --- | --- |
-| `POST` | `/api/onyx/auth/login` | **no token** — public by design |
+| `POST` | `/api/onyx/auth/login` | **no token** — signing in -- there is no token yet |
 | `POST` | `/api/onyx/auth/switch` | any member |
 | `GET` | `/api/onyx/me` | any member |
 | `PATCH` | `/api/onyx/tenant/settings` | admin |
@@ -484,15 +496,15 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/members/:id/permissions` | admin |
 | `PUT` | `/api/onyx/members/:id/permissions` | admin |
 | `PUT` | `/api/onyx/permissions` | admin |
-| `POST` | `/api/onyx/auth/signup/start` | **no token** — public by design |
-| `POST` | `/api/onyx/auth/signup/verify` | **no token** — public by design |
-| `GET` | `/api/onyx/auth/signup/sections` | **no token** — public by design |
-| `GET` | `/api/onyx/auth/signup/institutions` | **no token** — public by design |
-| `GET` | `/api/onyx/auth/signup/institution` | **no token** — public by design |
+| `POST` | `/api/onyx/auth/signup/start` | **no token** — signing up -- the OTP is the credential |
+| `POST` | `/api/onyx/auth/signup/verify` | **no token** — signing up, second leg |
+| `GET` | `/api/onyx/auth/signup/sections` | **no token** — the sign-up form has to render before anyone has an account |
+| `GET` | `/api/onyx/auth/signup/institutions` | **no token** — likewise -- the institution picker |
+| `GET` | `/api/onyx/auth/signup/institution` | **no token** — likewise -- one institution by code |
 | `GET` | `/api/onyx/my/profile-details` | any member |
 | `PATCH` | `/api/onyx/my/profile-details` | any member |
 | `POST` | `/api/onyx/my/avatar/sign` | any member |
-| `GET` | `/api/onyx/p/:username` | **no token** — public by design |
+| `GET` | `/api/onyx/p/:username` | **no token** — a public profile is public on purpose |
 | `POST` | `/api/onyx/tenants` | platform admin |
 | `GET` | `/api/onyx/sections` | any member |
 | `POST` | `/api/onyx/sections` | admin, exams |

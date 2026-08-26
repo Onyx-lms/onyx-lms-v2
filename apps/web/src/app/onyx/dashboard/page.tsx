@@ -1,3 +1,4 @@
+import { isoWeekdayInTz, weekdayInTz } from '@/lib/onyx-time';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
@@ -836,7 +837,8 @@ async function FacultyDashboard({ me }: { me: Me }) {
   packs.forEach((p) => p.roster.forEach((r) => learners.add(r.user_id)));
 
   const now = new Date();
-  const todayNum = ((now.getDay() + 6) % 7) + 1;   // 0 = Sunday in JS; 1 = Monday here
+  // The institution's day, not the runtime's -- see isoWeekdayInTz. Monday = 1.
+  const todayNum = isoWeekdayInTz(now);
   const isToday = (iso: string) => {
     const d = new Date(iso);
     return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
@@ -1545,7 +1547,9 @@ function ReadinessCard({ readiness }: { readiness: LearnerReadiness }) {
 }
 
 function StreakCard({ progress }: { progress: ProgressSummary }) {
-  const today = new Date().getDay();          // 0 = Sunday
+  // The institution's weekday, not the runtime's: a learner opening this
+  // before dawn had the wrong square lit on their streak.
+  const today = weekdayInTz();
   const monday = (today + 6) % 7;             // 0 = Monday, matching the labels
   const labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   const names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];

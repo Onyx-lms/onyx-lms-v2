@@ -50,6 +50,15 @@ export function registerOnyxEngageRoutes(app: Router, ctx: AppContext): void {
    * the permissions -- and resolved through the same helper `assertCan` uses,
    * so the two can never disagree about who holds it.
    */
+  /**
+   * The caller, plus whether they work the support queue.
+   *
+   * Any member may reach the ticket endpoints -- a student reads and reopens
+   * their own. `worksQueue` is what separates raising a ticket from working
+   * everyone else's, and the service applies it; it is not a second guard.
+   *
+   * @guard any member
+   */
   const supportViewerOf = async (req: ReqLike) => {
     const { claims, viewer } = await viewerOf(req);
     const worksQueue = await holds(

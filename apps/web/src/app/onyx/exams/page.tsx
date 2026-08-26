@@ -337,7 +337,14 @@ export default async function OnyxExamsPage() {
                   <span className={CALM}><State tone="live">{g.label}</State></span>
                 ) : g.label}
               </h2>
-              {g.live ? (
+              {/*
+                * Staff only. A candidate about to sit a paper was being offered
+                * an invigilator's navigation -- access control held, so the
+                * link landed on the denied page, but a door that opens onto a
+                * refusal is worse than no door: it reads as the product being
+                * broken for you specifically.
+                */}
+              {g.live && canSchedule ? (
                 <Link href="/onyx/invigilate"
                   className="inline-flex min-h-[28px] items-center px-0.5 text-[13px]
                              font-semibold text-brand-600 hover:underline">

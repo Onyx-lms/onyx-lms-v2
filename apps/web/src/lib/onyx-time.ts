@@ -95,6 +95,58 @@ export const daysBetween = (from: string | number | Date, to: string | number | 
   dayNumber(to) - dayNumber(from);
 
 /** A `datetime-local` input's value for a stored instant, in institution time. */
+/**
+ * What day it is HERE, rather than wherever the runtime happens to be.
+ *
+ * **The bug this exists to end**, and it is the twin of the one at the top of
+ * this file. Formatting an instant went through `INSTITUTION_TZ` and was
+ * right; the day ARITHMETIC did not. `new Date().getDay()` asks the runtime,
+ * and the runtime is a Vercel function in UTC -- so between midnight and 05:30
+ * IST the product was a day behind. At 01:55 on Thursday 27 August the
+ * timetable headlined "TODAY · WEDNESDAY" and highlighted the 26th, while the
+ * audit log on the same deployment correctly said Thursday.
+ *
+ * That is five and a half hours of every day, every day, for every Indian
+ * institution: a lecturer opening the timetable before dawn is shown
+ * yesterday's classes, and a learner's streak counts the wrong square.
+ *
+ * These read the parts back out of `Intl` in the institution's zone rather
+ * than doing offset arithmetic, because an offset is a thing that changes and
+ * a zone database is a thing that is maintained.
+ */
+
+/** Year, month and day as the institution sees them right now. */
+export function partsInTz(at: Date = new Date()): { y: number; m: number; d: number } {
+  const f = new Intl.DateTimeFormat('en-CA', inTz({
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }));
+  const [y, m, d] = f.format(at).split('-').map(Number);
+  return { y: y!, m: m!, d: d! };
+}
+
+/**
+ * The weekday, 0 = Sunday, as JavaScript numbers it -- but in the
+ * institution's zone.
+ *
+ * A drop-in for `new Date().getDay()`, which is exactly how it is meant to be
+ * used: every caller of that was wrong for the same reason.
+ */
+export function weekdayInTz(at: Date = new Date()): number {
+  const name = new Intl.DateTimeFormat('en-US', inTz({ weekday: 'short' })).format(at);
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(name);
+}
+
+/** Monday = 1 … Sunday = 7, which is how the timetable numbers its columns. */
+export function isoWeekdayInTz(at: Date = new Date()): number {
+  return ((weekdayInTz(at) + 6) % 7) + 1;
+}
+
+/** Today as `YYYY-MM-DD`, in the institution's zone rather than in UTC. */
+export function todayInTz(at: Date = new Date()): string {
+  const { y, m, d } = partsInTz(at);
+  return String(y) + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+
 export function toLocalInput(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);

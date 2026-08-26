@@ -62,6 +62,8 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
    * same distinction assertCanTeach() draws everywhere else. A student is
    * added by whoever actually runs the course, not only by whoever runs the
    * institution.
+   *
+   * @guard admin, or this course's own faculty
    */
   async function requireCourseManager(req: ReqLike, courseId: number) {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);

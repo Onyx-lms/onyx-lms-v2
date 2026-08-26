@@ -102,11 +102,15 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
   const mayModerate = canMark && held.has('exams.moderate');
   const mayPublish = canMark && held.has('exams.publish');
 
-  const [seat, plan, halls, marks, roster, members, myMarks, myAttempts] = await Promise.all([
+  const [seat, courseOf, plan, halls, marks, roster, members, myMarks, myAttempts] = await Promise.all([
     canMark ? null : onyxApiSafe<Seat>('/api/onyx/exams/' + id + '/seat'),
     // The seating plan itself stays staff-only on the API (every candidate's
     // name against a room and a seat) -- faculty get the marks register
     // below instead, not this.
+    /* The course this sitting belongs to, so the page can NAME it. It printed
+       `Course #626` -- a row id, which tells a candidate nothing. */
+    onyxApiSafe<{ id: number; code: string; title: string }>(
+      '/api/onyx/courses/' + exam.course_id),
     staff ? onyxApiSafe<SeatingPlan>('/api/onyx/exams/' + id + '/seating') : null,
     staff ? onyxApiSafe<Hall[]>('/api/onyx/halls') : null,
     canMark ? onyxApiSafe<ExamMark[]>('/api/onyx/exams/' + id + '/marks') : null,
@@ -233,7 +237,10 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <BackLink href="/onyx/exams" label="All examinations" />
-        <ShareLink label="Copy link for candidates" />
+        {/* Staff only: a candidate has the link -- they are on it. Offering
+            them "Copy link for candidates" is offering an invigilator's
+            control to the invigilated. */}
+        {staff ? <ShareLink label="Copy link for candidates" /> : null}
       </div>
       <nav aria-label="Breadcrumb"
         className="mb-4 flex items-center gap-1.5 text-[13px] text-muted">
@@ -821,9 +828,14 @@ export default async function OnyxExamPage({ params }: { params: Promise<{ id: s
                   <div className="flex items-center justify-between gap-3 pt-2.5">
                     <dt className="text-muted">Course</dt>
                     <dd>
+                      {/* The course's NAME. This printed `Course #626`, which
+                          is a database row id shown to a candidate -- it tells
+                          them nothing and it tells anybody reading over their
+                          shoulder how many courses the institution has. The
+                          exam already carries the course it is on. */}
                       <Link href={'/onyx/courses/' + exam.course_id}
                         className="font-semibold text-brand-600 hover:underline">
-                        Course #{exam.course_id}
+                        {courseOf ? courseOf.code + ' · ' + courseOf.title : 'This course'}
                       </Link>
                     </dd>
                   </div>
