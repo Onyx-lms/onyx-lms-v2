@@ -1061,3 +1061,33 @@ test('the catalogue counts every enrolment, not the first thousand', async () =>
   // The one that used to come back as zero, because the page ran out.
   assert.equal(byId.get(2)?.enrollment_count, 60);
 });
+
+test('a roster row carries the person, not just their id', async () => {
+  /*
+   * `roster()` returned enrolment columns and nothing else -- a `user_id` and
+   * no user -- while its callers rendered `row.user?.name ?? 'Unknown'`. So
+   * the console's course page listed every learner on every course as
+   * "Unknown", always, and the type declared for the row claimed a `user` the
+   * service never sent.
+   *
+   * A type that lies is worse than a missing field: nothing threw, nothing
+   * logged, and the screen read as broken DATA rather than as a missing join
+   * -- which is a very different thing to go looking for.
+   */
+  const { db, academics } = world();
+  await db.from('onyx_users').insert({ id: 'user-10', name: 'Ada Lovelace', email: 'ada@x.test' });
+  await db.from('onyx_users').insert({ id: 'user-11', name: 'Alan Turing', email: 'alan@x.test' });
+
+  const rows = await academics.roster(T, 1);
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows.map((r) => r.user?.name).sort(), ['Ada Lovelace', 'Alan Turing']);
+  assert.equal(rows.find((r) => r.user_id === 'user-10')?.user?.email, 'ada@x.test');
+
+  // A row whose person has been removed keeps the enrolment and says so with
+  // null rather than inventing a name.
+  await db.from('onyx_enrollments').insert({
+    id: 77, tenant_id: T, course_id: 1, user_id: 'ghost', batch_id: null, status: 1,
+  });
+  const withGhost = await academics.roster(T, 1);
+  assert.equal(withGhost.find((r) => r.user_id === 'ghost')?.user, null);
+});

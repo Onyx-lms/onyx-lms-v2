@@ -32,6 +32,16 @@ const COURSE_COLUMNS = 'id, tenant_id, program_id, semester_id, code, title, slu
 const PAGE = 1000;
 const PAGE_CEILING = 50_000;
 
+/**
+ * How many ids one name lookup may carry.
+ *
+ * `.in('id', […])` is a query string, so the ceiling is the URL's rather than
+ * the database's -- and a request that exceeds it returns NO ROWS instead of
+ * erroring. Two hundred uuids is roughly 8KB, comfortably inside every proxy
+ * in the path.
+ */
+const ROSTER_NAME_BATCH = 200;
+
 const ENROLLMENT_COLUMNS = 'id, tenant_id, course_id, user_id, batch_id, status, enrolled_by, created_at';
 
 /**
@@ -679,6 +689,8 @@ export class AcademicsService {
   async roster(tenantId: number, courseId: number) {
     const rows = [];
     for (let from = 0; from < PAGE_CEILING; from += PAGE) {
+      // eslint-disable-next-line no-await-in-loop -- each page needs the one
+      // before it to have arrived before it knows whether to ask for another.
       const { data } = await this.#db.from('onyx_enrollments')
         .select(ENROLLMENT_COLUMNS)
         .eq('tenant_id', tenantId).eq('course_id', courseId).eq('status', 1)
@@ -687,7 +699,46 @@ export class AcademicsService {
       rows.push(...page);
       if (page.length < PAGE) break;
     }
-    return rows;
+    return this.#named(rows);
+  }
+
+  /**
+   * Enrolment rows with the person attached.
+   *
+   * `roster()` returned enrolment columns and nothing else -- a `user_id` and
+   * no user -- while its callers rendered `row.user?.name ?? 'Unknown'`. So
+   * the console's course page listed every learner on every course as
+   * "Unknown", forever, and the type it declared for the row claimed a `user`
+   * the service never sent. A type that lies is worse than a missing field:
+   * nothing failed, and the screen read as broken data rather than as a
+   * missing join.
+   *
+   * Batched at 200 ids, for the reason tenancy.service.ts spells out: `.in()`
+   * is a query string, and one uuid per learner on a course of 1,441 is tens
+   * of kilobytes of URL. It does not error -- it comes back with no users at
+   * all, which is how "Unknown" would have survived the fix.
+   */
+  async #named<T extends { user_id: string }>(rows: T[]) {
+    const withUser = rows.map((r) => ({
+      ...r, user: null as null | { id: string; name: string; email: string },
+    }));
+    if (!withUser.length) return withUser;
+
+    const ids = [...new Set(withUser.map((r) => String(r.user_id)))];
+    const byId = new Map<string, { id: string; name: string; email: string }>();
+    for (let from = 0; from < ids.length; from += ROSTER_NAME_BATCH) {
+      // eslint-disable-next-line no-await-in-loop -- one batch at a time keeps
+      // the url short, which is the whole point.
+      const { data } = await this.#db.from('onyx_users').select('id, name, email')
+        .in('id', ids.slice(from, from + ROSTER_NAME_BATCH));
+      for (const u of data ?? []) {
+        byId.set(String(u.id), {
+          id: String(u.id), name: String(u.name ?? ''), email: String(u.email ?? ''),
+        });
+      }
+    }
+    for (const r of withUser) r.user = byId.get(String(r.user_id)) ?? null;
+    return withUser;
   }
 
   /**

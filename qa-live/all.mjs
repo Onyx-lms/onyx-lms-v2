@@ -19,6 +19,7 @@ const SUITES = [
   ['a learner’s own screens', 'learner-surfaces.mjs'],
   ['signing up with any mailbox', 'gmail-signup.mjs'],
   ['sitting a web-development paper', 'web-demo-mallareddy.mjs'],
+  ['the code they wrote is kept and readable', 'code-is-kept.mjs'],
   // --- faculty ----------------------------------------------------------
   ['a lecturer sets papers', 'faculty-authoring.mjs'],
   ['a lecturer builds a course', 'faculty-authoring-parity.mjs'],
