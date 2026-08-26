@@ -6,7 +6,7 @@ import {
   ProblemDraftFields, blankProblemDraft, createProblemFromDraft, problemDraftError,
   type ProblemDraft,
 } from '@/components/onyx-code-problem';
-import { Icon } from '@/components/onyx-ui';
+import { Icon, Req, RequiredNote } from '@/components/onyx-ui';
 
 /**
  * A question bank of parallel SETS, which is how an examination is really set.
@@ -389,9 +389,10 @@ export function BankComposer({
         <button type="button" onClick={() => setOpen(false)} className={quiet}>Cancel</button>
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <RequiredNote className="mt-3" />
+      <div className="mt-2 grid gap-3 sm:grid-cols-2">
         <div>
-          <label className={label} htmlFor="bc-name">Bank name</label>
+          <label className={label} htmlFor="bc-name">Bank name<Req /></label>
           <input id="bc-name" value={name} maxLength={200} className={field + ' mt-1 w-full'}
             placeholder="Python — mid-term, ten sets"
             onChange={(e) => setName(e.target.value)} />
@@ -533,8 +534,9 @@ export function BankComposer({
               ) : null}
             </div>
 
-            <textarea rows={2} value={q.prompt} placeholder={'Question ' + (i + 1)}
-              aria-label={'Question ' + (i + 1)}
+            <textarea rows={2} value={q.prompt}
+              placeholder={'Question ' + (i + 1) + ' *'}
+              aria-label={'Question ' + (i + 1) + ' (required)'}
               className={field + ' mt-2 w-full text-sm'}
               onChange={(e) => patchQuestion(i, { prompt: e.target.value })} />
 

@@ -232,6 +232,42 @@ export function StatTile({ label, value, note, delta }: {
 }
 
 /**
+ * The mark on a field that has to be filled in.
+ *
+ * One component rather than a bare asterisk typed into each label, so the
+ * character, the colour and -- the part that matters -- what a screen reader
+ * says are the same everywhere. The glyph is `aria-hidden` and the word
+ * "required" is what is announced: a reader that says "star" tells somebody
+ * nothing, and one that says it on some fields and not others is worse.
+ *
+ * Put it on the fields the API actually refuses without. An asterisk on a
+ * field that saves fine when empty teaches people to ignore asterisks.
+ */
+export function Req() {
+  return (
+    <>
+      <span aria-hidden="true" className="ml-0.5 font-bold text-rose-600">*</span>
+      <span className="sr-only"> (required)</span>
+    </>
+  );
+}
+
+/**
+ * The line that says what the asterisk means, once per form.
+ *
+ * WCAG 3.3.2 asks for the convention to be explained, not just used, and it
+ * costs one line at the top of a form to do it.
+ */
+export function RequiredNote({ className }: { className?: string }) {
+  return (
+    <p className={'text-[12px] text-muted ' + (className ?? '')}>
+      <span aria-hidden="true" className="font-bold text-rose-600">*</span>
+      {' '}marks a field you have to fill in.
+    </p>
+  );
+}
+
+/**
  * A status pill. `tone` maps to meaning, never to decoration -- `late` is the
  * only red thing on a student's dashboard, so red always means the same.
  */

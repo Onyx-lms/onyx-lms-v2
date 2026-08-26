@@ -209,8 +209,27 @@ export default async function OnyxBankPage({ params }: { params: Promise<{ id: s
             * -- so the choice lives where the question is written, and picking
             * "a new set" is what brings one into being.
             */}
-          <AddQuestion problems={problems} bankId={Number(id)}
-            sets={sets.map((sx) => sx.number)} nextSet={nextSet} />
+          <div className="flex flex-wrap items-center gap-2">
+            <AddQuestion problems={problems} bankId={Number(id)}
+              sets={sets.map((sx) => sx.number)} nextSet={nextSet} />
+            {/*
+              * "Add a set", beside "Add a question", because that is the pair
+              * of things somebody building a rotating bank is doing and there
+              * was no way to say the second.
+              *
+              * It opens the same form with Set N+1 already chosen, and says so
+              * in its heading -- because a set is not a row. It exists because
+              * a question carries its number, so a button that made an empty
+              * Set 4 would make nothing: the set becomes real when its first
+              * question is saved. Writing that question IS adding the set,
+              * and this is the way in.
+              */}
+            {sets.length ? (
+              <AddQuestion problems={problems} bankId={Number(id)}
+                sets={sets.map((sx) => sx.number)} nextSet={nextSet}
+                startInNewSet cta={'Add Set ' + nextSet} />
+            ) : null}
+          </div>
         </div>
       ) : null}
 

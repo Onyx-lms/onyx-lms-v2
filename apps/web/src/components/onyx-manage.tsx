@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon } from '@/components/onyx-ui';
+import { Icon, Req, RequiredNote } from '@/components/onyx-ui';
 import {
   ProblemDraftFields, blankProblemDraft, createProblemFromDraft, problemDraftError,
   type ProblemDraft,
@@ -1266,7 +1266,9 @@ const QUESTION_TYPES = [
  */
 const NEW_PROBLEM = '__new__';
 
-export function AddQuestion({ bankId, problems = [], sets = [], nextSet = 1 }: {
+export function AddQuestion({
+  bankId, problems = [], sets = [], nextSet = 1, startInNewSet = false, cta,
+}: {
   bankId: number;
   /**
    * Published Code Lab problems a question can point at.
@@ -1291,6 +1293,18 @@ export function AddQuestion({ bankId, problems = [], sets = [], nextSet = 1 }: {
    */
   sets?: number[];
   nextSet?: number;
+  /**
+   * Open with the NEW set already chosen.
+   *
+   * This is what the "Add a set" button on the bank page is: the same form,
+   * pointed at Set N+1. A set is not a row -- it exists because a question
+   * carries its number -- so there is nothing to create before the first
+   * question is written into it, and a button that made an empty set would
+   * be a button that made nothing.
+   */
+  startInNewSet?: boolean;
+  /** What the button says. Defaults to "Add a question". */
+  cta?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -1307,7 +1321,8 @@ export function AddQuestion({ bankId, problems = [], sets = [], nextSet = 1 }: {
   const [problemId, setProblemId] = useState(NEW_PROBLEM);
   // The last set worked on, so writing five questions into Set 3 is five
   // choices of question and one choice of set.
-  const [setNumber, setSetNumber] = useState<string>(String(sets[sets.length - 1] ?? 1));
+  const [setNumber, setSetNumber] = useState<string>(
+    String(startInNewSet ? nextSet : (sets[sets.length - 1] ?? 1)));
   const [draft, setDraft] = useState<ProblemDraft>(blankProblemDraft);
   /*
    * A SECOND draft, for the web question, rather than one draft that changes
@@ -1332,7 +1347,9 @@ export function AddQuestion({ bankId, problems = [], sets = [], nextSet = 1 }: {
   const authoringWeb = webProblemId === NEW_PROBLEM;
 
   return (
-    <Shell title="New question" cta="Add a question" open={open} setOpen={setOpen}
+    <Shell
+      title={startInNewSet ? 'First question in Set ' + nextSet : 'New question'}
+      cta={cta ?? 'Add a question'} open={open} setOpen={setOpen}
       pending={pending} error={error}
       onSubmit={() => start(async () => {
         setError(null);
@@ -1418,9 +1435,10 @@ export function AddQuestion({ bankId, problems = [], sets = [], nextSet = 1 }: {
         router.refresh();
       })}>
       <div className="grid gap-3">
+        <RequiredNote />
         <div>
           <label className="block text-[13px] font-semibold text-slate-700" htmlFor="q-prompt">
-            Question
+            Question<Req />
           </label>
           <textarea id="q-prompt" required rows={3} value={prompt}
             onChange={(e) => setPrompt(e.target.value)} className={input + ' mt-1 w-full'} />
@@ -1479,7 +1497,7 @@ export function AddQuestion({ bankId, problems = [], sets = [], nextSet = 1 }: {
         {choice ? (
           <fieldset>
             <legend className="text-[13px] font-semibold text-slate-700">
-              Options — tick the correct {type === 'multiple' ? 'ones' : 'one'}
+              Options — tick the correct {type === 'multiple' ? 'ones' : 'one'}<Req />
             </legend>
             <ul className="mt-2 space-y-2">
               {options.map((o, i) => (
@@ -1509,7 +1527,7 @@ export function AddQuestion({ bankId, problems = [], sets = [], nextSet = 1 }: {
         ) : type === 'truefalse' ? (
           <div>
             <label className="block text-[13px] font-semibold text-slate-700" htmlFor="q-tf">
-              Correct answer
+              Correct answer<Req />
             </label>
             <select id="q-tf" value={answer} onChange={(e) => setAnswer(e.target.value)}
               className={input + ' mt-1 w-full'}>
@@ -1520,7 +1538,7 @@ export function AddQuestion({ bankId, problems = [], sets = [], nextSet = 1 }: {
         ) : type === 'short' ? (
           <div>
             <label className="block text-[13px] font-semibold text-slate-700" htmlFor="q-short">
-              Accepted answers
+              Accepted answers<Req />
             </label>
             <textarea id="q-short" rows={3} value={answer}
               onChange={(e) => setAnswer(e.target.value)} className={input + ' mt-1 w-full'} />
@@ -1529,7 +1547,7 @@ export function AddQuestion({ bankId, problems = [], sets = [], nextSet = 1 }: {
         ) : type === 'code' ? (
           <div>
             <label className="block text-[13px] font-semibold text-slate-700" htmlFor="q-problem">
-              Problem to solve
+              Problem to solve<Req />
             </label>
             <select id="q-problem" value={problemId}
               onChange={(e) => setProblemId(e.target.value)}
@@ -1567,7 +1585,7 @@ export function AddQuestion({ bankId, problems = [], sets = [], nextSet = 1 }: {
         ) : type === 'web' ? (
           <div>
             <label className="block text-[13px] font-semibold text-slate-700" htmlFor="q-web">
-              Built from
+              Built from<Req />
             </label>
             <select id="q-web" value={webProblemId}
               onChange={(e) => setWebProblemId(e.target.value)}

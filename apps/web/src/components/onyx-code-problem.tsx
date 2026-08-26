@@ -1,6 +1,7 @@
 'use client';
 
 import { WebEditor } from '@/components/onyx-web-editor';
+import { Req } from '@/components/onyx-ui';
 import { startingFiles } from '@/lib/onyx-web-preview';
 
 /**
@@ -256,7 +257,9 @@ export function ProblemDraftFields({
       </p>
 
       <div>
-        <label className={labelClass} htmlFor={idPrefix + '-title'}>Problem title</label>
+        <label className={labelClass} htmlFor={idPrefix + '-title'}>
+          Problem title<Req />
+        </label>
         <input id={idPrefix + '-title'} value={draft.title}
           placeholder={web ? 'A landing page for the coding club' : 'Two Sum'}
           onChange={(e) => onChange({ title: e.target.value })}
@@ -329,7 +332,7 @@ export function ProblemDraftFields({
         */}
       {web ? (
         <div>
-          <span className={labelClass}>The files a candidate starts from</span>
+          <span className={labelClass}>The files a candidate starts from<Req /></span>
           <p className="mb-1.5 mt-1 text-[12px] leading-relaxed text-muted">
             Give them a page to build on — a skeleton, a heading, a comment saying what to
             do. Whatever is here is what they open when the paper starts.
@@ -342,7 +345,7 @@ export function ProblemDraftFields({
       ) : null}
 
       <fieldset className={web ? 'hidden' : undefined}>
-        <legend className={labelClass}>Languages it may be answered in</legend>
+        <legend className={labelClass}>Languages it may be answered in<Req /></legend>
         <div className="mt-1 flex flex-wrap gap-1.5">
           {PROBLEM_LANGUAGES.map((lang) => {
             const on = draft.languages.includes(lang);
@@ -365,7 +368,7 @@ export function ProblemDraftFields({
       </fieldset>
 
       <fieldset className={web ? 'hidden' : undefined}>
-        <legend className={labelClass}>Test cases</legend>
+        <legend className={labelClass}>Test cases<Req /></legend>
         {/*
           * The cases, written the way they are READ.
           *
