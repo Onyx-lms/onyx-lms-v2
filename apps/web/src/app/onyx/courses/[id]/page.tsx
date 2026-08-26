@@ -15,6 +15,7 @@ import { CreatePanel, ActionButton } from '@/components/onyx-create';
 import { LessonComposer } from '@/components/onyx-lesson-composer';
 import {
   CourseFacultyManager, CourseRosterManager, CourseSettingsForm, DeleteCourseButton,
+  ModuleActions, LessonRemove,
 } from '@/components/onyx-manage';
 import {
   BackLink, Banner, Card, Empty, Hero, Icon, ListRow, Meter, Pill, RowList, SectionHead, relativeDue, type IconName,
@@ -254,6 +255,10 @@ export default async function OnyxCoursePage(
                 <span className="ml-auto text-[12.5px] tabular-nums text-muted">
                   {m.lessons.length} {m.lessons.length === 1 ? 'lesson' : 'lessons'}
                 </span>
+                {/* Renaming and removing, which only the platform console
+                    could do. A course's own staff could add a module and then
+                    never touch it -- authoring is not half a power. */}
+                {isStaff(me.role) ? <ModuleActions module={m} /> : null}
               </div>
               {m.summary ? (
                 <p className="-mt-1 mb-2.5 text-[13px] text-muted">{m.summary}</p>
@@ -272,6 +277,20 @@ export default async function OnyxCoursePage(
                 <p className="-mt-1 mb-2.5">
                   <Byline author={m.author} verb="Added by" />
                 </p>
+              ) : null}
+
+              {isStaff(me.role) ? (
+                <div className="mb-2.5">
+                  {/* Not a CreatePanel: a lesson can be a file, and CreatePanel
+                      posts JSON. See onyx-lesson-composer.tsx -- it offers all
+                      five kinds the API takes: text, video, document (PDF,
+                      slides, word-processor files), image and link. */}
+                  <LessonComposer
+                    courseId={Number(id)}
+                    moduleId={Number(m.id)}
+                    moduleTitle={m.title}
+                  />
+                </div>
               ) : null}
 
               <RowList label={m.title + ' lessons'}>
@@ -317,6 +336,12 @@ export default async function OnyxCoursePage(
                       {isNext ? <Pill tone="brand">Next</Pill> : null}
                       {l.completed_at ? <Pill tone="good">Done</Pill> : null}
                       {l.locked ? <Pill tone="neutral">Locked</Pill> : null}
+                      {/* Taking one down, which only the console could do. The
+                          stored file is left alone: an upload is cheap to keep
+                          and impossible to get back, so a lesson removed by
+                          mistake is one somebody re-points at the same object
+                          rather than re-records. */}
+                      {isStaff(me.role) ? <LessonRemove lesson={l} /> : null}
                     </li>
                   );
                 })}
@@ -349,18 +374,15 @@ export default async function OnyxCoursePage(
                   { name: 'summary', label: 'Summary', type: 'textarea', rows: 2 },
                 ]}
               />
-              {/* Not a CreatePanel: a lesson can be a file, and CreatePanel
-                  posts JSON. See onyx-lesson-composer.tsx -- the form this
-                  replaces offered a "PDF" kind the API rejects outright, and
-                  asked for a storage path as free text. */}
-              {outline.modules.map((m) => (
-                <LessonComposer
-                  key={'add-lesson-' + m.id}
-                  courseId={Number(id)}
-                  moduleId={Number(m.id)}
-                  moduleTitle={m.title}
-                />
-              ))}
+              {/*
+                * The lesson composers used to live here, stacked at the bottom
+                * of the page -- one per module, all of them below the outline,
+                * so adding a lesson to week two meant scrolling past every
+                * week to find the right panel. They now sit INSIDE the module
+                * they add to, which is where the console has always put them
+                * and where there is no question of which module a file is
+                * going into.
+                */}
             </div>
           ) : null}
 

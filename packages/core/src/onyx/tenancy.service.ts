@@ -1336,12 +1336,29 @@ export class TenancyService {
 
     if (filters.onlyStudentsOn) {
       const courseIds = filters.onlyStudentsOn;
-      // No courses taught means no students to see -- not "see everybody".
-      const { data: enrolled } = courseIds.length
-        ? await this.#db.from('onyx_enrollments')
-          .select('user_id').eq('tenant_id', tenantId).eq('status', 1).in('course_id', courseIds)
-        : { data: [] as { user_id: string }[] };
-      const mine = new Set((enrolled ?? []).map((e) => String(e.user_id)));
+      /*
+       * PAGED, because this decides who a lecturer can SEE.
+       *
+       * No courses taught means no students -- not "see everybody" -- and this
+       * read names who is on the ones they do teach. It had no range, so it
+       * stopped at a thousand: a lecturer teaching a course of 1,441 had 441
+       * of their own students filtered out of every name lookup on the page,
+       * and the roster rendered them as "Unknown" with an empty address. Not
+       * a permission failure and not an error -- just people quietly missing
+       * from a list the lecturer is entitled to all of.
+       */
+      const mine = new Set<string>();
+      for (let from = 0; courseIds.length && from < MEMBER_CEILING; from += MEMBER_PAGE) {
+        // eslint-disable-next-line no-await-in-loop -- each page needs the one
+        // before it to have arrived before it knows whether to ask for another.
+        const { data } = await this.#db.from('onyx_enrollments')
+          .select('user_id, id').eq('tenant_id', tenantId).eq('status', 1)
+          .in('course_id', courseIds)
+          .order('id').range(from, from + MEMBER_PAGE - 1);
+        const page = data ?? [];
+        for (const e of page) mine.add(String(e.user_id));
+        if (page.length < MEMBER_PAGE) break;
+      }
 
       out = out
         .filter((r) => r.role !== 'student' || mine.has(String(r.user_id)))

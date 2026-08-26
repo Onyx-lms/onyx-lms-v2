@@ -823,6 +823,89 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
       'Module added.');
   });
 
+  /*
+   * Renaming and removing what a course is made of.
+   *
+   * These existed only on the platform console, so an operator two levels away
+   * from the person who wrote a course could rename a module, delete a lesson
+   * and reorder the syllabus -- and the lecturer running it could add things
+   * and never take one back. Authoring is not half a power.
+   *
+   * Guarded the way every other authoring route on a course is, in the same
+   * order: the role, then `courses.author`, then whether this person actually
+   * teaches THIS course. The last is what stops a lecturer editing a colleague's
+   * syllabus, and it is the check the console does not need because an operator
+   * teaches nothing and acts for the institution.
+   */
+  app.patch('/api/onyx/modules/:id', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.author', claims.user_id);
+    const mod = await ctx.onyxContent.module(claims.tenant_id, idOf(req));
+    await ctx.onyxAcademics.assertCanTeach(
+      claims.tenant_id, Number(mod.course_id), claims.user_id, claims.tenant_role);
+    const body = validate(z.object({
+      title: z.string().min(1).max(255).optional(),
+      summary: z.string().max(4000).nullish(),
+      sort: z.number().int().min(0).max(9999).optional(),
+    }), req.body);
+    const after = await ctx.onyxContent.updateModule(claims.tenant_id, idOf(req), body);
+    await ctx.onyxAudit.record(claims, {
+      action: 'module.updated', entityType: 'module', entityId: idOf(req),
+      before: { title: mod.title, summary: mod.summary, sort: mod.sort },
+      after: { title: after.title, summary: after.summary, sort: after.sort }, ip: ipOf(req),
+    });
+    return ok(after, 'Module updated.');
+  });
+
+  app.delete('/api/onyx/modules/:id', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.author', claims.user_id);
+    const mod = await ctx.onyxContent.module(claims.tenant_id, idOf(req));
+    await ctx.onyxAcademics.assertCanTeach(
+      claims.tenant_id, Number(mod.course_id), claims.user_id, claims.tenant_role);
+    const gone = await ctx.onyxContent.removeModule(claims.tenant_id, idOf(req));
+    await ctx.onyxAudit.record(claims, {
+      action: 'module.deleted', entityType: 'module', entityId: idOf(req),
+      before: { title: mod.title, course_id: mod.course_id }, after: null, ip: ipOf(req),
+    });
+    return ok(gone, 'Module removed.');
+  });
+
+  app.patch('/api/onyx/lessons/:id', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.author', claims.user_id);
+    const before = await ctx.onyxContent.lessonRow(claims.tenant_id, idOf(req));
+    await ctx.onyxAcademics.assertCanTeach(
+      claims.tenant_id, Number(before.course_id), claims.user_id, claims.tenant_role);
+    const body = validate(z.object({
+      title: z.string().min(1).max(255).optional(),
+      body: z.string().max(200_000).nullish(),
+      is_preview: z.boolean().optional(),
+      sort: z.number().int().min(0).max(9999).optional(),
+    }), req.body);
+    const after = await ctx.onyxContent.updateLesson(claims.tenant_id, idOf(req), body);
+    await ctx.onyxAudit.record(claims, {
+      action: 'lesson.updated', entityType: 'lesson', entityId: idOf(req),
+      before: { title: before.title, is_preview: before.is_preview },
+      after: { title: after.title, is_preview: after.is_preview }, ip: ipOf(req),
+    });
+    return ok(after, 'Lesson updated.');
+  });
+
+  app.delete('/api/onyx/lessons/:id', async (req) => {
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
+    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.author', claims.user_id);
+    const before = await ctx.onyxContent.lessonRow(claims.tenant_id, idOf(req));
+    await ctx.onyxAcademics.assertCanTeach(
+      claims.tenant_id, Number(before.course_id), claims.user_id, claims.tenant_role);
+    const gone = await ctx.onyxContent.removeLesson(claims.tenant_id, idOf(req));
+    await ctx.onyxAudit.record(claims, {
+      action: 'lesson.deleted', entityType: 'lesson', entityId: idOf(req),
+      before: { title: before.title, type: before.type }, after: null, ip: ipOf(req),
+    });
+    return ok(gone, 'Lesson removed.');
+  });
+
   app.post('/api/onyx/modules/:id/lessons', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty');
     await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'courses.author', claims.user_id);

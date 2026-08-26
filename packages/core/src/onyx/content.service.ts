@@ -124,6 +124,126 @@ export class ContentService {
     return data!;
   }
 
+  /**
+   * One module's row, for a caller that needs to know which course it is on
+   * before deciding whether they may touch it.
+   *
+   * Deliberately not `lesson()`, which signs a URL and checks enrolment: a
+   * route guard wants the row, not the learner's view of it.
+   */
+  async module(tenantId: number, moduleId: number) {
+    return this.#module(tenantId, moduleId);
+  }
+
+  /** The same, for a lesson. */
+  async lessonRow(tenantId: number, lessonId: number) {
+    return this.#lesson(tenantId, lessonId);
+  }
+
+  /**
+   * Rename a module, or move it.
+   *
+   * Lives here, beside `createModule`, and the console calls it too. It used
+   * to exist only on PlatformService, which meant the platform could rename a
+   * module and the institution that wrote it could not -- an operator two
+   * levels away from the person who set the course had a power the lecturer
+   * running it did not.
+   */
+  async updateModule(tenantId: number, moduleId: number, patch: {
+    title?: string; summary?: string | null; sort?: number;
+  }) {
+    const before = await this.#module(tenantId, moduleId);
+    const next: Record<string, unknown> = {};
+    if (patch.title !== undefined) {
+      const title = patch.title.trim();
+      if (!title) throw new HttpError(422, 'A module needs a title.');
+      next.title = title;
+    }
+    if (patch.summary !== undefined) next.summary = patch.summary ?? null;
+    if (patch.sort !== undefined) next.sort = patch.sort;
+    if (!Object.keys(next).length) return before;
+
+    const { error } = await this.#db.from('onyx_modules')
+      .update(next).eq('tenant_id', tenantId).eq('id', moduleId);
+    if (error) throw new HttpError(500, 'Could not update that module: ' + error.message);
+    return { ...before, ...next };
+  }
+
+  /**
+   * Remove a module, but not a term's work by accident.
+   *
+   * Refused while it still holds lessons rather than cascading in silence. The
+   * database would take the whole subtree happily; making the lessons a
+   * deliberate first step is the difference between deleting a heading and
+   * deleting what somebody spent a term writing.
+   */
+  async removeModule(tenantId: number, moduleId: number) {
+    const before = await this.#module(tenantId, moduleId);
+    const { data: lessons } = await this.#db.from('onyx_lessons')
+      .select('id').eq('tenant_id', tenantId).eq('module_id', moduleId);
+    const count = (lessons ?? []).length;
+    if (count) {
+      throw new HttpError(422, 'That module still holds ' + count
+        + (count === 1 ? ' lesson' : ' lessons')
+        + '. Remove them first.');
+    }
+    const { error } = await this.#db.from('onyx_modules')
+      .delete().eq('tenant_id', tenantId).eq('id', moduleId);
+    if (error) throw new HttpError(500, 'Could not remove that module: ' + error.message);
+    return { id: moduleId, removed: true, title: before.title };
+  }
+
+  /** Rename a lesson, or change whether it opens before enrolment. */
+  async updateLesson(tenantId: number, lessonId: number, patch: {
+    title?: string; body?: string | null; is_preview?: boolean; sort?: number;
+  }) {
+    const { data: before } = await this.#db.from('onyx_lessons')
+      .select('id, module_id, title, type, is_preview').eq('tenant_id', tenantId)
+      .eq('id', lessonId).maybeSingle();
+    if (!before) throw new HttpError(404, 'No such lesson.');
+
+    const next: Record<string, unknown> = {};
+    if (patch.title !== undefined) {
+      const title = patch.title.trim();
+      if (!title) throw new HttpError(422, 'A lesson needs a title.');
+      next.title = title;
+    }
+    if (patch.sort !== undefined) next.sort = patch.sort;
+    if (patch.is_preview !== undefined) next.is_preview = patch.is_preview ? 1 : 0;
+    if (patch.body !== undefined) {
+      // Only a written lesson has a body. Setting one on a video would leave a
+      // lesson whose text nothing renders.
+      if (before.type !== 'text') throw new HttpError(422, 'Only a written lesson has text.');
+      if (!String(patch.body ?? '').trim()) {
+        throw new HttpError(422, 'A text lesson needs some text.');
+      }
+      next.body = patch.body;
+    }
+    if (!Object.keys(next).length) return before;
+
+    const { error } = await this.#db.from('onyx_lessons')
+      .update(next).eq('tenant_id', tenantId).eq('id', lessonId);
+    if (error) throw new HttpError(500, 'Could not update that lesson: ' + error.message);
+    return { ...before, ...next };
+  }
+
+  /**
+   * Remove a lesson.
+   *
+   * The stored file is left where it is, deliberately: an upload is cheap to
+   * keep and impossible to get back, and a lesson deleted by mistake is a
+   * lesson somebody re-points at the same object rather than re-records.
+   */
+  async removeLesson(tenantId: number, lessonId: number) {
+    const { data: lesson } = await this.#db.from('onyx_lessons')
+      .select('id, module_id, title').eq('tenant_id', tenantId).eq('id', lessonId).maybeSingle();
+    if (!lesson) throw new HttpError(404, 'No such lesson.');
+    const { error } = await this.#db.from('onyx_lessons')
+      .delete().eq('tenant_id', tenantId).eq('id', lessonId);
+    if (error) throw new HttpError(500, 'Could not remove that lesson: ' + error.message);
+    return { id: lessonId, removed: true, title: lesson.title, module_id: lesson.module_id };
+  }
+
   async createLesson(tenantId: number, moduleId: number, input: {
     title: string; type?: LessonType; path?: string | null; body?: string | null;
     duration_seconds?: number; sort?: number; is_preview?: boolean;

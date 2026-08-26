@@ -2483,6 +2483,119 @@ export function CourseFacultyManager({ courseId, current, options, canManage }: 
  * boundary the API enforces (learn.routes.ts's requireCourseManager), not a
  * tenant-wide "any faculty" hole.
  */
+/**
+ * Renaming a module, and taking one down.
+ *
+ * A course's own staff could ADD a module and never touch it again: rename,
+ * reorder and remove existed only on the platform console, so an operator two
+ * levels away from whoever wrote the course had powers the lecturer running it
+ * did not. Authoring is not half a power.
+ *
+ * The remove is refused by the API while the module still holds lessons, and
+ * the message says how many. That refusal is the point rather than an obstacle
+ * -- the database would take the whole subtree, and the difference between
+ * deleting a heading and deleting a term's work should be a deliberate second
+ * step.
+ */
+export function ModuleActions({ module: m }: {
+  module: { id: number; title: string; summary: string | null; lessons: unknown[] };
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(m.title);
+  const [summary, setSummary] = useState(m.summary ?? '');
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  if (!editing) {
+    return (
+      <div className="flex shrink-0 items-center gap-1.5">
+        <button type="button" onClick={() => setEditing(true)}
+          className="inline-flex min-h-[30px] items-center gap-1 rounded-lg border
+                     border-line px-2.5 text-[12.5px] font-semibold text-muted
+                     hover:bg-brand-50 hover:text-ink">
+          <Icon name="edit" className="h-3.5 w-3.5" />
+          Rename
+        </button>
+        {/* Only offered where it can succeed. A module holding lessons is
+            refused by the API, and a button that always errors teaches people
+            to distrust the ones that work. */}
+        {m.lessons.length === 0 ? (
+          <ConfirmRowAction
+            label="Remove" question="Remove this module?" subject={m.title}
+            onConfirm={async () => {
+              const res = await send('modules/' + m.id, undefined, 'DELETE');
+              if (res.ok) router.refresh();
+            }} />
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <form
+      className="w-full min-w-0 grid gap-2 rounded-xl border border-line bg-slate-50 p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError(null);
+        start(async () => {
+          const res = await send('modules/' + m.id, { title, summary }, 'PATCH');
+          if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+          setEditing(false);
+          router.refresh();
+        });
+      }}>
+      {error ? <p role="alert" className="text-[12.5px] text-red-700">{error}</p> : null}
+      <div>
+        <label className="block text-[12.5px] font-semibold text-slate-700"
+          htmlFor={'mod-t-' + m.id}>
+          Module title<Req />
+        </label>
+        <input id={'mod-t-' + m.id} value={title} required maxLength={255}
+          onChange={(e) => setTitle(e.target.value)} className={input + ' mt-1 w-full'} />
+      </div>
+      <div>
+        <label className="block text-[12.5px] font-semibold text-slate-700"
+          htmlFor={'mod-s-' + m.id}>
+          Summary
+        </label>
+        <textarea id={'mod-s-' + m.id} rows={2} value={summary} maxLength={4000}
+          onChange={(e) => setSummary(e.target.value)} className={input + ' mt-1 w-full'} />
+      </div>
+      <div className="flex gap-2">
+        <button type="submit" disabled={pending}
+          className="rounded-lg bg-brand-600 px-3 py-1.5 text-[12.5px] font-bold text-white
+                     disabled:opacity-60">
+          {pending ? 'Saving…' : 'Save'}
+        </button>
+        <button type="button" onClick={() => { setEditing(false); setTitle(m.title); }}
+          className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-semibold">
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * Taking a lesson down, from the course it is on.
+ *
+ * The stored file is left where it is: an upload is cheap to keep and
+ * impossible to get back, so a lesson removed by mistake is one somebody
+ * re-points at the same object rather than re-records.
+ */
+export function LessonRemove({ lesson }: { lesson: { id: number; title: string } }) {
+  const router = useRouter();
+  return (
+    <ConfirmRowAction
+      label="Remove" question="Remove this lesson?" subject={lesson.title}
+      onConfirm={async () => {
+        const res = await send('lessons/' + lesson.id, undefined, 'DELETE');
+        if (res.ok) router.refresh();
+      }} />
+  );
+}
+
 export function CourseRosterManager({ courseId, roster, options, canManage }: {
   courseId: number;
   roster: { user_id: string; name: string; email: string }[];

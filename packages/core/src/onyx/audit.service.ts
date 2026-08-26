@@ -48,6 +48,13 @@ export type AuditAction =
   // Including a price change, which is why this one exists: the edit route
   // recorded nothing at all until it was noticed.
   | 'course.updated'
+  // What a course is MADE of. Renaming a module or deleting a lesson used to
+  // be reachable only from the platform console, where it landed in the
+  // operator's own log; now that a lecturer can do it too, it belongs in the
+  // institution's -- "who took that lesson down" is a question asked about a
+  // syllabus far more often than about a price.
+  | 'module.updated' | 'module.deleted'
+  | 'lesson.updated' | 'lesson.deleted'
   // Changing where an institution's fees settle to is a finance-grade event,
   // so it is logged like one. The entry names which credentials were written,
   // never their values.

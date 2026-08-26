@@ -561,3 +561,32 @@ test('the whole roster comes back with everybody’s name on it', async () => {
   assert.deepEqual(anonymous.map((m) => m.id), [],
     anonymous.length + ' of ' + all.length + ' members came back with no name or email');
 });
+
+test('a lecturer sees every one of their own students, not the first thousand', async () => {
+  /*
+   * This read decides who a lecturer can SEE. It had no range, so it stopped
+   * at a thousand: teaching a course of 1,441 meant 441 of their own students
+   * were filtered out of every name lookup on the course page, and the roster
+   * rendered them as "Unknown" with an empty address. Not a permission failure
+   * and not an error -- people quietly missing from a list the lecturer is
+   * entitled to all of.
+   *
+   * 1,100 here so the loop runs more than once. Anything under a page proves
+   * nothing about the thing that broke.
+   */
+  const { db, svc } = await make();
+  const enrolments = db.tables.onyx_enrollments as Record<string, unknown>[];
+  for (let i = 0; i < 1100; i += 1) {
+    // eslint-disable-next-line no-await-in-loop -- ids are dealt in order.
+    const s = await svc.invite(1, {
+      name: 'Learner ' + i, email: 'learner' + i + '@x.test', role: 'student',
+    });
+    enrolments.push({ id: 5000 + i, tenant_id: 1, course_id: 7, user_id: s.user.id, status: 1 });
+  }
+
+  const seen = await svc.members(1, { onlyStudentsOn: [7] });
+  const students = seen.filter((m) => m.role === 'student');
+  assert.equal(students.length, 1100, 'the lecturer saw ' + students.length + ' of 1100');
+  const anonymous = students.filter((m) => !m.user?.email);
+  assert.equal(anonymous.length, 0, anonymous.length + ' of their own students had no address');
+});

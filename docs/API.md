@@ -252,13 +252,13 @@ docs:check` fails the build if it has.
 | `POST` | `/api/onyx/discussions/:id/reopen` | any member |
 | `POST` | `/api/onyx/discussions/:id/escalate` | any member |
 | `POST` | `/api/onyx/tickets` | any member |
-| `GET` | `/api/onyx/tickets` | any member |
-| `GET` | `/api/onyx/tickets/breaches` | any member |
-| `GET` | `/api/onyx/tickets/:id` | any member |
+| `GET` | `/api/onyx/tickets` | **no token** — public by design |
+| `GET` | `/api/onyx/tickets/breaches` | **no token** — public by design |
+| `GET` | `/api/onyx/tickets/:id` | **no token** — public by design |
 | `POST` | `/api/onyx/tickets/:id/assign` | admin, faculty, placement, exams |
-| `POST` | `/api/onyx/tickets/:id/respond` | any member |
-| `POST` | `/api/onyx/tickets/:id/resolve` | any member |
-| `POST` | `/api/onyx/tickets/:id/reopen` | any member |
+| `POST` | `/api/onyx/tickets/:id/respond` | **no token** — public by design |
+| `POST` | `/api/onyx/tickets/:id/resolve` | **no token** — public by design |
+| `POST` | `/api/onyx/tickets/:id/reopen` | **no token** — public by design |
 
 ## Learning · _LRN-01 to LRN-04_
 
@@ -306,6 +306,10 @@ docs:check` fails the build if it has.
 | `POST` | `/api/onyx/domains/:id/checkout` | any member |
 | `GET` | `/api/onyx/domains/:id/registrations` | admin, faculty |
 | `POST` | `/api/onyx/courses/:id/modules` | admin, faculty |
+| `PATCH` | `/api/onyx/modules/:id` | admin, faculty |
+| `DELETE` | `/api/onyx/modules/:id` | admin, faculty |
+| `PATCH` | `/api/onyx/lessons/:id` | admin, faculty |
+| `DELETE` | `/api/onyx/lessons/:id` | admin, faculty |
 | `POST` | `/api/onyx/modules/:id/lessons` | admin, faculty |
 | `GET` | `/api/onyx/courses/:id/outline` | any member |
 | `GET` | `/api/onyx/lessons/:id` | any member |
@@ -508,4 +512,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_422 endpoints across 9 route files._
+_426 endpoints across 9 route files._
