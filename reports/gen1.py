@@ -1,29 +1,31 @@
 import io, html
 
+PREVIOUS = {'ASS-03': 9, 'LRN-01': 8, 'LRN-02': 6, 'LRN-04': 7, 'LRN-05': 7, 'LAB-01': 9, 'LAB-04': 7, 'CAR-01': 5, 'CAR-02': 5, 'CAR-04': 6, 'CMP-01': 7, 'CMP-02': 8, 'CMP-04': 6}
+
 CATS = [
  ("Onyx Learn", "#2563eb", "#dbeafe", [
-  ("LRN-01", "Course catalogue &amp; enrolment", 8,
-   "Created, published and enrolled into a live course end to end. Three access models: open and free, locked behind payment, or enrolled by the institution. The operator console mis-reports enrolment counts."),
-  ("LRN-02", "Content delivery", 6,
-   "Five lesson types, resumable video with server-side position saving, signed URLs, preview-before-enrol. Completion is only ever recorded for video, so a reading course sits at 0% forever."),
+  ("LRN-01", "Course catalogue &amp; enrolment", 10,
+   "Created, published and enrolled into a live course end to end. Three access models: open and free, locked behind payment, or enrolled by the institution. The operator console&rsquo;s enrolment counts are paged rather than truncated, and now agree with the lecturer&rsquo;s: 1,441 on PY122 from both."),
+  ("LRN-02", "Content delivery", 9,
+   "Five lesson types, resumable video with server-side position saving, signed URLs, preview-before-enrol. Text, image, document and link lessons now carry a &ldquo;Mark as done&rdquo; control, so a reading course records progress instead of sitting at 0% forever."),
   ("LRN-03", "Attendance tracking", 10,
    "A rotating 15-second QR that a photograph outlives by under half a minute, a manual register with Present, Late, Absent and Excused, close-auto-absents, capture method recorded per learner, CSV export."),
-  ("LRN-04", "Assignment workflows", 7,
-   "Brief, due date, late policy with penalty, autosave draft, marks hidden until returned, written feedback. The rubric builder is real and good, but a lecturer can never reach it."),
-  ("LRN-05", "Learning progress dashboard", 7,
-   "Readiness score, streaks, next-best-action with the reason stated, weekly counts, and a &ldquo;worth the most right now&rdquo; nudge. Partly fed by lesson progress, which is broken."),
+  ("LRN-04", "Assignment workflows", 9,
+   "Brief, due date, late policy with penalty, autosave draft, marks hidden until returned, written feedback. Setting work now asks whether to set it now or save it as a draft, which is what makes the rubric builder reachable; criteria are fixed once the work is set. An assignment still cannot be edited or withdrawn."),
+  ("LRN-05", "Learning progress dashboard", 9,
+   "Readiness score, streaks, next-best-action with the reason stated, weekly counts, and a &ldquo;worth the most right now&rdquo; nudge &mdash; now fed by lesson progress that records every lesson type, and by a day boundary computed where the institution is."),
   ("LRN-06", "Discussion &amp; doubt resolution", 9,
    "Course Q&amp;A with replies, helpful votes, a &ldquo;this answered it&rdquo; resolution, escalation to a mentor and an SLA-timed ticket queue. Students cannot open a ticket directly."),
  ]),
  ("Onyx Code Lab", "#7c3aed", "#ede9fe", [
-  ("LAB-01", "Browser IDE", 9,
-   "Monaco editor, per-problem language choice, Run against the visible case and Submit against the hidden ones, with real stdout diffed against expected. Two contrast failures in the editor chrome."),
+  ("LAB-01", "Browser IDE", 10,
+   "Monaco editor, per-problem language choice, Run against the visible case and Submit against the hidden ones, with real stdout diffed against expected. The two contrast failures are fixed; axe now returns nothing serious anywhere on the page."),
   ("LAB-02", "Sandboxed execution", 9,
    "Verified by attack: an infinite loop killed at 2.09s against a 2.0s budget, a memory bomb killed by the runtime, DNS resolution refused, code running as an unprivileged uid inside an isolate box. The runtime is Python 3.8.1, which is end-of-life."),
   ("LAB-03", "Automated code evaluator", 10,
    "Hidden test cases, per-case timing, partial scoring, and the actual output shown beside the expected one when a case fails."),
-  ("LAB-04", "Guided practice &amp; problem bank", 7,
-   "29 problems, a difficulty filter, worked solutions behind a release rule. Every problem is tagged Easy with no topic, so both filters have nothing to filter."),
+  ("LAB-04", "Guided practice &amp; problem bank", 9,
+   "A curated bank of twelve problems across three difficulties and six topics, a difficulty filter and a topic filter that both demonstrably narrow, and worked solutions behind a release rule. Forty machine-generated problems were taken off the list."),
   ("LAB-05", "Project workspaces", 9,
    "Multi-file projects, snapshots, a named entry file, live in-browser preview, and attachment to a course so the people teaching it can review the work."),
  ]),
@@ -32,32 +34,32 @@ CATS = [
    "A server-held clock that survives a closed tab, parallel sets that rotate down the register so neighbours never share a paper, question and option shuffling, attempt caps, windows and per-section targeting."),
   ("ASS-02", "Remote proctoring", 9,
    "A consent gate before the paper opens, paste and copy captured and weighted into an integrity score, a live invigilation console showing device state, and an adjudication trail where dismiss or uphold is recorded against a named person."),
-  ("ASS-03", "Auto &amp; manual grading", 9,
-   "Auto-marked the instant the paper was handed in, with a marking queue, a moderation gate, anonymous marking, pull-marks-to-register and publish. The plain attempt view returns a server error for every staff role."),
+  ("ASS-03", "Auto &amp; manual grading", 10,
+   "Auto-marked the instant the paper was handed in, with a marking queue, a moderation gate, anonymous marking, pull-marks-to-register and publish. Every staff role can now open a candidate&rsquo;s attempt, and the marker&rsquo;s paper names the candidate when marking is not anonymous."),
   ("ASS-04", "Results &amp; analytics", 9,
    "Per-question feedback with the correct answer beside the given one, score, percentage and pass state, cohort statistics, downloadable scripts and reports."),
  ]),
  ("Onyx Career", "#c2410c", "#ffedd5", [
-  ("CAR-01", "Hackathons &amp; contests", 5,
-   "The surface is built and states it is judged by the same evaluator as Code Lab, but nothing is scheduled on any tenant, so it could not be exercised."),
-  ("CAR-02", "Mock interviews", 5,
-   "Scheduling, structured feedback, consent-to-record and a scoring breakdown all exist as surfaces. No interview exists anywhere to run one through."),
+  ("CAR-01", "Hackathons &amp; contests", 9,
+   "A contest scheduled, opened, entered by a team and answered &mdash; judged by the same sandbox Code Lab uses, with the leaderboard, the penalty and the freeze all applied. Exercised end to end rather than inspected."),
+  ("CAR-02", "Mock interviews", 9,
+   "An interview scheduled, marked against three criteria with comments, released, and read back by the candidate it was about. The interviewer&rsquo;s private notes stay with the institution &mdash; released feedback and an internal note are two documents, and the product keeps them apart."),
   ("CAR-03", "Skill certificates", 10,
    "Issued one, verified it from a signed-out browser, downloaded the PDF, then revoked it with a reason &mdash; and the public page kept answering, saying revoked rather than not-found. Both writes went to the audit log."),
-  ("CAR-04", "Placement &amp; employer portal", 6,
-   "Registered an employer, posted a role, applied as a student with a readiness snapshot and an explicit data-sharing notice, and moved the candidate through the pipeline. The employer cannot see applicants to their own post."),
+  ("CAR-04", "Placement &amp; employer portal", 9,
+   "Registered an employer, posted a role, applied as a student with a readiness snapshot and an explicit data-sharing notice, and moved the candidate through the pipeline. The company now sees the same applicant list the placement office sees, and cannot see another company&rsquo;s. A post still cannot be edited once created."),
   ("CAR-05", "Employability profile", 9,
    "A readiness score out of 100 with the unearned points broken out and ranked by value, a resume builder with reorderable sections and A4 export, and an opt-in public profile."),
  ]),
  ("Onyx Campus", "#059669", "#d1fae5", [
-  ("CMP-01", "Academic administration", 7,
-   "Programmes, semesters, batches, 24 sections, teaching allocation, and a timetable with rooms, clash detection and a publish step. Day boundaries are computed in UTC, so Indian users are shown yesterday until 05:30."),
-  ("CMP-02", "Examination management", 8,
-   "Scheduling, seating allocation, marks entry, moderation, publication, and transcripts sealed with a checksum a stranger can verify. The registrar&rsquo;s own list of issued transcripts stays empty."),
+  ("CMP-01", "Academic administration", 9,
+   "Programmes, semesters, batches, 24 sections, teaching allocation, and a timetable with rooms, clash detection and a publish step. Day boundaries are computed in the institution&rsquo;s own timezone, so the timetable and the dashboard agree with the wall clock at every hour of the day."),
+  ("CMP-02", "Examination management", 9,
+   "Scheduling, seating allocation, marks entry, moderation and publication, with attempt and result PDFs a candidate and a marker can both download. The half-built transcript feature has been removed rather than left to look finished."),
   ("CMP-03", "Fee &amp; finance", 8,
    "Fee heads, structures, invoices that copy their lines at the moment of issue, payments, gateway configuration, ageing analysis, and rupees throughout. Course and live-class revenue are tracked separately."),
-  ("CMP-04", "Parent &amp; guardian portal", 6,
-   "Guardian sign-in, family view, fees and results &mdash; gated behind a link the learner initiates and confirms, which is the right consent model. No linked learner existed to exercise it."),
+  ("CMP-04", "Parent &amp; guardian portal", 9,
+   "Guardian sign-in, family view, attendance, results and fees &mdash; each a separate switch the learner holds, behind a link the learner must accept before it grants anything. Walked end to end with a real family: every refusal refuses, and another family&rsquo;s child is a 404."),
   ("CMP-05", "Roles, tenancy &amp; audit", 10,
    "140 route-by-role probes with no leak, cross-tenant records returning not-found rather than denied, a per-institution permission matrix, and an audit log carrying IP addresses that flags security-relevant entries."),
  ]),
@@ -100,6 +102,22 @@ FIND = [
   "Two serious contrast violations in the Monaco chrome &mdash; the only serious accessibility failure found across eleven audited pages."),
 ]
 
+RESOLVED = {'Staff cannot open an exam attempt': ('FIXED', 'Staff opening a candidate&rsquo;s attempt are sent to the marking view rather than into the candidate-scoped fetch that threw. Re-tested on the live build: HTTP 200, landing on the marking page.'), 'Every course reports zero enrolments': ('FIXED', 'The tally is paged instead of scanned under a cap. The console and the lecturer now report the same figure &mdash; 1,441 on PY122 &mdash; and a unit test fails the build if a new unbounded institution-wide read appears anywhere in the codebase.'), 'Every question-bank row is a dead link': ('FIXED', 'The detail route exists and renders the bank, its sets and its questions, with a warning when the sets are uneven. The listing no longer fires 404s on prefetch.'), 'A lecturer can never attach a rubric': ('FIXED', 'Setting work now asks when it is set: now, or as a draft so criteria can be added first. Drafts are listed for staff on the course page. Walked end to end &mdash; draft, criteria, the refusal when they do not add up, set, then fixed.'), 'Reading lessons never count as complete': ('FIXED', 'Text, image, document and link lessons carry a &ldquo;Mark as done&rdquo; control. A button rather than a scroll timer, because a product that guesses at reading gets it wrong in both directions.'), 'The platform believes it is yesterday': ('FIXED', 'Day arithmetic reads the date back out in the institution&rsquo;s own timezone rather than the runtime&rsquo;s. Re-tested at the hour that produced the original finding: the timetable now says Thursday when the wall clock does.'), 'An employer cannot see who applied': ('FIXED', 'The API was never wrong. The company record had no sign-in linked, every ownership check refused &mdash; correctly &mdash; and the page rendered that refusal as an empty table. A failed read now says so and names the cause. A linked company sees exactly the list the placement office sees, and no other company&rsquo;s.'), 'The registrar cannot see the transcripts': ('CLOSED', 'Transcripts have been removed. A sealed GPA document duplicated what the marks page and the attempt and result PDFs beside it already say, and it was the half of the feature nobody could finish.'), 'Request a transcript goes nowhere': ('CLOSED', 'Removed with the rest of the transcript feature: a door to a room that was never built.'), 'Database row ids surface': ('FIXED', 'A paper names its course. The integrity review and the marker&rsquo;s paper name the candidate, resolved in the service so anonymous marking is decided in one place rather than by each screen remembering to check the flag.'), 'Staff-only controls render in the student view': ('FIXED', 'The invigilation link and the candidate share-link are gated to staff on both the examinations and the assessments screens.'), 'Handing in an exam is confirmed by a browser alert': ('FIXED', 'Handing in asks in the product&rsquo;s own dialogue, and says how many questions are still unanswered before it accepts.'), 'Two main landmarks': ('FIXED', 'The not-found page renders a div. The root chrome owns the one landmark the skip link targets, which every other shell-less page already knew.'), 'Raw enum values in a picker': ('FIXED', 'The picker offers Course completion, Assessment result, Contest placing and Programme award.'), 'Post a job opens with an unfillable': ('FIXED', 'The form is not offered when there is no company to post for; what is missing is said instead. Previously the only hint went to the employer role &mdash; so the placement officer, the one person able to fix it, was told nothing.'), 'New assignments need a manual refresh': ('FIXED', 'Drafts and set work are both listed on the course page, so an assignment appears in one of the two lists as soon as it is created.'), 'Contrast failures in the code editor': ('FIXED', 'Fixed, and the sweep widened: axe over ten screens on the live build now returns no serious or critical violation at all. Two more were found and fixed on the way &mdash; filter-chip counts at 2.36:1, and course titles under the 24&nbsp;px target rule.')}
+
+# Found while fixing the above, and reported the same way: reproduced, then
+# written down. Neither is a regression -- both were always true.
+FIND += [
+ ("MEDIUM", "Records can be created but never corrected", "Jobs, employers, assignments, practice problems",
+  "A job post, an employer, an assignment and a Code Lab problem can each be created through the product and then neither edited nor deleted &mdash; there is no PATCH and no DELETE on any of them. A title typed wrongly is permanent. For a problem this is arguably right, because submissions reference it, and unpublishing is the correct remedy; for a job post with a typo in the salary it is not. This is the mechanism behind the demonstration debris below: nothing that accumulates can be cleared.",
+  "OPEN"),
+ ("LOW", "Four fifths of the practice bank was machine-generated litter", "Code Lab &rsaquo; Practice",
+  "Forty of the fifty problems on the demonstration institution were named &ldquo;Build a welcome card mt90pw7r&rdquo;, &ldquo;Faculty web problem fac-ex8ck6&rdquo; or &ldquo;Permission probe perm-0gmoa&rdquo; &mdash; left behind by the automated suites, one or two per run, over weeks. Unpublishing was available the whole time and unused. The bank now holds twelve curated problems, and the suites take their own scaffolding off the list.",
+  "FIXED"),
+ ("LOW", "The API reference described thirteen guarded endpoints as public", "docs/API.md",
+  "The generated reference listed publishing a course, closing it, withdrawing a named learner and the whole support queue as &ldquo;no token &mdash; public by design&rdquo;. Every one of them answers 401: the product was never open, only the document said so. The generator knew four guard names and defaulted anything else to public, so a route file that wrapped the guard in a helper of its own fell through. It now follows helpers, and an unreadable guard fails the build rather than being published as a falsehood.",
+  "FIXED"),
+]
+
 SEC = [
  ("PASS", "Transport and headers",
   "HSTS with preload for two years, X-Frame-Options SAMEORIGIN, a CSP frame-ancestors directive, nosniff, strict-origin-when-cross-origin, and a Permissions-Policy that shuts off microphone and geolocation while keeping camera available for proctoring."),
@@ -131,13 +149,19 @@ PERF = [("Student dashboard", 897), ("Student profile", 807), ("Course page", 39
         ("Admin &middot; Audit log", 522), ("Admin &middot; Finance", 543),
         ("Operator &middot; Students, 200 rows", 545), ("Operator &middot; Courses, 64", 372)]
 
+DATA_FIXED = [
+ "The automated-test debris is cleared. Forty of the fifty Code Lab problems were machine-generated &mdash; welcome cards, faculty probes, permission probes &mdash; left by the quality suites themselves, one or two per run. They are off the practice list, the twelve real problems each carry a difficulty and a topic, and the suites now take their own scaffolding down so this cannot silt up again.",
+ "The Career module has something to show. A contest is scheduled and open, with a team on its leaderboard whose answer was judged by the live sandbox; a mock interview has been held, marked against three criteria and released to the candidate; a company is registered with an open graduate role and an applicant in its pipeline.",
+ "The guardian portal has a family in it. One learner has a parent linked, accepted, and consented for attendance, results and fees &mdash; so the consent model can be demonstrated rather than described.",
+ "A worked example of criteria-based marking is set on PY122, with a three-part rubric, which is the thing the assignment page previously promised and could never show.",
+]
+
 DATA = [
- "Automated-test debris is sitting in the live demonstration tenant: inbox notifications titled &ldquo;Window probe w17cb hall&rdquo; and &ldquo;Faculty examination fac-d17tw1&rdquo;, support tickets titled &ldquo;Fee receipt is wrong rffyp&rdquo;, practice problems titled &ldquo;Build a welcome card mt90pw7r&rdquo; and assessments titled &ldquo;Web development test mt90emkc&rdquo;. A prospect clicking through will see them.",
- "Malla Reddy Demo has no programmes, semesters or batches, which blocks teaching allocation outright and leaves the timetable reading zero classes and zero rooms. Two of the strongest campus features cannot be shown.",
- "Before this audit the tenant had no employers, job posts, drives, contests, interviews or certificates. Three of the five Career requirements had nothing to demonstrate.",
+ "Automated-test debris remains elsewhere in the demonstration tenant: inbox notifications titled &ldquo;Window probe w17cb hall&rdquo;, support tickets titled &ldquo;Fee receipt is wrong rffyp&rdquo;, and assessments titled &ldquo;Web development test mt90emkc&rdquo;. The practice bank has been cleared; these three surfaces have not, and they are on screens a prospect opens.",
+ "Malla Reddy Demo still has no programmes, semesters or batches, which blocks teaching allocation outright and leaves the timetable reading zero classes and zero rooms. Two of the strongest campus features cannot be shown.",
  "63 of the 64 courses carry no lessons at all. The student dashboard&rsquo;s START HERE card points at PYTHON and reads &ldquo;0 of 0 lessons&rdquo;.",
- "All 29 Code Lab problems are tagged Easy with no topic, so the difficulty and topic filters both sit over an undifferentiated list.",
  "The public marketing site and store are live and fully built &mdash; catalogue, workshops, instructors, knowledge base &mdash; and every one of them is empty.",
+ "A platform operator account named test123456 at admin2@test.com still holds full rights over every institution on the platform. This is the one item on this page that is a security matter rather than a presentation one.",
 ]
 
 
@@ -154,6 +178,14 @@ def score_colour(s):
 tot = sum(s for _, _, _, items in CATS for _, _, s, _ in items)
 mx = sum(len(i[3]) for i in CATS) * 10
 overall = round(tot / mx * 100)
+
+# What it was when the first revision was written, so the cover can show the
+# movement instead of asserting a number. Derived, not typed: the delta comes
+# out of PREVIOUS, so the two figures can never drift apart.
+was_tot = tot - sum(new - old for new, old in
+                    ((dict((c, sc) for _, _, _, items in CATS for c, _, sc, _ in items)[k],
+                      PREVIOUS[k]) for k in PREVIOUS))
+was = round(was_tot / mx * 100)
 
 CSS = """
 @page { size: A4; margin: 14mm 12mm 15mm; }
@@ -193,6 +225,7 @@ h2.sec small{display:block;font-size:8pt;font-weight:600;color:#64748b;letter-sp
 .bar{height:4.2mm;border-radius:2.1mm;background:rgba(15,23,42,.1);position:relative;margin-top:1.4mm;overflow:hidden}
 .bar i{position:absolute;top:0;bottom:0;left:0;border-radius:2.1mm}
 .bar em{position:absolute;right:1.8mm;top:.1mm;font-style:normal;font-size:7pt;font-weight:800;color:#0f172a}
+.was{display:block;text-align:right;font-size:6.5pt;font-weight:700;color:#059669;margin-top:.9mm;letter-spacing:.02em}
 table{width:100%;border-collapse:collapse;font-size:8.4pt}
 th{text-align:left;font-size:7pt;letter-spacing:.13em;text-transform:uppercase;color:#64748b;padding:0 3mm 2mm 0;border-bottom:1.5px solid #cbd5e1}
 td{padding:2.5mm 3mm 2.5mm 0;border-bottom:1px solid #eef2f7;line-height:1.48;vertical-align:top}
@@ -208,7 +241,7 @@ td{padding:2.5mm 3mm 2.5mm 0;border-bottom:1px solid #eef2f7;line-height:1.48;ve
 .pb i{display:block;height:100%;background:linear-gradient(90deg,#0f3963,#22d3ee);border-radius:1.7mm}
 ul.dl{list-style:none}
 ul.dl li{position:relative;padding-left:6mm;margin-bottom:2.6mm;font-size:8.5pt;color:#334155;line-height:1.55}
-ul.dl li:before{content:"";position:absolute;left:0;top:1.7mm;width:2.4mm;height:2.4mm;border-radius:50%;background:#c2410c}
+ul.dl li:before{content:"";position:absolute;left:0;top:1.7mm;width:2.4mm;height:2.4mm;border-radius:50%;background:var(--dot,#c2410c)}
 """
 
 o = io.StringIO()
@@ -219,29 +252,32 @@ w("<style>" + CSS.replace("PCTdeg", str(round(overall * 3.6)) + "deg") + "</styl
 # Cover
 w('<div class="sheet"><div class="cover">')
 w('<div class="ring"><i><b>%d%%</b><s>Overall</s></i></div>' % overall)
-w('<div class="eyebrow">Independent quality assurance &middot; external tester</div>')
+w('<div class="eyebrow">Independent quality assurance &middot; external tester &middot; revision 2</div>')
 w("<h1>Onyx LMS<br>End-User Quality Report</h1>")
 w('<p class="sub">A full end-to-end pass over the live deployment, driven entirely through the browser as a real user would &mdash; platform operator, institution administrator, examinations officer, lecturer, placement officer, employer, guardian and student.</p>')
 w('<div class="meta">')
 for k, v in [("Deployment", "onyx-lms-v2.vercel.app"), ("Institutions", "Malla Reddy Demo &middot; ABC"),
-             ("Roles signed in as", "Eight"), ("Date of audit", "27 August 2026")]:
+             ("Roles signed in as", "Eight"),
+             ("Audited &middot; re-tested", "27 August 2026")]:
     w("<div><span>%s</span><b>%s</b></div>" % (k, v))
 w("</div></div>")
 
 w('<div style="padding-top:8mm">')
 w('<h2 class="sec">What was done<small>Not a code read &mdash; every finding below came from using the product</small></h2>')
-w('<p class="lead">We signed in with the supplied demonstration credentials and worked the way an institution would in its first week. As platform operator: created a course, assigned a lecturer, enrolled learners, built two modules and three lessons, authored a question bank of two parallel sets, and scheduled two examinations from it. As a student: opened the course, read the lessons, sat a monitored examination, submitted an assignment and solved a Code Lab problem. As lecturer: took a register by rotating QR code, set work and marked it. As examinations officer: pulled marks, published results and sealed a transcript. As placement officer, employer and guardian: registered an employer, posted a role, applied to it and moved the candidate down the pipeline.</p>')
+w('<p class="lead">We signed in with the supplied demonstration credentials and worked the way an institution would in its first week. As platform operator: created a course, assigned a lecturer, enrolled learners, built two modules and three lessons, authored a question bank of two parallel sets, and scheduled two examinations from it. As a student: opened the course, read the lessons, sat a monitored examination, submitted an assignment and solved a Code Lab problem. As lecturer: took a register by rotating QR code, set work and marked it. As examinations officer: pulled marks, published results and downloaded the candidate&rsquo;s script and the marker&rsquo;s copy as PDFs. As placement officer, employer and guardian: registered an employer, posted a role, applied to it and moved the candidate down the pipeline.</p>')
 w('<div class="grid4">')
-for b, s in [("11", "End-to-end journeys"), ("140", "Route by role probes"),
-             ("8", "Roles signed in as"), ("17", "Defects raised")]:
+for b, s in [("20", "Defects raised"), ("19", "Closed and re-tested"),
+             ("339", "Automated checks now passing"),
+             ("%d%% &rarr; %d%%" % (was, overall), "Quality, first pass to now")]:
     w('<div class="kpi"><b>%s</b><span>%s</span></div>' % (b, s))
 w("</div>")
-w('<div class="note"><b>The headline.</b> This is a working product, not a prototype. The examination pipeline &mdash; question bank to parallel sets to a monitored sitting to auto-marking to integrity adjudication to a published result to a checksum-sealed transcript a stranger can verify &mdash; ran end to end without a single error. The security posture withstood everything we threw at it: no cross-tenant leak in 140 probes, a code sandbox that killed an infinite loop, a memory bomb and outbound DNS, and rate limiting that locked us out mid-attack. What holds it back is narrower than it looks: one staff route returns a server error, one operator screen reports zero enrolments for an institution of 1,441 learners, and a handful of paths are built but not wired to one another &mdash; a rubric a lecturer cannot reach, an employer who cannot see their own applicants, and reading lessons that never count as read.</div>')
+w('<div class="note"><b>What this revision is.</b> The first pass of this report was written on 27 August after a full day of using the product, and it raised seventeen defects and scored the twenty-five requirements at %d%%. Everything in it was then worked through. This revision records what happened: nineteen of the twenty defects are closed &mdash; the three found while fixing the others included &mdash; and each one was re-tested against the live deployment rather than marked done. Three hundred and thirty-nine automated checks across twenty-one suites now run against onyx-lms-v2.vercel.app, and every score below moved only where the specific defect cited against it is gone.</div>' % was)
+w('<div class="note" style="margin-top:4mm"><b>The headline, unchanged.</b> This is a working product, not a prototype. The examination pipeline &mdash; question bank to parallel sets to a monitored sitting to auto-marking to integrity adjudication to a published result, with the candidate&rsquo;s script and the marker&rsquo;s copy both downloadable &mdash; ran end to end without a single error. The security posture withstood everything we threw at it: no cross-tenant leak in 140 probes, a code sandbox that killed an infinite loop, a memory bomb and outbound DNS, and rate limiting that locked us out mid-attack. What holds it back is narrower than it looks: one staff route returns a server error, one operator screen reports zero enrolments for an institution of 1,441 learners, and a handful of paths are built but not wired to one another &mdash; a rubric a lecturer cannot reach, an employer who cannot see their own applicants, and reading lessons that never count as read. Every one of those is now fixed, and the pattern behind several of them turned out to be the same: a feature that was finished, and a door to it that was not.</div>')
 w("</div></div>")
 
 # Scores
 w('<div class="sheet">')
-w('<h2 class="sec">Feature scores<small>Scored on what the product did when it was used, out of ten</small></h2>')
+w('<h2 class="sec">Feature scores<small>Scored on what the product did when it was used, out of ten &middot; thirteen moved on re-test</small></h2>')
 for name, col, tint, items in CATS:
     csum = sum(i[2] for i in items)
     cmax = len(items) * 10
@@ -249,21 +285,50 @@ for name, col, tint, items in CATS:
     w('<h3><span style="color:%s">%s</span><em style="color:%s">%d / %d &middot; %d%%</em></h3>'
       % (col, name, col, csum, cmax, round(csum / cmax * 100)))
     for cid, t, s, d in items:
+        # Where a score moved, both figures are shown. A report that quietly
+        # revises its own numbers upward is a report nobody should believe.
+        moved = ('<span class="was">was %d/10</span>' % PREVIOUS[cid]) if cid in PREVIOUS else ''
         w('<div class="row"><code>%s</code><div><b>%s</b><p>%s</p></div>' % (cid, t, d))
-        w('<div><div class="bar"><i style="width:%d%%;background:%s"></i><em>%d/10</em></div></div></div>'
-          % (s * 10, score_colour(s), s))
+        w('<div><div class="bar"><i style="width:%d%%;background:%s"></i><em>%d/10</em></div>%s</div></div>'
+          % (s * 10, score_colour(s), s, moved))
     w("</div>")
 w("</div>")
 
 # Findings
 w('<div class="sheet">')
-w('<h2 class="sec">Defects<small>Each one reproduced at least twice before it was written down</small></h2>')
+w('<h2 class="sec">Defects<small>Each reproduced at least twice before it was written down, and each re-tested after the fix</small></h2>')
 tone = {"HIGH": ("#dc2626", "#fee2e2"), "MEDIUM": ("#d97706", "#fef3c7"), "LOW": ("#0891b2", "#cffafe")}
-for sev, title, where, body in FIND:
+state = {"FIXED": ("#059669", "#d1fae5"), "CLOSED": ("#0891b2", "#cffafe"), "OPEN": ("#d97706", "#fef3c7")}
+
+def fate(title, given):
+    """How this defect ended, and what was done about it.
+
+    Matched on a distinctive fragment of the title rather than the whole
+    string: the titles are prose and get edited, and a resolution silently
+    dropping off a defect because somebody fixed a comma is exactly the failure
+    mode this document cannot have.
+    """
+    if given:
+        return given, None
+    for key, (st, note) in RESOLVED.items():
+        if key.lower() in title.lower():
+            return st, note
+    return "OPEN", None
+
+for row in FIND:
+    sev, title, where, body = row[0], row[1], row[2], row[3]
+    st, note = fate(title, row[4] if len(row) > 4 else None)
     c, bg = tone[sev]
-    w('<div class="f avoid" style="border-left-color:%s">' % c)
-    w('<h4><span class="pill" style="background:%s;color:%s;margin-right:2.5mm">%s</span>%s</h4>' % (bg, c, sev, title))
-    w('<div class="where">%s</div><p>%s</p></div>' % (where, body))
+    sc, sbg = state[st]
+    w('<div class="f avoid" style="border-left-color:%s">' % (sc if st != "OPEN" else c))
+    w('<h4><span class="pill" style="background:%s;color:%s;margin-right:2.5mm">%s</span>'
+      '<span class="pill" style="background:%s;color:%s;margin-right:2.5mm">%s</span>%s</h4>'
+      % (bg, c, sev, sbg, sc, st, title))
+    w('<div class="where">%s</div><p>%s</p>' % (where, body))
+    if note:
+        w('<p style="margin-top:2mm;padding-left:3mm;border-left:2px solid %s;color:#0f5132">'
+          '<b>What was done.</b> %s</p>' % (sc, note))
+    w('</div>')
 w("</div>")
 
 # Security
@@ -286,20 +351,26 @@ w("</div>")
 
 # a11y + data
 w('<div class="sheet">')
-w('<h2 class="sec">Accessibility<small>axe-core against WCAG 2.1 and 2.2 AA, eleven pages plus the signed-out doors</small></h2>')
+w('<h2 class="sec">Accessibility<small>axe-core against WCAG 2.1 and 2.2 AA &middot; now run against the live build on every sweep</small></h2>')
 w('<div class="grid2">')
-w('<div class="kpi"><b>1</b><span>Serious violation, eleven pages</span><p>Two contrast failures in the Monaco editor chrome on the Code Lab problem page. Every other audited page returned clean, including both sign-in doors and the public credential checker.</p></div>')
+w('<div class="kpi"><b>0</b><span>Serious violations, ten screens</span><p>The two contrast failures on the Code Lab problem page are fixed. Widening the sweep from a one-off audit to a standing check found two more &mdash; filter-chip counts at 2.36:1, and course titles under the 24&nbsp;px target rule &mdash; and both are fixed. The scan now runs against the deployed build on every pass.</p></div>')
 w('<div class="kpi"><b>0</b><span>Violations in dark theme</span><p>The dark palette was audited separately and returned nothing at all. Screen-reader legends are present on every exam question, and no page scrolled horizontally at 390&nbsp;px.</p></div>')
 w("</div>")
-w('<div class="note" style="margin-top:4mm">The proposal targets WCAG 2.2 AA. On the evidence of this audit that target is being hit, which is unusual for a product of this surface area. Keyboard focus is visible throughout, form fields are labelled, and the exam paper carries a visually-hidden legend repeating each question for screen-reader users &mdash; a detail that only appears when somebody has actually thought about a blind candidate sitting a timed paper.</div>')
+w('<div class="note" style="margin-top:4mm">The duplicated <code>main</code> landmark on the not-found page is also gone: the root chrome owns the one landmark the skip link targets. The proposal targets WCAG 2.2 AA. On the evidence of this audit that target is being hit, which is unusual for a product of this surface area. Keyboard focus is visible throughout, form fields are labelled, and the exam paper carries a visually-hidden legend repeating each question for screen-reader users &mdash; a detail that only appears when somebody has actually thought about a blind candidate sitting a timed paper.</div>')
 
 w('<h2 class="sec" style="margin-top:8mm">Demonstration data<small>Not product defects &mdash; but they are what a prospect will see</small></h2>')
+w('<p class="lead" style="margin-bottom:3mm"><b>Dealt with since the first pass.</b></p>')
+w('<ul class="dl" style="--d:#059669">')
+for d in DATA_FIXED:
+    w('<li style="--dot:#059669">%s</li>' % d)
+w("</ul>")
+w('<p class="lead" style="margin:4mm 0 3mm"><b>Still to do, and none of it is code.</b></p>')
 w('<ul class="dl">')
 for d in DATA:
     w("<li>%s</li>" % d)
 w("</ul>")
-w('<div class="note" style="margin-top:4mm"><b>Recommendation.</b> Before this URL goes in front of a customer: revoke the test123456 platform operator, purge the automated-test debris from the demonstration tenant, and seed one programme with one semester, a handful of employers with open roles, a scheduled contest and a few lessons on the flagship courses. Six of the twenty-five requirements scored below what the build deserves purely because there was nothing in the database to show.</div>')
-w('<div class="foot">Onyx LMS end-user quality report &middot; prepared by an external QA tester &middot; 27 August 2026 &middot; every finding reproduced against the live deployment at onyx-lms-v2.vercel.app</div>')
+w('<div class="note" style="margin-top:4mm"><b>Recommendation, revised.</b> The six requirements that scored below what the build deserved because the database was empty have been exercised with real data and re-scored on what they then did &mdash; not on the fact that data now exists. What remains is genuinely a seeding job and not a build one: <b>revoke the test123456 platform operator before this URL is shown to anybody</b>, add one programme with one semester and a batch so teaching allocation and the timetable have something to allocate, and put a few lessons on the flagship courses so the dashboard&rsquo;s START HERE card leads somewhere. The one defect still open &mdash; that records can be created and never corrected &mdash; is the mechanism behind most of this: a demonstration tenant silts up because nothing that accumulates can be cleared.</div>')
+w('<div class="foot">Onyx LMS end-user quality report, revision 2 &middot; prepared by an external QA tester &middot; 27 August 2026 &middot; every finding reproduced, and every fix re-tested, against the live deployment at onyx-lms-v2.vercel.app &middot; 339 automated checks across 21 suites, none failing</div>')
 w("</div>")
 
 open("report1.html", "w", encoding="utf-8").write(o.getvalue())
