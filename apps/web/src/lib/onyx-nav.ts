@@ -60,7 +60,16 @@ const I = {
   // "what has this cohort handed in" is a different question from "what is in
   // the bank", and the bank page cannot answer it without a problem chosen
   // first.
-  handins:   { href: '/onyx/practice/submissions', label: 'Submissions', icon: 'list' },
+  //
+  // "Practice submissions", not "Submissions". This sat in the Learning group
+  // labelled with the bare noun, and a lecturer hunting for a candidate's
+  // EXAM script clicked it -- reasonably -- and found a Code Lab hand-in list
+  // with no sign of the paper they were looking for. Two different features
+  // answer to "submissions" in this product, and the one behind this link is
+  // the narrower of them, so it is the one that has to say which it is. The
+  // page's own heading has read "Practice submissions" all along; only the
+  // way in was ambiguous.
+  handins:   { href: '/onyx/practice/submissions', label: 'Practice submissions', icon: 'list' },
   spaces:    { href: '/onyx/workspaces', label: 'Workspaces', icon: 'layers' },
   assess:    { href: '/onyx/assessments', label: 'Assessments', icon: 'edit' },
   results:   { href: '/onyx/results', label: 'Results', icon: 'award' },
