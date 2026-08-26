@@ -177,11 +177,30 @@ export function MarkingQueue({ queue, resultsHref, assessmentId }: {
                         * menu and come back. Not destructive, so the rule that
                         * keeps deletes off list rows does not apply.
                         */}
+                      {/*
+                        * No `onClick` here, and that is the fix rather than an
+                        * omission.
+                        *
+                        * This carried `onClick={(e) => e.stopPropagation()}`,
+                        * guarding against a row-wide click that does not
+                        * exist: `Row` has no overlay and no handler -- this
+                        * anchor is a SIBLING of the row's title link, not
+                        * nested inside one. The `.rows-linked` overlay it was
+                        * written for lives on DataTable, and that rule already
+                        * lifts controls above the overlay in CSS.
+                        *
+                        * What the handler did instead was break the page. This
+                        * module is a Server Component, `meta` is handed to a
+                        * Client Component, and React cannot serialise a
+                        * function across that boundary -- so every marking
+                        * screen in the product answered 500 ("Event handlers
+                        * cannot be passed to Client Component props") and no
+                        * lecturer could see a single submission.
+                        */}
                       <a
                         href={'/api/proxy/onyx/attempts/' + a.id + '/marker-script.pdf'}
                         download
                         aria-label={'Download the script for ' + nameOf(a)}
-                        onClick={(e) => e.stopPropagation()}
                         className="inline-flex min-h-[30px] shrink-0 items-center gap-1
                                    rounded-full border border-line px-2.5 text-[12.5px]
                                    font-semibold text-muted hover:bg-brand-50 hover:text-ink"
