@@ -58,6 +58,16 @@ const ADMIN_COLUMNS = 'id, user_id, granted_by, created_at';
 const ROW_CAP = 200;
 const SCAN_CAP = 5000;
 
+/**
+ * How many rows one page of a scan-and-tally carries.
+ *
+ * A thousand is what the server returns for a request naming no range, so it
+ * is the largest useful page -- and asking for more with `.limit()` does not
+ * work, because the cap is applied before the limit is read. SCAN_CAP stays as
+ * the ceiling on the whole scan.
+ */
+const TALLY_PAGE = 1000;
+
 const num = (v: unknown): number => Number(v ?? 0);
 const clampLimit = (v: number | undefined, fallback = ROW_CAP) =>
   Math.min(Math.max(Number.isFinite(v) && v! > 0 ? Math.trunc(v!) : fallback, 1), ROW_CAP);
@@ -644,10 +654,33 @@ export class PlatformService {
     const assessmentRows = (assessmentQ.data ?? []).slice(0, limit);
     const examRows = (examQ.data ?? []).slice(0, limit);
 
+    /*
+     * The enrolment tally, PAGED rather than capped.
+     *
+     * `.limit(SCAN_CAP)` reads as "up to five thousand" and was not: a request
+     * naming no RANGE comes back with at most a thousand rows whatever limit it
+     * asks for, because the cap is applied first. So this institution's 1,447
+     * enrolments arrived as 1,000, all of which happened to belong to one
+     * course -- and the console reported PY122 with exactly 1000 enrolled and
+     * every one of the other sixty-three courses with none.
+     *
+     * Nothing looked wrong. Capacity, staffing and revenue read off that
+     * screen would all have been wrong, which is why the end-user report
+     * called it out on its own.
+     */
+    const enrolRows: { course_id: unknown; status: unknown }[] = [];
+    for (let from = 0; from < SCAN_CAP; from += TALLY_PAGE) {
+      // eslint-disable-next-line no-await-in-loop -- each page needs the one
+      // before it to have arrived before it knows whether to ask for another.
+      const { data } = await this.#db.from('onyx_enrollments').select('course_id, status, id')
+        .eq('tenant_id', id).order('id').range(from, from + TALLY_PAGE - 1);
+      const page = data ?? [];
+      enrolRows.push(...page);
+      if (page.length < TALLY_PAGE) break;
+    }
+
     // Counts by one scan-and-tally per table rather than one query per row.
-    const [enrolQ, facQ, subQ, attemptQ, progQ, markQ, seatQ] = await Promise.all([
-      this.#db.from('onyx_enrollments').select('course_id, status')
-        .eq('tenant_id', id).limit(SCAN_CAP),
+    const [facQ, subQ, attemptQ, progQ, markQ, seatQ] = await Promise.all([
       this.#db.from('onyx_course_faculty').select('course_id, user_id')
         .eq('tenant_id', id).limit(SCAN_CAP),
       assignmentRows.length
@@ -674,7 +707,7 @@ export class PlatformService {
     ]);
 
     const enrolBy = new Map<number, number>();
-    for (const e of enrolQ.data ?? []) {
+    for (const e of enrolRows) {
       if (num(e.status) !== 1) continue;
       const c = num(e.course_id);
       enrolBy.set(c, (enrolBy.get(c) ?? 0) + 1);

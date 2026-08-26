@@ -322,22 +322,11 @@ test('CMP-02c the learner sees the published mark, and only then', async ({ page
   await page.screenshot({ path: OUT + 'feat-CMP02-learner-result.png', fullPage: true });
 });
 
-test('CMP-02c a transcript is issued and can be verified', async ({ page }) => {
-  await signIn(page, mail('admin'));
-  await page.goto('/onyx/results');
-  await create(page, 'Issue a transcript', { user_id: 'Ana Learner' });
-  await page.screenshot({ path: OUT + 'feat-CMP02-transcript.png', fullPage: true });
-
-  const serial = await withDb(async (c) => {
-    const { rows } = await c.query(
-      `SELECT serial, checksum FROM public."onyx_transcripts" WHERE tenant_id=$1`,
-      [w.tenantId]);
-    expect(rows.length, 'a transcript was issued').toBe(1);
-    expect(String(rows[0].checksum ?? ''), 'sealed with a checksum').not.toBe('');
-    return String(rows[0].serial);
-  });
-  expect(serial.length, 'the serial is the thing a third party quotes').toBeGreaterThan(4);
-});
+/*
+ * The transcript spec is gone with the feature -- a sealed GPA document that
+ * duplicated the marks /onyx/results already publishes and the attempt and
+ * result PDFs already print with the working shown.
+ */
 
 test('CMP-03 a fee structure is built and an invoice raised against it', async ({ page }) => {
   await signIn(page, mail('admin'));

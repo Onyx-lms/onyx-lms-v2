@@ -187,10 +187,6 @@ export interface ExamMark {
   } | null;
 }
 
-export interface Transcript {
-  id: number; serial: string; gpa: number | null;
-  credits_earned: number; checksum: string; issued_at: string; revoked_at: string | null;
-}
 
 // ---------------------------------------------------------------------------
 // CMP-03 -- money

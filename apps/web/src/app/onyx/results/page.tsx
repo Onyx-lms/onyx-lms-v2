@@ -3,14 +3,13 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
-import type { ExamMark, Transcript } from '@/lib/onyx-campus';
+import type { ExamMark } from '@/lib/onyx-campus';
 import type { MyAttempt } from '@/lib/onyx-assess';
 import { CreatePanel } from '@/components/onyx-create';
 import {
   ActionLink, Card, Empty, Icon, ListRow, percentText, Pill, RowList, Score,
   SectionHead, StatTile,
 } from '@/components/onyx-ui';
-import { VerifyTranscript } from '@/components/onyx-transcript';
 import { formatDate } from '@/lib/when';
 
 export const metadata: Metadata = { title: 'Results' };
@@ -45,8 +44,8 @@ function bandFor(grade: string | null): 'hi' | 'mid' | 'lo' | undefined {
  *   tests and coursework, marked by the people who teach, scored out of
  *   whatever that paper was worth.
  *
- *   **Grades** -- "what is on my record?" The examinations office's register,
- *   its moderation, and the sealed transcripts drawn from it.
+ *   **Grades** -- "what is on my record?" The examinations office's register
+ *   and its moderation.
  *
  * They were previously four flat lists stacked in a column -- exam marks,
  * assessment results, a verifier, transcripts -- which read as a pile rather
@@ -65,25 +64,19 @@ export default async function OnyxResultsPage() {
   await requireOnyxSession();
   const me = await onyxApi<Me>('/api/onyx/me');
   const staff = EXAM_STAFF.includes(me.role);
-  // CMP-02c: issuing a transcript needs somebody to issue it to, and which
-  // programme it covers. Both come from the institution, not from a text box.
-  const [members, programs] = await Promise.all([
-    staff ? onyxApiSafe<{ user_id: number; role: string; user: { name: string } | null }[]>(
-      '/api/onyx/members') : null,
-    staff ? onyxApiSafe<{ id: number; name: string }[]>('/api/onyx/programs') : null,
-  ]);
-  const learners = (members ?? []).filter((m) => m.role === 'student');
-
-  const [marks, transcripts, myAttempts] = await Promise.all([
+  /*
+   * The roster and the programme list are no longer read here.
+   *
+   * They existed to fill the "Issue a transcript" form's two pickers, and
+   * fetching the whole membership of an institution to populate a dropdown on
+   * a page about somebody's own marks was the cost of a feature that has gone.
+   */
+  const [marks, myAttempts] = await Promise.all([
     onyxApi<ExamMark[]>('/api/onyx/results'),
-    onyxApi<Transcript[]>('/api/onyx/transcripts'),
     onyxApi<MyAttempt[]>('/api/onyx/my/assessments'),
   ]);
   const assessmentResults = myAttempts.filter((a) => a.results_published && a.score !== null);
 
-  const live = transcripts.filter((t) => !t.revoked_at);
-  const newest = [...live].sort(
-    (a, b) => Date.parse(b.issued_at) - Date.parse(a.issued_at))[0] ?? null;
   const average = marks.length
     ? Math.round(marks.reduce((n, m) => n + m.final_marks, 0) / marks.length)
     : null;
@@ -118,16 +111,15 @@ export default async function OnyxResultsPage() {
       subtitle={staff
         ? 'Your own record.'
         : 'Published results only. A mark appears here once it has been released.'}
-      action={me.role === 'student' ? (
-        /* "Request", not "Download": a download button that produces nothing is
-           the fastest way to get a support ticket. */
-        <Link href="/onyx/support"
-          className="inline-flex min-h-[40px] items-center gap-2 rounded-2xl border border-line
-                     bg-white px-3.5 text-[13px] font-bold text-slate-700 hover:bg-brand-50">
-          <Icon name="flag" className="h-4 w-4" />
-          Request a transcript
-        </Link>
-      ) : undefined}
+      /*
+       * No "Request a transcript".
+       *
+       * Transcripts are gone: a sealed GPA document duplicated what the marks
+       * on this page and the attempt and result PDFs beside them already say,
+       * and it was the half of the feature nobody could finish -- the button
+       * linked to the help page, and the help page has no way to raise a
+       * ticket. A door to a room that was never built.
+       */
     >
       {/* Not decoration: on a full record this page is several screens long,
           and somebody who came for one section should not have to scroll
@@ -146,28 +138,10 @@ export default async function OnyxResultsPage() {
         ))}
       </nav>
 
-      {staff ? (
-        <div className="mb-8">
-          <CreatePanel
-            title="Issue a transcript" cta="Issue a transcript" icon="award" compact
-            endpoint="transcripts"
-            fields={[
-              { name: 'user_id', label: 'Learner', type: 'select', required: true,
-                // A uuid, so NOT numeric: CreatePanel runs Number() over a
-                // numeric field and a uuid becomes NaN, which JSON sends as null and
-                // the route refuses. Left over from when user ids were bigints.
-                wide: true,
-                options: learners.map((m) => ({ value: String(m.user_id),
-                  label: m.user?.name ?? 'User ' + m.user_id })) },
-              { name: 'program_id', label: 'Programme', type: 'select', numeric: true, wide: true,
-                options: [{ value: '', label: 'Everything on record' }].concat(
-                  (programs ?? []).map((p) => ({ value: String(p.id), label: p.name }))),
-                help: 'Published marks only. The document is sealed with a checksum '
-                  + 'so it can be verified later without trusting the copy.' },
-            ]}
-          />
-        </div>
-      ) : null}
+      {/* The "Issue a transcript" panel is gone with the feature. What it
+          sealed -- a GPA and a serial over the marks below -- is what those
+          marks already say, and the attempt and result PDFs beside them print
+          the same record with the working shown. */}
 
       <div className="space-y-10">
         {/* ======================================================= 1 of 2 */}
@@ -247,7 +221,7 @@ export default async function OnyxResultsPage() {
             <h2 className="text-[17px] font-extrabold tracking-tight">Grades</h2>
             <p className="mt-0.5 text-[13px] text-muted">
               Your official record: examination marks as the examinations office released
-              them, and the transcripts sealed from them.
+              them.
             </p>
           </div>
 
@@ -255,8 +229,6 @@ export default async function OnyxResultsPage() {
             <StatTile label="Marks released" value={marks.length} note="on your record" />
             <StatTile label="Average mark" value={average ?? '—'}
               note={marks.length ? 'across every released mark' : 'nothing released yet'} />
-            <StatTile label="GPA" value={newest?.gpa ?? '—'}
-              note={newest ? 'on transcript ' + newest.serial : 'no transcript issued'} />
             <StatTile label="Moderated" value={moderated}
               note={moderated === 1 ? 'mark was adjusted' : 'marks were adjusted'} />
           </div>
@@ -295,60 +267,6 @@ export default async function OnyxResultsPage() {
             ) : null}
           </RowList>
 
-          <div className="mt-6">
-            <SectionHead title="Transcripts" />
-            {transcripts.length ? (
-              <RowList label="Your transcripts">
-                {transcripts.map((t) => (
-                  <ListRow
-                    key={t.id}
-                    icon="flag"
-                    tone={t.revoked_at ? 'late' : 'good'}
-                    title={t.serial}
-                    chips={t.revoked_at ? <Pill tone="late">Revoked</Pill> : null}
-                    meta={
-                      'Issued ' + formatDate(t.issued_at)
-                      + ' · ' + t.credits_earned + ' results'
-                      + (t.gpa !== null ? ' · GPA ' + t.gpa : '')
-                    }
-                  />
-                ))}
-              </RowList>
-            ) : (
-              /* Genuinely empty for most learners until somebody asks, so the
-                 empty state explains what a transcript is and where it comes
-                 from rather than shrugging. */
-              <Card>
-                <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-                  <span className="text-muted"><Icon name="flag" className="h-7 w-7" /></span>
-                  <h3 className="text-[15px] font-bold">None issued yet.</h3>
-                  <p className="max-w-md text-sm text-muted">
-                    A transcript is a sealed document of your published marks, with a
-                    checksum anyone can verify without trusting the copy they were sent.
-                    The examinations office issues one on request.
-                  </p>
-                  {me.role === 'student' ? (
-                    <div className="mt-1">
-                      <ActionLink href="/onyx/support" label="Request a transcript" />
-                    </div>
-                  ) : null}
-                </div>
-              </Card>
-            )}
-          </div>
-
-          {staff ? (
-            <div className="mt-6">
-              <SectionHead title="Check a transcript" />
-              {/* CMP-02c's acceptance criterion is that a transcript reconciles
-                  with the marks behind it. The API could always answer; nothing
-                  asked, so the only people who could check were people with a
-                  database client. */}
-              <Card className="p-4">
-                <VerifyTranscript />
-              </Card>
-            </div>
-          ) : null}
         </section>
       </div>
     </OnyxShell>

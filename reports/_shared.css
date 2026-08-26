@@ -1,0 +1,7 @@
+@page { size: A4; margin: 14mm 12mm 16mm; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",Inter,system-ui,-apple-system,sans-serif;color:#12212e;font-size:9.6pt;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+h1,h2,h3,h4{line-height:1.2}
+.sheet{page-break-after:always}
+.sheet:last-child{page-break-after:auto}
+.avoid{page-break-inside:avoid}

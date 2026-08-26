@@ -33,7 +33,7 @@ export type AuditAction =
   | 'assessment.published' | 'assessment.grade_changed' | 'assessment.flag_reviewed'
   | 'certificate.issued' | 'certificate.revoked'
   | 'fee.updated' | 'invoice.written_off' | 'payment.recorded'
-  | 'result.published' | 'transcript.generated'
+  | 'result.published'
   // O06 -- engagement
   | 'discussion.asked' | 'discussion.resolved'
   | 'ticket.raised' | 'ticket.assigned' | 'ticket.resolved'

@@ -752,50 +752,21 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
       claims.tenant_id, uidOf(req, 'userId'), viewer));
   });
 
-  app.post('/api/onyx/transcripts', async (req) => {
-    const { claims, viewer } = await viewerOf(req);
-    await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'exams.transcripts', claims.user_id);
-    const body = validate(z.object({
-      user_id: z.string().uuid(),
-      program_id: z.number().int().positive().nullish(),
-    }), req.body);
-    return ok(await ctx.onyxExams.issueTranscript(claims.tenant_id, body.user_id, viewer, {
-      program_id: body.program_id ?? null,
-    }));
-  });
-
-  app.get('/api/onyx/transcripts', async (req) => {
-    const { claims, viewer } = await viewerOf(req);
-    return ok(await ctx.onyxExams.transcripts(claims.tenant_id, claims.user_id, viewer));
-  });
-
-  /**
-   * Does the document reconcile with the marks behind it?
+  /*
+   * Transcripts are gone, and their four routes with them.
    *
-   * Inside the institution rather than public: unlike a certificate, a
-   * transcript is a full academic record and the serial is not a capability
-   * meant for strangers.
-   */
-  app.get('/api/onyx/transcripts/:serial/verify', async (req) => {
-    const { claims } = await viewerOf(req);
-    const serial = String((req.params as { serial: string }).serial ?? '');
-    return ok(await ctx.onyxExams.verifyTranscript(claims.tenant_id, serial));
-  });
-
-  /**
-   * The public verification page's data. No token, by design -- matching
-   * /api/onyx/verify/:credentialId exactly.
+   * A sealed GPA document over the marks this product already publishes,
+   * duplicating what /onyx/results shows and what the attempt and result PDFs
+   * print with the working shown. It was also the feature that never closed:
+   * a learner's only route to ask for one was a "Request a transcript" button
+   * pointing at a help page with no way to raise a ticket, and the staff panel
+   * listed the viewer's own transcripts rather than the institution's.
    *
-   * This route did not exist. The route above requires a signed-in session and
-   * that session's own tenant, so the one person a "verifiable transcript" is
-   * FOR -- an employer with no Onyx account, checking a document they were
-   * handed -- had no way to call it at all. `verifyTranscriptPublic` looks up
-   * by serial alone for exactly that reason.
+   * The `onyx_transcripts` table and the one row in it are deliberately NOT
+   * dropped. A migration that destroys an issued credential is not reversible,
+   * and whether to run it is the institution's call rather than a side effect
+   * of removing a screen.
    */
-  app.get('/api/onyx/verify/transcript/:serial', async (req) => {
-    const serial = String((req.params as { serial: string }).serial ?? '');
-    return ok(await ctx.onyxExams.verifyTranscriptPublic(serial));
-  });
 
   // =========================================================================
   // CMP-03 -- fees, invoices, payment

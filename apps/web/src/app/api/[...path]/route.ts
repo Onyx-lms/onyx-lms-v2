@@ -18,7 +18,7 @@ import { dispatchApi } from '@/server/api-dispatch';
  * Node, not Edge, and not negotiable: `nodemailer`, `pg`, `bcryptjs` and
  * `node:crypto`'s HMAC / timingSafeEqual / randomBytes are all unavailable on
  * the Edge runtime, and they are load-bearing (attendance QR codes, checkout
- * intent signing, transcript checksums).
+ * intent signing, certificate checksums).
  */
 export const runtime = 'nodejs';
 /** Every route is request-scoped; caching one would serve another tenant's read. */

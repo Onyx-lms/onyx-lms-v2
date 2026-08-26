@@ -5,7 +5,7 @@
  * and names what it collided with (room, faculty, or batch -- all three, not
  * just the obvious one), a learner never sits two exams that share a
  * candidate, seating is exactly one seat per person, moderation never loses
- * the raw mark, a transcript's checksum reconciles with the marks behind it,
+ * the raw mark,
  * a payment replay never double-credits an invoice, and a guardian sees only
  * what a learner has actually switched on.
  */
@@ -15,7 +15,7 @@ import { FakeDb } from './fake-db.ts';
 import { AuditService } from '../src/onyx/audit.service.ts';
 import { CampusService } from '../src/onyx/campus.service.ts';
 import {
-  ExaminationsService, gradeFor, canonicalise, checksumOf,
+  ExaminationsService, gradeFor,
 } from '../src/onyx/examinations.service.ts';
 import { FinanceService } from '../src/onyx/finance.service.ts';
 import { GuardianService } from '../src/onyx/guardian.service.ts';
@@ -77,7 +77,7 @@ function world(c = clock()) {
     ],
     onyx_rooms: [], onyx_timetable_slots: [], onyx_faculty_allocations: [],
     onyx_exams: [], onyx_halls: [], onyx_seat_allocations: [],
-    onyx_exam_marks: [], onyx_transcripts: [],
+    onyx_exam_marks: [],
     onyx_fee_heads: [], onyx_fee_structures: [], onyx_fee_structure_lines: [],
     onyx_invoices: [], onyx_invoice_lines: [], onyx_payments: [],
     onyx_guardians: [],
@@ -329,7 +329,7 @@ test('CMP-02b a learner cannot read the full seating plan, only their own seat',
 });
 
 // ---------------------------------------------------------------------------
-// CMP-02c: marks, moderation, transcripts
+// CMP-02c: marks and moderation
 // ---------------------------------------------------------------------------
 
 test('CMP-02c grade is pass or fail against the paper\'s own pass mark, nothing finer', () => {
@@ -380,43 +380,20 @@ test('CMP-02c a learner never sees a mark before it is published', async () => {
   assert.equal(afterPublish.length, 1);
 });
 
-test('CMP-02c a transcript checksum reconciles with the marks behind it, and drifts after a remark', async () => {
-  const w = world();
-  const exam = await w.exams.schedule(T, examsOfficer, {
-    semester_id: 1, course_id: 1, title: 'CS101 final', starts_at: new Date(START + 86_400_000).toISOString(),
-  });
-  await w.exams.enterMarks(T, Number(exam!.id), facultyMember, [{ user_id: 'user-10', raw_marks: 80 }]);
-  await w.exams.publishMarks(T, Number(exam!.id), examsOfficer);
-  const transcript = await w.exams.issueTranscript(T, 'user-10', examsOfficer);
-
-  const check = await w.exams.verifyTranscript(T, String(transcript!.serial));
-  assert.equal(check.intact, true);
-  assert.equal(check.current, true);
-
-  // A tamper: rewrite a mark inside the stored payload without touching the
-  // checksum. canonicalise() only serialises user_id/program_id/lines, so the
-  // change has to land inside `lines` to actually move the checksum.
-  const payload = transcript!.payload as { lines: { final_marks: number }[] };
-  await w.db.from('onyx_transcripts').update({
-    payload: { ...payload, lines: [{ ...payload.lines[0]!, final_marks: 100 }] },
-  }).eq('id', Number(transcript!.id));
-  const afterTamper = await w.exams.verifyTranscript(T, String(transcript!.serial));
-  assert.equal(afterTamper.intact, false, 'a rewritten payload must fail its own checksum');
-});
-
-test('CMP-02c canonicalise is order-independent in the lines it is given', () => {
-  const base = { user_id: 1, program_id: null };
-  const a = canonicalise({ ...base, lines: [
-    { exam_id: 2, final_marks: 50, max_marks: 100, grade: 'C' },
-    { exam_id: 1, final_marks: 90, max_marks: 100, grade: 'A' },
-  ] });
-  const b = canonicalise({ ...base, lines: [
-    { exam_id: 1, final_marks: 90, max_marks: 100, grade: 'A' },
-    { exam_id: 2, final_marks: 50, max_marks: 100, grade: 'C' },
-  ] });
-  assert.equal(a, b);
-  assert.equal(checksumOf(a), checksumOf(b));
-});
+/*
+ * The transcript tests are gone with the feature.
+ *
+ * Three of them lived here -- a checksum that reconciled with the marks behind
+ * it, a canonicalise() that was order-independent, and a tamper that broke the
+ * hash. All good tests of a thing this product no longer does: a sealed GPA
+ * document duplicated the marks /onyx/results already publishes and the
+ * attempt and result PDFs already print with the working shown, and the half
+ * that would have made it useful never closed -- a learner's only route to ask
+ * for one pointed at a help page with no way to raise a ticket.
+ *
+ * Deleted rather than skipped. A skipped test for a deleted feature is a note
+ * nobody reads that fails the day somebody un-skips it.
+ */
 
 // ---------------------------------------------------------------------------
 // CMP-03: fees, invoicing, payment

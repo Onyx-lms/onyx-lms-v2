@@ -27,7 +27,7 @@ import {
  * Node, not Edge, and not negotiable: `nodemailer`, `pg`, `bcryptjs` and
  * `node:crypto`'s HMAC / timingSafeEqual / randomBytes are all unavailable on
  * the Edge runtime, and they are load-bearing (attendance QR codes, checkout
- * intent signing, transcript checksums).
+ * intent signing, certificate checksums).
  */
 /**
  * ONE dispatcher, called two ways.

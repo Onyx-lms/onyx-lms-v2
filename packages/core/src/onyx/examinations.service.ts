@@ -59,25 +59,6 @@ export function gradeFor(marks: number, maxMarks: number, passMarks: number): { 
 }
 
 /**
- * A stable string for a transcript payload, so the same marks always hash the
- * same way. JSON.stringify orders keys by insertion, which is not a promise --
- * building the string by hand is.
- */
-export function canonicalise(payload: {
-  user_id: string; program_id: number | null;
-  lines: { exam_id: number; final_marks: number; max_marks: number; grade: string }[];
-}): string {
-  const lines = [...payload.lines]
-    .sort((a, b) => a.exam_id - b.exam_id)
-    .map((l) => [l.exam_id, l.final_marks.toFixed(2), l.max_marks, l.grade].join(':'))
-    .join('|');
-  return [payload.user_id, payload.program_id ?? 0, lines].join('#');
-}
-
-export const checksumOf = (canonical: string) =>
-  createHash('sha256').update(canonical).digest('hex');
-
-/**
  * How a course's candidate list is read: one page, then the next.
  *
  * A thousand is what the server returns for a request naming no range, so it
@@ -823,205 +804,21 @@ export class ExaminationsService {
       .eq('tenant_id', tenantId).eq('exam_id', examId).order('user_id', { ascending: true });
     return data ?? [];
   }
-
-  /**
-   * Issue a transcript from the published marks.
+  /*
+   * Transcripts are gone.
    *
-   * Only published marks go on it: a transcript built from a mark still under
-   * moderation is a document that will contradict itself next week.
+   * `issueTranscript`, `verifyTranscript`, `verifyTranscriptPublic` and
+   * `transcripts` lived here. A sealed GPA document over the marks this
+   * product already publishes duplicated what /onyx/results shows and what the
+   * attempt and result PDFs print with the working shown -- and it was the
+   * feature that never closed: a learner's only route to ask for one pointed
+   * at a help page with no way to raise a ticket.
+   *
+   * `onyx_transcripts` and the row in it are deliberately left alone. A
+   * migration that destroys an issued credential is not reversible, and
+   * whether to run it is the institution's decision rather than a side effect
+   * of deleting a screen.
    */
-  async issueTranscript(tenantId: number, userId: string, actor: { userId: string; role: Role },
-    opts: { program_id?: number | null } = {}) {
-    if (!canRunExams(actor.role)) {
-      throw new HttpError(403, 'Only the examinations office can issue a transcript.');
-    }
-    const { data: membership } = await this.#db.from('onyx_memberships').select('id')
-      .eq('tenant_id', tenantId).eq('user_id', userId).eq('status', 1).maybeSingle();
-    if (!membership) throw new HttpError(404, 'No such member of this institution.');
-
-    const { data: marks } = await this.#db.from('onyx_exam_marks').select(MARK_COLUMNS)
-      .eq('tenant_id', tenantId).eq('user_id', userId).eq('status', 'published')
-      .order('exam_id', { ascending: true });
-    if (!marks?.length) {
-      throw new HttpError(422, 'That learner has no published results yet.');
-    }
-
-    const lines: { exam_id: number; title: string; final_marks: number; max_marks: number; grade: string; points: number }[] = [];
-    for (const mark of marks) {
-      const exam = await this.exam(tenantId, Number(mark.exam_id));
-      lines.push({
-        exam_id: Number(mark.exam_id),
-        title: String(exam.title),
-        final_marks: Number(mark.final_marks),
-        max_marks: Number(exam.max_marks),
-        grade: String(mark.grade ?? ''),
-        points: Number(mark.grade_points ?? 0),
-      });
-    }
-
-    const gpa = lines.length
-      ? Number((lines.reduce((s, l) => s + l.points, 0) / lines.length).toFixed(2))
-      : 0;
-    const payload = { user_id: userId, program_id: opts.program_id ?? null, lines };
-    const checksum = checksumOf(canonicalise(payload));
-
-    const { data, error } = await this.#db.from('onyx_transcripts').insert({
-      tenant_id: tenantId,
-      user_id: userId,
-      program_id: opts.program_id ?? null,
-      // Unguessable rather than sequential: a serial number tells anybody
-      // holding one how many the institution has issued, and lets them try the
-      // next one.
-      serial: 'TR-' + randomBytes(12).toString('hex').toUpperCase(),
-      payload,
-      gpa,
-      credits_earned: lines.length,
-      checksum,
-      issued_by: actor.userId,
-    }).select(TRANSCRIPT_COLUMNS).maybeSingle();
-    if (error) throw new HttpError(500, 'Could not issue the transcript: ' + error.message);
-
-    await this.#audit.record(
-      { tenant_id: tenantId, user_id: actor.userId },
-      { action: 'transcript.generated', entityType: 'transcript', entityId: Number(data!.id),
-        after: { user_id: userId, serial: data!.serial, checksum } });
-    return data;
-  }
-
-  /**
-   * Does this transcript still reconcile with the marks behind it?
-   *
-   * Two separate answers, and they are not the same question:
-   *   * `intact` -- the stored payload still hashes to the stored checksum.
-   *     False means the row was tampered with.
-   *   * `current` -- the marks today still produce that payload. False is
-   *     normal after a remark, and means the transcript should be reissued
-   *     rather than that anything is wrong.
-   */
-  async verifyTranscript(tenantId: number, serial: string) {
-    const { data } = await this.#db.from('onyx_transcripts').select(TRANSCRIPT_COLUMNS)
-      .eq('tenant_id', tenantId).eq('serial', serial).maybeSingle();
-    if (!data) throw new HttpError(404, 'No such transcript.');
-
-    const stored = data.payload as { user_id: string; program_id: number | null; lines: { exam_id: number; final_marks: number; max_marks: number; grade: string }[] };
-    const intact = checksumOf(canonicalise(stored)) === data.checksum;
-
-    const { data: marks } = await this.#db.from('onyx_exam_marks').select(MARK_COLUMNS)
-      .eq('tenant_id', tenantId).eq('user_id', String(data.user_id)).eq('status', 'published')
-      .order('exam_id', { ascending: true });
-
-    const liveLines: { exam_id: number; final_marks: number; max_marks: number; grade: string }[] = [];
-    for (const mark of marks ?? []) {
-      const exam = await this.exam(tenantId, Number(mark.exam_id));
-      liveLines.push({
-        exam_id: Number(mark.exam_id),
-        final_marks: Number(mark.final_marks),
-        max_marks: Number(exam.max_marks),
-        grade: String(mark.grade ?? ''),
-      });
-    }
-    const live = checksumOf(canonicalise({
-      user_id: String(data.user_id),
-      program_id: data.program_id === null ? null : Number(data.program_id),
-      lines: liveLines,
-    }));
-
-    return {
-      serial: data.serial,
-      issued_at: data.issued_at,
-      revoked_at: data.revoked_at,
-      gpa: data.gpa,
-      intact,
-      current: live === data.checksum,
-      checksum: data.checksum,
-      lines: stored.lines.length,
-    };
-  }
-
-  /**
-   * The same reconciliation as `verifyTranscript`, but for the person who
-   * cannot call that one at all: an employer holding a printed transcript has
-   * no Onyx account and no tenant id to send, and `verifyTranscript` requires
-   * both. This was the gap -- CMP-02 promises "transcript generation end to
-   * end", and end to end has to include the third party who was handed the
-   * document being able to check it. CAR-03 already solved exactly this shape
-   * of problem for certificates; this is the same answer for transcripts.
-   *
-   * Looked up by serial ALONE, deliberately not tenant-scoped, for the same
-   * reason certificate verification is not: a verifier does not know which
-   * institution issued what they are holding, and requiring them to know
-   * would make the feature useless to them.
-   *
-   * "Not found" and "malformed serial" are the same answer for the same
-   * reason as CAR-03's: a verifier learns only whether the one in their hand
-   * is good, never whether some OTHER serial would have worked.
-   */
-  async verifyTranscriptPublic(serial: string) {
-    const trimmed = serial.trim().toUpperCase();
-    if (!/^TR-[0-9A-F]{8,64}$/.test(trimmed)) {
-      return { found: false as const };
-    }
-
-    const { data } = await this.#db.from('onyx_transcripts').select(TRANSCRIPT_COLUMNS)
-      .eq('serial', trimmed).maybeSingle();
-    if (!data) return { found: false as const };
-
-    const stored = data.payload as { user_id: string; program_id: number | null; lines: { exam_id: number; final_marks: number; max_marks: number; grade: string }[] };
-    const intact = checksumOf(canonicalise(stored)) === data.checksum;
-
-    const [{ data: tenant }, { data: holder }] = await Promise.all([
-      this.#db.from('onyx_tenants').select('id, name').eq('id', data.tenant_id).maybeSingle(),
-      // Name only, matching CAR-03: not the email, not the id, not the marks
-      // themselves -- a verifier needs to match a name on a document, not be
-      // handed the record.
-      this.#db.from('onyx_users').select('name').eq('id', data.user_id).maybeSingle(),
-    ]);
-
-    // "Current" needs the live register, and that register is tenant-scoped --
-    // this is the one place data.tenant_id is used, read off the row itself
-    // rather than trusted from the caller, which is exactly why this can be
-    // public at all: the tenant comes from what was found, never from input.
-    const { data: marks } = await this.#db.from('onyx_exam_marks').select(MARK_COLUMNS)
-      .eq('tenant_id', data.tenant_id).eq('user_id', String(data.user_id)).eq('status', 'published')
-      .order('exam_id', { ascending: true });
-    const liveLines: { exam_id: number; final_marks: number; max_marks: number; grade: string }[] = [];
-    for (const mark of marks ?? []) {
-      const exam = await this.exam(Number(data.tenant_id), Number(mark.exam_id));
-      liveLines.push({
-        exam_id: Number(mark.exam_id), final_marks: Number(mark.final_marks),
-        max_marks: Number(exam.max_marks), grade: String(mark.grade ?? ''),
-      });
-    }
-    const live = checksumOf(canonicalise({
-      user_id: String(data.user_id),
-      program_id: data.program_id === null ? null : Number(data.program_id),
-      lines: liveLines,
-    }));
-
-    return {
-      found: true as const,
-      serial: data.serial,
-      holder: holder?.name ?? null,
-      issuer: tenant?.name ?? null,
-      issued_at: data.issued_at,
-      revoked_at: data.revoked_at,
-      gpa: data.gpa,
-      credits_earned: data.credits_earned,
-      intact,
-      current: live === data.checksum,
-      lines: stored.lines.length,
-    };
-  }
-
-  async transcripts(tenantId: number, userId: string, viewer: { userId: string; role: Role }) {
-    if (viewer.userId !== userId && !canRunExams(viewer.role)) {
-      throw new HttpError(403, 'Those are not your transcripts.');
-    }
-    const { data } = await this.#db.from('onyx_transcripts').select(TRANSCRIPT_COLUMNS)
-      .eq('tenant_id', tenantId).eq('user_id', userId)
-      .order('issued_at', { ascending: false });
-    return data ?? [];
-  }
 
   /** Marks for one person, but only the published ones. The guardian path. */
   async publishedMarks(tenantId: number, userId: string) {

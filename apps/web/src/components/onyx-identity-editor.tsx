@@ -14,7 +14,7 @@ import { Card, Icon, SectionHead } from '@/components/onyx-ui';
  * `photo` column that has been sitting on `onyx_users` all along.
  *
  * A name matters more than it looks. It is on every roster, every register,
- * every certificate and every transcript. People marry, transition, correct a
+ * every certificate they hold. People marry, transition, correct a
  * misspelling, or simply go by something other than what a registrar typed --
  * and telling them to raise a ticket for that is a small cruelty a product
  * this size should not be committing.

@@ -15,7 +15,7 @@
  * with (CMP-04, the parent portal, has no member-creation path -- see
  * login-roles.spec.ts). CMP-01b (timetable) and CMP-03 (fees/finance) ARE
  * live -- confirmed against the API directly, not assumed from the table --
- * and are covered below. CMP-02 (exam scheduling, halls, transcripts) has no
+ * and are covered below. CMP-02 (exam scheduling, halls, seating) has no
  * page under apps/web/src/app/onyx yet, so there is nothing to smoke-test.
  */
 import { test, expect } from '@playwright/test';

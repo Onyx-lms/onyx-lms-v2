@@ -61,7 +61,7 @@ export type CapabilityKey =
   | 'assess.release' | 'assess.proctor'
   // Examinations
   | 'exams.schedule' | 'exams.halls' | 'exams.seating' | 'exams.marks'
-  | 'exams.moderate' | 'exams.publish' | 'exams.transcripts'
+  | 'exams.moderate' | 'exams.publish'
   // Timetable
   | 'timetable.manage' | 'timetable.publish'
   // Fees
@@ -215,9 +215,6 @@ export const CAPABILITIES: Capability[] = [
     ['admin', 'exams'], ['exams']),
   A('exams.publish', 'Examinations', 'Publish results',
     'Release examination marks to candidates.',
-    ['admin', 'exams'], ['exams']),
-  A('exams.transcripts', 'Examinations', 'Issue transcripts',
-    'Seal a transcript of somebody’s published marks.',
     ['admin', 'exams'], ['exams']),
 
   // ---- Timetable ----------------------------------------------------------

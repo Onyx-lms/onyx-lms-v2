@@ -107,10 +107,6 @@ docs:check` fails the build if it has.
 | `POST` | `/api/onyx/exams/:id/publish` | any member |
 | `GET` | `/api/onyx/results` | any member |
 | `GET` | `/api/onyx/results/:userId` | any member |
-| `POST` | `/api/onyx/transcripts` | any member |
-| `GET` | `/api/onyx/transcripts` | any member |
-| `GET` | `/api/onyx/transcripts/:serial/verify` | any member |
-| `GET` | `/api/onyx/verify/transcript/:serial` | **no token** — public by design |
 | `POST` | `/api/onyx/fee-heads` | admin, exams, faculty |
 | `GET` | `/api/onyx/fee-heads` | admin, exams, faculty |
 | `POST` | `/api/onyx/fee-structures` | any member |
@@ -512,4 +508,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_426 endpoints across 9 route files._
+_422 endpoints across 9 route files._

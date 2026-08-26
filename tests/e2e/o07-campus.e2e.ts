@@ -141,7 +141,7 @@ test('CMP-01 a learner sees nothing until it is published', async () => {
 });
 
 // ---------------------------------------------------------------------------
-// CMP-02: exams, halls, marks, transcripts
+// CMP-02: exams, halls and marks
 // ---------------------------------------------------------------------------
 
 test('CMP-02a only the examinations office may schedule an exam', async () => {
@@ -180,7 +180,7 @@ test('CMP-02b seating: every candidate seated once, and a learner sees only thei
   assert.equal(mine.data.user_id, w.ids.s1);
 });
 
-test('CMP-02c marks stay invisible to a learner until published, then reconcile with the transcript', async () => {
+test('CMP-02c marks stay invisible to a learner until published', async () => {
   const entered = await api('/api/onyx/exams/' + w.exam + '/marks', {
     token: w.alpha.faculty,
     body: { entries: [{ user_id: w.ids.s1, raw_marks: 78 }, { user_id: w.ids.s2, raw_marks: 55 }] },
@@ -198,16 +198,11 @@ test('CMP-02c marks stay invisible to a learner until published, then reconcile 
   assert.equal(afterPublish.data.length, 1);
   assert.equal(Number(afterPublish.data[0]!.final_marks), 78);
 
-  const transcript = await api<{ serial: string }>('/api/onyx/transcripts', {
-    token: w.alpha.exams, body: { user_id: w.ids.s1 },
-  });
-  assert.equal(transcript.ok, true, transcript.message);
-
-  const verified = await api('/api/onyx/transcripts/' + transcript.data.serial + '/verify',
-    { token: w.alpha.s1 });
-  assert.equal(verified.ok, true, verified.message);
-  assert.equal(verified.data.intact, true);
-  assert.equal(verified.data.current, true);
+  /*
+   * The transcript half of this test is gone with the feature. What it proved
+   * -- that a published mark is the same number wherever it is read -- is
+   * still proved above, by the mark itself.
+   */
 });
 
 // ---------------------------------------------------------------------------
@@ -332,7 +327,7 @@ test('cleanup leaves nothing behind', async () => {
     for (const table of [
       'onyx_faculty_allocations', 'onyx_rooms', 'onyx_timetable_slots',
       'onyx_exams', 'onyx_halls', 'onyx_seat_allocations',
-      'onyx_exam_marks', 'onyx_transcripts',
+      'onyx_exam_marks',
       'onyx_fee_heads', 'onyx_fee_structures', 'onyx_fee_structure_lines',
       'onyx_invoices', 'onyx_invoice_lines', 'onyx_payments', 'onyx_guardians',
     ]) {
