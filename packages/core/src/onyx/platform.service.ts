@@ -1884,6 +1884,8 @@ export class PlatformService {
     assessment_id?: number | null;
     /** The section sitting it. Null or absent means every section. */
     section_id?: number | null;
+    /** Whether the slot locks the paper (0043). Off unless asked for. */
+    window_enforced?: boolean;
   }) {
     const { data: course } = await this.#db.from('onyx_courses')
       .select('id, semester_id').eq('tenant_id', tenantId).eq('id', input.course_id).maybeSingle();
@@ -1940,7 +1942,8 @@ export class PlatformService {
       section_id: input.section_id ?? null,
       title: input.title.trim(), starts_at: new Date(start).toISOString(),
       duration_minutes: input.duration_minutes ?? 180, max_marks: maxMarks, pass_marks: passMarks,
-      status: 'scheduled', created_by: actorId,
+      status: 'scheduled', window_enforced: input.window_enforced ?? false,
+      created_by: actorId,
     })
       // eslint-disable-next-line max-len -- one literal: a concatenated select collapses the client's row type.
       .select('id, title, course_id, section_id, semester_id, assessment_id, starts_at, duration_minutes, max_marks, pass_marks, status')
@@ -1954,6 +1957,8 @@ export class PlatformService {
   async updateExam(tenantId: number, examId: number, actorId: string | null, patch: {
     title?: string; starts_at?: string | null; duration_minutes?: number;
     max_marks?: number; pass_marks?: number; status?: string;
+    /** Whether the slot locks the paper (0043). */
+    window_enforced?: boolean;
   }) {
     /*
      * `course_id` and `assessment_id` are read but never patched.
@@ -1966,14 +1971,15 @@ export class PlatformService {
      */
     // eslint-disable-next-line max-len -- one literal; a concatenated select collapses the row type.
     const { data: e } = await this.#db.from('onyx_exams')
-      .select('id, tenant_id, course_id, assessment_id, title, starts_at, duration_minutes, max_marks, pass_marks, status')
+      .select('id, tenant_id, course_id, assessment_id, title, starts_at, duration_minutes, max_marks, pass_marks, status, window_enforced')
       .eq('id', examId).maybeSingle();
     if (!e || Number(e.tenant_id) !== tenantId) throw new HttpError(404, 'No such exam.');
 
     const before: Record<string, unknown> = {};
     const after: Record<string, unknown> = {};
     for (const key of
-      ['title', 'starts_at', 'duration_minutes', 'max_marks', 'pass_marks', 'status'] as const) {
+      ['title', 'starts_at', 'duration_minutes', 'max_marks', 'pass_marks', 'status',
+        'window_enforced'] as const) {
       const value = patch[key];
       if (value !== undefined && value !== e[key]) { before[key] = e[key]; after[key] = value; }
     }

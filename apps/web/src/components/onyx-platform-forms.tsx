@@ -2407,6 +2407,8 @@ export function CreateExamForm({
             duration_minutes: duration,
             max_marks: Number(data.get('max_marks') || 100),
             pass_marks: Number(data.get('pass_marks') || 40),
+            // Off unless the box is ticked -- see the field's own note below.
+            window_enforced: data.get('window_enforced') === 'on',
           });
           setStage(null);
           if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
@@ -2571,6 +2573,34 @@ export function CreateExamForm({
         <label className={label} htmlFor="ce-pass">Pass mark</label>
         <input id="ce-pass" name="pass_marks" type="number" min={0} defaultValue={40}
           className={field} />
+      </div>
+
+      {/*
+        * The slot as a lock, which is now a choice rather than the rule (0043).
+        *
+        * Off by default. A sitting here deals SETS -- parallel papers rotating
+        * down the roll, so the person beside you is not holding yours -- and
+        * that is what makes everybody sitting at one instant unnecessary. It
+        * was charging for simultaneity in the one currency a candidate cannot
+        * get back: miss the hour, or lose your connection inside it, and you
+        * were out.
+        *
+        * On, the paper opens at the start and shuts at the end, which is what
+        * a hall with an invigilator and a closed door actually needs.
+        */}
+      <div className="col-span-full rounded-xl border border-line bg-slate-50 p-3">
+        <label className="flex items-start gap-2.5 text-[13px]">
+          <input id="ce-window" name="window_enforced" type="checkbox" className="mt-0.5" />
+          <span className="min-w-0">
+            <span className="font-semibold">Only during the slot</span>
+            <span className="block text-[12px] leading-relaxed text-muted">
+              The paper opens when the examination starts and shuts when it ends — for a
+              sitting in a hall, with everybody in one room. Left unticked, the paper opens
+              at the start and stays open; the attempt is still timed either way, so a
+              {' '}{'“'}90 minute{'”'} paper is 90 minutes whenever it is begun.
+            </span>
+          </span>
+        </label>
       </div>
       <div className="col-span-full flex flex-wrap items-center gap-2 pt-1">
         <button type="submit" disabled={pending} className={button}>

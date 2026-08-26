@@ -420,6 +420,16 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
       // The teaching division sitting it. Absent or null is the whole cohort,
       // which is what every sitting scheduled before 0038 is.
       section_id: z.number().int().positive().nullish(),
+      /*
+       * Whether the slot locks the paper, or only announces it (0043).
+       *
+       * Off unless asked for. This product deals SETS -- parallel papers
+       * rotating down the roll, so the person beside you is not holding yours
+       * -- and that is what makes everybody sitting at one instant
+       * unnecessary. Switched on, the paper opens at the start and shuts at
+       * the end, which is what a hall with a closed door actually needs.
+       */
+      window_enforced: z.boolean().optional(),
     }), req.body);
     await assertCanRunExam(claims.tenant_id, body.course_id, claims.user_id, claims.tenant_role);
     await assertCanScheduleExam(claims.tenant_id, claims.tenant_role, claims.user_id);
@@ -515,6 +525,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
       max_marks: z.number().min(1).max(1000).optional(),
       pass_marks: z.number().min(0).max(1000).optional(),
       status: z.enum(['draft', 'scheduled', 'completed', 'cancelled']).optional(),
+      window_enforced: z.boolean().optional(),
     }), req.body);
     const exam = await ctx.onyxExams.updateExam(claims.tenant_id, idOf(req), viewer, body);
     // Re-sync only when there was something to re-sync for: an exam with no
@@ -523,6 +534,7 @@ export function registerOnyxCampusRoutes(app: Router, ctx: AppContext): void {
     // catch up on.
     if (exam?.assessment_id
       && (body.starts_at !== undefined || body.duration_minutes !== undefined
+        || body.window_enforced !== undefined
         || body.status === 'cancelled')) {
       await syncExamAssessmentWindow(
         ctx, claims.tenant_id, Number(exam.assessment_id), exam, viewer);

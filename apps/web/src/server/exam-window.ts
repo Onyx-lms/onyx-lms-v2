@@ -27,6 +27,16 @@ export interface ExamLikeRow {
   starts_at: string;
   duration_minutes: number;
   status: string;
+  /**
+   * Whether the slot is a lock or an appointment (0043).
+   *
+   * Off by default. An examination here deals SETS -- parallel papers rotating
+   * down the roll, so the person beside you is not holding yours -- and that
+   * is what makes everybody sitting at the same instant unnecessary. Switched
+   * on, the paper opens at the start and shuts at the end, which is what a
+   * hall with an invigilator and a closed door actually needs.
+   */
+  window_enforced?: boolean | null;
 }
 
 /**
@@ -52,9 +62,23 @@ export async function syncExamAssessmentWindow(
   const start = Date.parse(exam.starts_at);
   if (!Number.isFinite(start)) throw new HttpError(422, 'That is not a valid start time.');
   const end = start + exam.duration_minutes * 60_000;
+
+  /*
+   * The paper opens when the examination starts, and by default never shuts.
+   *
+   * `opens_at` is still pinned: a paper reachable before the examination it
+   * belongs to has been announced to start is a paper somebody reads early.
+   * `closes_at` is the half that stops being the product's decision -- see
+   * 0043. A candidate who missed the hour, or whose connection dropped inside
+   * it, used to be simply out, and the sets are what make that unnecessary.
+   *
+   * The attempt is still timed either way: `duration_minutes` is the exam's
+   * and is what the clock counts down, so a ninety-minute paper is ninety
+   * minutes whenever it is begun.
+   */
   await ctx.onyxAssess.updateAssessment(tenantId, assessmentId, actor, {
     opens_at: new Date(start).toISOString(),
-    closes_at: new Date(end).toISOString(),
+    closes_at: exam.window_enforced ? new Date(end).toISOString() : null,
     duration_minutes: exam.duration_minutes,
     // A cancelled exam's paper stops taking attempts; scheduling or editing an
     // active one never force-publishes it -- that stays the institution's own

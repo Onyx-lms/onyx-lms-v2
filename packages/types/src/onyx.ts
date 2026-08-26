@@ -768,6 +768,15 @@ export interface ExamRow {
   title: string;
   starts_at: string;
   duration_minutes: number;
+  /**
+   * Whether the slot locks the paper, or only announces it (0043).
+   *
+   * False by default, which is a change of behaviour and the point of the
+   * column: an examination here deals parallel SETS down the roll, so
+   * everybody sitting at one instant is not what keeps it honest, and a
+   * candidate who missed the hour used to be simply out.
+   */
+  window_enforced: boolean;
   max_marks: number;
   pass_marks: number;
   status: 'draft' | 'scheduled' | 'completed' | 'cancelled';

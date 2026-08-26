@@ -410,6 +410,7 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       // Which teaching division sits it. Absent or null means every section,
       // which is what an examination for the whole cohort is.
       section_id: z.number().int().positive().nullish(),
+      window_enforced: z.boolean().optional(),
     }), req.body);
     const exam = await ctx.onyxPlatform.createExam(idOf(req), claims.user_id, body);
 
@@ -1591,6 +1592,7 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       max_marks: z.number().min(0).optional(),
       pass_marks: z.number().min(0).optional(),
       status: z.string().max(20).optional(),
+      window_enforced: z.boolean().optional(),
     }), req.body);
     const exam = await ctx.onyxPlatform.updateExam(
       idOf(req), subIdOf(req, 'examId'), claims.user_id, body);
@@ -1614,6 +1616,7 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
     const linked = (exam as { assessment_id?: number | null } | null)?.assessment_id;
     if (linked
       && (body.starts_at !== undefined || body.duration_minutes !== undefined
+        || body.window_enforced !== undefined
         || body.status === 'cancelled')) {
       await syncExamAssessmentWindow(ctx, idOf(req), Number(linked),
         exam as unknown as Parameters<typeof syncExamAssessmentWindow>[3],

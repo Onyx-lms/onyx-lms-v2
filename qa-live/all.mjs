@@ -24,6 +24,7 @@ const SUITES = [
   ['a lecturer builds a course', 'faculty-authoring-parity.mjs'],
   // --- admin ------------------------------------------------------------
   ['permissions actually bite', 'permissions-bite.mjs'],
+  ['a sitting announces its paper', 'exam-window.mjs'],
   ['the support desk is administration’s', 'support-scope.mjs'],
   // --- superadmin -------------------------------------------------------
   ['the operator’s reach over admins', 'superadmin-reach.mjs'],

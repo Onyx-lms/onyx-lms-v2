@@ -1,0 +1,35 @@
+-- ---------------------------------------------------------------------------
+-- 0043 -- an examination is an appointment, not a lock.
+--
+-- Scheduling an exam pinned its online paper to the slot: `opens_at` at the
+-- start, `closes_at` at start plus duration. A candidate outside those two
+-- instants was refused with "This assessment has closed."
+--
+-- That is hall discipline, and it is the right rule when a hall is what is
+-- happening -- everybody in one room, one invigilator, doors shut. It is the
+-- wrong rule for the way this product actually deals a paper. An examination
+-- here carries SETS: ten parallel papers rotating down the roll, so the person
+-- beside you is not holding yours. That is what makes simultaneity
+-- unnecessary. The slot was doing a job the sets already do, and charging for
+-- it in the one currency a candidate cannot get back -- a learner who missed
+-- the hour, or whose connection dropped inside it, was simply out.
+--
+-- So the pin becomes the institution's decision instead of the product's, and
+-- it defaults OFF. An examination still has a start: it appears on the
+-- calendar from it, seating is allocated for it, Invigilate watches from it,
+-- and the paper does not open before it. What no longer happens by default is
+-- the paper slamming shut at the end.
+--
+-- `window_enforced` is what an institution switches on to get the hall back:
+-- with it, the paper opens at the start and closes at the end, exactly as
+-- before. Existing rows arrive with it false, which is a real change to their
+-- behaviour and is the point -- a sitting whose window has already passed
+-- becomes sittable again rather than being lost.
+--
+-- What this does NOT change: the attempt is still timed. `duration_minutes` is
+-- still the exam's and is still what the clock counts down, so a ninety-minute
+-- paper is ninety minutes whenever it is started.
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE public."onyx_exams"
+  ADD COLUMN IF NOT EXISTS "window_enforced" boolean NOT NULL DEFAULT false;

@@ -400,3 +400,48 @@ test('ASS-12 a seat with no mark still appears, with the seat on it', async () =
   assert.equal(zara.seat_no, 'B12');
   assert.equal(zara.attempt_id, null, 'nothing was sat in a browser');
 });
+
+test('a scheduled examination announces its paper rather than locking it', async () => {
+  /*
+   * 0043. Scheduling an exam used to pin the paper to the slot -- `opens_at`
+   * at the start, `closes_at` at start plus duration -- so a candidate outside
+   * those two instants got "This assessment has closed." That is hall
+   * discipline, and it is the right rule when a hall is what is happening.
+   *
+   * It is the wrong default here, because this product deals SETS: parallel
+   * papers rotating down the roll, so the person beside you is not holding
+   * yours. Simultaneity was doing a job the sets already do, and charging for
+   * it in the one currency a candidate cannot get back -- miss the hour, or
+   * lose your connection inside it, and you were simply out.
+   *
+   * The start is still pinned: a paper reachable before its examination has
+   * been announced to start is a paper somebody reads early. What this asserts
+   * is the other end.
+   */
+  const w = world();
+  const exams = new ExaminationsService(w.db as unknown as OnyxDb, w.audit);
+  const actor = { userId: 'user-20', role: 'admin' as const };
+
+  const at = new Date(Date.now() + 3_600_000).toISOString();
+  const open = await exams.schedule(T, actor, {
+    semester_id: null, course_id: 1, title: 'Open sitting', starts_at: at,
+    duration_minutes: 90,
+  });
+  assert.equal(open!.window_enforced, false, 'the slot should not lock by default');
+
+  // A second course, so the two sittings do not clash over the same cohort.
+  await w.db.from('onyx_courses').insert({
+    id: 2, tenant_id: T, code: 'CS102', title: 'Systems', slug: 's', status: 1,
+    semester_id: null,
+  });
+  const locked = await exams.schedule(T, actor, {
+    semester_id: null, course_id: 2, title: 'Hall sitting', starts_at: at,
+    duration_minutes: 90, window_enforced: true,
+  });
+  assert.equal(locked!.window_enforced, true, 'an institution asking for the hall gets it');
+
+  // And it can be turned on afterwards, which is what the exam form's switch
+  // does -- an examination moved into a hall should not have to be recreated.
+  const changed = await exams.updateExam(T, Number(open!.id), actor, { window_enforced: true });
+  assert.equal(changed!.window_enforced, true);
+});

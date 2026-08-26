@@ -34,7 +34,8 @@ import { pdfTable } from '../format/pdf.ts';
 import type { AuditService } from './audit.service.ts';
 
 // eslint-disable-next-line max-len -- one literal: a concatenated select collapses the row type.
-const EXAM_COLUMNS = 'id, tenant_id, semester_id, course_id, section_id, assessment_id, title, starts_at, duration_minutes, max_marks, pass_marks, status, created_by, created_at, updated_at';
+// eslint-disable-next-line max-len -- one literal; a concatenated select collapses the row type.
+const EXAM_COLUMNS = 'id, tenant_id, semester_id, course_id, section_id, assessment_id, title, starts_at, duration_minutes, max_marks, pass_marks, status, window_enforced, created_by, created_at, updated_at';
 const HALL_COLUMNS = 'id, tenant_id, code, name, row_count, col_count, capacity, status, created_at';
 const SEAT_COLUMNS = 'id, tenant_id, exam_id, hall_id, user_id, seat_label, created_at';
 const MARK_COLUMNS = 'id, tenant_id, exam_id, user_id, raw_marks, moderation_delta, final_marks, grade, grade_points, status, entered_by, moderated_by, moderated_at, published_at, created_at, updated_at';
@@ -152,6 +153,15 @@ export class ExaminationsService {
      * this is the way in.
      */
     section_id?: number | null;
+    /**
+     * Whether the slot locks the paper, or only announces it (0043).
+     *
+     * Off unless asked for. An examination here deals SETS -- parallel papers
+     * rotating down the roll -- and that is what makes everybody sitting at
+     * one instant unnecessary. Switched on, the paper opens at the start and
+     * shuts at the end, which is what a hall with a closed door needs.
+     */
+    window_enforced?: boolean;
   }) {
     // Course-scoping (only this course's own faculty, not faculty tenant-wide)
     // is the route layer's job -- assertCanRunExam in campus.routes.ts -- the
@@ -202,6 +212,7 @@ export class ExaminationsService {
       max_marks: maxMarks,
       pass_marks: passMarks,
       status: 'scheduled',
+      window_enforced: input.window_enforced ?? false,
       created_by: actor.userId,
     }).select(EXAM_COLUMNS).maybeSingle();
     if (error) throw new HttpError(500, 'Could not schedule the exam: ' + error.message);
@@ -224,6 +235,8 @@ export class ExaminationsService {
     patch: {
       title?: string; starts_at?: string | null; duration_minutes?: number;
       max_marks?: number; pass_marks?: number; status?: string;
+      /** Whether the slot locks the paper (0043). */
+      window_enforced?: boolean;
     }) {
     if (!canRunExams(actor.role) && actor.role !== 'faculty') {
       throw new HttpError(403, 'Only the examinations office or the course’s own faculty '
@@ -234,7 +247,8 @@ export class ExaminationsService {
     const before: Record<string, unknown> = {};
     const after: Record<string, unknown> = {};
     for (const key of
-      ['title', 'starts_at', 'duration_minutes', 'max_marks', 'pass_marks', 'status'] as const) {
+      ['title', 'starts_at', 'duration_minutes', 'max_marks', 'pass_marks', 'status',
+        'window_enforced'] as const) {
       const value = patch[key];
       if (value !== undefined && value !== exam[key]) { before[key] = exam[key]; after[key] = value; }
     }
