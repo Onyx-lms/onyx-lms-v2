@@ -46,53 +46,20 @@ const PROFILE_COLUMNS = 'id, email, name, phone, photo, status, created_at, user
  * product limit -- an institution with more members than this has a data
  * problem, and stopping beats paging forever.
  */
+/**
+ * How many ids one name lookup may carry.
+ *
+ * `.in('id', […])` is a query string, so the ceiling is the URL's, not the
+ * database's. Two hundred uuids is roughly 8KB of URL -- comfortably inside
+ * every proxy in the path, and few enough round trips that a 1,500-member
+ * roster costs eight.
+ */
+const USER_LOOKUP_BATCH = 200;
+
 const MEMBER_PAGE = 1000;
 const MEMBER_CEILING = 100_000;
 
 const MEMBERSHIP_COLUMNS = 'id, tenant_id, user_id, role, status, roll_number, section_id, permissions, created_at';
-
-/**
- * Mailboxes anyone can open in thirty seconds, under any name.
- *
- * Used ONLY by `TenancyService.isConsumerDomain`, and only where an
- * institution has declared no domains of its own -- read that method's comment
- * before adding to this list, because the list is the weaker of the two rules
- * and adding to it is rarely the right fix.
- *
- * Weighted towards what students in India actually use, because that is who
- * registers here: rediffmail and the yahoo.co.in family are as common in a
- * first-year intake as outlook.com, and a list copied from an American blog
- * post would miss both.
- *
- * Deliberately NOT included: `zoho.com` and `fastmail.com`. Both sell hosting
- * on an organisation's own domain, and a genuine institution using them
- * arrives on that domain rather than this one -- but both also run free
- * personal tiers, so this is a judgement call rather than an oversight.
- */
-export const CONSUMER_EMAIL_DOMAINS: ReadonlySet<string> = new Set([
-  // Google
-  'gmail.com', 'googlemail.com',
-  // Microsoft
-  'hotmail.com', 'hotmail.co.uk', 'hotmail.co.in', 'outlook.com', 'outlook.in',
-  'live.com', 'live.in', 'live.co.uk', 'msn.com',
-  // Yahoo and its national mailboxes
-  'yahoo.com', 'yahoo.co.in', 'yahoo.in', 'yahoo.co.uk', 'yahoo.fr', 'yahoo.de',
-  'ymail.com', 'rocketmail.com',
-  // Apple
-  'icloud.com', 'me.com', 'mac.com',
-  // India
-  'rediffmail.com', 'rediff.com', 'sify.com', 'indiatimes.com', 'in.com',
-  // Privacy-focused personal mail
-  'protonmail.com', 'protonmail.ch', 'proton.me', 'pm.me', 'tutanota.com', 'tuta.io',
-  // Everything else common
-  'aol.com', 'gmx.com', 'gmx.net', 'gmx.de', 'yandex.com', 'yandex.ru', 'mail.ru',
-  'mail.com', 'email.com', 'inbox.com', 'hushmail.com', 'zoho.in',
-  // The throwaway services people reach for when a form is in their way. Not
-  // an attempt at a complete list -- there are hundreds -- but the handful
-  // that turn up first in a search for "temporary email".
-  'mailinator.com', 'guerrillamail.com', 'yopmail.com', '10minutemail.com',
-  'temp-mail.org', 'trashmail.com', 'throwawaymail.com', 'sharklasers.com',
-]);
 
 /**
  * Every role a membership may hold.
@@ -512,35 +479,6 @@ export class TenancyService {
   }
 
   /**
-   * Is this a consumer mailbox rather than an address an organisation issued?
-   *
-   * A blocklist, and blocklists are always incomplete -- there is no finite
-   * list of free email providers, and one more launches every year. So this is
-   * deliberately NOT the primary rule. The primary rule is the institution's
-   * own `signup_domains`: an address that matches what an administrator listed
-   * is an organisation address BY DEFINITION and never reaches this check. See
-   * `#resolveSignup`.
-   *
-   * This is the fallback for the other case -- an institution that lists no
-   * domains at all and takes anyone who picks it from the dropdown. There, the
-   * only thing separating "a student at that college" from "anyone on the
-   * internet" is whether the address looks issued. Catching the providers that
-   * cover the overwhelming majority of personal mail is worth doing even
-   * though it cannot be complete, and gmail.com -- the one actually asked
-   * about -- is the largest of them by a wide margin.
-   *
-   * Subdomains count: `foo.gmail.com` is not a thing anyone is issued, and the
-   * same `.`-anchored test used by `domainMatches` keeps `notgmail.com` from
-   * matching `gmail.com`.
-   */
-  static isConsumerDomain(domain: string): boolean {
-    if (!domain) return false;
-    const d = domain.trim().toLowerCase();
-    return CONSUMER_EMAIL_DOMAINS.has(d)
-      || [...CONSUMER_EMAIL_DOMAINS].some((known) => d.endsWith('.' + known));
-  }
-
-  /**
    * A learner registering themselves.
    *
    * Two ways in, and which applies is the INSTITUTION's decision rather than
@@ -611,27 +549,29 @@ export class TenancyService {
     }
 
     /*
-     * Organisation addresses only.
+     * ANY address, once an institution has said `open`.
      *
-     * The strong form of this rule is the institution's own domain list, and
-     * where one matched we are already done -- an administrator listing
-     * `meridian.edu` has said what a Meridian address looks like, and nothing
-     * here second-guesses it.
+     * This used to refuse gmail and the other consumer mailboxes here, and the
+     * refusal only ever reached one case: an institution in `open` mode, where
+     * the address matched no listed domain. Everywhere else it was unreachable
+     * -- a matching domain sets `claimed`, and an institution in `domain` mode
+     * that the address does not match was already refused above.
      *
-     * Where nothing matched, the applicant is joining an institution that
-     * takes anyone who picks it from the dropdown, and the address is the only
-     * evidence of who they are. A free mailbox is no evidence at all: anybody
-     * can open one in the name of anybody. So it is refused, and refused
-     * BEFORE a code is sent -- there is no point mailing a verification to an
-     * address that cannot be used whatever comes back.
+     * So what it actually did was contradict the mode. `open` is documented,
+     * a few lines up, as "can be joined by anybody who picks it, with no
+     * check". A blocklist of mail providers on top of that is not a check: it
+     * cannot be complete, it never was, and every address it turned away was
+     * as likely to be a real student whose college never issued them anything
+     * as it was to be somebody inventing one. It bought the appearance of a
+     * control while excluding the people least likely to have an alternative.
+     *
+     * The control that DOES prove the claim is still there and is still the
+     * default: `domain` mode, where the institution lists what its own
+     * addresses look like and nothing else gets in. An institution choosing
+     * `open` has decided the emailed code is the only check it wants, and this
+     * now does what that says.
      */
     const claimed = TenancyService.domainMatches(domain, String(tenant.signup_domains ?? ''));
-    if (!claimed && TenancyService.isConsumerDomain(domain)) {
-      throw new HttpError(422,
-        'Use the email address your institution gave you. Personal addresses '
-        + '(' + domain + ' and the like) cannot be used to register — an '
-        + 'institution has no way to tell whose they are.');
-    }
 
     return { domain, tenant, claimed };
   }
@@ -1333,11 +1273,23 @@ export class TenancyService {
      * and the member directory, so 445 people were absent from all three with
      * nothing anywhere saying so.
      *
-     * A caller that asked for a page gets exactly that page and no loop.
+     * A caller that asked for a page gets exactly that page and no loop --
+     * UNLESS it is searching. The needle is matched against the member's name,
+     * email and roll number, which live on `onyx_users` and are fetched below,
+     * so the filter can only run after the rows are in hand. Fetching one page
+     * first and filtering that meant a search reached the first hundred people
+     * and no further: the People screen says "Showing 100 of 1,445 -- search to
+     * reach the rest", and searching could not reach the rest. Anybody past row
+     * 100 was unfindable by name, by address, and by the roll number printed on
+     * their own hall ticket.
+     *
+     * So a search reads the whole roll and pages the RESULT. That is what
+     * searching a roster means, and it is what the screen promises.
      */
+    const searching = Boolean(filters.search?.trim());
     const rows: Awaited<ReturnType<typeof scoped>>['data'] extends (infer R)[] | null
       ? R[] : never[] = [] as never;
-    if (filters.limit) {
+    if (filters.limit && !searching) {
       const { data } = await scoped().order('id').range(0, filters.limit - 1);
       rows.push(...(data ?? []));
     } else {
@@ -1352,9 +1304,33 @@ export class TenancyService {
     }
     if (!rows.length) return [];
 
+    /*
+     * The names, fetched in batches, because one `IN` of every id does not
+     * survive the trip.
+     *
+     * `.in('id', ids)` becomes a query string with one uuid per member, and at
+     * roster size that is tens of kilobytes of URL. The request does not error
+     * -- it comes back with NO USERS AT ALL, so every row got `user: null` and
+     * the whole roster arrived anonymous: 1,446 members, 0 names, 0 emails,
+     * silently. Only the callers that pass a limit were small enough to work,
+     * which is why the People screen looked fine and the searches, pickers and
+     * name lookups behind it did not.
+     *
+     * Found because a roster SEARCH matches on name and email: with both null
+     * for everybody, searching the whole roll returned nothing at all, for
+     * every needle.
+     */
     const ids = [...new Set(rows.map((r) => String(r.user_id)))];
-    const { data: users } = await this.#db.from('onyx_users').select(USER_COLUMNS).in('id', ids);
-    const byId = new Map((users ?? []).map((u) => [u.id, u]));
+    const first = await this.#db.from('onyx_users').select(USER_COLUMNS)
+      .in('id', ids.slice(0, USER_LOOKUP_BATCH));
+    const byId = new Map((first.data ?? []).map((u) => [String(u.id), u]));
+    for (let from = USER_LOOKUP_BATCH; from < ids.length; from += USER_LOOKUP_BATCH) {
+      // eslint-disable-next-line no-await-in-loop -- one batch at a time keeps
+      // the url short, which is the whole point.
+      const { data } = await this.#db.from('onyx_users').select(USER_COLUMNS)
+        .in('id', ids.slice(from, from + USER_LOOKUP_BATCH));
+      for (const u of data ?? []) byId.set(String(u.id), u);
+    }
 
     let out = rows.map((r) => ({ ...r, user: byId.get(String(r.user_id)) ?? null }));
 
@@ -1383,6 +1359,9 @@ export class TenancyService {
         (r.user?.name ?? '').toLowerCase().includes(needle)
         || (r.user?.email ?? '').toLowerCase().includes(needle)
         || String(r.roll_number ?? '').toLowerCase().includes(needle));
+      // The page the caller asked for, applied to the MATCHES rather than to
+      // the roster -- taking it earlier is what made the search shallow.
+      if (filters.limit) out = out.slice(0, filters.limit);
     }
     return out;
   }

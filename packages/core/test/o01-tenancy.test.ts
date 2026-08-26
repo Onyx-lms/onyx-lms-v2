@@ -495,3 +495,69 @@ test('an administrator still gets the whole roster', async () => {
   const emails = all.filter((m) => m.role === 'student').map((m) => m.user?.email);
   assert.ok(emails.includes('a@x.test') && emails.includes('b@x.test'));
 });
+
+test('a roster search reaches past the first page', async () => {
+  /*
+   * The order of two steps, and the whole bug.
+   *
+   * The needle was matched AFTER the page was fetched, so `limit: 100` with a
+   * search read the first hundred people and filtered those. The People screen
+   * says "Showing 100 of 1,445 — search to reach the rest", and anybody past
+   * row 100 was unfindable: not by name, not by address, not by the roll
+   * number printed on their own hall ticket. A registration that had just
+   * completed sorts last, which is precisely where it could never be seen.
+   *
+   * Name and email live on `onyx_users`, a second read, so the filter honestly
+   * cannot run inside the query -- which is why the fix is the ordering rather
+   * than a cleverer select, and why it is worth pinning here.
+   */
+  const { svc } = await make();
+  for (let i = 0; i < 12; i += 1) {
+    // eslint-disable-next-line no-await-in-loop -- ids have to be dealt in order.
+    await svc.invite(1, { name: 'Bulk Person ' + i, email: 'bulk' + i + '@x.test', role: 'student' });
+  }
+  // Invited last, so this one sorts last -- where a new registration lands.
+  await svc.invite(1, { name: 'Priya Sharma', email: 'priya@gmail.com', role: 'student' });
+
+  // A page with no search is still just a page.
+  assert.equal((await svc.members(1, { role: 'student', limit: 4 })).length, 4);
+
+  for (const [what, needle] of [
+    ['email', 'priya@gmail.com'], ['name', 'Priya Sharma'],
+  ] as const) {
+    // eslint-disable-next-line no-await-in-loop -- two assertions, in order.
+    const hit = await svc.members(1, { role: 'student', limit: 4, search: needle });
+    assert.equal(hit.length, 1, 'searching by ' + what + ' found ' + hit.length);
+    assert.equal(hit[0].user?.email, 'priya@gmail.com', 'wrong person for ' + what);
+  }
+
+  // And a search matching many is still capped at the page that was asked for.
+  assert.equal(
+    (await svc.members(1, { role: 'student', limit: 4, search: 'Bulk Person' })).length, 4);
+});
+
+test('the whole roster comes back with everybody’s name on it', async () => {
+  /*
+   * `.in('id', […])` is a query string, and one uuid per member at roster size
+   * is tens of kilobytes of URL. It does not error -- it returns NO USERS, so
+   * every row got `user: null` and the roster arrived anonymous: 1,446 members
+   * with 0 names and 0 emails, silently. Callers passing a small limit were
+   * under the ceiling, which is why the People screen looked right while the
+   * searches, pickers and name lookups behind it did not.
+   *
+   * 250 here, over a batch of 200, so the loop runs more than once. A test
+   * that stays inside one batch proves nothing about the thing that broke.
+   */
+  const { svc } = await make();
+  for (let i = 0; i < 250; i += 1) {
+    // eslint-disable-next-line no-await-in-loop -- ids are dealt in order.
+    await svc.invite(1, {
+      name: 'Roster Person ' + i, email: 'roster' + i + '@x.test', role: 'student',
+    });
+  }
+  const all = await svc.members(1, { role: 'student' });
+  assert.ok(all.length >= 250, 'only ' + all.length + ' came back');
+  const anonymous = all.filter((m) => !m.user?.email);
+  assert.deepEqual(anonymous.map((m) => m.id), [],
+    anonymous.length + ' of ' + all.length + ' members came back with no name or email');
+});

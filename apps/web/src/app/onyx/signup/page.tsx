@@ -56,8 +56,9 @@ export default async function OnyxSignUpPage(
               <Icon name="building" className="mt-0.5 h-4 w-4" />
             </span>
             <p className="min-w-0 flex-1">
-              Use the email address your institution gave you. It is what tells us which
-              institution you belong to &mdash; a personal address will not find one.
+              If your institution issued you an address, use it &mdash; it finds them for you.
+              If it did not, any address works: pick your institution from the list and we
+              will email you a code.
             </p>
           </div>
 

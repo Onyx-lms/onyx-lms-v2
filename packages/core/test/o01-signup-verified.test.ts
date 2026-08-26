@@ -1,26 +1,27 @@
 /**
- * Registering as a student: an organisation address, and a code that proves it
- * is yours.
+ * Registering as a student, and the code that proves the address is yours.
  *
- * Two rules arrived together and they are not the same rule.
+ * WHICH addresses may register is the institution's decision, and it has
+ * exactly one control: `signup_mode`.
  *
- * **Organisation mail only.** The strong form is the institution's own
- * `signup_domains` -- an administrator listing `meridian.edu` has said what a
- * Meridian address looks like, and o01-signup-domains.test.ts covers that
- * matching in detail. What is new here is the FALLBACK, for an institution
- * that lists nothing and takes whoever picks it from the dropdown: there, a
- * free mailbox is refused, because anybody can open one in anybody's name.
- * The list of free providers can never be complete, which is exactly why it is
- * the weaker of the two rules and not the primary one.
+ * **`domain`** -- the default. The institution lists what its own addresses
+ * look like and nothing else gets in. `principal@meridian.edu` may not be the
+ * applicant's, which is what the code is for, but nobody outside Meridian
+ * reaches the form at all. o01-signup-domains.test.ts covers the matching.
  *
- * **A code to the address.** Refusing gmail.com does nothing on its own --
- * `principal@meridian.edu` is an organisation address and it is not the
- * applicant's. The code is what ties the registration to somebody who can read
- * that mailbox.
+ * **`open`** -- anybody who picks the institution from the list may join, and
+ * the emailed code is the only check. This file used to assert that gmail was
+ * refused even here, by a blocklist of free providers. That rule is gone, and
+ * the tests below now assert its absence rather than being deleted quietly:
+ * a blocklist cannot be complete, it contradicted what `open` says in as many
+ * words, and every address it turned away was as likely to belong to a real
+ * student whose college never issued them one as to somebody inventing an
+ * identity. An institution that wants the address to prove the claim has
+ * `domain` mode, which proves it properly.
  *
- * The order the two run in is load-bearing and is asserted below: the address
- * is judged BEFORE anything is mailed. A product that sends first and refuses
- * afterwards is a product that can be used to send mail to strangers.
+ * What has NOT changed, and is still asserted: the address is judged BEFORE
+ * anything is mailed. A product that sends first and refuses afterwards is a
+ * product that can be used to send mail to strangers.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -61,51 +62,66 @@ const DETAILS = {
 
 // ------------------------------------------------------- organisation mail
 
-test('gmail is refused, and no code is sent', async () => {
+test('gmail may register at an institution that is open to anyone', async () => {
+  /*
+   * The rule this file was written to assert, now asserted the other way up.
+   *
+   * Ashcroft lists no domains and is `open`, which the product defines as
+   * "anybody who picks it, with no check beyond the emailed code". A learner
+   * whose college never issued them an address is the ordinary case in that
+   * situation, not the suspicious one, and refusing them was refusing the
+   * people with the fewest alternatives.
+   */
   const db = seed();
   const auth = new FakeAuth();
-  await assert.rejects(
-    service(db, auth).startSignUp({ email: 'priya@gmail.com', tenant_id: 2 }),
-    (e: HttpError) => e.status === 422 && /institution gave you/i.test(e.message));
-
-  // The half that matters as much as the refusal: nothing was mailed. Judging
-  // the address after sending would make this form a way to send mail to any
-  // address somebody types.
-  assert.deepEqual(auth.sent, []);
+  const started = await service(db, auth).startSignUp({
+    email: 'priya@gmail.com', tenant_id: 2,
+  });
+  assert.equal(started.sent, true);
+  assert.equal(auth.sent.length, 1, 'a code goes to the address given');
+  assert.equal(auth.sent[0].email, 'priya@gmail.com');
 });
 
-test('the other free providers are refused too', async () => {
-  // Not an exhaustive list and cannot be -- but gmail alone would be a rule
-  // anybody sidesteps with the next mailbox down the page.
+test('so may every other kind of mailbox', async () => {
+  // The same rule, said across the providers the old blocklist named. One of
+  // them accepted and the rest refused would be the worst of both: a rule
+  // nobody can predict.
   const auth = new FakeAuth();
   const svc = service(seed(), auth);
-  for (const email of [
-    'a@yahoo.co.in', 'a@outlook.com', 'a@hotmail.com', 'a@rediffmail.com',
-    'a@icloud.com', 'a@proton.me', 'a@mailinator.com',
-  ]) {
-    await assert.rejects(svc.startSignUp({ email, tenant_id: 2 }),
-      (e: HttpError) => e.status === 422, email + ' was accepted');
+  const boxes = [
+    'a@yahoo.co.in', 'b@outlook.com', 'c@hotmail.com', 'd@rediffmail.com',
+    'e@icloud.com', 'f@proton.me', 'g@mailinator.com',
+  ];
+  for (const email of boxes) {
+    const started = await svc.startSignUp({ email, tenant_id: 2 });
+    assert.equal(started.sent, true, email + ' was refused');
   }
-  assert.equal(auth.sent.length, 0);
+  assert.equal(auth.sent.length, boxes.length);
 });
 
-test('a domain that merely ends with a free one is not a free one', () => {
-  // The same `.`-anchored test the institution matching uses. Without it,
-  // `notgmail.com` is refused and `mygmail.com.au` with it -- both of which
-  // could be somebody's actual employer.
-  assert.equal(TenancyService.isConsumerDomain('gmail.com'), true);
-  assert.equal(TenancyService.isConsumerDomain('mail.gmail.com'), true);
-  assert.equal(TenancyService.isConsumerDomain('notgmail.com'), false);
-  assert.equal(TenancyService.isConsumerDomain('gmail.com.attacker.io'), false);
-  assert.equal(TenancyService.isConsumerDomain('meridian.edu'), false);
-  assert.equal(TenancyService.isConsumerDomain(''), false);
-});
+test('a domain-only institution still refuses an address it does not claim',
+  async () => {
+    /*
+     * The control that did NOT go away, and the reason removing the blocklist
+     * is not the same as opening the door.
+     *
+     * Meridian is `domain` with `meridian.edu`. Naming it from the dropdown
+     * with a gmail address is refused, and refused before anything is mailed.
+     * An institution that wants the address to prove who somebody is has this,
+     * and this actually proves it.
+     */
+    const auth = new FakeAuth();
+    await assert.rejects(
+      service(seed(), auth).startSignUp({ email: 'priya@gmail.com', tenant_id: 1 }),
+      (e: HttpError) => e.status === 422 && /own email address/i.test(e.message));
+    assert.deepEqual(auth.sent, [], 'nothing is mailed to a refused address');
+  });
 
-test('an institution that claims a domain outranks the free-provider list', async () => {
-  // The rule that keeps this from being a guess about the world. If an
-  // administrator has listed a domain, that is the answer -- even one this
-  // file would otherwise call consumer mail. The blocklist is a fallback for
-  // institutions that declare nothing, never an override of one that did.
+test('an institution may list a consumer domain as its own', async () => {
+  // A tutoring company whose learners really are on gmail. This passed before
+  // because a listed domain outranked the blocklist; it passes now because
+  // there is no blocklist to outrank. Kept either way: it is the case that
+  // proves an administrator's own list is the answer.
   const db = new FakeDb({
     onyx_tenants: [{
       id: 1, name: 'Tutoring Co', slug: 'tutors', status: 1,

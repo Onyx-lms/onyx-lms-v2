@@ -307,8 +307,7 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
           className={field} />
         {institution === 'unknown' ? (
           <p className="mt-1.5 text-[12.5px] text-muted">
-            Use the address your institution gave you — it is what tells us where you belong.
-            Personal addresses such as gmail.com cannot be used.
+            That does not look like an email address yet.
           </p>
         ) : institution === null ? (
           /*

@@ -11,7 +11,14 @@
 import { connect } from '../tools/db/connect.mjs';
 
 const TENANT = 798;
-const LIKE = 'ux.trial.%@mrdemo.test';
+/*
+ * Every address a hand-walked registration uses.
+ *
+ * Two shapes now: the `.test` one from walking the domain path, and the gmail
+ * one from walking the open path. Both are trial accounts on the demo, and the
+ * demo's seeded figures are a contract, so both have to come back out.
+ */
+const LIKE = ['ux.trial.%@mrdemo.test', 'onyx.gmail.trial.%@gmail.com'];
 const client = await connect();
 
 const { rows: [t] } = await client.query(
@@ -22,7 +29,7 @@ if (!t || t.slug !== 'malla-reddy-demo') {
 console.log('institution:', t.name, '(' + t.slug + ')');
 
 const { rows: users } = await client.query(
-  'select id, email from public."onyx_users" where email like $1', [LIKE]);
+  'select id, email from public."onyx_users" where email like any($1::text[])', [LIKE]);
 console.log('trial accounts found:', users.length, users.map((u) => u.email).join(', '));
 if (!users.length) { await client.end(); process.exit(0); }
 const ids = users.map((u) => u.id);
