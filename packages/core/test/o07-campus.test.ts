@@ -569,3 +569,46 @@ test('CMP-04 the overview reports "not shared" for a switched-off category rathe
   assert.equal(child.shares.results, false);
   assert.equal(child.results, null, 'a category that is off must read as null, not be left out');
 });
+
+test('the receipt lists every kind of money the product takes', async () => {
+  /*
+   * Three things here take money -- a fee invoice, a course, and a Live Class
+   * -- and the receipt knew about two. So an operator on a billing call could
+   * account for every rupee except the ones taken by the newest thing that
+   * takes them, and there was nowhere in the console the missing ones appeared
+   * at all.
+   *
+   * The row also has to carry who paid in the terms an institution looks
+   * people up by. A name is not an identification on a roll of 1,440; the two
+   * facts staff hold when they ring about a payment are the roll number and
+   * the division it is kept for.
+   */
+  const w = world();
+  await w.db.from('onyx_domains').insert({
+    id: 5, tenant_id: T, title: 'Full Stack Web Development', price_minor: 1_499_900,
+    currency: 'INR', status: 1,
+  });
+  await w.db.from('onyx_domain_registrations').insert({
+    id: 9, tenant_id: T, domain_id: 5, user_id: 'user-10', amount_minor: 1_499_900,
+    currency: 'INR', gateway: 'razorpay', reference: 'ONYX-D-1', provider_ref: 'pay_ABC123',
+    status: 'captured', created_at: new Date().toISOString(),
+  });
+
+  const report = await w.finance.receipts(T);
+  const live = report.rows.filter((r) => r.kind === 'live_class');
+  assert.equal(live.length, 1, 'the Live Class registration is missing from the receipt');
+
+  const [row] = live;
+  assert.equal(row.what, 'Full Stack Web Development', 'it should say what was bought');
+  assert.equal(row.amount_minor, 1_499_900);
+  // Both references: ours is what the redirect and the webhook quote, the
+  // gateway's is what appears on a bank statement or a dispute.
+  assert.equal(row.reference, 'ONYX-D-1');
+  assert.equal(row.gateway_reference, 'pay_ABC123');
+  assert.equal(row.learner.id, 'user-10');
+  assert.ok('section' in row.learner, 'the section is what a division is looked up by');
+  assert.ok(row.institution, 'a receipt read anywhere has to say whose it is');
+
+  assert.equal(report.summary.from_live_classes_minor, 1_499_900,
+    'Live Class money should be counted in its own right');
+});

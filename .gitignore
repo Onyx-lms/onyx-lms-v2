@@ -61,3 +61,8 @@ qa-*.png
 # only copy of that institution's data and belong on the operator's disk, not
 # in a repository that gets cloned.
 backups/
+
+# Ad-hoc probe scripts. Scratch by nature -- named x1..x17, stu1..stu12 --
+# and swept into a commit once by `git add -A`. Kept out of the history
+# rather than tidied into it: they are somebody working, not a suite.
+qa-run/

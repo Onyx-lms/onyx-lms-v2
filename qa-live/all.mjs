@@ -28,6 +28,7 @@ const SUITES = [
   ['the support desk is administration’s', 'support-scope.mjs'],
   // --- superadmin -------------------------------------------------------
   ['the operator’s reach over admins', 'superadmin-reach.mjs'],
+  ['every rupee reaches the Fees tab', 'money-lands.mjs'],
   // --- everyone ---------------------------------------------------------
   ['submissions reach every marker', 'submissions-visible.mjs'],
   ['every screen works on a phone', 'responsive-live.mjs'],

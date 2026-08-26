@@ -5,10 +5,17 @@ import { money } from '@/lib/onyx-campus';
 import { DataTable, EmptyRow, Icon, Pill, StatTile } from '@/components/onyx-ui';
 
 export interface Receipt {
-  kind: 'fee' | 'course';
+  kind: 'fee' | 'course' | 'live_class';
   id: string;
   at: string;
-  learner: { id: string; name: string | null; email: string | null; roll_number: string | null };
+  learner: {
+    id: string; name: string | null; email: string | null;
+    roll_number: string | null;
+    /** The division they are taught with. Null where they are in none. */
+    section?: string | null;
+  };
+  /** Which institution took it. On the row, so a receipt read anywhere says so. */
+  institution?: { id: number; name: string; slug: string } | null;
   what: string;
   reference: string;
   gateway_reference: string | null;
@@ -24,7 +31,8 @@ export interface ReceiptsPayload {
   rows: Receipt[];
   summary: {
     count: number; collected_minor: number; from_fees_minor: number;
-    from_courses_minor: number; learners: number;
+    from_courses_minor: number; from_live_classes_minor?: number;
+    learners: number;
   };
 }
 
@@ -54,13 +62,14 @@ export function ReceiptsReport({ data, showLearner = true, emptyNote }: {
   showLearner?: boolean;
   emptyNote?: string;
 }) {
-  const [kind, setKind] = useState<'all' | 'fee' | 'course'>('all');
+  const [kind, setKind] = useState<'all' | 'fee' | 'course' | 'live_class'>('all');
   const [needle, setNeedle] = useState('');
 
   const counts = useMemo(() => ({
     all: data.rows.length,
     fee: data.rows.filter((r) => r.kind === 'fee').length,
     course: data.rows.filter((r) => r.kind === 'course').length,
+    live_class: data.rows.filter((r) => r.kind === 'live_class').length,
   }), [data.rows]);
 
   const shown = useMemo(() => {
@@ -71,6 +80,7 @@ export function ReceiptsReport({ data, showLearner = true, emptyNote }: {
         || (r.learner.name ?? '').toLowerCase().includes(q)
         || (r.learner.email ?? '').toLowerCase().includes(q)
         || (r.learner.roll_number ?? '').toLowerCase().includes(q)
+        || (r.learner.section ?? '').toLowerCase().includes(q)
         || r.reference.toLowerCase().includes(q)
         || r.what.toLowerCase().includes(q));
   }, [data.rows, kind, needle]);
@@ -79,10 +89,11 @@ export function ReceiptsReport({ data, showLearner = true, emptyNote }: {
     .filter((r) => r.status === 'captured' || r.status === 'paid')
     .reduce((n, r) => n + r.amount_minor, 0);
 
-  const TABS: { key: 'all' | 'fee' | 'course'; label: string }[] = [
+  const TABS: { key: 'all' | 'fee' | 'course' | 'live_class'; label: string }[] = [
     { key: 'all', label: 'Everything' },
     { key: 'fee', label: 'Fee payments' },
     { key: 'course', label: 'Course purchases' },
+    { key: 'live_class', label: 'Live Classes' },
   ];
 
   return (
@@ -101,6 +112,9 @@ export function ReceiptsReport({ data, showLearner = true, emptyNote }: {
         <StatTile label={showLearner ? 'From courses' : 'Courses bought'}
           value={money(data.summary.from_courses_minor)}
           note={showLearner ? 'locked courses bought' : 'paid for directly'} />
+        <StatTile label={showLearner ? 'From Live Classes' : 'Live Classes'}
+          value={money(data.summary.from_live_classes_minor ?? 0)}
+          note={showLearner ? 'registrations taken' : 'you registered for'} />
         {showLearner ? (
           <StatTile label="Payers" value={data.summary.learners} note="distinct learners" />
         ) : null}
@@ -156,6 +170,10 @@ export function ReceiptsReport({ data, showLearner = true, emptyNote }: {
             <th scope="col">Paid</th>
             {showLearner ? <th scope="col">Learner</th> : null}
             <th scope="col">For</th>
+            {/* Both references. `Reference` is this product's, signed, and
+                what the redirect and the webhook quote; the gateway's own id
+                is what appears on a bank statement or a dispute. Neither
+                substitutes for the other on a billing call. */}
             <th scope="col">Reference</th>
             <th scope="col" className="hidden sm:table-cell">Method</th>
             <th scope="col">Amount</th>
@@ -179,16 +197,29 @@ export function ReceiptsReport({ data, showLearner = true, emptyNote }: {
             {showLearner ? (
               <td>
                 <div className="font-semibold">{r.learner.name ?? '—'}</div>
+                {/* Roll number and section on the same line as the address.
+                    A name is not an identification on a roll of 1,440 -- there
+                    are four Divya Raos -- and the two facts staff hold when
+                    they ring about a payment are the number on the register
+                    and the division it is kept for. */}
                 <div className="text-[12px] text-muted">
-                  {r.learner.roll_number ? r.learner.roll_number + ' · ' : ''}
-                  {r.learner.email ?? ''}
+                  {[
+                    r.learner.roll_number,
+                    r.learner.section,
+                    r.learner.email,
+                  ].filter(Boolean).join(' · ')}
                 </div>
+                {r.institution ? (
+                  <div className="text-[11.5px] text-faint">{r.institution.name}</div>
+                ) : null}
               </td>
             ) : null}
             <td>
               <div className="flex items-center gap-2">
-                <Pill tone={r.kind === 'course' ? 'brand' : 'neutral'}>
-                  {r.kind === 'course' ? 'Course' : 'Fee'}
+                <Pill tone={r.kind === 'course' ? 'brand'
+                  : r.kind === 'live_class' ? 'good' : 'neutral'}>
+                  {r.kind === 'course' ? 'Course'
+                    : r.kind === 'live_class' ? 'Live Class' : 'Fee'}
                 </Pill>
                 <span className="min-w-0 truncate">{r.what}</span>
               </div>

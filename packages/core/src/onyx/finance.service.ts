@@ -486,9 +486,25 @@ export class FinanceService {
       .eq('tenant_id', tenantId);
     if (opts.userId) purchaseQuery = purchaseQuery.eq('user_id', opts.userId);
 
-    const [{ data: payments }, { data: purchases }] = await Promise.all([
+    /*
+     * Live Class registrations, which this report did not know about.
+     *
+     * Three things in this product take money -- a fee invoice, a course, and
+     * a Live Class -- and two of them were on the receipt. So an operator on a
+     * billing call could account for every rupee except the ones taken by the
+     * newest thing that takes them, and there was nowhere in the console the
+     * missing ones appeared at all.
+     */
+    let registrationQuery = this.#db.from('onyx_domain_registrations')
+      .select('id, domain_id, user_id, amount_minor, currency, status, gateway, '
+        + 'reference, provider_ref, created_at')
+      .eq('tenant_id', tenantId);
+    if (opts.userId) registrationQuery = registrationQuery.eq('user_id', opts.userId);
+
+    const [{ data: payments }, { data: purchases }, { data: registrations }] = await Promise.all([
       paymentQuery.order('id', { ascending: false }),
       purchaseQuery.order('id', { ascending: false }),
+      registrationQuery.order('id', { ascending: false }),
     ]);
 
     interface PaymentRow {
@@ -501,15 +517,22 @@ export class FinanceService {
       currency: string | null; status: string; gateway: string; reference: string;
       created_at: string;
     }
+    interface RegistrationRow {
+      id: number; domain_id: number; user_id: string; amount_minor: number;
+      currency: string | null; status: string; gateway: string | null;
+      reference: string | null; provider_ref: string | null; created_at: string;
+    }
     const paymentRows = (payments ?? []) as unknown as PaymentRow[];
     const purchaseRows = (purchases ?? []) as unknown as PurchaseRow[];
+    const registrationRows = (registrations ?? []) as unknown as RegistrationRow[];
 
     // The names, invoice numbers and course titles those rows point at. Three
     // lookups for the whole report rather than one per row.
-    const userIds = [...new Set([...paymentRows, ...purchaseRows]
+    const userIds = [...new Set([...paymentRows, ...purchaseRows, ...registrationRows]
       .map((r) => String(r.user_id)).filter(Boolean))];
     const invoiceIds = [...new Set(paymentRows.map((r) => Number(r.invoice_id)).filter(Boolean))];
     const courseIds = [...new Set(purchaseRows.map((r) => Number(r.course_id)).filter(Boolean))];
+    const domainIds = [...new Set(registrationRows.map((r) => Number(r.domain_id)).filter(Boolean))];
 
     const [{ data: users }, { data: invoices }, { data: courses }] = await Promise.all([
       userIds.length
@@ -524,24 +547,63 @@ export class FinanceService {
         : Promise.resolve({ data: [] as { id: number; code: string; title: string }[] }),
     ]);
 
+    /*
+     * What the money was FOR, and who took it, in the words a person uses.
+     *
+     * The institution is on every row rather than left to the page, because a
+     * receipt read anywhere -- exported, pasted into a ticket, handed to
+     * finance -- has to say which institution it belongs to. On a console page
+     * scoped to one it is redundant and cheap; off that page it is the whole
+     * difference between a reference and a record.
+     */
+    const [{ data: domains }, { data: tenantRow }] = await Promise.all([
+      domainIds.length
+        ? this.#db.from('onyx_domains').select('id, title').in('id', domainIds)
+        : Promise.resolve({ data: [] as { id: number; title: string }[] }),
+      this.#db.from('onyx_tenants').select('id, name, slug').eq('id', tenantId).maybeSingle(),
+    ]);
+    const byDomain = new Map((domains ?? []).map((d) => [Number(d.id), d]));
+    const institution = tenantRow
+      ? { id: Number(tenantRow.id), name: String(tenantRow.name), slug: String(tenantRow.slug) }
+      : null;
+
     const byUser = new Map((users ?? []).map((u) => [String(u.id), u]));
     const byInvoice = new Map((invoices ?? []).map((i) => [Number(i.id), i]));
     const byCourse = new Map((courses ?? []).map((c) => [Number(c.id), c]));
 
-    // Roll numbers, because an institution looks people up by them.
+    /*
+     * Roll number and section, because an institution looks people up by them.
+     *
+     * A name alone is not an identification on a roll of 1,440 -- there are
+     * four Divya Raos -- and the two facts staff actually hold when they ring
+     * about a payment are the number on the register and the division it is
+     * kept for.
+     */
     const { data: memberships } = userIds.length
-      ? await this.#db.from('onyx_memberships').select('user_id, roll_number')
+      ? await this.#db.from('onyx_memberships').select('user_id, roll_number, section_id')
         .eq('tenant_id', tenantId).in('user_id', userIds)
-      : { data: [] as { user_id: string; roll_number: string | null }[] };
+      : { data: [] as { user_id: string; roll_number: string | null; section_id: number | null }[] };
     const rollOf = new Map((memberships ?? [])
       .map((m) => [String(m.user_id), m.roll_number ?? null]));
+    const sectionIdOf = new Map((memberships ?? [])
+      .map((m) => [String(m.user_id), m.section_id == null ? null : Number(m.section_id)]));
 
-    const person = (id: string) => ({
-      id,
-      name: byUser.get(id)?.name ?? null,
-      email: byUser.get(id)?.email ?? null,
-      roll_number: rollOf.get(id) ?? null,
-    });
+    const sectionIds = [...new Set([...sectionIdOf.values()].filter((n): n is number => n != null))];
+    const { data: sections } = sectionIds.length
+      ? await this.#db.from('onyx_sections').select('id, name').in('id', sectionIds)
+      : { data: [] as { id: number; name: string }[] };
+    const sectionName = new Map((sections ?? []).map((x) => [Number(x.id), String(x.name)]));
+
+    const person = (id: string) => {
+      const section = sectionIdOf.get(id) ?? null;
+      return {
+        id,
+        name: byUser.get(id)?.name ?? null,
+        email: byUser.get(id)?.email ?? null,
+        roll_number: rollOf.get(id) ?? null,
+        section: section == null ? null : (sectionName.get(section) ?? null),
+      };
+    };
 
     const rows = [
       ...paymentRows.map((p) => {
@@ -582,7 +644,37 @@ export class FinanceService {
           status: String(p.status),
         };
       }),
-    ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+      ...registrationRows.map((r) => {
+        const domain = byDomain.get(Number(r.domain_id));
+        return {
+          kind: 'live_class' as const,
+          id: 'registration-' + r.id,
+          at: String(r.created_at),
+          learner: person(String(r.user_id)),
+          what: domain ? String(domain.title) : 'Live Class',
+          /*
+           * The reference, and the gateway's own beside it.
+           *
+           * `reference` is this product's -- signed, and what the redirect and
+           * the webhook both quote. `provider_ref` is Razorpay's payment id,
+           * which is the string somebody reads off a bank statement or a
+           * dispute. Neither substitutes for the other on a billing call, so
+           * both are carried.
+           */
+          reference: String(r.reference ?? ''),
+          gateway_reference: r.provider_ref ? String(r.provider_ref)
+            : (r.reference ? String(r.reference) : null),
+          invoice_id: null,
+          course: null as null | { id: number; code: string; title: string },
+          amount_minor: Number(r.amount_minor),
+          currency: String(r.currency ?? 'INR'),
+          method: String(r.gateway ?? ''),
+          status: String(r.status),
+        };
+      }),
+    ]
+      .map((r) => ({ ...r, institution }))
+      .sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
 
     const settled = rows.filter((r) => r.status === 'captured' || r.status === 'paid');
     return {
@@ -593,6 +685,8 @@ export class FinanceService {
         from_fees_minor: settled.filter((r) => r.kind === 'fee')
           .reduce((n, r) => n + r.amount_minor, 0),
         from_courses_minor: settled.filter((r) => r.kind === 'course')
+          .reduce((n, r) => n + r.amount_minor, 0),
+        from_live_classes_minor: settled.filter((r) => r.kind === 'live_class')
           .reduce((n, r) => n + r.amount_minor, 0),
         learners: new Set(settled.map((r) => r.learner.id)).size,
       },
