@@ -154,11 +154,27 @@ const NAV: Record<Role, OnyxNavGroup[]> = {
     { label: 'Career', items: [I.jobs, I.resume, I.profile] },
     { items: [I.inbox] },
   ],
+  /*
+   * Programmes, Teaching load and Mentor queue are not here, by request.
+   *
+   * All three are administration of teaching rather than teaching: a
+   * programme's structure and the allocation of hours across faculty are set
+   * for a lecturer, not by one, and the escalation queue is a support rota
+   * somebody is put on rather than a place they work daily. A lecturer's
+   * sidebar is what they open every day, and three entrances they rarely need
+   * push the ones they do further down it.
+   *
+   * Entrances only. Every route stays exactly where it was and keeps its own
+   * page guard, so a lecturer who is sent a link, or who holds the capability
+   * and types the address, is not turned away -- this is the sidebar's
+   * opinion about what belongs on it, not a permission. The same treatment,
+   * and the same reasoning, the exams and placement navs already had below.
+   */
   faculty: [
     { items: [I.dashboard, I.courses, I.domains, I.practice, I.handins, I.spaces] },
     { label: 'Assessment', items: [I.assess, I.exams, I.invigilate] },
-    { label: 'Teaching', items: [I.programs, I.timetable, I.allocate, I.people] },
-    { label: 'Support', items: [I.mentor, I.inbox, I.profile] },
+    { label: 'Teaching', items: [I.timetable, I.people] },
+    { label: 'Support', items: [I.inbox, I.profile] },
   ],
   // Dashboard dropped from both: `/onyx/dashboard` redirects exams and
   // placement straight back to the pages already below (see the dashboard's

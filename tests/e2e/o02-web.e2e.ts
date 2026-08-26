@@ -249,8 +249,21 @@ test('navigation matches the role', async () => {
   assert.ok(!learner.includes('Programmes'), 'a learner was offered the programme structure');
   assert.ok(!learner.includes('Audit log'));
 
+  /*
+   * `Invigilate` rather than `Programmes`.
+   *
+   * This asserted Programmes, which faculty no longer carry: it, Teaching load
+   * and Mentor queue came off that sidebar because all three are the
+   * administration of teaching rather than teaching, and a lecturer's nav is
+   * what they open every day. The routes are untouched and still guarded by
+   * their own pages -- this was only ever an entrance.
+   *
+   * So the assertion moves to something that is still a lecturer's own and
+   * still not a learner's, which is what it was really testing.
+   */
   const staff = dom((await webPage('/onyx/dashboard', w.cookies.faculty)).html);
-  assert.match(staff, /Programmes/);
+  assert.match(staff, /Invigilate/);
+  assert.ok(!staff.includes('Programmes'), 'faculty were offered the programme structure');
   assert.ok(!staff.includes('Audit log'), 'faculty were offered the audit log');
 });
 
