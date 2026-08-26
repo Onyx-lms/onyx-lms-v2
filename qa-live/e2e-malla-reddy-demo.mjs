@@ -78,17 +78,63 @@ if (tenants.some((t) => t.slug !== DEMO_SLUG && Number(t.id) === TID)) {
 }
 const base = '/api/onyx/platform/tenants/' + TID;
 
+/*
+ * FLOORS, NOT SNAPSHOTS.
+ *
+ * These seven checks used to assert the exact figures the demo was seeded
+ * with -- 1,440 students, 63 courses, three papers, sixty in Alpha-CSE. Then
+ * somebody used the demo, which is the entire point of a demo: a learner
+ * signed herself up, and a course with two papers was built to try the
+ * authoring screens. Every seeded figure moved by one or two, every assertion
+ * went red, and the reported numbers beside them were all CORRECT. Seven red
+ * lines that mean "the demo was used" teach a reader to skim past red.
+ *
+ * So each one now asserts the thing it was actually for. "The superadmin sees
+ * EVERY enrolment, not the first thousand" was never a claim that the number
+ * is 1,440 -- it is a claim that PostgREST did not silently truncate at 1,000,
+ * and `=== 1440` was a brittle proxy for `!== 1000`. The seed is a FLOOR:
+ * nothing may go missing, anything may be added. Where an exact identity
+ * matters -- these three papers exist, this lecturer teaches these courses --
+ * it is asserted by name, which is both stricter and stable.
+ *
+ * This is the lesson the question-bank check above already learned, applied to
+ * the rest of the file rather than to one line of it.
+ */
+
+/** The demo as seeded. Growth is fine; loss is not. */
+const SEEDED = {
+  students: 1440, faculty: 3, courses: 63, enrolments: 1440, alphaCse: 60,
+  papers: ['Mid-term examination', 'Coding', 'Alpha-CSE only'],
+  raoTeaches: ['PY122', 'WD101'],
+};
+
+/** A count that came back as exactly the PostgREST page size is the bug. */
+const notTruncated = (n) => Number(n) !== 1000;
+
 const overview = (await call(base, { token: pt })).data;
-check('the overview counts every student', Number(overview?.members_by_role?.student) === 1440,
-  '1,440 students, ' + overview?.members_by_role?.faculty + ' faculty');
-check('and every course', Number(overview?.counts?.courses) === 63,
-  overview?.counts?.courses + ' courses, ' + overview?.counts?.enrollments + ' enrolments');
+const students = Number(overview?.members_by_role?.student);
+check('the overview counts every student',
+  students >= SEEDED.students && notTruncated(students)
+  && Number(overview?.members_by_role?.faculty) >= SEEDED.faculty,
+  students.toLocaleString('en-IN') + ' students, '
+  + overview?.members_by_role?.faculty + ' faculty');
+const courseCount = Number(overview?.counts?.courses);
+const enrolCount = Number(overview?.counts?.enrollments);
+check('and every course',
+  courseCount >= SEEDED.courses && enrolCount >= SEEDED.enrolments
+  && notTruncated(courseCount) && notTruncated(enrolCount),
+  courseCount + ' courses, ' + enrolCount + ' enrolments');
 
 const academics = (await call(base + '/academics?limit=200', { token: pt })).data;
 const exams = academics?.exams ?? [];
 const banks = (await call(base + '/banks', { token: pt })).data ?? [];
-check('Exam schedule lists the sittings', exams.length === 3,
-  exams.map((e) => e.title.replace(/^[A-Z ]+— /, '')).join(' · '));
+// By name rather than by count: these three must be there, and a fourth
+// somebody scheduled while trying the product is not a regression.
+const missingPapers = SEEDED.papers.filter(
+  (name) => !exams.some((e) => String(e.title).includes(name)));
+check('Exam schedule lists the sittings', missingPapers.length === 0,
+  exams.length + ' papers' + (missingPapers.length ? ', MISSING ' + missingPapers.join(', ') : '')
+  + ' — ' + exams.map((e) => e.title.replace(/^[A-Z ]+— /, '')).join(' · '));
 // A count, not an exact total: banks accumulate as the institution is used,
 // and asserting "exactly four" made this fail the first time somebody added a
 // fifth -- which is a demo being used, not a product breaking.
@@ -99,8 +145,18 @@ check('Exam paper lists the banks, with their sets',
   + ' of ten sets');
 
 const online = exams.filter((e) => e.assessment_id != null);
-check('Invigilate can tell which sittings are sat in a browser', online.length === 3,
-  online.length + ' of ' + exams.length);
+/*
+ * The claim is that a paper sat in a browser is DISTINGUISHABLE from one sat
+ * on paper -- it carries an assessment_id. Counting them was a proxy; naming
+ * the seeded three and requiring each to carry one says it directly.
+ */
+const seededOnline = SEEDED.papers
+  .map((name) => exams.find((e) => String(e.title).includes(name)))
+  .filter(Boolean);
+check('Invigilate can tell which sittings are sat in a browser',
+  seededOnline.length === SEEDED.papers.length
+  && seededOnline.every((e) => e.assessment_id != null),
+  online.length + ' of ' + exams.length + ' sat online');
 const python = exams.find((e) => /Mid-term examination/.test(e.title));
 const coding = exams.find((e) => /Coding/.test(e.title));
 const webdev = exams.find((e) => /Alpha-CSE only/.test(e.title));
@@ -127,7 +183,10 @@ check('24 divisions, in the original’s order', sections.length === 24,
 const alpha = sections.find((sx) => sx.name === 'Alpha-CSE');
 const inAlpha = (await call(base + '/people?role=student&section_id=' + alpha.id
   + '&limit=200', { token: pt })).data;
-check('a division holds exactly sixty', Number(inAlpha?.total) === 60,
+// Named "at least sixty" now: a division that GAINS a student is a division
+// somebody enrolled into, and a division that LOSES one is the defect.
+check('a division still holds its sixty',
+  Number(inAlpha?.total) >= SEEDED.alphaCse && notTruncated(inAlpha?.total),
   inAlpha?.total + ' in ' + alpha.name);
 check('and every one of them is numbered',
   (inAlpha?.people ?? []).every((p) => p.roll_number),
@@ -139,7 +198,8 @@ const roster = (await call(base + '/courses/' + pythonCourse.id + '/roster',
   { token: pt })).data;
 const onCourse = roster?.enrollments ?? roster?.roster ?? roster ?? [];
 check('the superadmin sees EVERY enrolment, not the first thousand',
-  Array.isArray(onCourse) && onCourse.length === 1440,
+  Array.isArray(onCourse) && onCourse.length >= SEEDED.enrolments
+  && notTruncated(onCourse.length),
   onCourse.length + ' on ' + pythonCourse.code);
 const webRoster = (await call(base + '/courses/' + webCourse.id + '/roster',
   { token: pt })).data ?? [];
@@ -172,8 +232,12 @@ const ft = await login('faculty1@' + DOMAIN, STAFF_PW);
 check('the lecturer signs in', Boolean(ft), 'faculty1@' + DOMAIN);
 
 const mine = (await call('/api/onyx/my/courses', { token: ft })).data ?? [];
-check('and sees the courses they teach', mine.length === 2,
-  mine.map((c) => c.code).join(' '));
+// The two courses just assigned above, by code. A third course somebody gave
+// Dr Rao while using the demo does not make this check's claim untrue.
+const codes = mine.map((c) => c.code);
+check('and sees the courses they teach',
+  SEEDED.raoTeaches.every((c) => codes.includes(c)),
+  codes.join(' ') || 'nothing');
 
 const facultyBanks = (await call('/api/onyx/banks', { token: ft })).data ?? [];
 check('the bank listing tells them the sets and the marking',
