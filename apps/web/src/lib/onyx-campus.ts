@@ -1,3 +1,4 @@
+import type { Author } from '@/components/onyx-byline';
 /**
  * Shapes the O06 and O07 pages read, and the few helpers they share.
  *
@@ -142,6 +143,14 @@ export interface Exam {
   /** Set only when this exam is sat online rather than on paper -- see the
    *  exam routes' syncExamAssessmentWindow() for what that actually does. */
   assessment_id: number | null;
+  /**
+   * Who put it on the calendar (0042 read it back; the column is from 0008).
+   *
+   * Null where the person who scheduled it has since been removed from the
+   * institution -- the sitting outlives the employment, so the byline says
+   * "not recorded" rather than inventing somebody.
+   */
+  author?: Author | null;
 }
 
 export interface Hall {

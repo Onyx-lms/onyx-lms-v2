@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { Byline } from '@/components/onyx-byline';
 import { OnyxShell } from '@/components/onyx-shell';
 import { ExamWhen } from '@/components/onyx-local-time';
 import { navFor } from '@/lib/onyx-nav';
@@ -357,6 +358,11 @@ export default async function OnyxExamsPage() {
                     <th scope="col">When</th>
                     <th scope="col">Duration</th>
                     <th scope="col">Out of</th>
+                    {/* Staff only. A candidate reading their own timetable is
+                        reading when to turn up, not who filed the paperwork --
+                        and on an anonymously marked paper, not knowing which
+                        lecturer set it is the point. */}
+                    {canSchedule ? <th scope="col">Scheduled by</th> : null}
                     <th scope="col">Status</th>
                   </>
                 }
@@ -417,6 +423,9 @@ export default async function OnyxExamsPage() {
                       {exam.duration_minutes} min
                     </td>
                     <td className="tabular-nums">{exam.max_marks}</td>
+                    {canSchedule
+                      ? <td><Byline author={exam.author} /></td>
+                      : null}
                     <td>
                       {when.phase === 'running' ? (
                         <span className={CALM}><State tone="live">Running</State></span>

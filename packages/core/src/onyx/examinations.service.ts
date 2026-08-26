@@ -26,6 +26,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { OnyxDb } from './db.ts';
 import type { Role, MarkStatus } from '@onyx/types';
+import { authorsOf } from './authorship.ts';
 import { HttpError } from '../http/errors.ts';
 import { isForSection } from './sections.service.ts';
 import { peopleFor } from './directory.ts';
@@ -340,16 +341,36 @@ export class ExaminationsService {
     if (filters.semester_id) q = q.eq('semester_id', filters.semester_id);
     if (filters.course_id) q = q.eq('course_id', filters.course_id);
     const { data } = await q.order('starts_at', { ascending: true });
-    const rows = data ?? [];
-    if (filters.sectionId === undefined) return rows;
-    return rows.filter((e) => isForSection(e.section_id as number | null, filters.sectionId));
+    const all = data ?? [];
+    const rows = filters.sectionId === undefined
+      ? all
+      : all.filter((e) => isForSection(e.section_id as number | null, filters.sectionId));
+
+    /*
+     * And who put it on the calendar.
+     *
+     * `created_by` has been on this table since 0008 and nothing read it. The
+     * question it answers is asked constantly and by both sides: an operator
+     * finding a sitting they did not schedule wants to know the institution
+     * did it, and an institution finding one IT did not schedule wants to know
+     * the platform did. Neither could tell before.
+     */
+    const authors = await authorsOf(this.#db, tenantId, rows.map((e) => e.created_by));
+    return rows.map((e) => ({
+      ...e,
+      author: (e.created_by && authors.get(String(e.created_by))) || null,
+    }));
   }
 
   async exam(tenantId: number, id: number) {
     const { data } = await this.#db.from('onyx_exams').select(EXAM_COLUMNS)
       .eq('tenant_id', tenantId).eq('id', id).maybeSingle();
     if (!data) throw new HttpError(404, 'No such exam.');
-    return data;
+    const authors = await authorsOf(this.#db, tenantId, [data.created_by]);
+    return {
+      ...data,
+      author: (data.created_by && authors.get(String(data.created_by))) || null,
+    };
   }
 
   // -------------------------------------------------------------------------

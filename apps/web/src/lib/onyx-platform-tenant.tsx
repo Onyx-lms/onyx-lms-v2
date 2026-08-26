@@ -1,3 +1,4 @@
+import { type Author } from '@/components/onyx-byline';
 import Link from 'next/link';
 import { platformApi } from '@/lib/onyx-platform-session';
 import { Banner, Icon, Pill, State, relativeDue } from '@/components/onyx-ui';
@@ -88,6 +89,8 @@ export interface AssessmentRow {
   duration_minutes: number; attempt_count: number; submitted_count: number;
   /** What the paper draws. Empty means nobody can sit it. */
   sections?: { id: string; title: string; bank_id: number; take: number }[] | null;
+  /** Who set it. Null where that person has since left the institution. */
+  author?: Author | null;
 }
 export interface ExamRow {
   id: number; title: string; course: { code: string; title: string } | null;
@@ -96,6 +99,14 @@ export interface ExamRow {
   /** The online paper this sitting is sat on, where it is sat in a browser. */
   assessment_id: number | null;
   section_id: number | null;
+  /**
+   * Who put it on the calendar.
+   *
+   * The one an operator reads most: a creator with no membership at this
+   * institution is the console acting for it, which is how "we did this" is
+   * told apart from "they did this".
+   */
+  author?: Author | null;
 }
 export interface AcademicsPayload {
   limit: number;

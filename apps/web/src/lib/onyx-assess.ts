@@ -1,7 +1,16 @@
+import type { Author } from '@/components/onyx-byline';
 /** Shapes the Assess pages read. */
 
 export interface Assessment {
   id: number;
+  /**
+   * Who set the paper (0042 read it back; the column is from 0004).
+   *
+   * Staff only -- the API attaches it after the visibility filter, so a
+   * candidate's copy of this row never carries it. On an anonymously marked
+   * paper that is not a nicety.
+   */
+  author?: Author | null;
   course_id: number | null;
   title: string;
   instructions: string | null;

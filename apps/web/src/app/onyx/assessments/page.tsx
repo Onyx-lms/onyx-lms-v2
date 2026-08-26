@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { Byline } from '@/components/onyx-byline';
 import { OnyxShell } from '@/components/onyx-shell';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
@@ -160,6 +161,7 @@ export default async function OnyxAssessmentsPage() {
                 <th scope="col">Assessment</th>
                 <th scope="col">Course</th>
                 <th scope="col">Window</th>
+                <th scope="col">Set by</th>
                 <th scope="col">State</th>
                 <th scope="col"><span className="sr-only">Actions</span></th>
               </>}
@@ -197,6 +199,7 @@ export default async function OnyxAssessmentsPage() {
                     </td>
                     <td className="whitespace-nowrap text-muted">{course?.code ?? '—'}</td>
                     <td className="whitespace-nowrap text-muted">{when}</td>
+                    <td><Byline author={a.author} /></td>
                     <td>
                       <div className="flex flex-wrap items-center gap-1.5">
                         <Pill tone={pill.tone}>{pill.label}</Pill>

@@ -1,3 +1,4 @@
+import type { Author } from '@/components/onyx-byline';
 /**
  * Shapes the Onyx Learn pages read. Kept together so a page and the component
  * it renders cannot drift apart about what a lesson is.
@@ -52,6 +53,14 @@ export interface Lesson {
 
 export interface CourseModule {
   id: number; title: string; summary: string | null; sort: number; lessons: Lesson[];
+  /**
+   * Who added it (0042).
+   *
+   * Staff only -- the outline attaches it for them and nobody else. Null on
+   * every module written before the column existed, which a byline says
+   * plainly rather than guessing at.
+   */
+  author?: Author | null;
 }
 
 export interface Outline {

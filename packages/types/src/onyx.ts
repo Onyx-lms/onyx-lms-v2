@@ -256,7 +256,10 @@ export interface OnyxEnrollmentRow {
 
 export interface ModuleRow {
   id: number; tenant_id: number; course_id: number; title: string;
-  summary: string | null; sort: number; created_at: string; updated_at: string;
+  summary: string | null; sort: number;
+  /** Who added it (0042). Null for every module written before that. */
+  created_by: string | null;
+  created_at: string; updated_at: string;
 }
 
 export interface OnyxLessonRow {

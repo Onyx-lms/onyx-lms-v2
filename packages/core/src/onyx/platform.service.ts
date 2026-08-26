@@ -18,6 +18,7 @@ import type { OnyxDb } from './db.ts';
 import { onyxAuthAdmin, onyxAuthClientFresh } from './db.ts';
 import { HttpError } from '../http/errors.ts';
 import { peopleFor } from './directory.ts';
+import { authorsOf } from './authorship.ts';
 import { slugify } from '../authoring/slug.ts';
 import { ROLES, normaliseCommunityUrl } from './tenancy.service.ts';
 import { gradeFor } from './examinations.service.ts';
@@ -606,7 +607,7 @@ export class PlatformService {
       this.#db.from('onyx_assessments')
         // One literal, not a concatenation: supabase-js infers the row type
         // from the select string as a literal type, and `a + b` is just string.
-        .select('id, course_id, section_id, title, opens_at, closes_at, status, pass_mark, duration_minutes, attempts_allowed, sections, created_at')
+        .select('id, course_id, section_id, title, opens_at, closes_at, status, pass_mark, duration_minutes, attempts_allowed, sections, created_by, created_at')
         .eq('tenant_id', id).order('created_at', { ascending: false }).limit(limit + 1),
       // Examinations (CMP-02): scheduled papers, not the marks off them --
       // those are still tenantGrades()'s job, audited the same as ever.
@@ -615,7 +616,7 @@ export class PlatformService {
         // decides if it can be invigilated at all, and the console was reading
         // that fact from nowhere.
         // eslint-disable-next-line max-len -- one literal, same reason as above.
-        .select('id, course_id, assessment_id, section_id, title, starts_at, duration_minutes, max_marks, pass_marks, status, created_at')
+        .select('id, course_id, assessment_id, section_id, title, starts_at, duration_minutes, max_marks, pass_marks, status, created_by, created_at')
         .eq('tenant_id', id).order('starts_at', { ascending: false, nullsFirst: false })
         .limit(limit + 1),
     ]);
@@ -717,6 +718,22 @@ export class PlatformService {
       seatCount.set(e, (seatCount.get(e) ?? 0) + 1);
     }
 
+    /*
+     * Who set each paper and who scheduled each sitting.
+     *
+     * One lookup for both lists rather than one per row: an operator opening
+     * an institution's academics is looking at up to two hundred rows, and a
+     * byline is not worth two hundred round trips. The column has been on both
+     * tables since 0004 and 0008 and nothing ever read it -- so an operator
+     * seeing an examination they did not recognise had no way to tell whether
+     * the institution scheduled it or the console did.
+     */
+    const bylines = await authorsOf(this.#db, id, [
+      ...examRows.map((e) => (e.created_by == null ? null : String(e.created_by))),
+      ...assessmentRows.map((a) => (a.created_by == null ? null : String(a.created_by))),
+    ]);
+    const bylineOf = (v: unknown) => (v == null ? null : bylines.get(String(v)) ?? null);
+
     return {
       tenant: { id: num(tenant.id), name: String(tenant.name), slug: String(tenant.slug) },
       limit,
@@ -750,6 +767,7 @@ export class PlatformService {
          */
         assessment_id: e.assessment_id == null ? null : num(e.assessment_id),
         section_id: e.section_id == null ? null : num(e.section_id),
+        author: bylineOf(e.created_by),
         seats_allocated: seatCount.get(num(e.id)) ?? 0,
         marks_entered: markTotal.get(num(e.id)) ?? 0,
         marks_published: markPublished.get(num(e.id)) ?? 0,
@@ -779,6 +797,7 @@ export class PlatformService {
         section_id: a.section_id == null ? null : num(a.section_id),
         pass_mark: a.pass_mark == null ? null : num(a.pass_mark),
         duration_minutes: num(a.duration_minutes),
+        author: bylineOf(a.created_by),
         attempt_count: attTotal.get(num(a.id)) ?? 0,
         submitted_count: attDone.get(num(a.id)) ?? 0,
         /*
@@ -2374,7 +2393,11 @@ export class PlatformService {
     const { data, error } = await this.#db.from('onyx_modules').insert({
       tenant_id: tenantId, course_id: courseId,
       title: input.title.trim(), summary: input.summary ?? null, sort,
-    }).select('id, course_id, title, summary, sort').maybeSingle();
+      // The operator who did it (0042). They hold no membership at this
+      // institution, which is exactly how a screen tells "the platform added
+      // this" from "we added this" -- see authorship.ts.
+      created_by: actorId,
+    }).select('id, course_id, title, summary, sort, created_by').maybeSingle();
     if (error) throw new HttpError(500, 'Could not create that module: ' + error.message);
     await this.#log(actorId, 'module.created', 'module', Number(data!.id), null,
       { course_id: courseId, title: data!.title });

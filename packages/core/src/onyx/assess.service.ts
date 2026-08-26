@@ -22,6 +22,7 @@
 import { createHash } from 'node:crypto';
 import type { OnyxDb } from './db.ts';
 import type { Role } from '@onyx/types';
+import { authorsOf, type Author } from './authorship.ts';
 import { HttpError } from '../http/errors.ts';
 import { isForSection } from './sections.service.ts';
 import { setIndexFor } from './paper-variants.ts';
@@ -402,6 +403,7 @@ export class AssessService {
     const rows = data ?? [];
     if (!rows.length) return rows.map((b) => ({
       ...b, question_count: 0, needs_marking: 0, set_count: 0,
+      author: null as Author | null,
     }));
 
     /*
@@ -433,11 +435,20 @@ export class AssessService {
         human.set(key, (human.get(key) ?? 0) + 1);
       }
     }
+    /*
+     * And who wrote it.
+     *
+     * `created_by` has been on this table since 0004 and nothing ever read it,
+     * so a list of forty banks was forty anonymous rows. "Who set this" is the
+     * first thing anybody says when a question turns out to be wrong.
+     */
+    const authors = await authorsOf(this.#db, tenantId, rows.map((b) => b.created_by));
     return rows.map((b) => ({
       ...b,
       question_count: counts.get(Number(b.id)) ?? 0,
       needs_marking: human.get(Number(b.id)) ?? 0,
       set_count: (setsOf.get(Number(b.id)) ?? new Set()).size,
+      author: (b.created_by && authors.get(String(b.created_by))) || null,
     }));
   }
 
@@ -924,9 +935,25 @@ export class AssessService {
     if (!staff) q = q.eq('status', 'published');
     if (courseId) q = q.eq('course_id', courseId);
     const { data } = await q.order('opens_at');
-    const rows = data ?? [];
-    if (staff || sectionId === undefined) return rows;
-    return rows.filter((a) => isForSection(a.section_id as number | null, sectionId));
+    const all = data ?? [];
+    const rows = staff || sectionId === undefined
+      ? all
+      : all.filter((a) => isForSection(a.section_id as number | null, sectionId));
+
+    /*
+     * Who set each paper, for staff only.
+     *
+     * A candidate has no business knowing which lecturer wrote their paper --
+     * on an anonymously marked one that is the whole point -- so the byline is
+     * attached after the visibility filter and only for the people who
+     * schedule, mark and moderate.
+     */
+    if (!staff) return rows.map((a) => ({ ...a, author: null as Author | null }));
+    const authors = await authorsOf(this.#db, tenantId, rows.map((a) => a.created_by));
+    return rows.map((a) => ({
+      ...a,
+      author: (a.created_by && authors.get(String(a.created_by))) || null,
+    }));
   }
 
   /** Just the ids, across several courses at once -- a faculty member

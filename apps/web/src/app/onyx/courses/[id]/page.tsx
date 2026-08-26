@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { Byline } from '@/components/onyx-byline';
 import { OnyxShell } from '@/components/onyx-shell';
 import { ResourceLink } from '@/components/onyx-player';
 import { OnyxAskForm } from '@/components/onyx-engage';
@@ -256,6 +257,21 @@ export default async function OnyxCoursePage(
               </div>
               {m.summary ? (
                 <p className="-mt-1 mb-2.5 text-[13px] text-muted">{m.summary}</p>
+              ) : null}
+
+              {/*
+                * Who added the week, for staff only.
+                *
+                * A learner reading an outline is reading the course, not its
+                * edit history, and a byline on every week would be noise in
+                * the one place that has to stay legible. Staff are the ones
+                * who ask -- "did we put this week in, or did the platform" is
+                * a real question, and until 0042 nothing could answer it.
+                */}
+              {isStaff(me.role) ? (
+                <p className="-mt-1 mb-2.5">
+                  <Byline author={m.author} verb="Added by" />
+                </p>
               ) : null}
 
               <RowList label={m.title + ' lessons'}>

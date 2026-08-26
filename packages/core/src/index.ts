@@ -76,6 +76,7 @@ export * from './admin/settings-admin.service.ts';
 export * from './admin/platform-admin.service.ts';
 export * from './admin/campaign.service.ts';
 export * from './onyx/db.ts';
+export * from './onyx/authorship.ts';
 export * from './onyx/auth.ts';
 export * from './onyx/audit.service.ts';
 export * from './onyx/notify.service.ts';

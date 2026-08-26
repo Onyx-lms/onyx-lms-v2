@@ -13,10 +13,11 @@
  */
 import type { OnyxDb } from './db.ts';
 import type { LessonType, Role } from '@onyx/types';
+import { authorsOf, type Author } from './authorship.ts';
 import { HttpError } from '../http/errors.ts';
 import type { AcademicsService } from './academics.service.ts';
 
-const MODULE_COLUMNS = 'id, tenant_id, course_id, title, summary, sort';
+const MODULE_COLUMNS = 'id, tenant_id, course_id, title, summary, sort, created_by';
 const LESSON_COLUMNS = 'id, tenant_id, course_id, module_id, title, type, path, body, duration_seconds, sort, is_preview';
 const PROGRESS_COLUMNS = 'id, tenant_id, course_id, lesson_id, user_id, position_seconds, completed_at, updated_at';
 const RESOURCE_COLUMNS = 'id, tenant_id, course_id, lesson_id, title, path, mime, size_bytes, created_at';
@@ -99,6 +100,16 @@ export class ContentService {
 
   async createModule(tenantId: number, courseId: number, input: {
     title: string; summary?: string | null; sort?: number;
+    /**
+     * Who is adding it (0042).
+     *
+     * Optional at the type level and passed by every route, for the same
+     * reason the column is nullable: a module written before today has no
+     * author on record and inventing one would be worse than admitting it.
+     * A caller that genuinely has nobody to name leaves it null rather than
+     * naming the wrong person.
+     */
+    created_by?: string | null;
   }) {
     await this.#academics.course(tenantId, courseId);
     const { data, error } = await this.#db.from('onyx_modules').insert({
@@ -107,6 +118,7 @@ export class ContentService {
       title: input.title.trim(),
       summary: input.summary ?? null,
       sort: input.sort ?? 0,
+      created_by: input.created_by ?? null,
     }).select(MODULE_COLUMNS).maybeSingle();
     if (error) throw new HttpError(500, 'Could not create the module: ' + error.message);
     return data!;
@@ -192,11 +204,26 @@ export class ContentService {
     });
 
     const done = visible.filter((l) => l.completed_at).length;
+
+    /*
+     * Who added each module, for staff only.
+     *
+     * A learner reading an outline is reading the course, not its edit
+     * history, and a byline on every week would be noise in the one place
+     * that has to stay legible. Staff are the ones who ask -- "who put this
+     * week in, us or the platform" is a real question with a real answer.
+     */
+    const authors = isStaff(role)
+      ? await authorsOf(this.#db, tenantId, (modules ?? []).map((m) => m.created_by))
+      : new Map();
+
     return {
       course,
       enrolled,
       modules: (modules ?? []).map((m) => ({
-        ...m, lessons: visible.filter((l) => Number(l.module_id) === Number(m.id)),
+        ...m,
+        author: (m.created_by && authors.get(String(m.created_by))) || null,
+        lessons: visible.filter((l) => Number(l.module_id) === Number(m.id)),
       })),
       progress: {
         total: visible.length,
@@ -276,7 +303,13 @@ export class ContentService {
         course,
         enrolled: true,
         modules: (modulesByCourse.get(courseId) ?? []).map((m) => ({
-          ...m, lessons: visible.filter((l) => Number(l.module_id) === Number(m.id)),
+          ...m,
+          // Null, and not a lookup skipped for speed: this method is only ever
+          // called with a learner's OWN enrolled courses, as the docblock
+          // above says, and a learner reading an outline is reading the
+          // course rather than its edit history.
+          author: null as Author | null,
+          lessons: visible.filter((l) => Number(l.module_id) === Number(m.id)),
         })),
         progress: {
           total: visible.length,

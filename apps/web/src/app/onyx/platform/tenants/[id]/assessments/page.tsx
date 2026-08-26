@@ -9,6 +9,7 @@ import {
   AssessmentPublishButton, type ConsoleBank,
 } from '@/components/onyx-platform-forms';
 import { Banner, DataTable, EmptyRow, Pill } from '@/components/onyx-ui';
+import { Byline } from '@/components/onyx-byline';
 import { AssessmentTabs } from '@/lib/onyx-console-exams';
 
 export const metadata: Metadata = { title: 'Assessments' };
@@ -73,13 +74,14 @@ export default async function OnyxPlatformAssessmentsPage(
                 <th scope="col">Course</th>
                 <th scope="col">Closes</th>
                 <th scope="col">Attempts</th>
+                <th scope="col">Set by</th>
                 <th scope="col">Status</th>
                 <th scope="col">&nbsp;</th>
               </>
             }
           >
             {assessments.length === 0 ? (
-              <EmptyRow colSpan={6} icon="award">
+              <EmptyRow colSpan={7} icon="award">
                 No assessments. Nothing here has been put in front of a candidate yet.
               </EmptyRow>
             ) : assessments.map((a) => (
@@ -111,6 +113,7 @@ export default async function OnyxPlatformAssessmentsPage(
                   {a.attempt_count}
                   <span className="text-[12.5px] text-muted"> ({a.submitted_count} sat)</span>
                 </td>
+                <td><Byline author={a.author} /></td>
                 <td><Workflow status={a.status} /></td>
                 <td className="text-right">
                   <div className="flex flex-col items-end gap-1.5">

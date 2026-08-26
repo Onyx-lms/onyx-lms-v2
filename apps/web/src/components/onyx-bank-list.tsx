@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Card, DataTable, EmptyRow, Icon, Pill } from '@/components/onyx-ui';
+import { Byline, type Author } from '@/components/onyx-byline';
 
 /** A bank as the listing reads it. */
 export interface BankListRow {
@@ -9,6 +10,8 @@ export interface BankListRow {
   question_count: number;
   set_count?: number;
   needs_marking?: number;
+  /** Who built it. Absent on a bank whose author has since been removed. */
+  author?: Author | null;
 }
 
 /**
@@ -45,12 +48,16 @@ export function BankList({ banks, hrefFor, courseName }: {
             <th scope="col">Sets</th>
             <th scope="col">Questions</th>
             <th scope="col">Marking</th>
+            {/* Last of the informative columns, before the control: it is the
+                thing you look up once you have already decided the bank is
+                the one you meant. */}
+            <th scope="col">Built by</th>
             <th scope="col">&nbsp;</th>
           </>
         }
       >
         {banks.length === 0 ? (
-          <EmptyRow colSpan={6} icon="layers">
+          <EmptyRow colSpan={7} icon="layers">
             No question banks yet. A bank holds the parallel sets an examination is
             scheduled from — build one before scheduling a sitting.
           </EmptyRow>
@@ -88,6 +95,7 @@ export function BankList({ banks, hrefFor, courseName }: {
                   ? <Pill tone="soon">{b.needs_marking} need a marker</Pill>
                   : <span className="text-[12.5px] text-muted">marks itself</span>}
               </td>
+              <td><Byline author={b.author} /></td>
               <td className="text-right">
                 <Link href={hrefFor(b)}
                   className="inline-flex min-h-[30px] items-center gap-1 rounded-lg border

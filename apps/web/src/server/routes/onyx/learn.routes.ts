@@ -809,7 +809,10 @@ export function registerOnyxLearnRoutes(app: Router, ctx: AppContext): void {
       summary: z.string().nullish(),
       sort: z.number().int().optional(),
     }), req.body);
-    return ok(await ctx.onyxContent.createModule(claims.tenant_id, idOf(req), body),
+    return ok(await ctx.onyxContent.createModule(claims.tenant_id, idOf(req),
+      // Named from the token, never from the body: a client that could say who
+      // wrote a module could say somebody else wrote it.
+      { ...body, created_by: claims.user_id }),
       'Module added.');
   });
 

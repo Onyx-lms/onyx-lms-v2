@@ -8,6 +8,7 @@ import {
 import {
   CreateExamForm, ExamEditToggle, type ConsoleBank,
 } from '@/components/onyx-platform-forms';
+import { Byline } from '@/components/onyx-byline';
 import { DataTable, EmptyRow } from '@/components/onyx-ui';
 import { ExamTabs } from '@/lib/onyx-console-exams';
 
@@ -67,13 +68,17 @@ export default async function OnyxPlatformExamsPage(
                 <th scope="col">Out of</th>
                 <th scope="col">Seated</th>
                 <th scope="col">Marks</th>
+                {/* The question an operator asks about a sitting they were
+                    not expecting: did this institution schedule it, or did
+                    we, on their behalf? Until 0042 nothing could answer. */}
+                <th scope="col">Scheduled by</th>
                 <th scope="col">Status</th>
                 <th scope="col">&nbsp;</th>
               </>
             }
           >
             {exams.length === 0 ? (
-              <EmptyRow colSpan={8} icon="award">
+              <EmptyRow colSpan={9} icon="award">
                 No examinations scheduled. A paper needs a course, a start time and a
                 mark scheme before it can hold candidates.
               </EmptyRow>
@@ -98,6 +103,7 @@ export default async function OnyxPlatformExamsPage(
                   {e.marks_entered}
                   <span className="text-[12.5px] text-muted"> ({e.marks_published} published)</span>
                 </td>
+                <td><Byline author={e.author} /></td>
                 <td><Workflow status={e.status} /></td>
                 <td className="text-right"><ExamEditToggle tenantId={tenantId} exam={e} /></td>
               </tr>
