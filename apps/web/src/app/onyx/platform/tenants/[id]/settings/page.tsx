@@ -74,6 +74,9 @@ export default async function OnyxPlatformTenantSettingsPage(
               id: tenant.id, name: tenant.name, slug: tenant.slug, plan: tenant.plan,
               community_url: tenant.community_url ?? null,
               community_label: tenant.community_label ?? null,
+              student_signup: tenant.student_signup,
+              signup_mode: tenant.signup_mode,
+              signup_domains: tenant.signup_domains,
             }}
           />
         </div>

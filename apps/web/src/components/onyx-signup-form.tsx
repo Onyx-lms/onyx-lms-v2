@@ -327,6 +327,26 @@ export function OnyxSignUpForm({ next }: { next?: string } = {}) {
               {choices.length ? ' Choose yours below.'
                 : ' Ask your institution to invite you, or check the address.'}
             </p>
+            {/*
+              * Why the list is short, said before somebody scrolls it looking
+              * for a college that is not on it.
+              *
+              * The list is not "every institution" and never was: one appears
+              * only by opening registration to anybody, because the emailed
+              * code is the only check behind it. Most institutions quite
+              * rightly leave that off and invite their students instead. Not
+              * saying so turned a deliberate setting into what looks like
+              * missing data -- somebody reads "choose yours below", does not
+              * find theirs, and has no idea whether the product is broken,
+              * their college is not a customer, or something else entirely.
+              */}
+            {choices.length ? (
+              <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
+                Only institutions that have opened registration to anyone appear here. If
+                yours is missing it has not — ask them to invite you, and you will get an
+                email to set your password.
+              </p>
+            ) : null}
             {choices.length ? (
               <div className="mt-2">
                 <label className={label} htmlFor="su-institution">Your institution</label>

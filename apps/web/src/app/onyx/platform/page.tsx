@@ -12,9 +12,64 @@ import {
 
 export const metadata: Metadata = { title: 'Overview' };
 
+/**
+ * Whether an institution takes registrations, in three words.
+ *
+ * Three states and they are genuinely different, which is why this is not a
+ * yes/no dot:
+ *
+ *   Open      -- listed on the public sign-up page; anybody may pick it and
+ *                join, with the emailed code the only check.
+ *   By domain -- not listed, but an address at one of its own domains finds
+ *                it. The right setting for most institutions, and the reason
+ *                a directory of seven can show only three on that page.
+ *   Closed    -- nobody registers themselves; every account is created by
+ *                somebody with authority.
+ *
+ * The domain list is the tooltip rather than the cell, because "which domains"
+ * is the follow-up question and putting it inline would push every other
+ * column off a laptop.
+ */
+function Registration({ tenant }: {
+  tenant: { student_signup?: boolean; signup_mode?: string; signup_domains?: string };
+}) {
+  if (!tenant.student_signup) {
+    return <span className="text-[12.5px] text-muted">Closed</span>;
+  }
+  const open = String(tenant.signup_mode ?? 'domain') === 'open';
+  const domains = String(tenant.signup_domains ?? '').trim();
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5"
+      title={domains ? 'Addresses at: ' + domains : undefined}>
+      {open
+        ? <Pill tone="good">Open to anyone</Pill>
+        : <Pill tone="neutral">By domain</Pill>}
+      {!open && !domains ? (
+        /*
+         * Switched on, in domain mode, with no domains: nobody can ever
+         * register and nothing anywhere says so. It is the one combination
+         * that looks configured and matches no address at all.
+         */
+        <Pill tone="late">No domains set</Pill>
+      ) : null}
+    </span>
+  );
+}
+
 interface TenantRow {
   id: number; name: string; slug: string; status: number; plan: string | null;
   member_count: number; created_at: string;
+  /**
+   * Whether learners can register themselves here, and how.
+   *
+   * On the directory because of a support question nobody could answer: a
+   * learner asks why their institution is missing from the sign-up list, and
+   * an operator looking at every other fact about the same row could not see
+   * the one that decides it.
+   */
+  student_signup?: boolean;
+  signup_mode?: string;
+  signup_domains?: string;
 }
 interface PlatformAuditRow {
   id: number; action: string; entity_type: string; entity_id: number | null;
@@ -249,6 +304,7 @@ export default async function OnyxPlatformPage(
                       <th scope="col">Institution</th>
                       <th scope="col" className="hidden sm:table-cell">Plan</th>
                       <th scope="col">Members</th>
+                      <th scope="col" className="hidden md:table-cell">Registration</th>
                       <th scope="col" className="hidden sm:table-cell">Created</th>
                       <th scope="col">Status</th>
                       <th scope="col"><span className="sr-only">Open</span></th>
@@ -277,6 +333,7 @@ export default async function OnyxPlatformPage(
                           : <span className="text-muted">—</span>}
                       </td>
                       <td className="tabular-nums">{t.member_count}</td>
+                      <td className="hidden md:table-cell"><Registration tenant={t} /></td>
                       <td className="hidden whitespace-nowrap text-muted sm:table-cell">
                         {new Date(t.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
@@ -288,7 +345,7 @@ export default async function OnyxPlatformPage(
                     </tr>
                   ))}
                   {tenants.length === 0 ? (
-                    <EmptyRow colSpan={6} icon="building">
+                    <EmptyRow colSpan={7} icon="building">
                       {filtered
                         ? 'Nothing matches that filter.'
                         : 'No institutions yet. Creating one seeds its roles and its first administrator.'}

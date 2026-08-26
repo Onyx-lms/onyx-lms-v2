@@ -363,7 +363,9 @@ export function createContext(): AppContext {
       }] : [],
     }),
     onyxGuardians: new GuardianService(onyxDb, onyxAudit, onyxExams),
-    onyxPlatform: new PlatformService(onyxDb, undefined, onyxAssess),
+    // `onyxTenancyService` so the console can read and set an institution's
+    // registration policy through the one place that parses a domain list.
+    onyxPlatform: new PlatformService(onyxDb, undefined, onyxAssess, onyxTenancyService),
     onyxSections,
     onyxOAuthClients: new OAuthClientsService(),
     onyxRunWorker: (opts) => runCodeLabWorker(onyxQueue, onyxCodeLab, {

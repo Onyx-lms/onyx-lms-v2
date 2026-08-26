@@ -246,6 +246,17 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       // `undefined` reads as "leave it alone".
       community_url: z.string().max(500).nullish(),
       community_label: z.string().max(120).nullish(),
+      /*
+       * Whether this institution takes registrations, and how.
+       *
+       * The same three fields the institution's own PATCH /api/onyx/tenant/
+       * settings accepts, with the same meanings -- an operator supporting an
+       * institution should not have to be handed that institution's own
+       * administrator account to answer "why can nobody sign up".
+       */
+      student_signup: z.boolean().optional(),
+      signup_domains: z.string().max(500).optional(),
+      signup_mode: z.enum(['domain', 'open']).optional(),
     }), req.body);
     return ok(await ctx.onyxPlatform.updateTenant(idOf(req), claims.user_id, body), 'Updated.');
   });

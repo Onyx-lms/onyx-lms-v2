@@ -22,6 +22,18 @@ export interface TenantDetail {
   /** The invite shown as a button on this institution's Jobs page, if any. */
   community_url?: string | null;
   community_label?: string | null;
+  /**
+   * Whether learners register themselves here, and how.
+   *
+   * `student_signup` off means nobody does. On with `signup_mode: 'domain'`
+   * means an address at one of `signup_domains` finds this institution; on
+   * with `'open'` means it is listed on the public sign-up page for anybody
+   * to pick. The console could read none of the three, which made "why is my
+   * institution missing from that list" a question it could not answer.
+   */
+  student_signup?: boolean;
+  signup_mode?: string;
+  signup_domains?: string;
   created_at: string; members_by_role: Record<string, number>; member_count: number;
   counts: {
     courses: number; assessments: number; assignments: number; enrollments: number;

@@ -19,6 +19,7 @@ import { onyxAuthAdmin, onyxAuthClientFresh } from './db.ts';
 import { HttpError } from '../http/errors.ts';
 import { peopleFor } from './directory.ts';
 import { authorsOf } from './authorship.ts';
+import type { TenancyService } from './tenancy.service.ts';
 import { slugify } from '../authoring/slug.ts';
 import { ROLES, normaliseCommunityUrl } from './tenancy.service.ts';
 import { gradeFor } from './examinations.service.ts';
@@ -32,7 +33,16 @@ import { isObjective, hasKey, type AssessService } from './assess.service.ts';
 import { normaliseCurriculumUrl } from './domains.service.ts';
 import { resolveCourseAccess, type CourseAccess } from './academics.service.ts';
 
-const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, community_url, community_label, created_at, updated_at';
+/*
+ * The signup policy is in here, and it was not.
+ *
+ * The console read every column an institution has EXCEPT whether it accepts
+ * registrations -- so an operator answering "why is my institution missing
+ * from the sign-up list" had the one fact that answers it hidden from them,
+ * on a screen listing every other fact about the same row.
+ */
+// eslint-disable-next-line max-len -- one literal; a concatenated select collapses the row type.
+const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, student_signup, signup_domains, signup_mode, community_url, community_label, created_at, updated_at';
 const ADMIN_COLUMNS = 'id, user_id, granted_by, created_at';
 
 /**
@@ -136,6 +146,7 @@ function passFail(
 export class PlatformService {
   #db: OnyxDb;
   #assess: AssessService | null = null;
+  #tenancy: TenancyService | null;
   #authClientOverride: SupabaseClient | undefined;
   /**
    * `assess` is optional so every existing caller and test that builds this
@@ -143,10 +154,17 @@ export class PlatformService {
    * belongs to the institution's own service and must not be written twice --
    * cancelling a paper is the first of those.
    */
-  constructor(db: OnyxDb, authClient?: SupabaseClient, assess?: AssessService) {
+  /**
+   * `tenancy` is optional for the same reason `assess` is: the console is
+   * constructed in tests without every collaborator, and a method that needs
+   * one says so with a 500 rather than the whole console failing to build.
+   */
+  constructor(db: OnyxDb, authClient?: SupabaseClient, assess?: AssessService,
+    tenancy?: TenancyService) {
     this.#db = db;
     this.#authClientOverride = authClient;
     this.#assess = assess ?? null;
+    this.#tenancy = tenancy ?? null;
   }
   /** Fresh per exchange -- see onyxAuthClientFresh in db.ts. A shared client
    *  hands concurrent sign-ins each other's sessions. */
@@ -1224,6 +1242,26 @@ export class PlatformService {
   async updateTenant(id: number, actorId: string | null, patch: {
     name?: string; slug?: string; plan?: string | null;
     community_url?: string | null; community_label?: string | null;
+    /**
+     * Whether this institution takes registrations, and how.
+     *
+     * The console could not see either, let alone change them, which made a
+     * real support request unanswerable: a learner asks why their institution
+     * is missing from the sign-up list, and the operator looking at seven
+     * institutions cannot tell which of them accept registrations, cannot see
+     * why, and cannot switch one on without being handed that institution's
+     * own administrator account. The institution's own Settings screen has
+     * had this switch since it existed; the console had no view of it at all.
+     *
+     * `student_signup` is whether; `signup_mode` is how -- `domain` means the
+     * address decides, `open` means anybody may pick this institution from
+     * the list and join at once. An institution appears on that public list
+     * only when both are set, which is deliberate: the only check behind an
+     * open registration is the code emailed to the address.
+     */
+    student_signup?: boolean;
+    signup_domains?: string;
+    signup_mode?: 'domain' | 'open';
   }) {
     const { data: tenant } = await this.#db.from('onyx_tenants')
       .select(TENANT_COLUMNS).eq('id', id).maybeSingle();
@@ -1259,10 +1297,46 @@ export class PlatformService {
         before.community_label = tenant.community_label; after.community_label = label;
       }
     }
+    /*
+     * The registration policy, cleaned the same way the institution's own
+     * screen cleans it.
+     *
+     * Delegated to TenancyService.setSignupPolicy rather than written here:
+     * that method is where "how a domain list is parsed" lives -- commas or
+     * whitespace, a leading @ dropped, a leading *. kept because it means
+     * subdomains only -- and a second copy of that in the console is how the
+     * two screens come to disagree about what "meridian.edu ashcroft.ac"
+     * means.
+     */
+    let policy: typeof tenant | null = null;
+    if (patch.student_signup !== undefined || patch.signup_domains !== undefined
+      || patch.signup_mode !== undefined) {
+      if (!this.#tenancy) {
+        throw new HttpError(500, 'The tenancy service is not available here.');
+      }
+      before.student_signup = tenant.student_signup;
+      before.signup_mode = tenant.signup_mode;
+      before.signup_domains = tenant.signup_domains;
+      policy = await this.#tenancy.setSignupPolicy(
+        id,
+        patch.student_signup ?? Boolean(tenant.student_signup),
+        patch.signup_domains ?? String(tenant.signup_domains ?? ''),
+        patch.signup_mode) as typeof tenant;
+      after.student_signup = policy.student_signup;
+      after.signup_mode = policy.signup_mode;
+      after.signup_domains = policy.signup_domains;
+    }
+
+    const rest = Object.fromEntries(Object.entries(after).filter(
+      ([k]) => !['student_signup', 'signup_mode', 'signup_domains'].includes(k)));
     if (!Object.keys(after).length) return tenant;
+    if (!Object.keys(rest).length) {
+      await this.#log(actorId, 'tenant.updated', 'tenant', id, before, after);
+      return policy ?? tenant;
+    }
 
     const { data } = await this.#db.from('onyx_tenants')
-      .update({ ...after, updated_at: new Date().toISOString() }).eq('id', id)
+      .update({ ...rest, updated_at: new Date().toISOString() }).eq('id', id)
       .select(TENANT_COLUMNS).maybeSingle();
     await this.#log(actorId, 'tenant.updated', 'tenant', id, before, after);
     return data;

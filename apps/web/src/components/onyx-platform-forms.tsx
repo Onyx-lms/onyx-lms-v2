@@ -1593,6 +1593,7 @@ export function TenantEditForm({ tenant }: {
   tenant: {
     id: number; name: string; slug: string; plan: string | null;
     community_url?: string | null; community_label?: string | null;
+    student_signup?: boolean; signup_mode?: string; signup_domains?: string;
   };
 }) {
   const router = useRouter();
@@ -1625,6 +1626,20 @@ export function TenantEditForm({ tenant }: {
             // omitted: an operator deleting the link means to delete it.
             community_url: String(data.get('community_url') ?? ''),
             community_label: String(data.get('community_label') ?? ''),
+            /*
+             * Registration, which decides whether this institution appears on
+             * the public sign-up page at all.
+             *
+             * Three states from two fields: off is "nobody registers
+             * themselves"; on with `domain` is "an address at one of our own
+             * domains finds us"; on with `open` is "anybody may pick us from
+             * the list". The radio carries all three so an operator never has
+             * to reason about which combination they are producing.
+             */
+            student_signup: String(data.get('registration') ?? 'off') !== 'off',
+            signup_mode: String(data.get('registration') ?? 'off') === 'open'
+              ? 'open' as const : 'domain' as const,
+            signup_domains: String(data.get('signup_domains') ?? ''),
           });
           if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
           setOpen(false);
@@ -1675,6 +1690,57 @@ export function TenantEditForm({ tenant }: {
           placeholder="Join our WhatsApp community"
           className={smallField} />
       </div>
+
+      {/*
+        * Registration, from the console.
+        *
+        * The switch existed only on an institution's OWN settings screen, so
+        * the operator fielding "why is my college missing from the sign-up
+        * list" could neither see the answer nor change it without being handed
+        * that institution's administrator account. The three options are the
+        * three real states, named by what happens rather than by which column
+        * they set.
+        */}
+      <fieldset className="col-span-full border-t border-line pt-3">
+        <legend className={smallLabel}>Registration</legend>
+        <div className="mt-1.5 grid gap-1.5">
+          {([
+            ['off', 'Closed',
+              'Nobody signs themselves up. Every account is created by somebody here.'],
+            ['domain', 'By email domain',
+              'Not listed publicly, but somebody with an address at one of the domains '
+              + 'below finds this institution automatically.'],
+            ['open', 'Open to anyone',
+              'Listed on the public sign-up page. Anybody may pick this institution and '
+              + 'join at once — the emailed code is the only check.'],
+          ] as const).map(([value, label, why]) => (
+            <label key={value} className="flex items-start gap-2 text-[13px]">
+              <input type="radio" name="registration" value={value} className="mt-1"
+                defaultChecked={
+                  (!tenant.student_signup && value === 'off')
+                  || (!!tenant.student_signup
+                    && value === (tenant.signup_mode === 'open' ? 'open' : 'domain'))
+                } />
+              <span className="min-w-0">
+                <span className="font-semibold">{label}</span>
+                <span className="block text-[12px] leading-relaxed text-muted">{why}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+        <label className={smallLabel + ' mt-2.5 block'} htmlFor="t-signup-domains">
+          Their email domains
+        </label>
+        <input id="t-signup-domains" name="signup_domains"
+          defaultValue={tenant.signup_domains ?? ''} maxLength={500}
+          placeholder="mallareddyuniversity.ac.in, *.mru.edu.in"
+          className={smallField} />
+        <p className="mt-1 text-[12px] leading-relaxed text-muted">
+          Separated by commas or spaces. A leading <span className="font-mono">*.</span> means
+          subdomains only. Used when registration is by domain — and switching that on with
+          no domains here means nobody can ever register.
+        </p>
+      </fieldset>
 
       <div className="col-span-full flex gap-2">
         <button type="submit" disabled={pending} className={saveButton}>
