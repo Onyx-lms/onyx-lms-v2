@@ -32,6 +32,9 @@ const SUITES = [
   ['every rupee reaches the Fees tab', 'money-lands.mjs'],
   // --- everyone ---------------------------------------------------------
   ['submissions reach every marker', 'submissions-visible.mjs'],
+  ['a lecturer says how marks are earned', 'rubric-is-reachable.mjs'],
+  ['a company sees who applied to it', 'employer-sees-applicants.mjs'],
+  ['the report’s own defects, re-tested', 'defects-report1.mjs'],
   ['every screen works on a phone', 'responsive-live.mjs'],
 ];
 

@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { OnyxShell } from '@/components/onyx-shell';
 import { OnyxApplicants, OnyxApply } from '@/components/onyx-career';
 import {
-  Card, Icon, Pill, SectionHead, StatTile, State, Stepper, relativeWhen,
+  Card, Empty, Icon, Pill, SectionHead, StatTile, State, Stepper, relativeWhen,
 } from '@/components/onyx-ui';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me, onyxApiRecord } from '@/lib/onyx-session';
@@ -92,8 +92,10 @@ export default async function OnyxJobPage({ params }: { params: Promise<{ id: st
         <StatTile label="Band" value={job.compensation ?? 'Not stated'}
           note={job.location ?? 'Location not stated'} />
         <StatTile label="Openings" value={job.openings}
-          note={canSeePipeline && applicants
-            ? applicants.length + (applicants.length === 1 ? ' has applied' : ' have applied')
+          note={canSeePipeline
+            ? (applicants === null
+              ? 'Applicants unavailable'
+              : applicants.length + (applicants.length === 1 ? ' has applied' : ' have applied'))
             : 'On this post'} />
         <StatTile label="Status"
           value={job.status[0]!.toUpperCase() + job.status.slice(1)}
@@ -168,15 +170,50 @@ export default async function OnyxJobPage({ params }: { params: Promise<{ id: st
           {canSeePipeline ? (
             <section>
               <SectionHead title="Applicants" />
-              <OnyxApplicants
-                jobId={Number(id)}
-                applicants={(applicants ?? []).map((a) => ({
-                  id: a.id, user_id: a.user_id, status: a.status,
-                  created_at: a.created_at, readiness_at_apply: a.readiness_at_apply,
-                }))}
-                names={names}
-                emails={emails}
-              />
+              {/*
+                * A REFUSAL IS NOT AN EMPTY TABLE.
+                *
+                * `onyxApiSafe` returns null when the read fails and [] when it
+                * succeeds and there is nobody -- and this page used to collapse
+                * both into `applicants ?? []`, so the table said "Nobody has
+                * applied yet". A company signed in to its own post was told, as
+                * a plain fact, that no one wanted the job. Meanwhile the
+                * placement officer looking at the same post could see the
+                * candidate. The company has no way to tell the difference
+                * between a quiet week and a broken portal, so it reads the
+                * first one and stops checking.
+                *
+                * The cause is almost always the same: the company record was
+                * registered before its contact had a login, so `user_id` is
+                * null and every ownership check refuses. Placement can fix that
+                * in one click on their own screen -- which is why the message
+                * says who to ask instead of apologising.
+                */}
+              {applicants === null ? (
+                <Card>
+                  <Empty icon="lock">
+                    <b className="block text-slate-800">We could not open the applicant list.</b>
+                    <span className="mt-1 block max-w-[52ch]">
+                      {me.role === 'employer'
+                        ? 'This usually means your company record has not been linked to '
+                          + 'this sign-in yet. The placement office can connect the two, '
+                          + 'and your applicants will appear here straight away.'
+                        : 'This post may belong to another institution, or the record may '
+                          + 'have been removed.'}
+                    </span>
+                  </Empty>
+                </Card>
+              ) : (
+                <OnyxApplicants
+                  jobId={Number(id)}
+                  applicants={applicants.map((a) => ({
+                    id: a.id, user_id: a.user_id, status: a.status,
+                    created_at: a.created_at, readiness_at_apply: a.readiness_at_apply,
+                  }))}
+                  names={names}
+                  emails={emails}
+                />
+              )}
             </section>
           ) : null}
         </div>

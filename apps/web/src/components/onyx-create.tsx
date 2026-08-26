@@ -70,6 +70,11 @@ export interface Field {
   initial?: string | number;
   /** Full width in the two-column grid. */
   wide?: boolean;
+  /**
+   * Asked here, never sent. Used by a field whose job is to steer the panel --
+   * "set it now, or save it as a draft" -- rather than to fill a column.
+   */
+  localOnly?: boolean;
 }
 
 /**
@@ -123,6 +128,10 @@ const label = 'block text-[13px] font-semibold text-slate-700';
 function toBody(fields: Field[], data: FormData): Record<string, unknown> {
   const body: Record<string, unknown> = {};
   for (const f of fields) {
+    // Asked on the form, never sent to the API -- a choice that decides what
+    // the panel DOES rather than what the record CONTAINS. Sending it anyway
+    // would be a 422 from a zod schema that has never heard of it.
+    if (f.localOnly) continue;
     const raw = f.type === 'checkbox'
       ? data.get(f.name) !== null
       : String(data.get(f.name) ?? '').trim();
@@ -156,8 +165,8 @@ function toBody(fields: Field[], data: FormData): Record<string, unknown> {
 }
 
 export function CreatePanel({
-  title, cta, endpoint, fields, extra, icon = 'edit', thenPost, compact, watch,
-  confirm, rules,
+  title, cta, endpoint, fields, extra, icon = 'edit', thenPost, thenPostUnless, compact,
+  watch, confirm, rules,
 }: {
   title: string;
   /** Button label, both to open the form and to submit it. */
@@ -198,6 +207,21 @@ export function CreatePanel({
    * using it crashed with a server-side exception until this became data.
    */
   thenPost?: string;
+  /**
+   * The escape hatch on `thenPost`: skip the follow-up when a field on this
+   * form says to.
+   *
+   * The one that made it necessary: setting an assignment posted it AND
+   * published it in the same click, so no assignment on a lecturer's course
+   * page was ever a draft -- and the rubric builder only opens on a draft,
+   * because changing what the marks are for under work already handed in
+   * regrades it silently. A well-made feature that nobody could reach, because
+   * the only door to it was a state the product never let you be in.
+   *
+   * DATA, like `thenPost` and `rules`, and for the same reason: every caller
+   * is a Server Component, and a function cannot cross that boundary.
+   */
+  thenPostUnless?: { field: string; equals: string };
   compact?: boolean;
   /**
    * Something rendered under the fields that needs to see what has been typed
@@ -287,7 +311,9 @@ export function CreatePanel({
                   setError([res.message, detail].filter(Boolean).join(' — '));
                   return;
                 }
-                if (thenPost) {
+                const skip = thenPostUnless
+                  && String(data.get(thenPostUnless.field) ?? '') === thenPostUnless.equals;
+                if (thenPost && !skip) {
                   const follow = await post(thenPost.replace(':id', String(res.data.id)));
                   if (!follow.ok) {
                     setError(follow.message ?? 'Created, but not published.');

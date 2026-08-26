@@ -118,6 +118,9 @@ export default async function OnyxCoursePage(
   // listed anywhere a learner would find it. relativeDue(null) already
   // renders "No due date", so undated ones just sort last instead of
   // vanishing.
+  // Staff only: a learner has no use for work that has not been set, and the
+  // API does not send them drafts in the first place.
+  const drafts = (assignments ?? []).filter((a) => a.status !== 'published');
   const due = (assignments ?? [])
     .filter((a) => a.status === 'published')
     .sort((a, b) => {
@@ -542,11 +545,62 @@ export default async function OnyxCoursePage(
                     ] },
                   { name: 'late_penalty_percent', label: 'Penalty %', type: 'number',
                     min: 0, max: 100, fallback: 0 },
+                  /*
+                   * The choice that makes the rubric builder reachable.
+                   *
+                   * Setting work published it in the same click, so nothing on
+                   * this page was ever a draft -- and the rubric builder opens
+                   * only on a draft, because changing what the marks are for
+                   * under work already handed in regrades it silently. The
+                   * builder was finished, good, and behind a door into a room
+                   * the product never let anybody stand in. In practice every
+                   * assignment in the institution was marked out of one number.
+                   *
+                   * Setting it now stays the default, because it is the common
+                   * case and it is what this panel already did.
+                   */
+                  { name: 'visibility', label: 'When it is set', type: 'select',
+                    localOnly: true, fallback: 'now', wide: true,
+                    options: [
+                      { value: 'now', label: 'Set it now — learners see it straight away' },
+                      { value: 'draft',
+                        label: 'Save as a draft — add marking criteria first' },
+                    ] },
                 ]}
-                // Published on creation: an assignment nobody can see is a
-                // draft, and the common case is setting work that is set.
                 thenPost="assignments/:id/publish"
+                thenPostUnless={{ field: 'visibility', equals: 'draft' }}
               />
+            </section>
+          ) : null}
+
+          {/*
+            * Drafts, for the people who can act on them.
+            *
+            * A draft was invisible to everybody: the list below filters to
+            * published, so an assignment saved as a draft -- or created as one
+            * from the operator console -- existed in the database and appeared
+            * on no screen a lecturer could reach. Nothing links here from
+            * anywhere else, which is why setting one and never finding it
+            * again was the normal outcome.
+            */}
+          {isStaff(me.role) && drafts.length ? (
+            <section>
+              <SectionHead title="Drafts" />
+              <RowList label="Assignments not yet set">
+                {drafts.map((a) => (
+                  <ListRow
+                    key={a.id}
+                    title={a.title}
+                    href={'/onyx/assignments/' + a.id}
+                    meta={<Pill tone="soon">Not set yet</Pill>}
+                  />
+                ))}
+              </RowList>
+              <p className="mt-2 max-w-[62ch] text-[12.5px] leading-relaxed text-muted">
+                Open one to say how its marks are earned, then set it. Marking criteria
+                are fixed once an assignment is set, so that work already handed in is
+                never re-marked against different rules.
+              </p>
             </section>
           ) : null}
 
