@@ -1297,19 +1297,29 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
    * is with respect to it -- so the queue is the whole institution's rather
    * than one person's.
    */
+  /*
+   * The operator sees the whole of an institution's support queue.
+   *
+   * `worksQueue: true` says so outright rather than leaning on the `role:
+   * 'admin'` it passes: the service now decides the queue from the
+   * `support.assign` capability, and an operator holds no membership at the
+   * institution and therefore no capabilities in it. Stating it here is what
+   * keeps the console working, and stating it is also honest -- this session
+   * is above the institution by definition.
+   */
   app.get('/api/onyx/platform/tenants/:id/tickets', async (req) => {
     const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     const query = validate(z.object({
       status: z.enum(['open', 'assigned', 'answered', 'resolved', 'closed']).optional(),
     }), req.query ?? {});
     return ok(await ctx.onyxSupport.queue(idOf(req),
-      { userId: claims.user_id, role: 'admin' }, query));
+      { userId: claims.user_id, role: 'admin', worksQueue: true }, query));
   });
 
   app.get('/api/onyx/platform/tenants/:id/tickets/:ticketId', async (req) => {
     const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     return ok(await ctx.onyxSupport.ticket(idOf(req), subIdOf(req, 'ticketId'),
-      { userId: claims.user_id, role: 'admin' }));
+      { userId: claims.user_id, role: 'admin', worksQueue: true }));
   });
 
   app.post('/api/onyx/platform/tenants/:id/tickets/:ticketId/respond', async (req) => {
@@ -1318,7 +1328,7 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       body: z.string().min(1).max(20_000),
     }), req.body);
     return ok(await ctx.onyxSupport.respond(idOf(req), subIdOf(req, 'ticketId'),
-      { userId: claims.user_id, role: 'admin' }, body.body), 'Reply sent.');
+      { userId: claims.user_id, role: 'admin', worksQueue: true }, body.body), 'Reply sent.');
   });
 
   app.post('/api/onyx/platform/tenants/:id/tickets/:ticketId/resolve', async (req) => {
@@ -1327,7 +1337,7 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       body: z.string().max(20_000).optional(),
     }), req.body);
     return ok(await ctx.onyxSupport.resolve(idOf(req), subIdOf(req, 'ticketId'),
-      { userId: claims.user_id, role: 'admin' }, body.body), 'Marked as resolved.');
+      { userId: claims.user_id, role: 'admin', worksQueue: true }, body.body), 'Marked as resolved.');
   });
 
   // ===========================================================================

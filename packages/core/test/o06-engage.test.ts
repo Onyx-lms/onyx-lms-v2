@@ -61,6 +61,18 @@ function world(c = clock()) {
 const student = { userId: 'user-10', role: 'student' as const };
 const other = { userId: 'user-11', role: 'student' as const };
 const faculty = { userId: 'user-20', role: 'faculty' as const };
+/*
+ * The same lecturer, on the support rota.
+ *
+ * Help is the support desk -- fees, timetables, accounts -- and a course
+ * question belongs in the course, where the threaded Q&A above already puts it
+ * in front of whoever teaches it. So the queue is administration's by default,
+ * and a lecturer reaches it only where an institution has granted
+ * `support.assign`. The route resolves that and passes it in as `worksQueue`;
+ * these fixtures are the two answers it can give.
+ */
+const onRota = { ...faculty, worksQueue: true };
+const offRota = { ...faculty, worksQueue: false };
 
 // ---------------------------------------------------------------------------
 // LRN-05: progress and nudges
@@ -248,7 +260,7 @@ test('LRN-06b the unowned queue lists tickets with no owner first, by how close 
   const a = await support.raise(T, 'user-10', { subject: 'Ticket A', body: 'b', priority: 'low' });
   c.advance(1000);
   const b = await support.raise(T, 'user-11', { subject: 'Ticket B', body: 'b', priority: 'urgent' });
-  const queue = await support.queue(T, faculty, {});
+  const queue = await support.queue(T, onRota, {});
   assert.equal(queue[0]!.id, Number(b.id), 'the more urgent unowned ticket sorts first');
   assert.ok(queue.every((t) => t.owner_id === null));
   void a;
@@ -261,7 +273,7 @@ test('LRN-06b claiming a ticket names an owner, and a learner cannot claim one',
     () => support.claim(T, Number(ticket.id), student),
     (e: unknown) => e instanceof HttpError && e.status === 403);
 
-  const claimed = await support.claim(T, Number(ticket.id), faculty);
+  const claimed = await support.claim(T, Number(ticket.id), onRota);
   assert.equal(claimed!.owner_id, 'user-20');
   assert.equal(claimed!.status, 'assigned');
 });
@@ -270,7 +282,7 @@ test('LRN-06b a ticket cannot be assigned to a learner -- only a mentor may own 
   const { support } = world();
   const ticket = await support.raise(T, 'user-10', { subject: 'A question', body: 'b' });
   await assert.rejects(
-    () => support.assign(T, Number(ticket.id), 'user-11', faculty),
+    () => support.assign(T, Number(ticket.id), 'user-11', onRota),
     (e: unknown) => e instanceof HttpError && e.status === 422);
 });
 
@@ -289,7 +301,7 @@ test('LRN-06b breaches lists only what has passed its due_at and is still open',
   const { support, c } = world();
   const urgent = await support.raise(T, 'user-10', { subject: 'Urgent ticket', body: 'b', priority: 'urgent' });
   c.advance(SLA_MINUTES.urgent * 60_000 + 60_000); // past the two-hour SLA
-  const { breached, unowned } = await support.breaches(T, faculty);
+  const { breached, unowned } = await support.breaches(T, onRota);
   assert.equal(breached.length, 1);
   assert.equal(breached[0]!.id, Number(urgent.id));
   assert.equal(unowned, 1);
@@ -327,9 +339,9 @@ test('LRN-06b the answer reaches the learner who asked, and the staff notes do n
   });
   const id = Number(raised.id);
 
-  await support.respond(T, id, faculty, 'Re-encoded — try it again.');
+  await support.respond(T, id, onRota, 'Re-encoded — try it again.');
   // A note between staff, which the learner is not party to.
-  await support.assign(T, id, faculty.userId, faculty);
+  await support.assign(T, id, onRota.userId, onRota);
 
   const theirs = await support.ticket(T, id, student);
   const answer = theirs.events.find((e) => e.kind === 'responded');
@@ -342,7 +354,7 @@ test('LRN-06b the answer reaches the learner who asked, and the staff notes do n
   }
 
   // Staff still see the whole trail.
-  const staff = await support.ticket(T, id, faculty);
+  const staff = await support.ticket(T, id, onRota);
   assert.ok(staff.events.length >= theirs.events.length);
 });
 
@@ -354,6 +366,43 @@ test('LRN-06b the queue carries the question, not only its subject', async () =>
   await support.raise(T, student.userId, {
     subject: 'My video will not play', body: 'It sits at nought per cent.',
   });
-  const queue = await support.queue(T, faculty, {});
+  const queue = await support.queue(T, onRota, {});
   assert.equal(queue[0]?.body, 'It sits at nought per cent.');
+});
+
+test('LRN-06b a lecturer not on the support rota sees no queue but their own tickets', async () => {
+  /*
+   * Help is the support DESK: fees, timetables, accounts, anything that is not
+   * a course question. A course question belongs in the course, where the
+   * threaded Q&A puts it in front of whoever teaches it.
+   *
+   * This used to be `['admin', 'faculty']` compiled in, so every lecturer read
+   * every question anybody at the institution had ever asked. Now it follows
+   * `support.assign` -- admin by default, and a lecturer only where an
+   * institution has deliberately put them on the rota.
+   */
+  const { support } = world();
+  await support.raise(T, student.userId, {
+    subject: 'My fee receipt is wrong', body: 'The amount does not match what I paid.',
+  });
+  await support.raise(T, other.userId, {
+    subject: 'I cannot sign in on my phone', body: 'It says the code expired.',
+  });
+
+  // Off the rota: not "forbidden", which would be a worse answer -- a lecturer
+  // may raise a ticket of their own like anybody else, and gets those.
+  const theirs = await support.queue(T, offRota, {});
+  assert.deepEqual(theirs, [], 'a lecturer was shown the institution’s support queue');
+
+  // On it, deliberately, the whole queue.
+  const rota = await support.queue(T, onRota, {});
+  assert.equal(rota.length, 2, 'the rota saw ' + rota.length + ' of 2');
+
+  // And one ticket by id is refused rather than quietly emptied: a lecturer
+  // sent a link to somebody else's fee query should be told, not shown it.
+  const [one] = rota;
+  await assert.rejects(support.ticket(T, Number(one.id), offRota),
+    (e: HttpError) => e.status === 403);
+  const seen = await support.ticket(T, Number(one.id), onRota);
+  assert.equal(Number(seen.id), Number(one.id));
 });

@@ -14,7 +14,7 @@ import { z } from 'zod';
 import { validate, ok, requireOnyx, requireOnyxRole, TICKET_PRIORITIES } from '@onyx/core';
 import type { TicketPriority, TicketStatus, DiscussionStatus } from '@onyx/types';
 import type { AppContext } from '../../app-context.ts';
-import { assertCan } from '../../capability.ts';
+import { assertCan, holds } from '../../capability.ts';
 
 const asReq = (req: ReqLike) => ({
   headers: req.headers as Record<string, string | string[] | undefined>,
@@ -34,6 +34,27 @@ export function registerOnyxEngageRoutes(app: Router, ctx: AppContext): void {
   const viewerOf = async (req: ReqLike) => {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
     return { claims, viewer: { role: claims.tenant_role, userId: claims.user_id } };
+  };
+
+  /**
+   * The same viewer, plus whether this person works the support queue.
+   *
+   * Help is the support desk -- fees, timetables, accounts, anything that is
+   * not a course question -- and course questions have their own threaded Q&A
+   * inside the course. So the queue is administration's, and anyone else an
+   * institution has deliberately put on the rota by granting `support.assign`.
+   * It used to be every lecturer, which meant every lecturer read every
+   * question anybody at the institution had ever asked.
+   *
+   * Resolved here rather than in the service because only a route can reach
+   * the permissions -- and resolved through the same helper `assertCan` uses,
+   * so the two can never disagree about who holds it.
+   */
+  const supportViewerOf = async (req: ReqLike) => {
+    const { claims, viewer } = await viewerOf(req);
+    const worksQueue = await holds(
+      ctx, claims.tenant_id, claims.tenant_role, 'support.assign', claims.user_id);
+    return { claims, viewer: { ...viewer, worksQueue } };
   };
 
   // -------------------------------------------------------------------------
@@ -146,7 +167,7 @@ export function registerOnyxEngageRoutes(app: Router, ctx: AppContext): void {
    * from the token's role, not from a query parameter a learner could set.
    */
   app.get('/api/onyx/tickets', async (req) => {
-    const { claims, viewer } = await viewerOf(req);
+    const { claims, viewer } = await supportViewerOf(req);
     const query = req.query as { status?: string; mine?: string; unowned?: string };
     return ok(await ctx.onyxSupport.queue(claims.tenant_id, viewer, {
       status: query.status as TicketStatus | undefined,
@@ -156,19 +177,22 @@ export function registerOnyxEngageRoutes(app: Router, ctx: AppContext): void {
   });
 
   app.get('/api/onyx/tickets/breaches', async (req) => {
-    const { claims, viewer } = await viewerOf(req);
+    const { claims, viewer } = await supportViewerOf(req);
     return ok(await ctx.onyxSupport.breaches(claims.tenant_id, viewer));
   });
 
   app.get('/api/onyx/tickets/:id', async (req) => {
-    const { claims, viewer } = await viewerOf(req);
+    const { claims, viewer } = await supportViewerOf(req);
     return ok(await ctx.onyxSupport.ticket(claims.tenant_id, idOf(req), viewer));
   });
 
   app.post('/api/onyx/tickets/:id/assign', async (req) => {
     const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty', 'placement', 'exams');
     await assertCan(ctx, claims.tenant_id, claims.tenant_role, 'support.assign', claims.user_id);
-    const viewer = { role: claims.tenant_role, userId: claims.user_id };
+    // The line above is what makes this true: reaching here at all means the
+    // capability is held, and the service reads the same fact to decide the
+    // queue is theirs to work.
+    const viewer = { role: claims.tenant_role, userId: claims.user_id, worksQueue: true };
     const body = validate(z.object({
       owner_id: z.string().uuid().optional(),
     }), req.body ?? {});
@@ -194,19 +218,19 @@ export function registerOnyxEngageRoutes(app: Router, ctx: AppContext): void {
   });
 
   app.post('/api/onyx/tickets/:id/respond', async (req) => {
-    const { claims, viewer } = await viewerOf(req);
+    const { claims, viewer } = await supportViewerOf(req);
     const body = validate(z.object({ note: z.string().min(1).max(5000) }), req.body);
     return ok(await ctx.onyxSupport.respond(claims.tenant_id, idOf(req), viewer, body.note));
   });
 
   app.post('/api/onyx/tickets/:id/resolve', async (req) => {
-    const { claims, viewer } = await viewerOf(req);
+    const { claims, viewer } = await supportViewerOf(req);
     const body = validate(z.object({ note: z.string().max(5000).optional() }), req.body ?? {});
     return ok(await ctx.onyxSupport.resolve(claims.tenant_id, idOf(req), viewer, body.note));
   });
 
   app.post('/api/onyx/tickets/:id/reopen', async (req) => {
-    const { claims, viewer } = await viewerOf(req);
+    const { claims, viewer } = await supportViewerOf(req);
     const body = validate(z.object({ note: z.string().max(5000).optional() }), req.body ?? {});
     return ok(await ctx.onyxSupport.reopen(claims.tenant_id, idOf(req), viewer, body.note));
   });

@@ -27,6 +27,28 @@ import type { AppContext } from '@/server/app-context';
  * One read of the tenant row per call, which is the same read
  * assertCanScheduleExam already does for the flag it replaces.
  */
+/**
+ * The same question, answered rather than thrown.
+ *
+ * `assertCan` is right where a route is refusing an action. It is the wrong
+ * shape where the answer decides what somebody is SHOWN -- a support queue
+ * that throws at an administrator and returns a learner's own tickets to
+ * everyone else needs the boolean, not the exception.
+ *
+ * Deliberately the same three-step resolution as `assertCan`, by calling into
+ * it, so the two can never disagree about who holds what.
+ */
+export async function holds(
+  ctx: AppContext, tenantId: number, role: Role, key: CapabilityKey, userId?: string,
+): Promise<boolean> {
+  try {
+    await assertCan(ctx, tenantId, role, key, userId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function assertCan(
   ctx: AppContext, tenantId: number, role: Role, key: CapabilityKey,
   /**

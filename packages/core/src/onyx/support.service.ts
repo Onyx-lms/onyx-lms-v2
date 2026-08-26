@@ -26,9 +26,40 @@ import type { AuditService } from './audit.service.ts';
 const TICKET_COLUMNS = 'id, tenant_id, discussion_id, course_id, raised_by, owner_id, subject, body, priority, status, sla_minutes, due_at, first_response_at, resolved_at, created_at, updated_at';
 const EVENT_COLUMNS = 'id, tenant_id, ticket_id, actor_id, kind, note, detail, created_at';
 
-/** Who may pick a ticket up, see the queue, and close things. */
-const MENTORS: Role[] = ['admin', 'faculty'];
-const isMentor = (role: Role) => MENTORS.includes(role);
+/**
+ * Who may pick a ticket up, see the queue, and close things.
+ *
+ * Administration, and whoever an institution has deliberately put on the rota.
+ *
+ * This was `['admin', 'faculty']`, which meant every lecturer saw every
+ * question anybody at the institution had ever asked -- fee queries, timetable
+ * complaints, account problems, the lot. Help is the SUPPORT desk: a course
+ * question belongs in the course, where LRN-06a's threaded Q&A already puts
+ * it in front of the lecturer who teaches it.
+ *
+ * A role list would only move the same problem, so the answer is the
+ * capability the product already has. `support.assign` is held by admin out of
+ * the box and by nobody else, and an institution that genuinely wants a
+ * lecturer on the support rota grants it to them -- one decision, made once,
+ * visible on the permissions screen, rather than a rule compiled in here.
+ *
+ * `viewer.worksQueue` is that answer, resolved by the route (which can reach
+ * the permissions) and passed in. It falls back to the role for the internal
+ * callers that have a role and no request behind them.
+ */
+/**
+ * Who is asking, and whether they work the support queue.
+ *
+ * `worksQueue` is resolved by the route from the `support.assign` capability
+ * -- only a route can reach the permissions -- and is optional so the internal
+ * callers that have a role and no request behind them still compile, falling
+ * back to the role.
+ */
+export interface QueueViewer { userId: string; role: Role; worksQueue?: boolean }
+
+const isMentor = (viewer: { role: Role; worksQueue?: boolean }) => (
+  viewer.worksQueue ?? (viewer.role === 'admin')
+);
 
 /**
  * How long each priority gets, in minutes.
@@ -171,12 +202,12 @@ export class SupportService {
    * A learner asking for the same list gets only their own tickets, which is
    * why the viewer's role decides the filter rather than a query parameter.
    */
-  async queue(tenantId: number, viewer: { userId: string; role: Role }, filters: {
+  async queue(tenantId: number, viewer: QueueViewer, filters: {
     status?: TicketStatus; mine?: boolean; unowned?: boolean;
   } = {}): Promise<TicketView[]> {
     let query = this.#db.from('onyx_tickets').select(TICKET_COLUMNS).eq('tenant_id', tenantId);
 
-    if (!isMentor(viewer.role)) {
+    if (!isMentor(viewer)) {
       query = query.eq('raised_by', viewer.userId);
     } else if (filters.mine) {
       query = query.eq('owner_id', viewer.userId);
@@ -204,10 +235,10 @@ export class SupportService {
     });
   }
 
-  async ticket(tenantId: number, id: number, viewer: { userId: string; role: Role }) {
+  async ticket(tenantId: number, id: number, viewer: QueueViewer) {
     const row = await this.#row(tenantId, id);
     const mine = String(row.raised_by) === viewer.userId || String(row.owner_id) === viewer.userId;
-    if (!mine && !isMentor(viewer.role)) {
+    if (!mine && !isMentor(viewer)) {
       throw new HttpError(403, 'That ticket is not yours.');
     }
 
@@ -237,7 +268,7 @@ export class SupportService {
        * a learner may read is the reply they were sent, not the discussion
        * about them.
        */
-      events: (events ?? []).map((e) => (isMentor(viewer.role) || e.kind === 'responded'
+      events: (events ?? []).map((e) => (isMentor(viewer) || e.kind === 'responded'
         ? e
         : { ...e, note: null, detail: {} })),
     };
@@ -247,8 +278,8 @@ export class SupportService {
   // Working it
   // -------------------------------------------------------------------------
 
-  async assign(tenantId: number, id: number, ownerId: string, actor: { userId: string; role: Role }) {
-    if (!isMentor(actor.role)) throw new HttpError(403, 'Only staff can assign a ticket.');
+  async assign(tenantId: number, id: number, ownerId: string, actor: QueueViewer) {
+    if (!isMentor(actor)) throw new HttpError(403, 'Only staff can assign a ticket.');
     const row = await this.#row(tenantId, id);
 
     // The owner has to be somebody who can act on it. Assigning to a learner
@@ -256,8 +287,21 @@ export class SupportService {
     const { data: membership } = await this.#db.from('onyx_memberships').select('role')
       .eq('tenant_id', tenantId).eq('user_id', ownerId).eq('status', 1).maybeSingle();
     if (!membership) throw new HttpError(422, 'That person is not a member of this institution.');
-    if (!isMentor(membership.role as Role)) {
-      throw new HttpError(422, 'A ticket can only be owned by a mentor -- admin or faculty.');
+    /*
+     * The owner has to be STAFF, which is the rule the comment above is
+     * actually about: assigning to a learner satisfies "named owner" and
+     * nothing else.
+     *
+     * Not "must be able to work the queue", tempting as that reads. Whether
+     * somebody holds `support.assign` is a permissions question this service
+     * cannot answer -- and an institution that has just granted it to a
+     * lecturer would find the grant refused here, by a rule compiled in, which
+     * is the exact problem the capability was meant to solve.
+     */
+    const OWNERS: Role[] = ['admin', 'faculty', 'exams', 'placement'];
+    if (!OWNERS.includes(membership.role as Role)) {
+      throw new HttpError(422,
+        'A ticket can only be owned by a member of staff, not by a learner.');
     }
 
     const { data } = await this.#db.from('onyx_tickets').update({
@@ -275,21 +319,21 @@ export class SupportService {
   }
 
   /** Picking one up yourself, which is what actually happens. */
-  async claim(tenantId: number, id: number, actor: { userId: string; role: Role }) {
+  async claim(tenantId: number, id: number, actor: QueueViewer) {
     return this.assign(tenantId, id, actor.userId, actor);
   }
 
-  async respond(tenantId: number, id: number, actor: { userId: string; role: Role },
+  async respond(tenantId: number, id: number, actor: QueueViewer,
     note: string) {
     const row = await this.#row(tenantId, id);
     const body = note.trim();
     if (!body) throw new HttpError(422, 'A response needs some text.');
 
     const mine = String(row.raised_by) === actor.userId || String(row.owner_id) === actor.userId;
-    if (!mine && !isMentor(actor.role)) throw new HttpError(403, 'That ticket is not yours.');
+    if (!mine && !isMentor(actor)) throw new HttpError(403, 'That ticket is not yours.');
 
     const at = new Date(this.#now()).toISOString();
-    const staffReplying = isMentor(actor.role);
+    const staffReplying = isMentor(actor);
 
     const patch: Record<string, unknown> = { updated_at: at };
     // First response is the metric an SLA is usually about, and it is only the
@@ -309,17 +353,17 @@ export class SupportService {
     return data;
   }
 
-  async resolve(tenantId: number, id: number, actor: { userId: string; role: Role },
+  async resolve(tenantId: number, id: number, actor: QueueViewer,
     note?: string) {
     const row = await this.#row(tenantId, id);
     const mine = String(row.raised_by) === actor.userId;
-    if (!mine && !isMentor(actor.role)) throw new HttpError(403, 'That ticket is not yours.');
+    if (!mine && !isMentor(actor)) throw new HttpError(403, 'That ticket is not yours.');
 
     const at = new Date(this.#now()).toISOString();
     const { data } = await this.#db.from('onyx_tickets').update({
       status: 'resolved',
       resolved_at: at,
-      first_response_at: row.first_response_at ?? (isMentor(actor.role) ? at : null),
+      first_response_at: row.first_response_at ?? (isMentor(actor) ? at : null),
       updated_at: at,
     }).eq('tenant_id', tenantId).eq('id', id).select(TICKET_COLUMNS).maybeSingle();
 
@@ -331,11 +375,11 @@ export class SupportService {
     return data;
   }
 
-  async reopen(tenantId: number, id: number, actor: { userId: string; role: Role },
+  async reopen(tenantId: number, id: number, actor: QueueViewer,
     note?: string) {
     const row = await this.#row(tenantId, id);
     const mine = String(row.raised_by) === actor.userId;
-    if (!mine && !isMentor(actor.role)) throw new HttpError(403, 'That ticket is not yours.');
+    if (!mine && !isMentor(actor)) throw new HttpError(403, 'That ticket is not yours.');
 
     // Reopening does not restart the clock. The promise was made when the
     // question was first asked, and a ticket that resets its SLA every time it
@@ -357,7 +401,7 @@ export class SupportService {
    * answered in time does not become breached by sitting closed over a weekend.
    */
   async breaches(tenantId: number, viewer: { role: Role }) {
-    if (!isMentor(viewer.role)) throw new HttpError(403, 'Staff only.');
+    if (!isMentor(viewer)) throw new HttpError(403, 'Staff only.');
     const now = new Date(this.#now()).toISOString();
     const { data } = await this.#db.from('onyx_tickets').select(TICKET_COLUMNS)
       .eq('tenant_id', tenantId)

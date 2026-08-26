@@ -10,7 +10,21 @@ import {
 
 export const metadata: Metadata = { title: 'Support' };
 
-const MENTOR_ROLES = ['admin', 'faculty'];
+/*
+ * Who sees a QUEUE here rather than their own tickets.
+ *
+ * Not a role list any more. Help is the support desk -- fees, timetables,
+ * accounts, anything that is not a course question -- and a course question
+ * belongs in the course, where the threaded Q&A puts it in front of whoever
+ * teaches it. This said `['admin', 'faculty']`, so every lecturer opened it on
+ * every question anybody at the institution had ever asked.
+ *
+ * `support.assign` is the answer, because the product already has it: held by
+ * admin out of the box, by nobody else, and grantable where an institution
+ * genuinely wants somebody on the support rota. Asked of the permissions
+ * endpoint, which returns what THIS caller holds, so the screen has no second
+ * copy of the rule to drift from the API's.
+ */
 
 /** What the API returns from /tickets/breaches. */
 interface Breaches { breached: Ticket[]; unowned: number }
@@ -80,11 +94,13 @@ function ownerLine(t: Ticket, mentor: boolean) {
 export default async function OnyxSupportPage() {
   await requireOnyxSession();
   const me = await onyxApi<Me>('/api/onyx/me');
-  const mentor = MENTOR_ROLES.includes(me.role);
+  const perms = await onyxApiSafe<{ mine: string[] }>('/api/onyx/permissions');
+  const mentor = (perms?.mine ?? []).includes('support.assign');
 
   const [tickets, breaches] = await Promise.all([
     onyxApi<Ticket[]>('/api/onyx/tickets'),
-    // Staff only, and the API says so -- absent rather than fatal for a learner.
+    // The rota only, and the API says so -- absent rather than fatal for
+    // anybody else, who gets their own tickets and no queue.
     mentor ? onyxApiSafe<Breaches>('/api/onyx/tickets/breaches') : null,
   ]);
 
