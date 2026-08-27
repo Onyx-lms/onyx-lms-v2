@@ -97,6 +97,19 @@ export function outputMatches(actual: string, expected: string): boolean {
   return normalise(actual) === normalise(expected);
 }
 
+/**
+ * A unique violation, however the driver reports it.
+ *
+ * The convention every other service here follows, and this file did not: the
+ * SQLSTATE is absent from some drivers and from the test double, so matching
+ * only `23505` sent a plain duplicate down the 500 path and told the author
+ * the database had failed when in fact they had reused a title.
+ */
+function isDuplicate(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === '23505' || /duplicate key|unique/i.test(error.message ?? '');
+}
+
 export class CodeLabService {
   #db: OnyxDb;
   #academics: AcademicsService;
@@ -165,13 +178,40 @@ export class CodeLabService {
       ? startingFiles(input.starter_code ?? null)
       : (input.starter_code ?? {});
 
+    /*
+     * The address is DERIVED, so it must not be able to fail.
+     *
+     * `onyx_problems` is unique on (tenant_id, slug), the slug comes out of
+     * the title, and the author never sees it. So a lecturer adding a coding
+     * or web question to a question bank -- which creates a problem behind the
+     * scenes -- was told "That address is already in use" about a value they
+     * had not typed, could not see, and were given no way to change.
+     *
+     * Three things made it worse than a plain duplicate-name refusal:
+     *
+     *   * `slugify` strips case and punctuation, so "Two Sum", "two sum",
+     *     "Two  Sum!" and "two-sum" are all the same address. Every obvious
+     *     way to work around the message hits the same message.
+     *   * the constraint counts every row whatever its status, so a title can
+     *     collide with a retired or unpublished problem nobody is looking at.
+     *   * the message named neither the problem it clashed with nor anything
+     *     to do about it.
+     *
+     * When the author DID type an address, a clash is a real conflict and is
+     * still refused below -- they chose that value and can choose another.
+     * When we derived it, we resolve it: `two-sum`, then `two-sum-2`, and so
+     * on. Two problems may legitimately share a title; only the address has to
+     * be unique, and only the URL cares.
+     */
+    const address = input.slug ? slug : await this.#freeSlug(tenantId, slug);
+
     const { data, error } = await this.#db.from('onyx_problems').insert({
       tenant_id: tenantId,
       course_id: input.course_id ?? null,
       kind,
       preview_entry: input.preview_entry?.trim() || 'index.html',
       title: input.title.trim(),
-      slug,
+      slug: address,
       statement: input.statement ?? null,
       difficulty: input.difficulty ?? 'easy',
       topic: input.topic ?? null,
@@ -187,9 +227,57 @@ export class CodeLabService {
       status: 'draft',
       created_by: createdBy,
     }).select(PROBLEM_COLUMNS).maybeSingle();
-    if (error?.code === '23505') throw new HttpError(422, 'That address is already in use.');
+    /*
+     * Still reachable two ways: an author-supplied address, and the race where
+     * somebody else takes the address between #freeSlug reading and this
+     * insert writing. Both are honest 422s, and the message now says what to
+     * change rather than naming a field the author has never seen.
+     */
+    if (isDuplicate(error)) {
+      throw new HttpError(422, input.slug
+        ? 'The address "' + slug + '" is already used by another problem here. '
+          + 'Choose a different one.'
+        : 'Another problem was given this address a moment ago. Try saving again.');
+    }
     if (error) throw new HttpError(500, 'Could not create the problem: ' + error.message);
     return data!;
+  }
+
+  /**
+   * The first address in this institution that nothing has taken.
+   *
+   * Reads the neighbours in one query rather than probing one candidate at a
+   * time: a bank being filled with "Build a welcome card" gets to -20 quickly,
+   * and twenty round trips to write one question is the kind of thing that
+   * only shows up once a customer is real.
+   *
+   * A `like` on the prefix, then the gap is worked out in memory. Not a
+   * transaction: the unique index is the actual guarantee, and the caller
+   * turns the 23505 this cannot prevent into "try again".
+   */
+  async #freeSlug(tenantId: number, wanted: string) {
+    /*
+     * `ilike`, not `like`. Every slug `slugify` produces is already lowercase,
+     * so the two agree on anything this code wrote -- but slugs imported from
+     * the Laravel side were not all made by this function, and a case-blind
+     * match is the one that cannot hand back an address the unique index will
+     * then reject. No escaping needed: a slug holds only letters, marks,
+     * numbers and hyphens, so it can never carry a `%` or a `_`.
+     */
+    const { data } = await this.#db.from('onyx_problems')
+      .select('slug').eq('tenant_id', tenantId)
+      .ilike('slug', wanted + '%').limit(200);
+    const taken = new Set((data ?? []).map((r) => String(r.slug).toLowerCase()));
+    if (!taken.has(wanted)) return wanted;
+    for (let n = 2; n <= 200; n += 1) {
+      const candidate = wanted + '-' + n;
+      if (!taken.has(candidate)) return candidate;
+    }
+    // Two hundred problems sharing one title is not a naming collision any
+    // more; it is somebody looping, and a made-up address would hide that.
+    throw new HttpError(422,
+      'There are already two hundred problems at addresses like "' + wanted
+      + '". Give this one a more specific title.');
   }
 
   /**

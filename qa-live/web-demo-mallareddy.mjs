@@ -341,11 +341,36 @@ if (problem?.id) {
     'HTTP ' + off.status);
 }
 
+/*
+ * And the paper it set.
+ *
+ * Twenty-eight "Web development test mt..." assessments had accumulated, one
+ * per run, all published and all sittable -- and that did more than clutter a
+ * list. code-is-kept scans the published papers for one carrying both a web
+ * and a coding question, and every run of THIS suite added another paper its
+ * candidate would eventually exhaust their attempts on. The litter from one
+ * suite became a failure in another, which is the expensive kind.
+ *
+ * Its WINDOW is closed rather than the paper deleted, which is what the
+ * product itself says to do: deleting a paper somebody has sat is refused,
+ * because it would take their answers and their marks with it. That refusal is
+ * right, and the candidate below has just sat this one. A closed window leaves
+ * the paper, the attempt and the mark exactly where they are, and takes it off
+ * the list of papers anybody can start.
+ */
+if (paper?.id) {
+  const closed = await call(base + '/assessments/' + paper.id, {
+    method: 'PATCH', token: pt,
+    body: { closes_at: new Date(Date.now() - 60_000).toISOString() },
+  });
+  check('closes the window on the paper it set', closed.status === 200,
+    'HTTP ' + closed.status);
+}
+
 startPhase('7. what is left for testing by hand');
 
 console.log('   web problem  ' + problem.id + '  "' + problem.title + '"');
 console.log('   workspace    ' + project.id + '  "' + project.title + '" (language web)');
-console.log('   paper        ' + paper.id + '  "' + paper.title + '"');
 console.log('   attempt      ' + attemptId + '  marked 9/10 by the console');
 console.log('   candidate    ' + student + '  ' + STUDENT_PW);
 

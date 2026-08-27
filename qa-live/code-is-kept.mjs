@@ -64,14 +64,30 @@ const catalogue = (await call('/api/onyx/courses?all=1', faculty)).body?.data ??
 const wd = catalogue.find((c) => c.code === 'WD101');
 const joined = await call('/api/onyx/courses/' + wd.id + '/enroll', admin,
   { user_id: me.user_id }, 'POST');
+/*
+ * Already enrolled is success, not failure. An earlier run that fell over
+ * before its withdraw step leaves the candidate on the roster, and a suite
+ * that then refuses to start is a suite that stays broken until somebody
+ * unpicks the demo by hand. Only withdraw at the end if THIS run enrolled.
+ */
+const alreadyOn = joined.status === 409 || joined.status === 422;
 check('the candidate is enrolled where the paper lives',
-  joined.status === 200 || joined.status === 409,
-  wd.code + ' — HTTP ' + joined.status);
+  joined.status === 200 || alreadyOn,
+  wd.code + ' — HTTP ' + joined.status + (alreadyOn ? ' (already on the roster)' : ''));
 
 // --- find a published paper carrying both kinds of question ----------------
 const papers = (await call('/api/onyx/assessments', faculty)).body?.data ?? [];
 let paper = null; let dealt = null; let attemptId = null;
-for (const p of papers.filter((x) => x.status === 'published').slice(0, 12)) {
+/*
+ * Every published paper, not the first twelve.
+ *
+ * Each run of this suite spends one of the candidate's attempts, and the demo
+ * gains a fresh "Web development test" paper from the web-demo suite every
+ * time it runs. Eventually all twelve papers in the window were exhausted for
+ * this candidate and the suite reported "none found" -- which reads as "the
+ * product cannot do this" when it means "this account has sat them all".
+ */
+for (const p of papers.filter((x) => x.status === 'published')) {
   const started = await call('/api/onyx/assessments/' + p.id + '/start', student, {}, 'POST');
   if (started.status !== 200) continue;
   const qs = started.body?.data?.questions ?? [];
@@ -80,7 +96,9 @@ for (const p of papers.filter((x) => x.status === 'published').slice(0, 12)) {
   }
 }
 check('a paper with both a web and a coding question', !!paper,
-  paper ? paper.title + ' (attempt ' + attemptId + ')' : 'none found');
+  paper ? paper.title + ' (attempt ' + attemptId + ')'
+    : 'none of the ' + papers.filter((x) => x.status === 'published').length
+      + ' published papers would start for this candidate');
 if (!paper) process.exit(1);
 
 // --- the candidate writes, and hands in ------------------------------------

@@ -66,6 +66,14 @@ function world(provider: ExecutionProvider = fakeProvider(), now = () => 1_800_0
     // peopleFor() reads roll numbers off the membership, so the monitoring
     // feeds need the table to exist even when nobody is in it.
     onyx_memberships: [],
+  }, {
+    /*
+     * The constraint the address rule exists for. Without it declared, the
+     * fake let two problems share a slug and the tests below proved nothing --
+     * a de-duplicator has to be checked against something that actually
+     * refuses duplicates, or it is checked against its own opinion.
+     */
+    onyx_problems: [['tenant_id', 'slug']],
   });
   const academics = new AcademicsService(db as never);
   const enqueued: { kind: string; payload: Record<string, unknown> }[] = [];
@@ -1057,4 +1065,53 @@ test('workspace monitoring filters narrow, and never widen, what faculty may see
   assert.equal((await w.workspaces.listForCourses(T, [1])).length, 1);
   assert.equal((await w.workspaces.listForCourses(T, [1], { course_id: 2 })).length, 0);
   assert.equal((await w.workspaces.listForCourses(T, [1], { course_id: null })).length, 0);
+});
+
+test('two problems may share a title; the address is made unique for them', async () => {
+  const w = world();
+
+  /*
+   * The defect this pins. `onyx_problems` is unique on (tenant_id, slug), the
+   * slug is derived from the title, and the author never sees it -- so adding
+   * a second coding or web question with a title somebody had used before was
+   * refused with "That address is already in use", about a value the lecturer
+   * had not typed and could not change.
+   *
+   * `slugify` strips case and punctuation, so every obvious workaround --
+   * retyping it differently -- collapsed to the same address and hit the same
+   * message.
+   */
+  const first = await w.codelab.createProblem(T, 'user-20', { title: 'Two Sum' });
+  assert.equal(first.slug, 'two-sum');
+
+  for (const [title, expected] of [
+    ['Two Sum', 'two-sum-2'],
+    ['two sum', 'two-sum-3'],
+    ['Two  Sum!', 'two-sum-4'],
+  ] as const) {
+    const next = await w.codelab.createProblem(T, 'user-20', { title });
+    assert.equal(next.slug, expected, title + ' should land on ' + expected);
+    assert.equal(next.title, title.trim());
+  }
+
+  // A retired or unpublished problem still holds its address, which is why the
+  // collision could happen against something nobody was looking at.
+  const drafts = await w.codelab.createProblem(T, 'user-20', { title: 'Two-Sum' });
+  assert.equal(drafts.slug, 'two-sum-5');
+});
+
+test('an address the author typed themselves is not silently changed', async () => {
+  const w = world();
+
+  /*
+   * The other half of the rule. We resolve what we DERIVED; we do not quietly
+   * move what somebody chose. An author who typed an address and got a
+   * different one would find their link broken with nothing said.
+   */
+  await w.codelab.createProblem(T, 'user-20', { title: 'Anything', slug: 'mine' });
+  await assert.rejects(
+    () => w.codelab.createProblem(T, 'user-20', { title: 'Something else', slug: 'mine' }),
+    (e: { status?: number; message?: string }) =>
+      e.status === 422 && /already used by another problem/.test(String(e.message)),
+  );
 });
