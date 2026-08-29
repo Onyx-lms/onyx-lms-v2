@@ -672,7 +672,16 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
     // invigilation and marking institution-wide and needs the same "who is
     // this" name lookup admin/faculty already had -- without it, Invigilate
     // could only ever show a candidate's raw id to that role.
-    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret, 'admin', 'faculty', 'exams');
+    //
+    // 'placement' added for the same reason, one role later. The placement
+    // office is the one that awards a skill on the passport, books a mock
+    // interview and shortlists a candidate -- three screens whose pickers are
+    // built from this list. Being refused it did not fail loudly: every caller
+    // is `onyxApiSafe`, so the 403 became an empty array and the panels
+    // rendered a required <select> with no options in it. "Award a skill" was
+    // a form the role it exists for could not submit.
+    const claims = await requireOnyxRole(asReq(req), ctx.jwtSecret,
+      'admin', 'faculty', 'exams', 'placement');
     const q = req.query as {
       role?: Role; search?: string; section_id?: string; limit?: string;
     };

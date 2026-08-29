@@ -80,6 +80,11 @@ const GROUPS: TenantNavGroup[] = [
   ] },
   { label: 'Records', items: [
     { seg: 'grades', label: 'Grades', icon: 'trophy' },
+    // Beside Grades because they are the same afternoon's work -- publish the
+    // marks, then hand out what they earned. The console could do everything
+    // up to that last step and then had to borrow the institution's own
+    // administrator password to take it.
+    { seg: 'certificates', label: 'Certificates', icon: 'award' },
     { seg: 'fees', label: 'Fees', icon: 'wallet' },
   ] },
   // Last, on its own, and the only route from which this institution can be

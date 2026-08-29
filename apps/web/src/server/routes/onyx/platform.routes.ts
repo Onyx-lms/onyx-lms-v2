@@ -346,6 +346,42 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
       'Withdrawn.');
   });
 
+  /*
+   * ------------------------------------------------------------------------
+   * CAR-03 from the console -- credentials.
+   *
+   * The one thing an operator who had just stood up an institution, taught it,
+   * examined it and published its marks could not then do: hand out the
+   * certificate. Issuing one meant signing in as that institution's own
+   * administrator, which is the handover the console exists to avoid.
+   * ------------------------------------------------------------------------
+   */
+  app.get('/api/onyx/platform/tenants/:id/certificates', async (req) => {
+    await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    return ok(await ctx.onyxPlatform.certificates(idOf(req)));
+  });
+
+  app.post('/api/onyx/platform/tenants/:id/certificates', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      user_id: z.string().uuid(),
+      title: z.string().min(1).max(255),
+      kind: z.enum(['course', 'assessment', 'contest', 'program']).optional(),
+      course_id: z.number().int().positive().nullish(),
+      expires_at: z.string().nullish(),
+    }), req.body);
+    return ok(await ctx.onyxPlatform.issueCertificate(idOf(req), claims.user_id, body),
+      'Certificate issued.');
+  });
+
+  app.post('/api/onyx/platform/tenants/:id/certificates/:certificateId/revoke', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({ reason: z.string().min(1).max(500) }), req.body);
+    const certificateId = Number((req.params as { certificateId?: string }).certificateId);
+    return ok(await ctx.onyxPlatform.revokeCertificate(
+      idOf(req), certificateId, claims.user_id, body.reason), 'Revoked.');
+  });
+
   app.post('/api/onyx/platform/tenants/:id/assignments', async (req) => {
     const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     const body = validate(z.object({

@@ -26,6 +26,7 @@ import { gradeFor } from './examinations.service.ts';
 // The same two tests the marker applies, so the count an operator reads and
 // the decision `#finalise` makes can never drift apart.
 import { isObjective, hasKey, type AssessService } from './assess.service.ts';
+import type { CareerService } from './career.service.ts';
 // The same guard the institution-side service uses, imported rather than
 // copied: a curriculum link becomes an anchor's href, and `javascript:` in
 // an href is stored XSS with extra steps. Two implementations of that check
@@ -157,6 +158,9 @@ export class PlatformService {
   #db: OnyxDb;
   #assess: AssessService | null = null;
   #tenancy: TenancyService | null;
+  /** CAR-03 from the console. Optional like the others, so a unit test that
+   *  never touches a credential does not have to build one. */
+  #career: CareerService | null;
   #authClientOverride: SupabaseClient | undefined;
   /**
    * `assess` is optional so every existing caller and test that builds this
@@ -170,11 +174,12 @@ export class PlatformService {
    * one says so with a 500 rather than the whole console failing to build.
    */
   constructor(db: OnyxDb, authClient?: SupabaseClient, assess?: AssessService,
-    tenancy?: TenancyService) {
+    tenancy?: TenancyService, career?: CareerService) {
     this.#db = db;
     this.#authClientOverride = authClient;
     this.#assess = assess ?? null;
     this.#tenancy = tenancy ?? null;
+    this.#career = career ?? null;
   }
   /** Fresh per exchange -- see onyxAuthClientFresh in db.ts. A shared client
    *  hands concurrent sign-ins each other's sessions. */
@@ -1858,6 +1863,68 @@ export class PlatformService {
     if (error) throw new HttpError(500, 'Could not remove the course: ' + error.message);
     await this.#log(actorId, 'course.removed', 'course', courseId,
       { code: course.code, title: course.title }, null);
+  }
+
+  // ---------------------------------------------------------------------------
+  // CAR-03 from the console -- credentials
+  //
+  // The console could stand an institution up entirely: people, courses,
+  // lessons, question banks, examinations, marks. The one thing it could not do
+  // was hand out the credential at the end of all that, so an operator who had
+  // just published a cohort's results had to be given that institution's own
+  // administrator password to issue a single certificate -- which is exactly
+  // the handover the console exists to avoid.
+  //
+  // Delegated to CareerService rather than reimplemented. A credential id is
+  // generated in one place, revocation keeps its "never deleted, keeps
+  // answering" semantics in one place, and a certificate issued from the
+  // console is indistinguishable from one the institution issued itself --
+  // which it should be, because it is the same credential.
+  //
+  // What is NOT shared is the audit line: an operator reaching into a customer's
+  // institution is a platform act and belongs in the platform log, against the
+  // operator's name.
+  // ---------------------------------------------------------------------------
+
+  /** The institution's register of issued credentials. */
+  async certificates(tenantId: number) {
+    return this.#careerService().issuedCertificates(tenantId, {});
+  }
+
+  // `actorId` is required here, unlike its neighbours: a credential records
+  // who issued it, and "nobody" is not an answer a verifier can act on.
+  async issueCertificate(tenantId: number, actorId: string, input: {
+    user_id: string; title: string;
+    kind?: 'course' | 'assessment' | 'contest' | 'program';
+    course_id?: number | null; expires_at?: string | null;
+  }) {
+    // Only somebody at this institution can hold its certificate -- the same
+    // check the institution's own route makes, and the reason a uuid pasted
+    // from the wrong tenant is a 422 rather than a credential nobody can
+    // explain later.
+    if (this.#tenancy) {
+      const membership = await this.#tenancy.membership(tenantId, input.user_id);
+      if (!membership) throw new HttpError(422, 'They are not at this institution.');
+    }
+    const certificate = await this.#careerService()
+      .issueCertificate(tenantId, actorId, input);
+    await this.#log(actorId, 'certificate.issued', 'certificate', num(certificate.id), null,
+      { credential_id: String(certificate.credential_id), user_id: input.user_id,
+        tenant_id: tenantId });
+    return certificate;
+  }
+
+  async revokeCertificate(tenantId: number, id: number, actorId: string | null, reason: string) {
+    const revoked = await this.#careerService().revokeCertificate(tenantId, id, reason);
+    await this.#log(actorId, 'certificate.revoked', 'certificate', id,
+      null, { reason, tenant_id: tenantId });
+    return revoked;
+  }
+
+  /** Refuses in words rather than as a TypeError on a null. */
+  #careerService(): CareerService {
+    if (!this.#career) throw new HttpError(500, 'Credentials are not available here.');
+    return this.#career;
   }
 
   async createAssignment(tenantId: number, actorId: string | null, input: {

@@ -39,7 +39,7 @@ export default async function OnyxPeoplePage(
   const query = '?limit=' + PAGE
     + (role ? '&role=' + encodeURIComponent(role) : '')
     + (q ? '&search=' + encodeURIComponent(q) : '');
-  const [me, members, counts, sections] = await Promise.all([
+  const [me, members, counts, sections, guardianPool, studentPool] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
     onyxApi<Member[]>('/api/onyx/members' + query),
     onyxApiSafe<{ total: number; by_role: Record<string, number> }>(
@@ -47,7 +47,44 @@ export default async function OnyxPeoplePage(
     // For the add form's division picker. Safe if it fails: an institution
     // that runs no sections simply is not offered one.
     onyxApiSafe<{ id: number; name: string; status: number }[]>('/api/onyx/sections'),
+    /*
+     * The two pickers on the Link-a-guardian panel, each fetched for itself.
+     *
+     * NOT `members` above. That is one PAGE of the roster -- a hundred rows,
+     * ordered by id, narrowed by whatever is in the search box -- and the
+     * panel was filtering it for guardians. At Malla Reddy, with 1,448
+     * members, no guardian falls in the first hundred, so the Guardian select
+     * rendered with zero options: a required field with nothing in it, on a
+     * form that therefore could not be submitted at all. The guardian portal
+     * was unreachable through the interface on every institution large enough
+     * to need one.
+     *
+     * `?role=` asks the server the question the panel is actually asking, and
+     * the roster's paging is left to the roster. The server caps `limit` at
+     * 500 (see tenancy.routes.ts), so both of these are bounded whatever is
+     * passed; the student picker says so on the field rather than silently
+     * ending at 500, and the search box above narrows it for anyone further
+     * down.
+     */
+    onyxApiSafe<Member[]>('/api/onyx/members?role=guardian&limit=500'),
+    onyxApiSafe<Member[]>('/api/onyx/members?role=student&limit=500'
+      + (q ? '&search=' + encodeURIComponent(q) : '')),
   ]);
+  /**
+   * The two Link-a-guardian pickers.
+   *
+   * A roll number in the label, where there is one: two learners at this
+   * institution really are both called Sneha Rao, and a select offering the
+   * same name twice is one an administrator cannot answer.
+   */
+  const person = (m: Member) => ({
+    value: String(m.user!.id),
+    label: m.roll_number ? m.roll_number + ' · ' + m.user!.name : m.user!.name,
+  });
+  const named = (pool: Member[] | null) => (pool ?? []).filter((m) => m.user).map(person);
+  const guardianOptions = named(guardianPool);
+  const studentOptions = named(studentPool);
+
   /** How many there are in all, which is not how many are on this page. */
   const total = counts?.total ?? members.length;
   const capped = members.length >= PAGE && total > members.length;
@@ -113,15 +150,24 @@ export default async function OnyxPeoplePage(
                 // numeric field and a uuid becomes NaN, which JSON sends as null and
                 // the route refuses. Left over from when user ids were bigints.
                 wide: true,
-                options: members.filter((m) => m.role === 'guardian' && m.user)
-                  .map((m) => ({ value: String(m.user!.id), label: m.user!.name })) },
+                help: guardianOptions.length
+                  ? undefined
+                  : 'Nobody here holds the guardian role yet. Add them above with '
+                    + 'the role "Parent or guardian" first, then link them.',
+                options: guardianOptions },
               { name: 'student_user_id', label: 'Student', type: 'select', required: true,
                 // A uuid, so NOT numeric: CreatePanel runs Number() over a
                 // numeric field and a uuid becomes NaN, which JSON sends as null and
                 // the route refuses. Left over from when user ids were bigints.
                 wide: true,
-                options: members.filter((m) => m.role === 'student' && m.user)
-                  .map((m) => ({ value: String(m.user!.id), label: m.user!.name })) },
+                // Said out loud rather than left to be discovered: a picker
+                // that quietly stops at 500 of 1,441 is one an administrator
+                // trusts until the day the student they want is not in it.
+                help: studentOptions.length >= 500
+                  ? 'The first 500 by roll number. Search the roster above to '
+                    + 'reach somebody further down.'
+                  : undefined,
+                options: studentOptions },
               { name: 'relationship', label: 'Relationship', placeholder: 'Parent' },
             ]}
           />

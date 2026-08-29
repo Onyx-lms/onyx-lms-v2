@@ -4,11 +4,20 @@ import {
   Card, Empty, Hero, Icon, ListRow, Meter, Pill, Ring, RowList, Score, SectionHead,
   State, relativeDue,
 } from '@/components/onyx-ui';
+import { CreatePanel } from '@/components/onyx-create';
 import { navFor } from '@/lib/onyx-nav';
 import { requireOnyxSession, onyxApi, onyxApiSafe, type Me } from '@/lib/onyx-session';
 import type { Interview } from '@/lib/onyx-career';
 
 export const metadata: Metadata = { title: 'Mock interviews' };
+
+/** Just enough of a member to fill a picker with. */
+interface Directory {
+  user_id: string;
+  role: string;
+  roll_number?: string | null;
+  user: { name: string } | null;
+}
 
 /** The clock time, once the relative day has already been said. */
 const AT = (iso: string) => new Date(iso).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
@@ -42,11 +51,49 @@ function ago(iso: string, now = Date.now()): string {
 export default async function OnyxInterviewsPage() {
   const claims = await requireOnyxSession();
   const staff = ['admin', 'faculty', 'placement', 'employer'].includes(claims.tenant_role);
-  const [me, mine, conducting] = await Promise.all([
+  /*
+   * Who may book one, which is not the same list as `staff`.
+   *
+   * An employer conducts interviews and reads their own; they do not schedule
+   * them -- `POST /api/onyx/interviews` refuses the role, and offering a form
+   * that always 403s is worse than offering none. These three are exactly the
+   * roles that route accepts.
+   */
+  const canSchedule = ['admin', 'placement', 'faculty'].includes(claims.tenant_role);
+  const [me, mine, conducting, candidates, interviewers] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
     onyxApi<Interview[]>('/api/onyx/my/interviews'),
     staff ? onyxApiSafe<Interview[]>('/api/onyx/interviews/mine') : null,
+    /*
+     * The pickers for the panel below.
+     *
+     * WHY THIS PAGE HAD NO FORM UNTIL NOW. Mock interviews are CAR-02, and the
+     * whole feature was reachable only by calling the API directly: nothing in
+     * the product could create one, so the page could only ever say "Nothing
+     * scheduled for you yet" to everybody, for ever. The student dashboard
+     * meanwhile nudged "Book a mock interview" and linked here, to a screen
+     * with no way to book anything.
+     */
+    canSchedule
+      ? onyxApiSafe<Directory[]>('/api/onyx/members?role=student&limit=500')
+      : null,
+    // Faculty and the placement office are who sits on the other side of the
+    // table. Optional on the route, so a blank one is a slot to be filled in
+    // later rather than an error.
+    canSchedule ? onyxApiSafe<Directory[]>('/api/onyx/members?limit=500') : null,
   ]);
+
+  /**
+   * The two pickers, with a roll number in the label where there is one.
+   * Two learners here really are both called Sneha Rao.
+   */
+  const label = (m: Directory) =>
+    (m.roll_number ? m.roll_number + ' · ' : '') + (m.user?.name ?? '');
+  const candidateOptions = (candidates ?? [])
+    .filter((m) => m.user).map((m) => ({ value: m.user_id, label: label(m) }));
+  const interviewerOptions = (interviewers ?? [])
+    .filter((m) => m.user && ['faculty', 'placement', 'admin'].includes(m.role))
+    .map((m) => ({ value: m.user_id, label: m.user!.name }));
 
   const now = Date.now();
   const isFuture = (i: Interview) => Date.parse(i.scheduled_at) >= now;
@@ -182,6 +229,39 @@ export default async function OnyxInterviewsPage() {
                 : 'No call to join — this one is in person. The placement office holds the room.'}
             </p>
           </Hero>
+        </div>
+      ) : null}
+
+      {/* Above the lists, because on the day this page matters to a placement
+          officer it is the only thing they came here to do -- and below the
+          Hero, because a countdown to an interview starting in ten minutes
+          outranks booking the next one. */}
+      {canSchedule ? (
+        <div className="mb-6">
+          <SectionHead title="Book an interview" />
+          <CreatePanel
+            title="Schedule a mock interview" cta="Schedule an interview" icon="mic" compact
+            endpoint="interviews"
+            fields={[
+              { name: 'user_id', label: 'Candidate', type: 'select', required: true, wide: true,
+                // A uuid, so NOT numeric -- CreatePanel would send NaN as null
+                // and the route would refuse it.
+                help: candidateOptions.length >= 500
+                  ? 'The first 500 by roll number.' : undefined,
+                options: candidateOptions },
+              { name: 'title', label: 'What it is', required: true, wide: true,
+                placeholder: 'Mock technical interview' },
+              { name: 'scheduled_at', label: 'When', type: 'datetime', required: true },
+              { name: 'duration_minutes', label: 'Minutes', type: 'number',
+                initial: 45, min: 5, max: 480 },
+              { name: 'interviewer_id', label: 'Interviewer', type: 'select', wide: true,
+                help: 'Leave this empty to assign somebody later.',
+                options: interviewerOptions },
+              { name: 'join_url', label: 'Call link', wide: true,
+                placeholder: 'https://…',
+                help: 'Leave it empty for an interview held in a room.' },
+            ]}
+          />
         </div>
       ) : null}
 

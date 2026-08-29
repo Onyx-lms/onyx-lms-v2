@@ -111,7 +111,37 @@ export default async function OnyxDashboard() {
   const staff = isStaff(me.role);
   const isLearner = me.role === 'student';
 
-  const [courses, attendance, roster, progress, profile] = await Promise.all([
+  /*
+   * ONE WAVE, not three.
+   *
+   * This page was the slowest thing in the product -- a second and a half,
+   * against APIs that answer in a sixth of that -- and the reason was four
+   * round trips laid end to end:
+   *
+   *   1. /me
+   *   2. my/courses, attendance, members, progress, my/profile
+   *   3. my/learning-overview
+   *   4. exams, jobs, drives, outstanding, timetable, audit, courses
+   *
+   * Waves 2 and 4 never depended on each other. Wave 4 was gated on `staff`,
+   * which is known the moment /me returns, so it sat behind wave 2 for no
+   * reason at all -- an administrator paid a full round trip in order to ask
+   * questions that were already answerable.
+   *
+   * Wave 3 was deliberate and still wrong: `mine.length ? … : null` skips one
+   * call for a learner with no courses, and charges every learner who HAS
+   * courses a serialised round trip to find that out. The rare case was
+   * optimised at the expense of the common one. It is now asked alongside
+   * everything else, and the answer is ignored when there are no courses --
+   * one wasted call for the empty case, nothing for anybody else.
+   *
+   * Everything below still depends only on `me`, so this is the whole page in
+   * two waves: who you are, then everything about you at once.
+   */
+  const [
+    courses, attendance, roster, progress, profile, overview,
+    exams, jobs, drives, outstanding, allSlots, activity, allCourses,
+  ] = await Promise.all([
     onyxApiSafe<Course[]>('/api/onyx/my/courses'),
     staff ? null : onyxApiSafe<AttendanceLine[]>('/api/onyx/my/attendance'),
     staff ? onyxApiSafe<{ role: string }[]>('/api/onyx/members') : null,
@@ -120,18 +150,33 @@ export default async function OnyxDashboard() {
     // streak widget -- this page had the streak but never the score, which
     // otherwise only ever surfaced a click away on /onyx/profile.
     isLearner ? onyxApiSafe<{ readiness: LearnerReadiness }>('/api/onyx/my/profile') : null,
+    // What is due, and each course's own progress. This replaced a loop that
+    // called /courses/:id/assignments and /courses/:id/outline once per
+    // course, uncapped; one endpoint answers both.
+    onyxApiSafe<{ assignments: Assignment[]; outlines: Record<number, Outline> }>(
+      '/api/onyx/my/learning-overview'),
+    // What an operator actually runs the institution on: exams, placement,
+    // the timetable and revenue -- none of which is "my courses", which is
+    // why the top of this page used to say "Your courses: you teach 0" to
+    // every administrator who does not also personally teach one.
+    staff ? onyxApiSafe<Exam[]>('/api/onyx/exams') : null,
+    staff ? onyxApiSafe<JobPost[]>('/api/onyx/jobs') : null,
+    staff ? onyxApiSafe<Drive[]>('/api/onyx/drives') : null,
+    staff ? onyxApiSafe<Outstanding>('/api/onyx/finance/outstanding') : null,
+    staff ? onyxApiSafe<TimetableSlot[]>('/api/onyx/timetable') : null,
+    // A wider pool than the six shown in the rail, for two reasons. The rail
+    // filters out routine account plumbing (a membership created, a guardian
+    // link accepted) because it drowns out the operational news the moment
+    // anybody does a run of ordinary admin work. The fortnight chart below
+    // wants the opposite -- every recorded action, plumbing included, because
+    // "how busy has this institution been" is a question about all of it.
+    // One read, both answers.
+    staff ? onyxApiSafe<AuditRow[]>('/api/onyx/audit?limit=400') : null,
+    staff ? onyxApiSafe<Course[]>('/api/onyx/courses?all=1') : null,
   ]);
+
   const mine = courses ?? [];
 
-  // What is due, and each course's own progress -- used to come from calling
-  // `/courses/:id/assignments` and `/courses/:id/outline` once per course in
-  // `mine`, uncapped. `/my/learning-overview` answers both in one round
-  // trip; this just reshapes that single response the same way the per-
-  // course loop used to.
-  const overview = mine.length
-    ? await onyxApiSafe<{ assignments: Assignment[]; outlines: Record<number, Outline> }>(
-      '/api/onyx/my/learning-overview')
-    : null;
   const assignmentsByCourse = groupBy(overview?.assignments ?? [], (a) => a.course_id);
   const assignmentLists = mine.map((c) =>
     (assignmentsByCourse.get(c.id) ?? []).map((a) => ({ ...a, course: c })));
@@ -166,27 +211,6 @@ export default async function OnyxDashboard() {
   const headcount = (roster ?? []).length;
   const shortfall = (attendance ?? []).filter((a) => a.below_threshold);
 
-  // What an operator actually runs the institution on: exams, placement,
-  // the timetable and revenue -- none of which is "my courses", which is
-  // why the top of this page used to say "Your courses: you teach 0" to
-  // every administrator who does not also personally teach one.
-  const [exams, jobs, drives, outstanding, allSlots, activity, allCourses] = staff
-    ? await Promise.all([
-      onyxApiSafe<Exam[]>('/api/onyx/exams'),
-      onyxApiSafe<JobPost[]>('/api/onyx/jobs'),
-      onyxApiSafe<Drive[]>('/api/onyx/drives'),
-      onyxApiSafe<Outstanding>('/api/onyx/finance/outstanding'),
-      onyxApiSafe<TimetableSlot[]>('/api/onyx/timetable'),
-      // A wider pool than the six shown in the rail, for two reasons. The
-      // rail filters out routine account plumbing (a membership created, a
-      // guardian link accepted) because it drowns out the operational news the
-      // moment anybody does a run of ordinary admin work. The fortnight chart
-      // below wants the opposite -- every recorded action, plumbing included,
-      // because "how busy has this institution been" is a question about all
-      // of it. One read, both answers.
-      onyxApiSafe<AuditRow[]>('/api/onyx/audit?limit=400'),
-      onyxApiSafe<Course[]>('/api/onyx/courses?all=1'),
-    ]) : [null, null, null, null, null, null, null];
   const ROUTINE_ACTIVITY = new Set([
     'membership.created', 'membership.removed', 'membership.role_changed',
     'membership.updated', 'user.updated', 'guardian.linked', 'guardian.consent_changed',
@@ -1446,7 +1470,14 @@ const READINESS_LINKS: Record<string, { href: string; verb: string }> = {
   assessment: { href: '/onyx/assessments', verb: 'Your papers' },
   practice: { href: '/onyx/practice', verb: 'Open Code Lab' },
   projects: { href: '/onyx/workspaces', verb: 'Your projects' },
-  interview: { href: '/onyx/interviews', verb: 'Book a mock interview' },
+  // "Your mock interviews", not "Book a mock interview". The other four verbs
+  // here name a destination; this one named an action, and it was the one
+  // action on the list a learner cannot take -- the route that schedules an
+  // interview accepts admin, placement and faculty, so a student following
+  // this nudge arrived at a page with nothing to press. The page is still the
+  // right place to send them: it is where the interview appears once the
+  // placement office books it, and where the feedback lands afterwards.
+  interview: { href: '/onyx/interviews', verb: 'Your mock interviews' },
 };
 
 function ReadinessCard({ readiness }: { readiness: LearnerReadiness }) {

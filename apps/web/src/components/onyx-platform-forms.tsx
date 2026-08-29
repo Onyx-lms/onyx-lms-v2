@@ -5598,3 +5598,178 @@ export function TicketReply({ tenantId, ticket }: {
     </>
   );
 }
+
+/* -------------------------------------------------------------- credentials */
+
+/** Just enough of a member to fill the holder picker. */
+export interface HolderOption { user_id: string; name: string; roll_number: string | null }
+
+/**
+ * CAR-03 from the console -- issuing a credential.
+ *
+ * Deliberately narrower than the institution's own form: no `assessment_id`,
+ * no free-form `detail`. Those exist so that a certificate awarded BY a paper
+ * can point back at it, and a certificate an operator issues by hand is not
+ * that. Everything a verifier ever sees -- the holder, what it says, when it
+ * was issued and whether it still stands -- is here.
+ */
+export function IssueCertificateForm({ tenantId, holders, courses }: {
+  tenantId: number; holders: HolderOption[]; courses: CourseOption[];
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} disabled={!holders.length}
+        className={button}
+        title={holders.length ? undefined : 'Add somebody to this institution first'}>
+        Issue a certificate
+      </button>
+    );
+  }
+  return (
+    <form
+      className="grid gap-3 rounded-2xl border border-line bg-slate-50 p-4 sm:grid-cols-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        setError(null);
+        start(async () => {
+          const expires = String(data.get('expires_at') ?? '');
+          const courseId = String(data.get('course_id') ?? '');
+          const res = await post('onyx/platform/tenants/' + tenantId + '/certificates', {
+            user_id: String(data.get('user_id') ?? ''),
+            title: String(data.get('title') ?? ''),
+            kind: String(data.get('kind') ?? 'course'),
+            // Empty means "not tied to a course", which is a real answer and
+            // not the same as zero.
+            course_id: courseId ? Number(courseId) : null,
+            expires_at: expires ? new Date(expires).toISOString() : null,
+          });
+          if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+          setOpen(false);
+          router.refresh();
+        });
+      }}
+    >
+      {error ? <p role="alert" className="col-span-full text-[13px] text-red-700">{error}</p> : null}
+      <div className="sm:col-span-2">
+        <label className={label} htmlFor="pc-holder">Holder</label>
+        <select id="pc-holder" name="user_id" required className={field}>
+          {holders.map((h) => (
+            <option key={h.user_id} value={h.user_id}>
+              {h.roll_number ? h.roll_number + ' · ' : ''}{h.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="sm:col-span-2">
+        <label className={label} htmlFor="pc-title">What it certifies</label>
+        <input id="pc-title" name="title" required maxLength={255} className={field}
+          placeholder="Applied Algorithms — Course Completion" />
+      </div>
+      <div>
+        <label className={label} htmlFor="pc-kind">Kind</label>
+        {/* Written out, not the four words the column stores. The
+            institution's own form offers "course / assessment / contest /
+            program" exactly as they appear in the database, which is a
+            picker that reads like a schema. */}
+        <select id="pc-kind" name="kind" className={field} defaultValue="course">
+          <option value="course">Completing a course</option>
+          <option value="assessment">Passing an assessment</option>
+          <option value="contest">Placing in a contest</option>
+          <option value="program">Completing a programme</option>
+        </select>
+      </div>
+      <div>
+        <label className={label} htmlFor="pc-course">Course (optional)</label>
+        <select id="pc-course" name="course_id" className={field} defaultValue="">
+          <option value="">Not tied to a course</option>
+          {courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.title}</option>)}
+        </select>
+      </div>
+      <div className="sm:col-span-2">
+        <label className={label} htmlFor="pc-expires">Valid until (optional)</label>
+        <input id="pc-expires" name="expires_at" type="date" className={field} />
+        <p className="mt-1 text-[12.5px] text-muted">
+          Leave it empty and the credential does not expire, which is what a
+          course completion usually is.
+        </p>
+      </div>
+      <div className="col-span-full flex gap-2">
+        <button type="submit" disabled={pending} className={button}>
+          {pending ? 'Issuing…' : 'Issue'}
+        </button>
+        <button type="button" onClick={() => setOpen(false)}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * Revoking one, which always asks why.
+ *
+ * The reason is not paperwork. A revoked credential is never deleted -- its
+ * public page keeps answering and says it was withdrawn -- and the registrar
+ * fielding "why does mine say revoked" a year from now has only this field to
+ * answer from.
+ */
+export function RevokeCertificateButton({ tenantId, certificateId }: {
+  tenantId: number; certificateId: number;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)}
+        className="rounded-lg border border-red-300 px-3 py-1.5 text-[13px] font-semibold
+                   text-red-700 hover:bg-red-50">
+        Revoke
+      </button>
+    );
+  }
+  return (
+    <form
+      className="flex flex-wrap items-start justify-end gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        setError(null);
+        start(async () => {
+          const res = await post('onyx/platform/tenants/' + tenantId
+            + '/certificates/' + certificateId + '/revoke',
+          { reason: String(data.get('reason') ?? '') });
+          if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
+          setOpen(false);
+          router.refresh();
+        });
+      }}
+    >
+      {error ? <p role="alert" className="w-full text-[13px] text-red-700">{error}</p> : null}
+      <label className="sr-only" htmlFor={'pc-reason-' + certificateId}>
+        Why it is being revoked
+      </label>
+      <input id={'pc-reason-' + certificateId} name="reason" required maxLength={500}
+        placeholder="Why it is being revoked"
+        className="min-h-[38px] w-56 rounded-lg border border-line bg-white px-3 text-[13px]" />
+      <button type="submit" disabled={pending}
+        className="min-h-[38px] rounded-lg bg-red-600 px-3 text-[13px] font-semibold text-white
+                   hover:bg-red-700 disabled:opacity-60">
+        {pending ? 'Revoking…' : 'Confirm'}
+      </button>
+      <button type="button" onClick={() => setOpen(false)}
+        className="min-h-[38px] rounded-lg border border-slate-300 px-3 text-[13px]">
+        Cancel
+      </button>
+    </form>
+  );
+}

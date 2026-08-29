@@ -46,3 +46,50 @@ export function appOrigin(): string {
 
   return 'http://127.0.0.1:5175';
 }
+
+/**
+ * Where a *person* reaches this deployment, for the URLs we print rather than
+ * fetch.
+ *
+ * Not `appOrigin()`. That one answers "where does this server call its own
+ * API", and on Vercel it resolves to `API_URL` — an alias chosen so that
+ * server-to-server calls dodge the SSO wall. This one answers "what should we
+ * write on a certificate", and the two are only incidentally the same string.
+ *
+ * WHY THIS EXISTS. `GET /certificates/:id/document.pdf` passed
+ * `process.env.WEB_URL` straight through, and `WEB_URL` is set nowhere — so
+ * `certificatePdf` fell back to its own literal and every certificate this
+ * product has ever issued was printed with
+ * `Verify at http://127.0.0.1:5173/onyx/verify/<id>` across its foot. The
+ * document whose entire job is to carry a reader to the verification page was
+ * sending them to their own machine. The identical bug was found and fixed for
+ * payment return URLs (see `app-context.ts`, `baseUrl`); this is the same fact
+ * under a third name, so it is resolved once here instead of a fourth time.
+ *
+ * Resolution order, most explicit first:
+ *
+ *   WEB_URL                        set deliberately for this purpose.
+ *   WEB_ORIGIN                     the same fact under the name that is
+ *                                  actually set in production.
+ *   VERCEL_PROJECT_PRODUCTION_URL  the stable production alias Vercel injects.
+ *                                  Unlike VERCEL_URL this is not the
+ *                                  deployment-specific hostname, so it does
+ *                                  not sit behind Deployment Protection and it
+ *                                  does not change every push — both of which
+ *                                  matter for a string printed on paper that
+ *                                  somebody may type in a year from now.
+ *   localhost                      development, where 5173 is correct.
+ *
+ * `|| not ??` throughout: an env var present but blank is unset, and blank is
+ * exactly how these arrive from a .env file with nothing after the `=`.
+ */
+export function publicOrigin(): string {
+  const explicit = process.env.WEB_URL || process.env.WEB_ORIGIN;
+  if (explicit) return explicit.replace(/\/+$/, '');
+
+  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  // Vercel's system variables carry no scheme, and its deployments are https.
+  if (production) return 'https://' + production.replace(/\/+$/, '');
+
+  return 'http://127.0.0.1:5173';
+}

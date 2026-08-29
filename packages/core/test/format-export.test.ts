@@ -10,7 +10,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { csvCell, csvDocument } from '../src/format/csv.ts';
-import { pdfTable, pdfResume, pdfScript, pdfScriptBundle } from '../src/format/pdf.ts';
+import {
+  pdfTable, pdfResume, pdfScript, pdfScriptBundle, pdfCertificate,
+} from '../src/format/pdf.ts';
 import { isLatin1 } from '../src/onyx/resume.service.ts';
 
 // ---------------------------------------------------------------------------
@@ -335,4 +337,61 @@ test('an empty bundle is a readable document, not an unopenable file', () => {
   assert.ok(pdf.subarray(0, 8).toString('latin1').startsWith('%PDF-1.4'));
   assert.equal(xrefResolves(pdf).bad, 0);
   assert.ok(pdf.toString('latin1').includes('No submissions yet'));
+});
+
+/* ----------------------------------------------------------- certificates */
+
+const CERTIFICATE = {
+  issuer: 'Meridian Institute of Technology',
+  holder: 'Priya Raman',
+  title: 'Applied Algorithms',
+  kind: 'course',
+  credentialId: '70A4CEBD5640BFBC1865F5029A90C5D7',
+  issuedAt: '27 August 2026',
+  expiresAt: null,
+  verifyUrl: 'https://onyx.example/onyx/verify/70A4CEBD5640BFBC1865F5029A90C5D7',
+};
+
+test('a certificate is a well-formed PDF whose xref survives the embedded mark', () => {
+  const pdf = pdfCertificate(CERTIFICATE);
+  assert.ok(pdf.subarray(0, 8).toString('latin1').startsWith('%PDF-1.4'));
+  assert.ok(pdf.toString('latin1').endsWith('%%EOF\n'));
+
+  /*
+   * The reason this test exists at all.
+   *
+   * Every other document in this file is text, and a byte offset over text is
+   * hard to get wrong. The mark is deflated binary carried through the object
+   * table as latin1, and latin1 is the only encoding that maps it byte for
+   * byte -- one `utf8` anywhere on that path silently doubles the length of
+   * every high byte, every offset after the image lands mid-object, and the
+   * file opens as a blank page in some readers and not at all in others.
+   */
+  const { objects, bad } = xrefResolves(pdf);
+  assert.equal(bad, 0, 'a cross-reference offset does not land on its object');
+  // Catalog, pages, resources, one page + its stream, three fonts, the image
+  // and its palette.
+  assert.equal(objects, 10);
+});
+
+test('the mark is an indexed image, declared where the page can reach it', () => {
+  const body = pdfCertificate(CERTIFICATE).toString('latin1');
+  assert.match(body, /\/XObject << \/Im0 \d+ 0 R >>/,
+    'the resource dictionary has to name the image, or /Im0 Do draws nothing');
+  assert.match(body, /\/Subtype \/Image/);
+  // Indexed over a palette that is itself an object, which is what keeps a
+  // 64-colour logo to a few kilobytes instead of a quarter of a megabyte.
+  assert.match(body, /\/ColorSpace \[\/Indexed \/DeviceRGB 63 \d+ 0 R\]/);
+  assert.match(body, /q [\d.]+ 0 0 [\d.]+ [\d.]+ [\d.]+ cm \/Im0 Do Q/);
+});
+
+test('the verification URL is printed exactly as a reader must type it', () => {
+  const body = pdfCertificate(CERTIFICATE).toString('latin1');
+  // The whole job of the document. A truncated, wrapped or ellipsised URL is
+  // a certificate that cannot be checked, which is the same as a forged one.
+  assert.ok(body.includes('(Verify at ' + CERTIFICATE.verifyUrl + ')'),
+    'the URL is printed in full, unwrapped');
+  assert.ok(body.includes('(CREDENTIAL ' + CERTIFICATE.credentialId + ')'));
+  assert.ok(!/127\.0\.0\.1|localhost/.test(body),
+    'no certificate should ever carry a loopback address to verify at');
 });

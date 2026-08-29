@@ -25,6 +25,7 @@ import {
 import type { ApplicationStatus, RoundOutcome } from '@onyx/core';
 import type { AppContext } from '../../app-context.ts';
 import { assertCan } from '../../capability.ts';
+import { publicOrigin } from '../../../lib/app-origin.ts';
 
 const asReq = (req: ReqLike) => ({
   headers: req.headers as Record<string, string | string[] | undefined>,
@@ -134,7 +135,12 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
     const { file, filename } = await ctx.onyxCareer.certificatePdf(
       claims.tenant_id, idOf(req), {
         viewer: { userId: claims.user_id, role: claims.tenant_role },
-        baseUrl: process.env.WEB_URL,
+        // NOT process.env.WEB_URL on its own, which is set nowhere: the
+        // service then fell back to its own literal and printed
+        // "Verify at http://127.0.0.1:5173/..." across the foot of every
+        // certificate this product has issued. `publicOrigin` carries the
+        // whole resolution order and its reasoning.
+        baseUrl: publicOrigin(),
       });
 
     reply.header('Content-Type', 'application/pdf');

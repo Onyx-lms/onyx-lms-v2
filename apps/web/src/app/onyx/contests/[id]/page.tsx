@@ -7,7 +7,9 @@ import {
 } from '@/components/onyx-ui';
 import { ShareLink } from '@/components/onyx-share';
 import { navFor } from '@/lib/onyx-nav';
-import { requireOnyxSession, onyxApi, type Me, onyxApiRecord } from '@/lib/onyx-session';
+import {
+  requireOnyxSession, onyxApi, onyxApiSafe, type Me, onyxApiRecord,
+} from '@/lib/onyx-session';
 import type { Contest, Leaderboard, LeaderboardRow } from '@/lib/onyx-career';
 
 export const metadata: Metadata = { title: 'Contest' };
@@ -41,10 +43,21 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 export default async function OnyxContestPage({ params }: { params: Promise<{ id: string }> }) {
   await requireOnyxSession();
   const { id } = await params;
-  const [me, contest, board] = await Promise.all([
+  const [me, contest, board, bank] = await Promise.all([
     onyxApi<Me>('/api/onyx/me'),
     onyxApiRecord<Contest>('/api/onyx/contests/' + id),
     onyxApiRecord<Leaderboard>('/api/onyx/contests/' + id + '/leaderboard'),
+    /*
+     * The problem bank, only to put names on the letters.
+     *
+     * A contest carries `{ problem_id, points }` and nothing else, so every
+     * row on this page read "A · Problem 172" -- a database id shown to a
+     * competitor, who then has to open each one to find out what it is. Safe
+     * if it fails: the letter and the points are enough to compete with, and
+     * the fallback below says the id rather than nothing.
+     */
+    onyxApiSafe<{ id: number; title: string; difficulty?: string }[]>(
+      '/api/onyx/problems?limit=500'),
   ]);
   const now = Date.now();
   const starts = Date.parse(contest.starts_at);
@@ -54,6 +67,22 @@ export default async function OnyxContestPage({ params }: { params: Promise<{ id
 
   const problems = contest.problems ?? [];
   const totalPoints = problems.reduce((n, p) => n + (p.points ?? 0), 0);
+  /** Problem id to its name, for the rows below. */
+  const problemTitle = new Map((bank ?? []).map((p) => [Number(p.id), String(p.title)]));
+
+  /**
+   * When the board froze, as a clock time.
+   *
+   * Derived from the contest's own start rather than read off the board,
+   * because `frozen_after_minute` is minutes-since-start and this page has the
+   * start. Rendered in the institution's timezone, as every other time here is.
+   */
+  const frozenAt = board.frozen && board.frozen_after_minute !== null
+    && Number.isFinite(starts)
+    ? new Date(starts + board.frozen_after_minute * 60_000)
+      .toLocaleTimeString('en-IN',
+        { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })
+    : null;
   const format = contest.team_size > 1 ? 'Teams of up to ' + contest.team_size : 'Individual';
 
   // Where you stand comes out of the board you were already sent -- your row
@@ -167,7 +196,8 @@ export default async function OnyxContestPage({ params }: { params: Promise<{ id
                       key={p.problem_id}
                       icon={solved ? 'check' : tried ? 'refresh' : 'code'}
                       tone={solved ? 'good' : tried ? 'neutral' : 'brand'}
-                      title={(LETTERS.charAt(i) || String(i + 1)) + ' · Problem ' + p.problem_id}
+                      title={(LETTERS.charAt(i) || String(i + 1)) + ' · '
+                        + (problemTitle.get(p.problem_id) ?? 'Problem ' + p.problem_id)}
                       href={'/onyx/practice/' + p.problem_id}
                       chips={solved ? <Pill tone="good">Solved</Pill>
                         : tried ? <Pill tone="soon">Attempted</Pill>
@@ -214,10 +244,14 @@ export default async function OnyxContestPage({ params }: { params: Promise<{ id
             {board.frozen ? (
               <div className="mb-2.5">
                 <Banner tone="warn" icon="lock">
-                  The board is frozen
-                  {board.frozen_after_minute !== null
-                    ? ' after minute ' + board.frozen_after_minute : ''}
-                  {' '}and stays frozen until the contest ends. Solves after that still count
+                  {/* The clock time it froze, not the minute of the contest it
+                      froze on. Both are the same fact, and only one of them is
+                      readable: a contest running twelve months announced that
+                      the board "is frozen after minute 525630", which is a
+                      number no competitor can do anything with. A time of day
+                      is the same sentence at any contest length. */}
+                  The board froze{frozenAt ? ' at ' + frozenAt : ''} and stays frozen
+                  until the contest ends. Solves after that still count
                   &mdash; you just will not see them move.
                 </Banner>
               </div>

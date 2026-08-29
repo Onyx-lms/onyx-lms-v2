@@ -365,7 +365,13 @@ export function createContext(): AppContext {
     onyxGuardians: new GuardianService(onyxDb, onyxAudit, onyxExams),
     // `onyxTenancyService` so the console can read and set an institution's
     // registration policy through the one place that parses a domain list.
-    onyxPlatform: new PlatformService(onyxDb, undefined, onyxAssess, onyxTenancyService),
+    // `onyxCareer` so the console can issue and revoke a credential without
+    // the operator being handed the institution's own administrator password.
+    // The same service the institution's own route uses, so a credential id is
+    // minted in one place and a revoked certificate keeps answering in one
+    // place.
+    onyxPlatform: new PlatformService(onyxDb, undefined, onyxAssess, onyxTenancyService,
+      onyxCareer),
     onyxSections,
     onyxOAuthClients: new OAuthClientsService(),
     onyxRunWorker: (opts) => runCodeLabWorker(onyxQueue, onyxCodeLab, {

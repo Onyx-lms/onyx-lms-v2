@@ -27,9 +27,33 @@
  * rather than a tweak to this file.
  */
 
+import { ONYX_MARK } from './pdf-mark.ts';
+
 /** Landscape A4 in points, which is what a wide table needs. */
 export const A4_LANDSCAPE = { width: 842, height: 595 } as const;
 export const A4_PORTRAIT = { width: 595, height: 842 } as const;
+
+/**
+ * A palette image, already deflated, ready to become an /Indexed XObject.
+ *
+ * The header above says that an export needing images is the moment to reach
+ * for a library. This is the narrow exception that did not justify one: a
+ * single logo, opaque, with its palette and samples prepared ahead of time by
+ * `tools/onyx/build-pdf-mark.mjs`. Nothing here decodes, scales or converts,
+ * so it adds no dependency and no surface. Anything more than a logo -- a
+ * photograph, a chart, an alpha channel -- is where the header's advice
+ * stands.
+ */
+export interface IndexedImage {
+  width: number;
+  height: number;
+  /** Number of palette entries; the /Indexed hival is one less. */
+  colours: number;
+  /** Base64 of the deflated colours x 3 RGB lookup table. */
+  palette: string;
+  /** Base64 of the deflated one-byte-per-pixel indices, top row first. */
+  data: string;
+}
 
 export interface PdfColumn {
   header: string;
@@ -272,9 +296,18 @@ function escapeText(value: string): string {
  * `.length` would be right only until the first accented character, at which
  * point every offset after it is wrong and readers reject the file.
  */
-function serialise(streams: string[], page: { width: number; height: number }): Buffer {
+function serialise(streams: string[], page: { width: number; height: number },
+  image?: IndexedImage): Buffer {
   const pageIds = streams.map((_, i) => 4 + i * 2);
   const objects: string[] = [];
+
+  // The three fonts sit immediately after the pages, and anything else after
+  // them. Written as one arithmetic base rather than repeated offsets: the
+  // image made this the fourth place that had to agree about where the font
+  // objects start, and the fourth place is where they stop agreeing.
+  const fontsAt = 4 + streams.length * 2;
+  const imageAt = fontsAt + 3;
+  const paletteAt = fontsAt + 4;
 
   objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
   objects[2] = '<< /Type /Pages /Kids [' + pageIds.map((id) => id + ' 0 R').join(' ')
@@ -282,8 +315,9 @@ function serialise(streams: string[], page: { width: number; height: number }): 
   // F3 is Courier, for submitted code. A proportional face turns aligned
   // columns and indentation into something the candidate did not write, and
   // indentation is the one thing a reader of code needs intact.
-  objects[3] = '<< /Font << /F1 ' + (4 + streams.length * 2) + ' 0 R /F2 '
-    + (5 + streams.length * 2) + ' 0 R /F3 ' + (6 + streams.length * 2) + ' 0 R >> >>';
+  objects[3] = '<< /Font << /F1 ' + fontsAt + ' 0 R /F2 '
+    + (fontsAt + 1) + ' 0 R /F3 ' + (fontsAt + 2) + ' 0 R >>'
+    + (image ? ' /XObject << /Im0 ' + imageAt + ' 0 R >>' : '') + ' >>';
 
   streams.forEach((stream, i) => {
     const id = pageIds[i]!;
@@ -294,12 +328,35 @@ function serialise(streams: string[], page: { width: number; height: number }): 
       + ' >>\nstream\n' + stream + '\nendstream';
   });
 
-  objects[4 + streams.length * 2] =
+  objects[fontsAt] =
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
-  objects[5 + streams.length * 2] =
+  objects[fontsAt + 1] =
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
-  objects[6 + streams.length * 2] =
+  objects[fontsAt + 2] =
     '<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>';
+
+  /*
+   * The one raster this writer can carry, and deliberately only one shape of
+   * it: an /Indexed image whose lookup table and samples both arrive already
+   * deflated. That is the whole of the image support -- no colour conversion,
+   * no filtering, no soft mask -- because the only thing being drawn is a
+   * logo, and a logo composited onto white on its way in needs none of them.
+   *
+   * The bytes go through as latin1, which maps 0..255 to 0..255 without
+   * touching them; every other encoding this file could use would corrupt a
+   * deflate stream on the way out.
+   */
+  if (image) {
+    const data = Buffer.from(image.data, 'base64').toString('latin1');
+    const table = Buffer.from(image.palette, 'base64').toString('latin1');
+    objects[imageAt] = '<< /Type /XObject /Subtype /Image'
+      + ' /Width ' + image.width + ' /Height ' + image.height
+      + ' /ColorSpace [/Indexed /DeviceRGB ' + (image.colours - 1) + ' ' + paletteAt + ' 0 R]'
+      + ' /BitsPerComponent 8 /Filter /FlateDecode'
+      + ' /Length ' + Buffer.byteLength(data, 'latin1') + ' >>\nstream\n' + data + '\nendstream';
+    objects[paletteAt] = '<< /Filter /FlateDecode /Length '
+      + Buffer.byteLength(table, 'latin1') + ' >>\nstream\n' + table + '\nendstream';
+  }
 
   const chunks: Buffer[] = [Buffer.from('%PDF-1.4\n', 'latin1')];
   let offset = chunks[0]!.length;
@@ -376,10 +433,26 @@ export function pdfCertificate(cert: PdfCertificate): Buffer {
   out.push(box(28, 28, page.width - 28, page.height - 28, 1.4, 0.15));
   out.push(box(34, 34, page.width - 34, page.height - 34, 0.6, 0.45));
 
-  let y = page.height - 96;
+  /*
+   * The mark, above the issuer's name and centred with everything else.
+   *
+   * Whose logo, and why this one. The institution's name is the largest thing
+   * in the heading block and stays so; the mark underneath it is Onyx's,
+   * because Onyx is what a reader has to trust when they go to check the
+   * credential. The verification page is Onyx-branded and says so at its top,
+   * and a document that carries a reader there should look like it came from
+   * the same place -- otherwise the page they land on reads as an unrelated
+   * third party asking them to believe it.
+   */
+  const markWidth = 74;
+  const markHeight = markWidth * (ONYX_MARK.height / ONYX_MARK.width);
+  let y = page.height - 78 - markHeight;
+  out.push(image(mid - markWidth / 2, y, markWidth, markHeight));
+
+  y -= 26;
   out.push(shaded(0.35, centre(y, cert.issuer.toUpperCase(), 12, true)));
 
-  y -= 46;
+  y -= 44;
   out.push(centre(y, 'Certificate of Achievement', 26, true));
 
   y -= 40;
@@ -413,7 +486,20 @@ export function pdfCertificate(cert: PdfCertificate): Buffer {
   out.push(shaded(0.55, centre(footY - 14,
     'This document is a record. The page above is the evidence.', 8.5, false)));
 
-  return serialise([out.join('\n')], page);
+  return serialise([out.join('\n')], page, ONYX_MARK);
+}
+
+/**
+ * Draws the one image, scaled to `w` x `h` with its bottom-left at (x, y).
+ *
+ * PDF has no "draw at size" operator: an XObject is always painted into the
+ * unit square, so the size and position are a transform matrix applied before
+ * it. `q`/`Q` bracket that so the rest of the page is drawn in page
+ * coordinates rather than in the logo's.
+ */
+function image(x: number, y: number, w: number, h: number): string {
+  return 'q ' + num(w) + ' 0 0 ' + num(h) + ' ' + num(x) + ' ' + num(y)
+    + ' cm /Im0 Do Q';
 }
 
 /** A rectangle, stroked. Two of them nested is the certificate's border. */
