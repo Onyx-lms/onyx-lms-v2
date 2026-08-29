@@ -148,6 +148,9 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
     const q = validate(z.object({
       role: z.enum(['student', 'faculty', 'exams', 'placement', 'employer', 'admin', 'guardian'])
         .optional(),
+      // 200 is not arbitrary and raising it here does nothing: PlatformService
+      // clamps every console list to ROW_CAP, which is also 200. A schema that
+      // accepted more would be a promise the service does not keep.
       limit: z.coerce.number().int().positive().max(200).optional(),
       // A section id, or the literal `none` for everybody in no section.
       section_id: z.union([z.literal('none'), z.coerce.number().int().positive()]).optional(),

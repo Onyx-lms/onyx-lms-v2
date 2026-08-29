@@ -60,9 +60,18 @@ export default async function OnyxPlatformCertificatesPage(
 
   const [certificates, people, academics] = await Promise.all([
     attempt<CertificateRow[]>(base + '/certificates'),
-    // Everybody, not just students: an institution certifies a lecturer's
-    // completion of a training programme as readily as a learner's course.
-    attempt<PeoplePayload>(base + '/people?limit=500'),
+    /*
+     * Everybody, not just students: an institution certifies a lecturer's
+     * completion of a training programme as readily as a learner's course.
+     *
+     * 200 is the ceiling for every console list -- the route refuses more and
+     * PlatformService clamps to ROW_CAP anyway. Do not raise it here hoping
+     * for a longer picker: the route 422s, `attempt` turns that into a null,
+     * and the page renders an Issue button that is disabled with nothing on
+     * screen saying why. The form says when the list ran out instead, and the
+     * institution's own Certificates screen offers the whole roster.
+     */
+    attempt<PeoplePayload>(base + '/people?limit=200'),
     attempt<AcademicsPayload>(base + '/academics?limit=200'),
   ]);
 
@@ -70,6 +79,12 @@ export default async function OnyxPlatformCertificatesPage(
   const roster = people?.people ?? [];
   const holders: HolderOption[] = roster
     .map((p) => ({ user_id: p.user_id, name: p.name, roll_number: p.roll_number }));
+  /**
+   * Whether somebody is missing from the picker. Read off the payload's own
+   * `capped`, which the route already computes by asking for one more row
+   * than it returns -- a fact rather than a guess from a full-looking page.
+   */
+  const holdersCapped = Boolean(people?.capped);
   /*
    * Names for the register. `issuedCertificates` returns the certificate rows
    * as stored -- a credential carries a `user_id` and nothing else about its
@@ -86,7 +101,8 @@ export default async function OnyxPlatformCertificatesPage(
     <div className="min-w-0 space-y-4">
       <RosterHeader count={rows.length} noun="credential"
         action={
-          <IssueCertificateForm tenantId={tenantId} holders={holders} courses={courses} />
+          <IssueCertificateForm tenantId={tenantId} holders={holders} courses={courses}
+            capped={holdersCapped} />
         } />
 
       <p className="max-w-prose text-[13px] text-muted">

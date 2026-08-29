@@ -5613,8 +5613,10 @@ export interface HolderOption { user_id: string; name: string; roll_number: stri
  * that. Everything a verifier ever sees -- the holder, what it says, when it
  * was issued and whether it still stands -- is here.
  */
-export function IssueCertificateForm({ tenantId, holders, courses }: {
+export function IssueCertificateForm({ tenantId, holders, courses, capped }: {
   tenantId: number; holders: HolderOption[]; courses: CourseOption[];
+  /** True when the roster ran to its ceiling and somebody may be missing. */
+  capped?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -5665,6 +5667,13 @@ export function IssueCertificateForm({ tenantId, holders, courses }: {
             </option>
           ))}
         </select>
+        {capped ? (
+          <p className="mt-1 text-[12.5px] text-muted">
+            The first {holders.length} people at this institution. If the holder
+            you want is not here, issue it from the institution&rsquo;s own
+            Certificates screen.
+          </p>
+        ) : null}
       </div>
       <div className="sm:col-span-2">
         <label className={label} htmlFor="pc-title">What it certifies</label>
