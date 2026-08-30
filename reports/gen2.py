@@ -100,10 +100,8 @@ EXTRAS = [
  ("Credentials that survive scrutiny", "#7c3aed", [
   ("Revocation that keeps answering",
    "A revoked certificate is never deleted. Its public page keeps resolving and says the credential was withdrawn &mdash; which is the only answer useful to whoever is holding a copy. Verified live."),
-  ("Transcripts sealed with a checksum",
-   "The brief said transcript generation. What exists is a sealed document with a SHA-256 checksum, and a checker that answers two separate questions: is this document untampered, and has the register changed since it was sealed."),
-  ("Public verification for both, with no account",
-   "Credential ids and transcript serials both resolve on signed-out pages that state they show only what the issuer published and that nothing can be edited by the holder."),
+  ("Public verification, with no account",
+   "A credential id resolves on a signed-out page that states it shows only what the issuer published and that nothing can be edited by the holder."),
  ]),
  ("Commerce the proposal scoped only as institutional fees", "#c2410c", [
   ("Live Classes &mdash; paid cohort programmes",
