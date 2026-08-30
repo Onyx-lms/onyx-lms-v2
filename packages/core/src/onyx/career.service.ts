@@ -371,8 +371,54 @@ export class CareerService {
   async computeReadiness(tenantId: number, userId: string) {
     const components: ReadinessComponent[] = [];
 
-    // Attendance: their own figure across every course they are enrolled in.
-    const attendance = await this.#attendance.learnerSummary(tenantId, userId);
+    /*
+     * FIVE INDEPENDENT QUESTIONS, ASKED AT ONCE.
+     *
+     * Attendance, assessment, practice, projects and interviews have nothing
+     * to do with one another -- each reads a different table about the same
+     * person -- and they were awaited one after another, so the score cost the
+     * SUM of five round trips rather than the longest of them. This method is
+     * on the critical path of both the dashboard and the profile page, which
+     * is how the two slowest screens in the product got that way.
+     *
+     * Snapshots still wait for workspaces, because you cannot ask which
+     * snapshots belong to a person's workspaces before you know what those
+     * are. That one dependency is real; the other four were incidental.
+     */
+    const [attendance, attempts, submissions, workspaceSnapshots, interviews] = await Promise.all([
+      // Attendance: their own figure across every course they are enrolled in.
+      this.#attendance.learnerSummary(tenantId, userId),
+      // Assessment: published results only. An unpublished mark is not
+      // something the learner has been told, so scoring them on it would be
+      // scoring them on a secret.
+      this.#db.from('onyx_assessment_attempts')
+        .select('id, score, max_score, status')
+        .eq('tenant_id', tenantId).eq('user_id', userId).eq('status', 'published')
+        .then((r) => r.data ?? []),
+      // Practice: distinct Code Lab problems fully solved.
+      this.#db.from('onyx_code_submissions')
+        .select('id, problem_id, score, max_score, status, mode')
+        .eq('tenant_id', tenantId).eq('user_id', userId).eq('mode', 'submit')
+        .eq('status', 'done')
+        .then((r) => r.data ?? []),
+      // Projects: workspaces with at least one snapshot. A workspace nobody
+      // ever captured is a file, not a project.
+      (async () => {
+        const { data: workspaces } = await this.#db.from('onyx_workspaces')
+          .select('id').eq('tenant_id', tenantId).eq('user_id', userId);
+        const ids = (workspaces ?? []).map((x) => Number(x.id));
+        if (!ids.length) return [] as { workspace_id: unknown }[];
+        const { data } = await this.#db.from('onyx_workspace_snapshots')
+          .select('workspace_id').eq('tenant_id', tenantId).in('workspace_id', ids);
+        return data ?? [];
+      })(),
+      // Mock interviews: the mean of released overall scores, out of 5.
+      this.#db.from('onyx_mock_interviews')
+        .select('id, overall, status, released_at')
+        .eq('tenant_id', tenantId).eq('user_id', userId).eq('status', 'completed')
+        .then((r) => r.data ?? []),
+    ]);
+
     const attended = attendance.length
       ? attendance.reduce((t, a) => t + a.percent, 0) / attendance.length / 100
       : 0;
@@ -381,12 +427,6 @@ export class CareerService {
       average_percent: Math.round(attended * 1000) / 10,
     }));
 
-    // Assessment: the mean percentage over published results only. An
-    // unpublished mark is not something the learner has been told, so scoring
-    // them on it would be scoring them on a secret.
-    const { data: attempts } = await this.#db.from('onyx_assessment_attempts')
-      .select('id, score, max_score, status')
-      .eq('tenant_id', tenantId).eq('user_id', userId).eq('status', 'published');
     const marked = (attempts ?? []).filter((a) => a.score !== null && Number(a.max_score) > 0);
     const assessment = marked.length
       ? marked.reduce((t, a) => t + Number(a.score) / Number(a.max_score), 0) / marked.length
@@ -396,12 +436,8 @@ export class CareerService {
       average_percent: Math.round(assessment * 1000) / 10,
     }));
 
-    // Practice: distinct Code Lab problems fully solved. Capped at ten, because
-    // the eleventh says less about readiness than the first did.
-    const { data: submissions } = await this.#db.from('onyx_code_submissions')
-      .select('id, problem_id, score, max_score, status, mode')
-      .eq('tenant_id', tenantId).eq('user_id', userId).eq('mode', 'submit')
-      .eq('status', 'done');
+    // Capped at ten, because the eleventh says less about readiness than the
+    // first did.
     const solved = new Set((submissions ?? [])
       .filter((s) => Number(s.max_score) > 0 && Number(s.score) >= Number(s.max_score))
       .map((s) => Number(s.problem_id)));
@@ -410,25 +446,12 @@ export class CareerService {
       counts_up_to: 10,
     }));
 
-    // Projects: workspaces with at least one snapshot. A workspace nobody ever
-    // captured is a file, not a project.
-    const { data: workspaces } = await this.#db.from('onyx_workspaces')
-      .select('id').eq('tenant_id', tenantId).eq('user_id', userId);
-    const ids = (workspaces ?? []).map((x) => Number(x.id));
-    const { data: snapshots } = ids.length
-      ? await this.#db.from('onyx_workspace_snapshots')
-        .select('workspace_id').eq('tenant_id', tenantId).in('workspace_id', ids)
-      : { data: [] };
-    const withSnapshots = new Set((snapshots ?? []).map((s) => Number(s.workspace_id)));
+    const withSnapshots = new Set(workspaceSnapshots.map((s) => Number(s.workspace_id)));
     components.push(component('projects', Math.min(1, withSnapshots.size / 3), {
       projects: withSnapshots.size,
       counts_up_to: 3,
     }));
 
-    // Mock interviews: the mean of released overall scores, out of 5.
-    const { data: interviews } = await this.#db.from('onyx_mock_interviews')
-      .select('id, overall, status, released_at')
-      .eq('tenant_id', tenantId).eq('user_id', userId).eq('status', 'completed');
     const scored = (interviews ?? []).filter((i) => i.released_at && i.overall !== null);
     const interview = scored.length
       ? scored.reduce((t, i) => t + Number(i.overall), 0) / scored.length / 5

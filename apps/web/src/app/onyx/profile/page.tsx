@@ -51,10 +51,6 @@ const RECENT = 5;
 export default async function OnyxProfilePage() {
   await requireOnyxSession();
   const me = await onyxApi<Me>('/api/onyx/me');
-  // The half of the profile only its owner writes, and the origin the shareable
-  // link is built from -- read from the request rather than hard-coded, so the
-  // address shown is the one the person is actually on.
-  const details = await onyxApiSafe<ProfileDetails>('/api/onyx/my/profile-details');
   const head = await headers();
   const origin = (head.get('x-forwarded-proto') ?? 'https') + '://'
     + (head.get('host') ?? 'onyx-lms-v2.vercel.app');
@@ -68,7 +64,16 @@ export default async function OnyxProfilePage() {
   // "who are you and what institution is this".
   const isFaculty = me.role === 'faculty';
 
-  const [profile, guardians, myCourses, examMarks, myAttempts] = await Promise.all([
+  /*
+   * One wave. `/my/profile-details` was awaited on its own line above, between
+   * /me and this batch, and depended on neither -- so every visit to the
+   * second-slowest page in the product paid a whole round trip in sequence to
+   * fetch something it could have asked for here. The comment it carried
+   * ("the half of the profile only its owner writes") moves with it.
+   */
+  const [details, profile, guardians, myCourses, examMarks, myAttempts] = await Promise.all([
+    // The half of the profile only its owner writes.
+    onyxApiSafe<ProfileDetails>('/api/onyx/my/profile-details'),
     isStudent ? onyxApi<Profile>('/api/onyx/my/profile') : Promise.resolve(null),
     isStudent ? onyxApiSafe<GuardianLink[]>('/api/onyx/guardians') : Promise.resolve(null),
     (isStudent || isFaculty) ? onyxApiSafe<Course[]>('/api/onyx/my/courses') : Promise.resolve(null),

@@ -36,6 +36,25 @@ import {
 export type ProblemKind = 'code' | 'web';
 
 const PROBLEM_COLUMNS = 'id, tenant_id, course_id, kind, title, slug, statement, difficulty, topic, tags, languages, starter_code, preview_entry, time_limit_ms, memory_limit_kb, solution_rule, solution_after_attempts, solution_after, status, created_by, created_at';
+
+/**
+ * What a LIST of problems needs, which is not what one problem needs.
+ *
+ * The practice bank was answering with every column, and a `web` problem
+ * carries its three starter files -- a whole HTML document, a stylesheet and a
+ * script -- in `starter_code`. Seventy-seven problems came to two kilobytes
+ * each and a 153 KB response, to render a table of titles, difficulties and
+ * topics. Nothing on any list screen in this product reads `statement`,
+ * `starter_code`, the solution rules or the runtime limits; all four are for
+ * the page where somebody actually answers the problem.
+ *
+ * A separate constant rather than a parameter, so the two are visible side by
+ * side and the expensive one has to be asked for by name.
+ */
+/** One page of a bank, when the caller does not say. */
+const PROBLEM_PAGE = 100;
+
+const PROBLEM_LIST_COLUMNS = 'id, tenant_id, course_id, kind, title, slug, difficulty, topic, tags, languages, status, created_by, created_at';
 const TEST_COLUMNS = 'id, tenant_id, problem_id, name, stdin, expected_stdout, is_hidden, weight, sort';
 const HINT_COLUMNS = 'id, tenant_id, problem_id, body, sort, penalty_percent';
 const SUBMISSION_COLUMNS = 'id, tenant_id, problem_id, user_id, language, source, mode, status, score, max_score, passed, total, compile_output, error, runtime_ms, memory_kb, queued_at, graded_at, kind, files';
@@ -470,22 +489,40 @@ export class CodeLabService {
 
   async problems(tenantId: number, role: Role, filters: {
     difficulty?: Difficulty; topic?: string; courseId?: number; search?: string;
+    limit?: number; offset?: number;
   } = {}) {
     const staff = role === 'admin' || role === 'faculty';
-    let q = this.#db.from('onyx_problems').select(PROBLEM_COLUMNS).eq('tenant_id', tenantId);
+    let q = this.#db.from('onyx_problems')
+      .select(PROBLEM_LIST_COLUMNS).eq('tenant_id', tenantId);
     if (!staff) q = q.eq('status', 'published');
     if (filters.difficulty) q = q.eq('difficulty', filters.difficulty);
     if (filters.topic) q = q.eq('topic', filters.topic);
     if (filters.courseId) q = q.eq('course_id', filters.courseId);
-    const { data } = await q.order('id');
 
-    let rows = data ?? [];
-    if (filters.search?.trim()) {
-      const needle = filters.search.trim().toLowerCase();
-      rows = rows.filter((p) => (p.title ?? '').toLowerCase().includes(needle)
-        || (p.topic ?? '').toLowerCase().includes(needle));
+    /*
+     * Searched in the DATABASE, not afterwards in memory.
+     *
+     * The filter ran over whatever the read happened to return, so it could
+     * only ever find a match inside the first page -- and PostgREST caps an
+     * unranged read at a thousand rows, so on a large bank "search" quietly
+     * meant "search the oldest thousand". The same mistake, in the same shape,
+     * as the roster search this codebase has already fixed once.
+     *
+     * `%` and `_` are escaped: a title containing either is a search term, not
+     * a wildcard the person meant to type.
+     */
+    const needle = filters.search?.trim();
+    if (needle) {
+      const safe = needle.replace(/[\\%_]/g, (c) => '\\' + c);
+      q = q.or('title.ilike.%' + safe + '%,topic.ilike.%' + safe + '%');
     }
-    return rows;
+
+    // Bounded, and ordered before it is bounded, so page two is the second
+    // page of the same list rather than a second arbitrary thousand.
+    const size = Math.min(Math.max(1, Math.trunc(filters.limit ?? PROBLEM_PAGE)), 200);
+    const from = Math.max(0, Math.trunc(filters.offset ?? 0));
+    const { data } = await q.order('id').range(from, from + size - 1);
+    return data ?? [];
   }
 
   /**

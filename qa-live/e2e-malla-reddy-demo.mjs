@@ -424,9 +424,20 @@ check('and one row returns one script', one.status === 200 && one.isPdf,
 startPhase('6. the operator reads the sitting back');
 
 const sitting = (await call(base + '/exams/' + python.id, { token: pt })).data;
-const register = sitting?.register ?? [];
-check('the register has one row per candidate', register.length === 3,
-  register.length + ' rows');
+const wholeRegister = sitting?.register ?? [];
+/*
+ * The candidates who HANDED IN.
+ *
+ * A register legitimately lists somebody who opened the paper and is still on
+ * it -- that row has no mark yet, by definition, and the three checks below
+ * are all about the marks. Filtering here rather than asserting a row count
+ * keeps the claims about marking true whether or not somebody happens to be
+ * mid-paper when the suite runs; the count is asserted as a floor beside it,
+ * because the three who sat must still be there.
+ */
+const register = wholeRegister.filter((r) => r.score !== null);
+check('every candidate who handed in is on the register', register.length >= 3,
+  register.length + ' handed in of ' + wholeRegister.length + ' on the sheet');
 check('with name, roll number, division, marks and result',
   register.every((r) => r.name && r.roll_number && r.section
     && r.score !== null && r.result !== null),

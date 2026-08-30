@@ -43,12 +43,17 @@ export function registerOnyxCodeLabRoutes(app: Router, ctx: AppContext): void {
     const claims = await requireOnyx(asReq(req), ctx.jwtSecret);
     const q = req.query as {
       difficulty?: Difficulty; topic?: string; course_id?: string; search?: string;
+      limit?: string; offset?: string;
     };
     return ok(await ctx.onyxCodeLab.problems(claims.tenant_id, claims.tenant_role, {
       difficulty: q.difficulty,
       topic: q.topic,
       courseId: q.course_id ? Number(q.course_id) : undefined,
       search: q.search,
+      // Bounded by the service whatever arrives here, so a hand-written
+      // `?limit=100000` is a large page rather than a table scan.
+      limit: q.limit ? Number(q.limit) : undefined,
+      offset: q.offset ? Number(q.offset) : undefined,
     }));
   });
 

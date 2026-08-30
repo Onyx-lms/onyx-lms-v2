@@ -35,6 +35,19 @@ const BANK_COLUMNS = 'id, tenant_id, course_id, name, description, created_by, c
 const QUESTION_COLUMNS = 'id, tenant_id, bank_id, set_number, type, prompt, options, answer, explanation, points, difficulty, tags, version, status, problem_id, created_at';
 const VERSION_COLUMNS = 'id, tenant_id, question_id, version, type, prompt, options, answer, explanation, points, problem_id';
 const ASSESSMENT_COLUMNS = 'id, tenant_id, course_id, section_id, title, instructions, opens_at, closes_at, duration_minutes, attempts_allowed, sections, shuffle_questions, shuffle_options, proctoring, require_camera, require_screen, watch_camera, instant_results, anonymous_marking, moderation_required, breach_limit, pass_mark, status, results_published_at, created_by, created_at';
+
+/**
+ * What a LIST of papers needs.
+ *
+ * `instructions` is the brief a candidate reads before they start -- often
+ * several paragraphs -- and no list screen in this product renders a word of
+ * it. `sections` stays, because the listing does show how many sections a
+ * paper draws, and that count is only knowable from the array itself.
+ */
+/** As many papers as a schedule screen can usefully show at once. */
+const ASSESSMENT_PAGE = 300;
+
+const ASSESSMENT_LIST_COLUMNS = 'id, tenant_id, course_id, section_id, title, opens_at, closes_at, duration_minutes, attempts_allowed, sections, proctoring, require_camera, require_screen, instant_results, anonymous_marking, moderation_required, pass_mark, status, results_published_at, created_by, created_at';
 const ATTEMPT_COLUMNS = 'id, tenant_id, assessment_id, user_id, attempt, paper, status, started_at, expires_at, submitted_at, auto_score, manual_score, score, max_score, consented_at, integrity_flags, integrity_status, terminated_at, terminated_reason, remaining_ms, breach_count, reinstated_at, reinstated_by, updated_at';
 const ANSWER_COLUMNS = 'id, tenant_id, attempt_id, question_id, version, response, auto_points, manual_points, marker_comment, flagged_for_review, submission_id, updated_at';
 const GRADE_COLUMNS = 'id, tenant_id, attempt_id, role, marker_id, manual_score, comment, created_at';
@@ -931,10 +944,17 @@ export class AssessService {
   async assessments(tenantId: number, role: Role, courseId?: number,
     sectionId?: number | null) {
     const staff = role === 'admin' || role === 'faculty' || role === 'exams';
-    let q = this.#db.from('onyx_assessments').select(ASSESSMENT_COLUMNS).eq('tenant_id', tenantId);
+    let q = this.#db.from('onyx_assessments')
+      .select(ASSESSMENT_LIST_COLUMNS).eq('tenant_id', tenantId);
     if (!staff) q = q.eq('status', 'published');
     if (courseId) q = q.eq('course_id', courseId);
-    const { data } = await q.order('opens_at');
+    /*
+     * Bounded. Papers accumulate for as long as an institution runs
+     * examinations, and this read had no range on it -- so it was one busy
+     * term away from being silently truncated at PostgREST's thousand-row cap
+     * and showing a schedule with papers missing from it.
+     */
+    const { data } = await q.order('opens_at').range(0, ASSESSMENT_PAGE - 1);
     const all = data ?? [];
     const rows = staff || sectionId === undefined
       ? all

@@ -45,7 +45,18 @@ const CSS = '#t{color:#0a7}/* ' + tag + ' */';
 const JS = 'document.getElementById("go").onclick=()=>{/* ' + tag + ' */};';
 const SOURCE = '# ' + tag + '\nprint(sum(int(x) for x in input().split()))';
 
-const student = await login('alpha-cse.003@mrdemo.test', 'Student#2026!');
+/*
+ * A POOL of candidates, not one.
+ *
+ * Every run of this suite spends one of the candidate's attempts on the paper
+ * it sits, and a paper allows at most twenty. One fixed candidate therefore
+ * works until it does not, and then reports "none of the published papers
+ * would start" -- which reads as a broken product and means an exhausted
+ * account. The first candidate with an attempt left is used instead.
+ */
+const CANDIDATES = ['003', '006', '011', '017', '023', '031', '042', '055']
+  .map((n) => 'alpha-cse.' + n + '@mrdemo.test');
+const student = await login(CANDIDATES[0], 'Student#2026!');
 const faculty = await login('faculty1@mrdemo.test', 'MrDemo#2026!');
 const admin = await login('admin@mrdemo.test', 'MrDemo#2026!');
 const ops = await login('superadmin@onyx.platform', 'Platform#2026!', '/api/onyx/platform/login');
@@ -87,35 +98,87 @@ let paper = null; let dealt = null; let attemptId = null;
  * this candidate and the suite reported "none found" -- which reads as "the
  * product cannot do this" when it means "this account has sat them all".
  */
-for (const p of papers.filter((x) => x.status === 'published')) {
-  const started = await call('/api/onyx/assessments/' + p.id + '/start', student, {}, 'POST');
-  if (started.status !== 200) continue;
-  const qs = started.body?.data?.questions ?? [];
-  if (qs.some((q) => q.type === 'web') && qs.some((q) => q.type === 'code')) {
-    paper = p; dealt = qs; attemptId = started.body?.data?.id; break;
-  }
+const published = papers.filter((x) => x.status === 'published');
+let sitting = student;
+let sat = me;
+const refusals = [];
+
+/*
+ * PREVIEWED, NOT STARTED.
+ *
+ * Finding a paper that carries both a web and a coding question used to mean
+ * calling `/start` on each candidate paper until one of them dealt the right
+ * mix -- which creates a real attempt on every paper tried and abandons it.
+ * That left in-progress attempts scattered across the demo's examinations, and
+ * the end-to-end suite that counts the register on the Python mid-term started
+ * finding a fourth candidate on it with no mark.
+ *
+ * `/assessments/:id/preview` answers the same question -- what would this
+ * paper deal -- as a staff read, with no attempt written anywhere. The paper
+ * is chosen first, and only the chosen one is ever sat.
+ */
+const wanted = [];
+for (const p of published) {
+  const seen = await call('/api/onyx/assessments/' + p.id + '/preview', faculty);
+  if (seen.status !== 200) continue;
+  const qs = seen.body?.data?.questions ?? seen.body?.data?.paper ?? [];
+  const types = new Set((Array.isArray(qs) ? qs : []).map((q) => q.type));
+  if (types.has('web') && types.has('code')) wanted.push(p);
 }
+
+/*
+ * Then a candidate who still has an attempt left on one of them. A paper
+ * allows at most twenty per person, so a suite pinned to one account works
+ * until that budget is spent and then reports a product failure it has not
+ * found.
+ */
+for (const email of CANDIDATES) {
+  const token = email === CANDIDATES[0] ? student : await login(email, 'Student#2026!');
+  if (!token) continue;
+  const who = (await call('/api/onyx/me', token)).body?.data;
+  if (!who) continue;
+  // On the course the web papers are set for, or every start is refused for
+  // enrolment rather than answered about attempts.
+  await call('/api/onyx/courses/' + wd.id + '/enroll', admin, { user_id: who.user_id }, 'POST');
+
+  for (const p of wanted) {
+    const started = await call('/api/onyx/assessments/' + p.id + '/start', token,
+      { consent: true }, 'POST');
+    if (started.status !== 200) {
+      refusals.push(started.body?.message ?? String(started.status));
+      continue;
+    }
+    paper = p;
+    dealt = started.body?.data?.questions ?? [];
+    attemptId = started.body?.data?.id;
+    sitting = token;
+    sat = who;
+    break;
+  }
+  if (paper) break;
+}
+
 check('a paper with both a web and a coding question', !!paper,
-  paper ? paper.title + ' (attempt ' + attemptId + ')'
-    : 'none of the ' + papers.filter((x) => x.status === 'published').length
-      + ' published papers would start for this candidate');
+  paper ? paper.title + ' (attempt ' + attemptId + ', ' + sat.email + ')'
+    : wanted.length + ' of ' + published.length + ' papers carry both, none startable by '
+      + CANDIDATES.length + ' candidates — ' + [...new Set(refusals)].join(' | '));
 if (!paper) process.exit(1);
 
 // --- the candidate writes, and hands in ------------------------------------
 const web = dealt.find((q) => q.type === 'web');
 const code = dealt.find((q) => q.type === 'code');
-const a1 = await call('/api/onyx/attempts/' + attemptId + '/answer', student, {
+const a1 = await call('/api/onyx/attempts/' + attemptId + '/answer', sitting, {
   question_id: web.question_id ?? web.id,
   response: { files: { 'index.html': HTML, 'index.css': CSS, 'index.js': JS } },
 }, 'POST');
-const a2 = await call('/api/onyx/attempts/' + attemptId + '/answer', student, {
+const a2 = await call('/api/onyx/attempts/' + attemptId + '/answer', sitting, {
   question_id: code.question_id ?? code.id,
   response: { source: SOURCE, language: 'python' },
 }, 'POST');
 check('they write into all three files, and a program', a1.status === 200 && a2.status === 200,
   'HTTP ' + a1.status + ' / ' + a2.status);
 
-const handed = await call('/api/onyx/attempts/' + attemptId + '/submit', student, {}, 'POST');
+const handed = await call('/api/onyx/attempts/' + attemptId + '/submit', sitting, {}, 'POST');
 check('and hand in', handed.status === 200, 'HTTP ' + handed.status);
 
 /** Is every distinctive string in this blob? */
@@ -137,7 +200,7 @@ const holds = (blob) => {
  * "the candidate cannot read their own answers back", which would have been a
  * serious defect if it had been true. The 404 was the harness.
  */
-const own = await call('/api/onyx/attempts/' + attemptId, student);
+const own = await call('/api/onyx/attempts/' + attemptId, sitting);
 const o = holds(own.body?.data);
 check('the candidate reads their own three files back', o.html && o.css && o.js,
   JSON.stringify(o));

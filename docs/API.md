@@ -389,6 +389,9 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/platform/tenants/:id/courses/:courseId/roster` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/courses/:courseId/enroll` | platform admin |
 | `DELETE` | `/api/onyx/platform/tenants/:id/courses/:courseId/enroll/:userId` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/certificates` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/certificates` | platform admin |
+| `POST` | `/api/onyx/platform/tenants/:id/certificates/:certificateId/revoke` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/assignments` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/assessments` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/exams` | platform admin |
@@ -511,7 +514,7 @@ docs:check` fails the build if it has.
 | `PATCH` | `/api/onyx/sections/:id` | admin, exams |
 | `DELETE` | `/api/onyx/sections/:id` | admin |
 | `PUT` | `/api/onyx/members/:id/section` | admin, exams |
-| `GET` | `/api/onyx/members` | admin, faculty, exams |
+| `GET` | `/api/onyx/members` | admin, faculty, exams, placement |
 | `GET` | `/api/onyx/members/count` | admin, faculty, exams |
 | `POST` | `/api/onyx/members` | admin, exams, placement |
 | `PATCH` | `/api/onyx/members/:id` | admin, exams, placement, faculty |
@@ -520,4 +523,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_422 endpoints across 9 route files._
+_425 endpoints across 9 route files._
