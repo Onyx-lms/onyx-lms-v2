@@ -219,10 +219,36 @@ export class FakeDb {
         });
         return builder;
       },
+      /*
+       * One row, none, or an ERROR -- which is the part that matters.
+       *
+       * PostgREST answers `.maybeSingle()` over more than one row with a
+       * failure, not with the first of them. This returned `list[0]`, and that
+       * difference hid a real bug for months: `onyx_readiness_scores` lost its
+       * unique constraint to a `CREATE TABLE ... IF NOT EXISTS` that skipped
+       * it, a second row appeared, and against the real database every
+       * subsequent read came back null -- so the code that reads-then-inserts
+       * inserted again, once per profile view, until one learner had 258 rows.
+       * Against this fake the same code looked fine.
+       *
+       * A double that is kinder than the thing it stands in for is a double
+       * that certifies bugs. See also the PostgREST row cap above, emulated
+       * here for the same reason.
+       */
       maybeSingle: async () => {
         const res = resolve();
         if (res.error) return { data: null, count: 0, error: res.error };
         const list = (res.data ?? []) as Row[];
+        if (list.length > 1) {
+          return {
+            data: null,
+            count: res.count,
+            error: {
+              code: 'PGRST116',
+              message: 'JSON object requested, multiple (or no) rows returned',
+            },
+          };
+        }
         return { data: list[0] ?? null, count: res.count, error: null };
       },
       then: (resolveFn: (v: unknown) => unknown) => Promise.resolve(resolve()).then(resolveFn),

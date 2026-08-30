@@ -74,6 +74,13 @@ function world(c = clock()) {
     onyx_workspace_snapshots: [],
     onyx_batch_members: [],
     onyx_problems: [],
+  }, {
+    /*
+     * The constraint the database was missing (0044). Without it declared here
+     * the fake would happily hold two readiness rows for one learner, and the
+     * test below -- which is about exactly that -- would prove nothing.
+     */
+    onyx_readiness_scores: [['tenant_id', 'user_id']],
   });
   const academics = new AcademicsService(db as never);
   const attendance = new AttendanceService(db as never, academics, c.now);
@@ -840,4 +847,71 @@ test('the interview list never carries feedback, released or not', async () => {
   // it would be a second place to get it wrong.
   assert.equal(JSON.stringify(list).includes('Go deeper.'), false);
   assert.equal(JSON.stringify(list).includes('Private.'), false);
+});
+
+test('computing a readiness score twice keeps one row, not two', async () => {
+  /*
+   * The runaway this pins.
+   *
+   * onyx_readiness_scores is written read-then-insert-or-update, and its unique
+   * constraint was declared in migration 0005 and never actually created --
+   * `CREATE TABLE ... IF NOT EXISTS` skipped the whole statement, constraints
+   * included, on a database where the table already existed. So a second row
+   * could be written; and once there were two, `.maybeSingle()` returned
+   * NEITHER -- PostgREST answers more-than-one-row with an error -- so the read
+   * came back null, so the code inserted, so there were three. One learner on
+   * the demonstration institution reached 258 copies, growing by one on every
+   * view of their profile.
+   *
+   * Two things had to be true for that, and this checks both: the row is
+   * updated rather than duplicated, and the read still answers when it is
+   * asked twice in a row.
+   */
+  const w = world();
+
+  const first = await w.career.computeReadiness(T, 'user-10');
+  const second = await w.career.computeReadiness(T, 'user-10');
+
+  const rows = w.db.tables.onyx_readiness_scores!
+    .filter((r) => Number(r.tenant_id) === T && r.user_id === 'user-10');
+  assert.equal(rows.length, 1, 'a second compute must update the row, not add one');
+
+  // And the stored row is readable afterwards, which is what stopped working
+  // the moment there were two of them.
+  const stored = await w.career.readiness(T, 'user-10');
+  assert.ok(stored, 'the stored score is still readable after a recompute');
+  assert.equal(Number(stored.score), second.score);
+  assert.equal(Number(stored.score), first.score);
+});
+
+test('a score already duplicated in the database still reads back', async () => {
+  /*
+   * The other half, and the one that matters for a database that has already
+   * drifted. 0044 stops NEW duplicates; it cannot un-write the ones a live
+   * install accumulated before it ran, and the read has to answer for those
+   * too. `.maybeSingle()` did not: PostgREST answers more-than-one-row with an
+   * error, so the read returned null and the caller treated a learner with 258
+   * stored scores as a learner with none.
+   *
+   * The duplicate is pushed straight into the table, past the constraint the
+   * fake now enforces, because that is exactly how the real rows got there --
+   * written when nothing was stopping them.
+   */
+  const w = world();
+  await w.career.computeReadiness(T, 'user-10');
+
+  const rows = w.db.tables.onyx_readiness_scores!;
+  const original = rows.find((r) => r.user_id === 'user-10')!;
+  rows.push({
+    ...original,
+    id: 9_999,
+    score: 1,
+    // Older, so "the newest wins" is a claim with something to beat.
+    computed_at: '2000-01-01T00:00:00.000Z',
+  });
+
+  const stored = await w.career.readiness(T, 'user-10');
+  assert.ok(stored, 'a duplicated score must still be readable');
+  assert.equal(Number(stored.score), Number(original.score),
+    'the newest row is the answer, not the stale copy and not nothing');
 });

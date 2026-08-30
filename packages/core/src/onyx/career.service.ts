@@ -73,6 +73,16 @@ export function newCredentialId(): string {
   return randomBytes(16).toString('hex').toUpperCase();
 }
 
+/**
+ * A unique violation, however the driver reports it. The SQLSTATE is absent
+ * from some drivers and from the test double, so matching only `23505` sends a
+ * plain duplicate down the 500 path.
+ */
+function isDuplicate(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === '23505' || /duplicate key|unique/i.test(error.message ?? '');
+}
+
 export class CareerService {
   #db: OnyxDb;
   #academics: AcademicsService;
@@ -481,16 +491,53 @@ export class CareerService {
         formula: READINESS_WEIGHTS as never,
         computed_at: at,
       });
-      if (error) throw new HttpError(500, 'Could not save the score: ' + error.message);
+      /*
+       * A row appeared between the read and the write -- two requests for the
+       * same learner, which is exactly what a dashboard and a profile page
+       * opened together look like. Now that the unique index exists this is a
+       * 23505 rather than a second row, so it has to be caught: the whole
+       * point of the constraint is lost if it turns a duplicate into a 500 on
+       * somebody's profile.
+       *
+       * Upserted by hand rather than with `.upsert()`, the convention this
+       * codebase already follows: the fake in the unit tests and the real
+       * client disagree about it, and it is two queries either way.
+       */
+      if (error && isDuplicate(error)) {
+        await this.#db.from('onyx_readiness_scores').update({
+          score, breakdown: components as never,
+          formula: READINESS_WEIGHTS as never, computed_at: at,
+        }).eq('tenant_id', tenantId).eq('user_id', userId);
+      } else if (error) {
+        throw new HttpError(500, 'Could not save the score: ' + error.message);
+      }
     }
 
     return { user_id: userId, score, breakdown: components, formula: READINESS_WEIGHTS, computed_at: at };
   }
 
+  /**
+   * The stored score, newest first.
+   *
+   * NOT `.maybeSingle()`, which is what turned a missing constraint into a
+   * runaway. `onyx_readiness_scores` should hold one row per learner and the
+   * database now enforces that (0044) -- but it did not, and once a second row
+   * existed `.maybeSingle()` stopped returning EITHER of them, because
+   * PostgREST answers more-than-one-row with an error. This read came back
+   * null, the caller below read that as "no score yet" and inserted another,
+   * and every view of that learner's profile added one more. A learner on the
+   * demonstration institution reached 258.
+   *
+   * Ordering and taking the first is right whatever the table contains: with
+   * the constraint there is one row, and without it the newest is the answer.
+   * A read whose correctness depends on a constraint being present is a read
+   * that fails silently the day it is not.
+   */
   async readiness(tenantId: number, userId: string) {
     const { data } = await this.#db.from('onyx_readiness_scores')
-      .select(READINESS_COLUMNS).eq('tenant_id', tenantId).eq('user_id', userId).maybeSingle();
-    return data ?? null;
+      .select(READINESS_COLUMNS).eq('tenant_id', tenantId).eq('user_id', userId)
+      .order('computed_at', { ascending: false }).limit(1);
+    return (data ?? [])[0] ?? null;
   }
 
   /**

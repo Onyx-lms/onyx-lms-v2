@@ -151,9 +151,28 @@ export class PaymentService {
 
   /** Idempotency key: the reference is stored in payment_histories.session_id. */
   async existingFulfilment(reference: string): Promise<string | null> {
+    /*
+     * NOT `.maybeSingle()`, and the reason is the whole point of this method.
+     *
+     * `fulfil` writes ONE payment_histories row PER ITEM -- a two-course order
+     * is two rows carrying the same session_id -- and nothing makes session_id
+     * unique. PostgREST answers `.maybeSingle()` over more than one row with an
+     * error, so on any multi-item order this read came back null and the guard
+     * reported "not fulfilled yet" about an order that had been. A replayed
+     * webhook or a re-opened return URL would then fulfil it a second time:
+     * enrolled twice, charged into the ledger twice, the revenue split written
+     * twice.
+     *
+     * Single-item orders worked, which is why it survived. The unit test double
+     * returned the first of several rather than failing, which is why the tests
+     * agreed.
+     *
+     * The invoice is the same on every row of one order, so the first is the
+     * answer.
+     */
     const { data } = await this.#db.from('payment_histories')
-      .select('invoice').eq('session_id', referenceKey(reference)).maybeSingle();
-    return data?.invoice ?? null;
+      .select('invoice').eq('session_id', referenceKey(reference)).limit(1);
+    return (data ?? [])[0]?.invoice ?? null;
   }
 
   /**

@@ -165,3 +165,40 @@ test('PAY-01 only gateways with a registered provider are offered', async () => 
   assert.equal(gateways.every((g: any) => !('keys' in g)), true,
     'credentials never leave the server');
 });
+
+test('PAY-01 a replay of a MULTI-ITEM order is still recognised', async () => {
+  /*
+   * The guard failing open, which single-item orders hid.
+   *
+   * `fulfil` writes one payment_histories row per item, all carrying the same
+   * session_id, and nothing makes session_id unique. `existingFulfilment` read
+   * it with `.maybeSingle()` -- which PostgREST answers with an ERROR when more
+   * than one row matches, not with the first of them. So on any order of two
+   * or more courses the read returned null, the guard said "not fulfilled" of
+   * an order that had been, and a replayed webhook would have enrolled and
+   * charged the buyer a second time.
+   *
+   * The order used everywhere else in this file has two items, so the bug was
+   * always in range; the fake was returning row zero and agreeing with the
+   * code. It now refuses more than one row, as the real client does.
+   */
+  const d = seed();
+  const { service } = build(d);
+  const ref = signOrder(ORDER, SECRET);
+
+  await service.fulfil(pending(ORDER), ref, {});
+  const rows = d.tables.payment_histories.length;
+  assert.ok(rows > 1, 'this order must write more than one history row to be the case under test');
+
+  /*
+   * This is the read the guard is made of. `completeCheckout` and the webhook
+   * handler both return early on a non-null answer here, so a null one is the
+   * difference between recognising a replay and fulfilling it again. `fulfil`
+   * itself is the inner write and is deliberately unguarded -- it is only ever
+   * reached through one of those two.
+   */
+  const invoice = await service.existingFulfilment(ref);
+  assert.notEqual(invoice, null, 'a fulfilled multi-item order must be recognised on replay');
+  assert.equal(invoice, d.tables.payment_histories[0].invoice,
+    'and it is that order’s invoice, not some other row’s');
+});
