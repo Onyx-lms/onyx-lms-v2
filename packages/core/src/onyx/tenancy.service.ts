@@ -182,8 +182,20 @@ export class TenancyService {
       throw new HttpError(422, 'An institution with that address already exists.');
     }
 
+    /*
+     * Open to self-signup from the moment it exists (0046).
+     *
+     * Named explicitly rather than left to the column default: whether a
+     * fresh institution can be found and joined by a stranger typing their
+     * own name and email is exactly the kind of decision that should be
+     * visible where an institution is created, not implicit in a schema file
+     * three migrations away. `open` rather than `domain` for the same reason
+     * -- `domain` with no domains configured yet takes zero registrations,
+     * which is not what "open by default" was asked to mean.
+     */
     const { data: tenant, error } = await this.#db.from('onyx_tenants').insert({
       name: input.name.trim(), slug, status: 1, plan: input.plan ?? null,
+      student_signup: true, signup_mode: 'open',
     }).select(TENANT_COLUMNS).maybeSingle();
     // Two simultaneous signups for the same address get past the check above
     // and collide on the unique constraint. That is the caller's answer, not a

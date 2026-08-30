@@ -141,6 +141,29 @@ test('an institution and its first administrator are created together', async ()
   assert.equal(m.role, 'admin');
 });
 
+test('a new institution starts open to self-signup', async () => {
+  /*
+   * 0046, taken with the consequence stated first: an institution used to be
+   * created closed -- student_signup false, signup_mode 'domain' with no
+   * domains configured, which together take zero registrations -- and stayed
+   * that way until its own administrator found the switch. That is why the
+   * public /onyx/signup picker only ever listed three of the seven
+   * institutions on the platform: nobody had opened the other four.
+   *
+   * By decision, a new institution now starts reachable from that picker
+   * immediately. 'open' rather than 'domain', because 'domain' with an empty
+   * list is the same as closed -- a default that still takes no signups is
+   * not the default that was asked for.
+   */
+  const { svc } = await make();
+  const { tenant } = await svc.createTenant({
+    name: 'Delta Institute',
+    admin: { name: 'D Admin', email: 'd@delta.test', password: 'Secret#2026' },
+  });
+  assert.equal(tenant!.student_signup, true);
+  assert.equal(tenant!.signup_mode, 'open');
+});
+
 test('a name that yields no usable address is rejected before anything is written', async () => {
   const { db, svc } = await make();
   const before = db.tables.onyx_tenants!.length;

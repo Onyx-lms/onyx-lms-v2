@@ -1149,8 +1149,18 @@ export class PlatformService {
       .select('id').eq('slug', slug).maybeSingle();
     if (clash) throw new HttpError(422, 'An institution with that address already exists.');
 
+    /*
+     * Open to self-signup from the moment it exists (0046) -- named here
+     * explicitly rather than left to the column default, because this is the
+     * route the operator console actually calls to bring a new institution
+     * onto the platform, and whether that institution can be found and
+     * joined by a stranger typing their own name and email is a decision
+     * that should be visible at the point of creation, not implicit three
+     * migrations away.
+     */
     const { data: tenant, error } = await this.#db.from('onyx_tenants').insert({
       name: input.name.trim(), slug, status: 1, plan: input.plan ?? null,
+      student_signup: true, signup_mode: 'open',
     }).select(TENANT_COLUMNS).maybeSingle();
     if (error) throw new HttpError(500, 'Could not create the institution: ' + error.message);
 
