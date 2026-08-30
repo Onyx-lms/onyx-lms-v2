@@ -69,6 +69,21 @@ export const ATTENDANCE_STATUSES: AttendanceStatus[] = ['present', 'absent', 'la
 /** Counted as having attended. Late is still there; excused is neither. */
 const ATTENDED: AttendanceStatus[] = ['present', 'late'];
 
+/**
+ * How a course's attendance is read back: a page at a time, in batches of
+ * sessions.
+ *
+ * `RECORD_PAGE` is the PostgREST page size. `SESSION_BATCH` keeps the `in()`
+ * list short enough to survive as a query string -- a long one comes back
+ * empty rather than erroring, which is the worst way for a limit to announce
+ * itself. `RECORD_CEILING` is the stop: a hundred thousand records on one
+ * course is not a register any more, and looping for ever to build it would
+ * take the request down with it.
+ */
+const RECORD_PAGE = 1000;
+const SESSION_BATCH = 100;
+const RECORD_CEILING = 100_000;
+
 export class AttendanceService {
   #db: OnyxDb;
   #academics: AcademicsService;
@@ -349,9 +364,40 @@ export class AttendanceService {
     }
 
     const ids = sessions.map((s) => Number(s.id));
-    const { data } = await this.#db.from('onyx_attendance_records')
-      .select(RECORD_COLUMNS).eq('tenant_id', tenantId).in('session_id', ids);
-    const records = data ?? [];
+
+    /*
+     * PAGED, because this read was already wrong.
+     *
+     * A course's attendance is one row per learner per session, so a course of
+     * 1,441 with ten sessions holds fourteen thousand of them. This asked for
+     * all of them with no range, and PostgREST answers an unranged read with
+     * AT MOST A THOUSAND ROWS and a 200 -- so the register, the cohort average
+     * and the below-threshold list on any course past a hundred learners were
+     * computed from whichever thousand came back first. No error, no warning,
+     * just a plausible figure that was not true.
+     *
+     * The `.in()` on session ids is why the guard in o00-unbounded-reads did
+     * not catch it: a narrowed read is usually a bounded one, and here the
+     * narrowing is to a whole term of a whole cohort.
+     *
+     * Ids are batched as well as rows paged. A query string carrying two
+     * thousand session ids is a query string PostgREST rejects, and a term with
+     * that many sessions is a term this will still answer.
+     */
+    const records: Awaited<ReturnType<typeof this.records>> = [];
+    for (let i = 0; i < ids.length; i += SESSION_BATCH) {
+      const slice = ids.slice(i, i + SESSION_BATCH);
+      for (let from = 0; from < RECORD_CEILING; from += RECORD_PAGE) {
+        // eslint-disable-next-line no-await-in-loop -- each page has to arrive
+        // before this knows whether to ask for another.
+        const { data } = await this.#db.from('onyx_attendance_records')
+          .select(RECORD_COLUMNS).eq('tenant_id', tenantId).in('session_id', slice)
+          .order('id').range(from, from + RECORD_PAGE - 1);
+        const page = data ?? [];
+        records.push(...(page as typeof records));
+        if (page.length < RECORD_PAGE) break;
+      }
+    }
 
     /*
      * Grouped once, not filtered per learner.

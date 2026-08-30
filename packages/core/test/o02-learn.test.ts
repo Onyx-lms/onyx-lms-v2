@@ -1091,3 +1091,57 @@ test('a roster row carries the person, not just their id', async () => {
   const withGhost = await academics.roster(T, 1);
   assert.equal(withGhost.find((r) => r.user_id === 'ghost')?.user, null);
 });
+
+test('a course past the row cap is counted in full, not to the first thousand', async () => {
+  /*
+   * The defect this pins, which was not slowness but wrongness.
+   *
+   * Attendance is one row per learner per session, so a large course holds
+   * tens of thousands of them. `courseAnalytics` asked for all of them with no
+   * range, and PostgREST answers an unranged read with AT MOST a thousand rows
+   * and a 200 -- so the register, the cohort average and the below-threshold
+   * list were computed from whichever thousand came back first. No error, no
+   * warning, just a plausible figure that was not true. The fake emulates that
+   * cap, which is what lets this be checked at all.
+   *
+   * 1,200 learners over one session: one row each, two hundred past the cap.
+   * Every one of them was present, so a truncated read shows a thousand
+   * present and two hundred absent, and the cohort average comes out at 83%
+   * instead of 100.
+   */
+  const w = world();
+  const c = clock();
+  const attendance = w.attendance(c.now);
+
+  const LEARNERS = 1_200;
+  const ids = Array.from({ length: LEARNERS }, (_, i) => 'big-' + i);
+  for (const id of ids) {
+    w.db.tables.onyx_enrollments!.push({
+      id: 10_000 + w.db.tables.onyx_enrollments!.length,
+      tenant_id: T, course_id: 1, user_id: id, status: 1,
+    });
+  }
+
+  c.advance(86_400_000);
+  const session = await attendance.createSession(T, 1, 'user-20', {
+    title: 'A very full lecture', scheduled_at: new Date(c.now()).toISOString(),
+  });
+  await attendance.mark(T, Number(session.id), 'user-20',
+    ids.map((id) => ({ user_id: id, status: 'present' })) as never);
+
+  const analytics = await attendance.courseAnalytics(T, 1, 75);
+
+  const counted = analytics.learners.filter((l) => ids.includes(l.user_id));
+  assert.equal(counted.length, LEARNERS, 'every enrolled learner is on the register');
+
+  const missed = counted.filter((l) => l.attended !== 1);
+  assert.deepEqual(missed.map((l) => l.user_id).slice(0, 5), [],
+    missed.length + ' learners were marked present and read back as absent -- the '
+    + 'attendance read is truncated');
+
+  // Only about the twelve hundred. The fixture's own two learners are enrolled
+  // on this course and were not marked for this session, so they are correctly
+  // below the threshold and are not what this test is about.
+  assert.deepEqual(counted.filter((l) => l.below_threshold).map((l) => l.user_id), [],
+    'a learner marked present must not read back as below the threshold');
+});
