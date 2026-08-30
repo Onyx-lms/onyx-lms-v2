@@ -66,3 +66,4 @@ backups/
 # and swept into a commit once by `git add -A`. Kept out of the history
 # rather than tidied into it: they are somebody working, not a suite.
 qa-run/
+qa-live/_shots/
