@@ -98,8 +98,14 @@ export default async function OnyxCertificatesPage() {
                which is a database enum wearing a label. */
             { name: 'kind', label: 'What kind of credential', type: 'select',
               fallback: 'course',
+              // The four supplied designs, then the three kinds that predate
+              // them -- each of which renders on the design closest to what it
+              // means, so nothing already issued changes what it looks like.
               options: [
                 { value: 'course', label: 'Course completion' },
+                { value: 'internship', label: 'Internship' },
+                { value: 'project', label: 'Project completion' },
+                { value: 'performance', label: 'Performance' },
                 { value: 'assessment', label: 'Assessment result' },
                 { value: 'contest', label: 'Contest placing' },
                 { value: 'program', label: 'Programme award' },

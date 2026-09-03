@@ -14,7 +14,7 @@ import {
   validate, ok, requirePlatformAdmin, ROLES, HttpError,
   CAPABILITIES, CAPABILITY_AREAS, holdersOf, normaliseOverrides, normalisePersonal, can,
   GREEK_SECTIONS, LETTER_SECTIONS, pdfScript, pdfScriptBundle,
-  type PermissionOverrides,
+  type PermissionOverrides, type PlatformDenials, normaliseDenials, needsPlatformGrant,
 } from '@onyx/core';
 import type { Role } from '@onyx/types';
 import type { AppContext } from '../../app-context.ts';
@@ -118,15 +118,39 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
     await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     const tenant = await ctx.onyxPlatform.tenant(idOf(req));
     const overrides = (tenant?.permissions ?? {}) as PermissionOverrides;
+    const denied = (tenant?.platform_denied ?? []) as PlatformDenials;
     return ok({
       capabilities: CAPABILITIES.map((cap) => ({
         ...cap,
-        holders_now: holdersOf(cap.key, overrides),
+        holders_now: holdersOf(cap.key, overrides, denied),
         changed: Object.prototype.hasOwnProperty.call(overrides, cap.key),
+        denied_by_platform: denied.includes(cap.key),
+        grant_required: needsPlatformGrant(cap.key),
       })),
       areas: CAPABILITY_AREAS,
+      denied,
       tenant: { id: tenant.id, name: tenant.name },
     });
+  });
+
+  /**
+   * What this institution may not do at all -- the platform's own decision.
+   *
+   * Distinct from the matrix above, which is the institution's decision and
+   * which its own administrator may edit. A key listed here is refused for
+   * every role including `admin`, and no setting inside the institution can
+   * hand it back. Lifting it is this same route with the key removed.
+   */
+  app.put('/api/onyx/platform/tenants/:id/permissions/denials', async (req) => {
+    const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
+    const body = validate(z.object({
+      denied: z.array(z.string()).max(CAPABILITIES.length),
+    }), req.body);
+    const denied = normaliseDenials(body.denied);
+    const tenant = await ctx.onyxPlatform.setDenials(idOf(req), claims.user_id, denied);
+    return ok(tenant, denied.length
+      ? denied.length + (denied.length === 1 ? ' capability' : ' capabilities') + ' withheld.'
+      : 'Nothing withheld from this institution.');
   });
 
   app.put('/api/onyx/platform/tenants/:id/permissions', async (req) => {
@@ -369,9 +393,12 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
     const body = validate(z.object({
       user_id: z.string().uuid(),
       title: z.string().min(1).max(255),
-      kind: z.enum(['course', 'assessment', 'contest', 'program']).optional(),
+      kind: z.enum(['course', 'assessment', 'contest', 'program', 'internship', 'project', 'performance']).optional(),
       course_id: z.number().int().positive().nullish(),
       expires_at: z.string().nullish(),
+      // The period the artwork prints on its two rules. Same shape the
+      // institution's own route takes.
+      detail: z.record(z.string(), z.unknown()).optional(),
     }), req.body);
     return ok(await ctx.onyxPlatform.issueCertificate(idOf(req), claims.user_id, body),
       'Certificate issued.');

@@ -372,6 +372,7 @@ docs:check` fails the build if it has.
 | `GET` | `/api/onyx/platform/tenants` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/permissions` | platform admin |
+| `PUT` | `/api/onyx/platform/tenants/:id/permissions/denials` | platform admin |
 | `PUT` | `/api/onyx/platform/tenants/:id/permissions` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/people` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/students/:userId` | platform admin |
@@ -523,4 +524,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_425 endpoints across 9 route files._
+_426 endpoints across 9 route files._

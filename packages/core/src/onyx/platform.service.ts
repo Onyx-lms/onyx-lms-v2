@@ -21,6 +21,8 @@ import { peopleFor } from './directory.ts';
 import { authorsOf } from './authorship.ts';
 import type { TenancyService } from './tenancy.service.ts';
 import { slugify } from '../authoring/slug.ts';
+import { defaultDenials } from './permissions.ts';
+import type { CertificateKind } from '../format/certificate-doc.ts';
 import { ROLES, normaliseCommunityUrl } from './tenancy.service.ts';
 import { gradeFor } from './examinations.service.ts';
 // The same two tests the marker applies, so the count an operator reads and
@@ -43,7 +45,7 @@ import { resolveCourseAccess, type CourseAccess } from './academics.service.ts';
  * on a screen listing every other fact about the same row.
  */
 // eslint-disable-next-line max-len -- one literal; a concatenated select collapses the row type.
-const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, student_signup, signup_domains, signup_mode, community_url, community_label, created_at, updated_at';
+const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, platform_denied, student_signup, signup_domains, signup_mode, community_url, community_label, created_at, updated_at';
 const ADMIN_COLUMNS = 'id, user_id, granted_by, created_at';
 
 /**
@@ -1161,6 +1163,17 @@ export class PlatformService {
     const { data: tenant, error } = await this.#db.from('onyx_tenants').insert({
       name: input.name.trim(), slug, status: 1, plan: input.plan ?? null,
       student_signup: true, signup_mode: 'open',
+      /*
+       * A few capabilities are the platform's to grant rather than the
+       * customer's to assume -- issuing publicly verifiable credentials being
+       * the first. A new institution starts without them, so its
+       * administrator has to be given them from this console before anyone
+       * there can act. Seeded at creation rather than defaulted in the
+       * column, because the column's default has to stay `[]`: applying this
+       * list retroactively would take credentials away from institutions
+       * already issuing them.
+       */
+      platform_denied: defaultDenials() as never,
     }).select(TENANT_COLUMNS).maybeSingle();
     if (error) throw new HttpError(500, 'Could not create the institution: ' + error.message);
 
@@ -1248,6 +1261,25 @@ export class PlatformService {
       .eq('id', id).select(TENANT_COLUMNS).maybeSingle();
     await this.#log(actorId, 'tenant.updated', 'tenant', id,
       { permissions: before?.permissions ?? {} }, { permissions: overrides });
+    return data;
+  }
+
+  /**
+   * What this institution may not do, whatever its own matrix says.
+   *
+   * Separate from `setPermissions` on purpose. The tenant matrix is the
+   * institution's own decision and an administrator may edit it; this is the
+   * platform's decision about the institution, and only these routes reach it.
+   * Recorded in the PLATFORM audit log, because it is an act of the operator
+   * rather than of the customer.
+   */
+  async setDenials(id: number, actorId: string | null, denied: unknown) {
+    const before = await this.tenant(id);
+    const { data } = await this.#db.from('onyx_tenants')
+      .update({ platform_denied: denied as never, updated_at: new Date().toISOString() })
+      .eq('id', id).select(TENANT_COLUMNS).maybeSingle();
+    await this.#log(actorId, 'tenant.capabilities_withheld', 'tenant', id,
+      { platform_denied: before?.platform_denied ?? [] }, { platform_denied: denied });
     return data;
   }
 
@@ -1905,8 +1937,11 @@ export class PlatformService {
   // who issued it, and "nobody" is not an answer a verifier can act on.
   async issueCertificate(tenantId: number, actorId: string, input: {
     user_id: string; title: string;
-    kind?: 'course' | 'assessment' | 'contest' | 'program';
+    /** See CERTIFICATE_KINDS -- the four supplied designs plus the originals. */
+    kind?: CertificateKind;
     course_id?: number | null; expires_at?: string | null;
+    /** Free-form extras the document reads, e.g. the period `from`/`to`. */
+    detail?: Record<string, unknown>;
   }) {
     // Only somebody at this institution can hold its certificate -- the same
     // check the institution's own route makes, and the reason a uuid pasted

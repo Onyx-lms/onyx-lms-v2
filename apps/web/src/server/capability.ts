@@ -1,6 +1,7 @@
 import {
   HttpError, can, capability,
   type CapabilityKey, type PermissionOverrides, type PersonalPermissions,
+  type PlatformDenials,
 } from '@onyx/core';
 import type { Role } from '@/lib/onyx-session';
 import type { AppContext } from '@/server/app-context';
@@ -63,6 +64,9 @@ export async function assertCan(
 ): Promise<void> {
   const tenant = await ctx.onyxTenancy.tenant(tenantId);
   const overrides = (tenant?.permissions ?? {}) as PermissionOverrides;
+  // What the platform has withheld from this institution. Checked inside
+  // `can` before anything else, so no grant underneath can reach past it.
+  const denied = (tenant?.platform_denied ?? []) as PlatformDenials;
 
   // One extra read, and only for a guarded route. The membership is where a
   // person's own grants live (0036) -- see permissions.ts's `can` for the
@@ -72,13 +76,22 @@ export async function assertCan(
     ? ((await ctx.onyxTenancy.membership(tenantId, userId))?.permissions ?? {})
     : {};
 
-  if (can(role, key, overrides, personal as PersonalPermissions)) return;
+  if (can(role, key, overrides, personal as PersonalPermissions, denied)) return;
 
   // Named, not "Forbidden": an administrator who has just switched something
   // off should be able to tell from the message what to switch back on, and a
   // lecturer who has lost an action should learn it was a decision rather than
   // a bug.
   const what = capability(key);
+  if (denied.includes(key)) {
+    // Not "your institution does not allow this": nobody inside the
+    // institution can switch it back on, and saying so sends an administrator
+    // hunting through a matrix where the toggle does not exist.
+    throw new HttpError(403, what
+      ? '“' + what.label + '” is not enabled for this institution. '
+        + 'Contact the platform team to have it turned on.'
+      : 'That is not enabled for this institution.');
+  }
   throw new HttpError(403, what
     ? '“' + what.label + '” is not something your institution allows you to do.'
     : 'Your institution does not allow you to do that.');

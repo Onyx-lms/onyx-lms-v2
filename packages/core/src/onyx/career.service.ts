@@ -21,7 +21,7 @@ import { randomBytes } from 'node:crypto';
 import type { OnyxDb } from './db.ts';
 import type { Role } from '@onyx/types';
 import { HttpError } from '../http/errors.ts';
-import { pdfCertificate } from '../format/pdf.ts';
+import { renderBrandedCertificate } from '../format/certificate-doc.ts';
 import { slugify } from '../authoring/slug.ts';
 import type { AcademicsService } from './academics.service.ts';
 import type { AttendanceService } from './attendance.service.ts';
@@ -31,7 +31,16 @@ const SKILL_COLUMNS = 'id, tenant_id, name, slug, category, created_at';
 const LEARNER_SKILL_COLUMNS = 'id, tenant_id, user_id, skill_id, source_type, source_id, strength, evidence, earned_at';
 const READINESS_COLUMNS = 'id, tenant_id, user_id, score, breakdown, formula, computed_at';
 
-export type CertificateKind = 'course' | 'assessment' | 'contest' | 'program';
+/**
+ * Re-exported, not redeclared.
+ *
+ * The kinds are defined next to the document that renders them, because that
+ * is the file which has to have a title and a sentence for every one of them.
+ * Declaring the union here as well is how a kind gets added to the API and
+ * then renders with an empty title.
+ */
+export type { CertificateKind } from '../format/certificate-doc.ts';
+import type { CertificateKind } from '../format/certificate-doc.ts';
 export type SkillSource = 'course' | 'assessment' | 'problem' | 'workspace' | 'certificate' | 'contest';
 
 /**
@@ -237,15 +246,32 @@ export class CareerService {
       : null);
 
     const base = (opts.baseUrl ?? 'http://127.0.0.1:5173').replace(/\/+$/, '');
+
+    /*
+     * The period the work covered, if the issuer recorded one.
+     *
+     * Kept in `detail` rather than in columns of its own: it is wording on a
+     * document, not something any query filters or sorts by, and the artwork
+     * has exactly two blanks for it. An issuer who records nothing gets the
+     * issue date on the first rule and the second left empty, which is what
+     * the blank means -- not an invented end date.
+     */
+    const detail = (data.detail ?? {}) as Record<string, unknown>;
+    const period = (key: string) => {
+      const raw = detail[key];
+      return typeof raw === 'string' && raw.trim() ? (day(raw) ?? raw) : null;
+    };
+
     return {
-      file: pdfCertificate({
+      file: await renderBrandedCertificate({
         issuer: tenant?.name ?? 'Onyx',
         holder: holder?.name ?? 'The holder',
         title: String(data.title),
         kind: String(data.kind),
         credentialId: String(data.credential_id),
         issuedAt: day(data.issued_at) ?? '',
-        expiresAt: day(data.expires_at),
+        from: period('from'),
+        to: period('to'),
         verifyUrl: base + '/onyx/verify/' + data.credential_id,
       }),
       filename: 'certificate-' + data.credential_id + '.pdf',
@@ -610,7 +636,15 @@ function component(
  * An allow-list, not a filter: a caller passing `{ email }` into `detail` would
  * otherwise publish it to anyone holding the credential id.
  */
-const PUBLIC_DETAIL_KEYS = ['score', 'max_score', 'percent', 'grade', 'hours', 'level', 'course'];
+/*
+ * `from` and `to` are the period the credential covers, printed on the two
+ * rules the certificate artwork leaves for them. They are on the list for the
+ * same reason `grade` is: a date range describing the award is part of what
+ * the issuer is publishing, not something about the holder that a verifier
+ * should not see. Nothing here is free text -- see the route's schema.
+ */
+const PUBLIC_DETAIL_KEYS = ['score', 'max_score', 'percent', 'grade', 'hours', 'level', 'course',
+  'from', 'to'];
 
 function pickPublicDetail(detail: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
