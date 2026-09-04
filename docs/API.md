@@ -392,6 +392,7 @@ docs:check` fails the build if it has.
 | `DELETE` | `/api/onyx/platform/tenants/:id/courses/:courseId/enroll/:userId` | platform admin |
 | `GET` | `/api/onyx/platform/tenants/:id/certificates` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/certificates` | platform admin |
+| `GET` | `/api/onyx/platform/tenants/:id/certificates/:certificateId/document.pdf` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/certificates/:certificateId/revoke` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/assignments` | platform admin |
 | `POST` | `/api/onyx/platform/tenants/:id/assessments` | platform admin |
@@ -524,4 +525,4 @@ docs:check` fails the build if it has.
 
 ---
 
-_426 endpoints across 9 route files._
+_427 endpoints across 9 route files._

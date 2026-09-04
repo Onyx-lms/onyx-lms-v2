@@ -1959,6 +1959,21 @@ export class PlatformService {
     return certificate;
   }
 
+  /**
+   * The credential as a document, for an operator.
+   *
+   * The institution's own route refuses this: it takes a tenant token and a
+   * platform admin has none, so the console could issue a certificate and
+   * then had no way to hand anyone the thing that was issued. Scoped by the
+   * `:id` in the path like every other read here, and deliberately passed no
+   * `viewer` -- the holder/issuer check exists to stop one learner taking
+   * another's copy, which is not the question being asked when the platform
+   * team opens a customer's register.
+   */
+  async certificatePdf(tenantId: number, certificateId: number, baseUrl?: string) {
+    return this.#careerService().certificatePdf(tenantId, certificateId, { baseUrl });
+  }
+
   async revokeCertificate(tenantId: number, id: number, actorId: string | null, reason: string) {
     const revoked = await this.#careerService().revokeCertificate(tenantId, id, reason);
     await this.#log(actorId, 'certificate.revoked', 'certificate', id,

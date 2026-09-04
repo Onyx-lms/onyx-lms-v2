@@ -63,16 +63,25 @@ interface KindCopy {
   title: string;
   /** Reads as: "This certificate recognises {sentence} “{subject}”." */
   sentence: string;
+  /**
+   * The design this kind prints on, named the way a person would say it.
+   *
+   * Several kinds share one design -- a contest placing and an assessment
+   * result both print as a Performance certificate -- so this is what a
+   * register should show and filter by. `title` is the shouty line ON the
+   * document; this is the name OF the document.
+   */
+  template: string;
 }
 
 const KINDS: Record<string, KindCopy> = {
-  course: { title: 'COURSE COMPLETION CERTIFICATE', sentence: 'the successful completion of' },
-  program: { title: 'COURSE COMPLETION CERTIFICATE', sentence: 'the successful completion of' },
-  internship: { title: 'INTERNSHIP CERTIFICATE', sentence: 'the successful completion of an internship in' },
-  project: { title: 'PROJECT COMPLETION CERTIFICATE', sentence: 'the successful completion of the project' },
-  performance: { title: 'PERFORMANCE CERTIFICATE', sentence: 'outstanding performance in' },
-  assessment: { title: 'PERFORMANCE CERTIFICATE', sentence: 'outstanding performance in' },
-  contest: { title: 'PERFORMANCE CERTIFICATE', sentence: 'outstanding performance in' },
+  course: { title: 'COURSE COMPLETION CERTIFICATE', sentence: 'the successful completion of', template: 'Course completion' },
+  program: { title: 'COURSE COMPLETION CERTIFICATE', sentence: 'the successful completion of', template: 'Course completion' },
+  internship: { title: 'INTERNSHIP CERTIFICATE', sentence: 'the successful completion of an internship in', template: 'Internship' },
+  project: { title: 'PROJECT COMPLETION CERTIFICATE', sentence: 'the successful completion of the project', template: 'Project completion' },
+  performance: { title: 'PERFORMANCE CERTIFICATE', sentence: 'outstanding performance in', template: 'Performance' },
+  assessment: { title: 'PERFORMANCE CERTIFICATE', sentence: 'outstanding performance in', template: 'Performance' },
+  contest: { title: 'PERFORMANCE CERTIFICATE', sentence: 'outstanding performance in', template: 'Performance' },
 };
 
 export function certificateCopy(kind: string | null | undefined): KindCopy {
@@ -86,6 +95,20 @@ export const CERTIFICATE_KINDS = [
 ] as const;
 
 export type CertificateKind = (typeof CERTIFICATE_KINDS)[number];
+
+/**
+ * The four supplied designs, in the order the picker offers them.
+ *
+ * Derived from the map rather than written out again: a kind added above
+ * without a design here would otherwise be filterable to an empty list.
+ */
+export const CERTIFICATE_TEMPLATES: string[] =
+  [...new Set(CERTIFICATE_KINDS.map((k) => KINDS[k]!.template))];
+
+/** Which kinds print on a given design. */
+export function kindsForTemplate(template: string): string[] {
+  return CERTIFICATE_KINDS.filter((k) => KINDS[k]!.template === template);
+}
 
 export interface BrandedCertificate {
   /** The institution issuing it. Printed under the name, above the sentence. */
