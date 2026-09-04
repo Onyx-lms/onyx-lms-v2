@@ -42,6 +42,19 @@ import type { Role } from '@onyx/types';
  * Platform admins are not in this model at all. They operate above the
  * institution and hold everything in every tenant by definition -- see
  * requirePlatformAdmin.
+ *
+ * THE ONE THING ABOVE THE MATRIX. `admin holds everything` is a rule about
+ * what an institution may do to ITSELF: an administrator cannot revoke their
+ * own last capability, because that is a lockout with nobody left to undo it.
+ * It is not a rule about what the PLATFORM may decide. An operator selling
+ * this product needs to be able to say "this institution does not issue
+ * credentials" -- a tier, a contract, a compliance decision -- and until
+ * `PlatformDenials` existed there was no way to express it: the console
+ * accepted the change, `holdersOf` put `admin` straight back, and the
+ * institution carried on issuing. A denial is stored separately from the
+ * institution's own matrix, is writable only through the platform routes, and
+ * beats every grant beneath it including a personal one. It is never a lockout
+ * because the operator who set it can always lift it.
  */
 
 export type CapabilityKey =
@@ -287,15 +300,78 @@ const BY_KEY = new Map(CAPABILITIES.map((c) => [c.key, c]));
 export type PermissionOverrides = Partial<Record<CapabilityKey, Role[]>>;
 
 /**
+ * Capabilities the PLATFORM has withheld from an institution.
+ *
+ * Not part of the tenant's own matrix and not writable from inside the
+ * institution: this is the operator's decision about what the customer has
+ * bought or may do. Stored as a plain list of keys on the tenant row.
+ */
+export type PlatformDenials = CapabilityKey[];
+
+/** Drops anything that is not a capability, and de-duplicates. */
+export function normaliseDenials(input: unknown): PlatformDenials {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set<CapabilityKey>();
+  for (const k of input) {
+    if (typeof k === 'string' && BY_KEY.has(k as CapabilityKey)) seen.add(k as CapabilityKey);
+  }
+  return [...seen];
+}
+
+/**
+ * Capabilities an institution does not get merely by existing.
+ *
+ * The difference between "withheld" and "not yet granted" is only where the
+ * institution starts. Everything else in the catalogue ships switched on and
+ * an operator may take it away; these ship OFF, and an administrator has to be
+ * given them by the platform before anyone at the institution can act.
+ *
+ * Issuing credentials is the first of them, and the reason the distinction
+ * exists: a certificate is the institution making a permanent, publicly
+ * verifiable claim about a person, under the platform's own verification
+ * domain. Whether a new customer may do that at all is the platform's call to
+ * make deliberately, not something they inherit by signing up.
+ *
+ * Applied at creation (see PlatformService.createTenant), never retroactively:
+ * an institution already issuing credentials does not lose them because this
+ * list grew.
+ */
+export const GRANT_REQUIRED: CapabilityKey[] = ['careers.certificates'];
+
+/** What a brand-new institution starts with withheld. */
+export function defaultDenials(): PlatformDenials {
+  return [...GRANT_REQUIRED];
+}
+
+/** Whether this capability has to be granted by the platform before use. */
+export function needsPlatformGrant(key: CapabilityKey): boolean {
+  return GRANT_REQUIRED.includes(key);
+}
+
+/** Whether the platform has withheld this capability from this institution. */
+export function isDenied(key: CapabilityKey, denied?: PlatformDenials | null): boolean {
+  return Array.isArray(denied) && denied.includes(key);
+}
+
+/**
  * Who holds a capability at this institution.
  *
  * Defaults, unless the institution has said otherwise about this exact
  * capability -- and `admin` is added back whatever the stored value says,
  * because an override that drops it is a lockout, not a configuration.
  */
-export function holdersOf(key: CapabilityKey, overrides?: PermissionOverrides | null): Role[] {
+export function holdersOf(
+  key: CapabilityKey,
+  overrides?: PermissionOverrides | null,
+  /** What the platform has withheld. Nobody holds a denied capability. */
+  denied?: PlatformDenials | null,
+): Role[] {
   const cap = BY_KEY.get(key);
   if (!cap) return ['admin'];
+  // Before the admin floor, not after it: a platform denial is the one thing
+  // that empties this list, and re-adding `admin` underneath would put back
+  // exactly the holder the operator meant to remove.
+  if (isDenied(key, denied)) return [];
   const stored = overrides?.[key];
   const roles = stored ?? cap.defaults;
   return roles.includes('admin') ? roles : ['admin', ...roles];
@@ -332,8 +408,14 @@ export function can(
   key: CapabilityKey,
   overrides?: PermissionOverrides | null,
   personal?: PersonalPermissions | null,
+  denied?: PlatformDenials | null,
 ): boolean {
   if (!role) return false;
+  // First, and without exception. A platform denial outranks the role matrix,
+  // the admin floor and a personal grant alike -- it is the operator's answer
+  // to "may this institution do this at all", and anything that could override
+  // it from inside the institution would make it advisory.
+  if (isDenied(key, denied)) return false;
   const mine = personal?.[key];
   if (mine === false) return role === 'admin';
   if (mine === true) {

@@ -15,6 +15,20 @@ export interface CapabilityRow {
   holders: Role[];
   holders_now: Role[];
   changed: boolean;
+  /**
+   * Withheld by the platform, above this institution's own matrix.
+   *
+   * Not the same as "no role holds it": nobody inside the institution can
+   * switch it back on, so the row is rendered as withheld rather than as a
+   * set of toggles that save and change nothing.
+   */
+  denied_by_platform?: boolean;
+  /**
+   * The platform's to grant rather than the customer's to assume. A new
+   * institution starts without it, so the operator sees why the row is off
+   * instead of assuming somebody turned it off.
+   */
+  grant_required?: boolean;
 }
 
 /**
@@ -40,13 +54,20 @@ export interface CapabilityRow {
  *     the button. Toggling a permission per click would mean an institution
  *     that half-changed its mind is left half-changed.
  */
-export function PermissionMatrix({ capabilities, areas, canEdit, scope }: {
+export function PermissionMatrix({ capabilities, areas, canEdit, scope, platform }: {
   capabilities: CapabilityRow[];
   areas: string[];
   /** Read-only for anyone without `settings.manage`. */
   canEdit: boolean;
   /** Where to PUT. The platform console addresses one institution by id. */
   scope: { endpoint: string; institution?: string };
+  /**
+   * Present only in the platform console, where the operator may also decide
+   * what this institution is allowed to do AT ALL. Absent inside the
+   * institution, which is the point: a customer cannot grant itself something
+   * the platform withheld.
+   */
+  platform?: { endpoint: string };
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -64,9 +85,28 @@ export function PermissionMatrix({ capabilities, areas, canEdit, scope }: {
   const [granted, setGranted] = useState<Record<string, Role[]>>(
     () => Object.fromEntries(capabilities.map((c) => [c.key, c.holders_now])));
 
+  // What the platform withholds. Operator-only; inside the institution this is
+  // read from the row and never edited.
+  const [denied, setDenied] = useState<Set<string>>(
+    () => new Set(capabilities.filter((c) => c.denied_by_platform).map((c) => c.key)));
+  const wasDenied = useMemo(
+    () => new Set(capabilities.filter((c) => c.denied_by_platform).map((c) => c.key)),
+    [capabilities]);
+  const deniedDirty = denied.size !== wasDenied.size
+    || [...denied].some((k) => !wasDenied.has(k));
+  const isOff = (key: string) => denied.has(key);
+  const toggleDenied = (key: string) => {
+    if (!platform || !canEdit) return;
+    setDenied((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
   const has = (key: string, role: Role) => (granted[key] ?? []).includes(role);
   const toggle = (key: string, role: Role) => {
-    if (!canEdit) return;
+    if (!canEdit || isOff(key)) return;
     setGranted((prev) => {
       const now = prev[key] ?? [];
       return { ...prev, [key]: now.includes(role)
@@ -84,13 +124,35 @@ export function PermissionMatrix({ capabilities, areas, canEdit, scope }: {
 
   const save = () => start(async () => {
     setNotice(null);
-    const res = await fetch(scope.endpoint, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ permissions: granted }),
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!body.ok) { setNotice({ tone: 'bad', text: body.message ?? 'That did not save.' }); return; }
+    const put = async (endpoint: string, payload: unknown) => {
+      const res = await fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      return res.json().catch(() => ({}));
+    };
+
+    /*
+     * What the platform withholds goes first, and a failure there stops the
+     * matrix save. The two are read together afterwards -- saving the matrix
+     * while the denial silently failed would leave the screen claiming an
+     * institution may do something the platform meant to take away.
+     */
+    if (platform && deniedDirty) {
+      const body = await put(platform.endpoint, { denied: [...denied] });
+      if (!body.ok) {
+        setNotice({ tone: 'bad', text: body.message ?? 'That did not save.' });
+        return;
+      }
+    }
+    if (dirty.length) {
+      const body = await put(scope.endpoint, { permissions: granted });
+      if (!body.ok) {
+        setNotice({ tone: 'bad', text: body.message ?? 'That did not save.' });
+        return;
+      }
+    }
     setNotice({ tone: 'ok', text: 'Saved. Everyone holding those roles is affected immediately.' });
     router.refresh();
   });
@@ -118,6 +180,11 @@ export function PermissionMatrix({ capabilities, areas, canEdit, scope }: {
       <Card className="sticky top-[70px] z-30 flex flex-wrap items-center justify-between gap-3
                        p-4">
         <p className="max-w-prose text-[13px] leading-relaxed text-muted">
+          {platform
+            ? 'Enabled decides what this institution may do at all — unticking it withholds '
+              + 'the capability from every role here, administrators included, and nobody '
+              + 'inside the institution can turn it back on. '
+            : null}
           Administrators hold every permission here and always will.
           {scope.institution ? ' You are editing ' + scope.institution + '.' : ''}
           {' '}Each tick lets that role attempt the act; what they may do it <em>to</em> is
@@ -130,12 +197,15 @@ export function PermissionMatrix({ capabilities, areas, canEdit, scope }: {
                          font-semibold hover:border-brand-300 hover:text-brand-700">
               Reset to defaults
             </button>
-            <button type="button" onClick={save} disabled={pending || dirty.length === 0}
+            <button type="button" onClick={save}
+              disabled={pending || (dirty.length === 0 && !deniedDirty)}
               className="min-h-[40px] rounded-xl bg-brand-600 px-4 text-[14px] font-bold text-white
                          hover:bg-brand-700 disabled:opacity-45">
-              {pending ? 'Saving…'
-                : dirty.length ? 'Save ' + dirty.length + ' change'
-                  + (dirty.length === 1 ? '' : 's') : 'Saved'}
+              {(() => {
+                const n = dirty.length + (deniedDirty ? 1 : 0);
+                if (pending) return 'Saving…';
+                return n ? 'Save ' + n + ' change' + (n === 1 ? '' : 's') : 'Saved';
+              })()}
             </button>
           </div>
         ) : (
@@ -158,6 +228,11 @@ export function PermissionMatrix({ capabilities, areas, canEdit, scope }: {
                   <tr className="border-b border-line bg-slate-50 text-[11px] uppercase
                                  tracking-[.06em] text-muted">
                     <th scope="col" className="px-4 py-2.5 text-left font-bold">Permission</th>
+                    {platform ? (
+                      <th scope="col" className="whitespace-nowrap px-3 py-2.5 text-center font-bold">
+                        Enabled
+                      </th>
+                    ) : null}
                     <th scope="col" className="px-3 py-2.5 text-center font-bold">Admin</th>
                     {roles.map((r) => (
                       <th key={r} scope="col"
@@ -169,25 +244,61 @@ export function PermissionMatrix({ capabilities, areas, canEdit, scope }: {
                 </thead>
                 <tbody className="divide-y divide-line">
                   {rows.map((cap) => (
-                    <tr key={cap.key} className="align-top">
+                    <tr key={cap.key} className={'align-top ' + (isOff(cap.key) ? 'bg-slate-50/70' : '')}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold">{cap.label}</span>
+                          <span className={'font-semibold ' + (isOff(cap.key) ? 'text-muted' : '')}>
+                            {cap.label}
+                          </span>
+                          {isOff(cap.key) ? (
+                            <Pill tone="neutral">
+                              {cap.grant_required ? 'Needs platform approval' : 'Not enabled'}
+                            </Pill>
+                          ) : null}
                           {dirty.some((d) => d.key === cap.key)
                             ? <Pill tone="soon">Unsaved</Pill>
                             : cap.changed ? <Pill tone="neutral">Changed</Pill> : null}
                         </div>
                         <div className="mt-0.5 max-w-prose text-[12.5px] text-muted">
                           {cap.detail}
+                          {isOff(cap.key) ? (
+                            <em className="not-italic font-semibold">
+                              {' '}Withheld by the platform, so nobody here holds it.
+                            </em>
+                          ) : null}
                         </div>
                       </td>
+                      {platform ? (
+                        <td className="px-3 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            className="h-4.5 w-4.5 cursor-pointer accent-brand-600
+                                       disabled:cursor-default"
+                            checked={!isOff(cap.key)}
+                            disabled={!canEdit || pending}
+                            onChange={() => toggleDenied(cap.key)}
+                            aria-label={'Enable ' + cap.label + ' for this institution'}
+                          />
+                        </td>
+                      ) : null}
                       <td className="px-3 py-3 text-center">
-                        {/* Not a control: the role holds it, always. */}
-                        <Icon name="check" className="mx-auto h-4 w-4 text-brand-600" />
-                        <span className="sr-only">Administrators always hold this</span>
+                        {/* Admin holds everything the institution has -- unless
+                            the platform has withheld the capability entirely,
+                            which is the one thing above this matrix. */}
+                        {isOff(cap.key) ? (
+                          <>
+                            <span aria-hidden="true" className="text-faint">—</span>
+                            <span className="sr-only">Withheld by the platform</span>
+                          </>
+                        ) : (
+                          <>
+                            <Icon name="check" className="mx-auto h-4 w-4 text-brand-600" />
+                            <span className="sr-only">Administrators always hold this</span>
+                          </>
+                        )}
                       </td>
                       {roles.map((r) => {
-                        const allowed = cap.holders.includes(r);
+                        const allowed = cap.holders.includes(r) && !isOff(cap.key);
                         if (!allowed) {
                           return (
                             <td key={r} className="px-3 py-3 text-center text-faint">
@@ -205,7 +316,7 @@ export function PermissionMatrix({ capabilities, areas, canEdit, scope }: {
                               className="h-4.5 w-4.5 cursor-pointer accent-brand-600
                                          disabled:cursor-default"
                               checked={has(cap.key, r)}
-                              disabled={!canEdit || pending}
+                              disabled={!canEdit || pending || isOff(cap.key)}
                               onChange={() => toggle(cap.key, r)}
                               aria-label={ROLE_LABELS[r] + ' — ' + cap.label}
                             />

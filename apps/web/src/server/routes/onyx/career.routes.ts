@@ -77,7 +77,7 @@ export function registerOnyxCareerRoutes(app: Router, ctx: AppContext): void {
     const body = validate(z.object({
       user_id: z.string().uuid(),
       title: z.string().min(1).max(255),
-      kind: z.enum(['course', 'assessment', 'contest', 'program']).optional(),
+      kind: z.enum(['course', 'assessment', 'contest', 'program', 'internship', 'project', 'performance']).optional(),
       course_id: z.number().int().positive().nullish(),
       assessment_id: z.number().int().positive().nullish(),
       detail: z.record(z.string(), z.unknown()).optional(),

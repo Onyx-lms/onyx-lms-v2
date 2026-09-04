@@ -3,6 +3,16 @@ export * from './json/php-json.ts';
 export * from './format/currency.ts';
 export * from './format/csv.ts';
 export * from './format/pdf.ts';
+/*
+ * The certificate document and, with it, the kind -> design map. Exported
+ * because the console renders and filters by that design: without it the
+ * register would need its own copy of the mapping, which is how a kind ends
+ * up filed under the wrong certificate.
+ *
+ * Note this pulls in the artwork (a ~600 kB base64 template). That is server
+ * side only -- every consumer is a route or a Server Component.
+ */
+export * from './format/certificate-doc.ts';
 export * from './db/client.ts';
 export * from './settings/settings.service.ts';
 export * from './i18n/i18n.service.ts';
