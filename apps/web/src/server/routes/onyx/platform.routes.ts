@@ -436,6 +436,9 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
     const body = validate(z.object({
       course_id: z.number().int().positive(),
       title: z.string().min(1).max(255),
+      // Same field, same limit as the tenant's own /courses/:id/assignments --
+      // see PlatformService.createAssignment for why this was missing.
+      instructions: z.string().max(20_000).nullish(),
       due_at: z.string().nullish(),
       total_points: z.number().min(0).optional(),
     }), req.body);
@@ -1660,6 +1663,7 @@ export function registerOnyxPlatformRoutes(app: Router, ctx: AppContext): void {
     const claims = await requirePlatformAdmin(asReq(req), ctx.jwtSecret);
     const body = validate(z.object({
       title: z.string().min(1).max(255).optional(),
+      instructions: z.string().max(20_000).nullish(),
       due_at: z.string().nullish(),
       total_points: z.number().min(0).optional(),
       status: z.string().max(20).optional(),

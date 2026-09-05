@@ -1988,7 +1988,8 @@ export class PlatformService {
   }
 
   async createAssignment(tenantId: number, actorId: string | null, input: {
-    course_id: number; title: string; due_at?: string | null; total_points?: number;
+    course_id: number; title: string; instructions?: string | null;
+    due_at?: string | null; total_points?: number;
   }) {
     const { data: course } = await this.#db.from('onyx_courses')
       .select('id').eq('tenant_id', tenantId).eq('id', input.course_id).maybeSingle();
@@ -1996,11 +1997,20 @@ export class PlatformService {
     const total = input.total_points ?? 100;
     if (total <= 0) throw new HttpError(422, 'An assignment has to be worth something.');
 
+    /*
+     * `instructions` was accepted by the tenant's own createAssignment
+     * (learn.routes.ts) from the start and never plumbed through here: an
+     * operator authoring a course from this console could set a title, a due
+     * date and a point value, but never the one thing a learner actually
+     * reads before doing the work. Same column, same shape, no new
+     * migration -- `onyx_assignments.instructions` has held it since 0002.
+     */
     const { data, error } = await this.#db.from('onyx_assignments').insert({
       tenant_id: tenantId, course_id: input.course_id, title: input.title.trim(),
+      instructions: input.instructions ?? null,
       due_at: input.due_at ?? null, total_points: total, late_policy: 'accept',
       late_penalty_percent: 0, allow_resubmission: 1, status: 'draft', created_by: actorId,
-    }).select('id, title, course_id, due_at, total_points, status').maybeSingle();
+    }).select('id, title, instructions, course_id, due_at, total_points, status').maybeSingle();
     if (error) throw new HttpError(500, 'Could not create the assignment: ' + error.message);
     await this.#log(actorId, 'assignment.created', 'assignment', Number(data!.id), null,
       { title: data!.title, course_id: input.course_id });
@@ -2008,15 +2018,17 @@ export class PlatformService {
   }
 
   async updateAssignment(tenantId: number, assignmentId: number, actorId: string | null, patch: {
-    title?: string; due_at?: string | null; total_points?: number; status?: string;
+    title?: string; instructions?: string | null; due_at?: string | null;
+    total_points?: number; status?: string;
   }) {
     const { data: a } = await this.#db.from('onyx_assignments')
-      .select('id, tenant_id, title, due_at, total_points, status').eq('id', assignmentId).maybeSingle();
+      .select('id, tenant_id, title, instructions, due_at, total_points, status')
+      .eq('id', assignmentId).maybeSingle();
     if (!a || Number(a.tenant_id) !== tenantId) throw new HttpError(404, 'No such assignment.');
 
     const before: Record<string, unknown> = {};
     const after: Record<string, unknown> = {};
-    for (const key of ['title', 'due_at', 'total_points', 'status'] as const) {
+    for (const key of ['title', 'instructions', 'due_at', 'total_points', 'status'] as const) {
       const value = patch[key];
       if (value !== undefined && value !== a[key]) { before[key] = a[key]; after[key] = value; }
     }
