@@ -14,7 +14,7 @@ import {
   validate, ok, HttpError,
   requireOnyx, requireOnyxRole, requirePlatformAdmin, ROLES,
   CAPABILITIES, CAPABILITY_AREAS, holdersOf, can, normaliseOverrides, normalisePersonal,
-  type PermissionOverrides, type PersonalPermissions,
+  type PermissionOverrides, type PersonalPermissions, type PlatformDenials,
 } from '@onyx/core';
 import type { Role } from '@onyx/types';
 import type { AppContext } from '../../app-context.ts';
@@ -197,13 +197,22 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
     ]);
     const overrides = (tenant?.permissions ?? {}) as PermissionOverrides;
     const personal = (mineRow?.permissions ?? {}) as PersonalPermissions;
+    /*
+     * What the platform has withheld from this institution. Sent so the
+     * screen can render those rows as locked rather than as toggles that
+     * save and do nothing -- which is exactly what the console did before
+     * this existed.
+     */
+    const denied = (tenant?.platform_denied ?? []) as PlatformDenials;
     return ok({
       capabilities: CAPABILITIES.map((cap) => ({
         ...cap,
-        holders_now: holdersOf(cap.key, overrides),
+        holders_now: holdersOf(cap.key, overrides, denied),
         changed: Object.prototype.hasOwnProperty.call(overrides, cap.key),
+        denied_by_platform: denied.includes(cap.key),
       })),
       areas: CAPABILITY_AREAS,
+      denied,
       /**
        * What THIS caller may do, so a screen can hide what it must.
        *
@@ -213,7 +222,7 @@ export function registerOnyxTenancyRoutes(app: Router, ctx: AppContext): void {
        * would be the one that was wrong.
        */
       mine: CAPABILITIES.filter((cap) =>
-        can(claims.tenant_role, cap.key, overrides, personal)).map((cap) => cap.key),
+        can(claims.tenant_role, cap.key, overrides, personal, denied)).map((cap) => cap.key),
     });
   });
 

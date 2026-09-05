@@ -1,0 +1,11 @@
+import {chromium} from '@playwright/test';
+import path from 'node:path';
+const [,, inFile, outFile] = process.argv;
+const url = 'file:///' + path.resolve(inFile).split(path.sep).join('/');
+const b = await chromium.launch();
+const p = await b.newPage();
+await p.goto(url, {waitUntil: 'networkidle'});
+await p.emulateMedia({media: 'print'});
+await p.pdf({path: outFile, format: 'A4', printBackground: true, preferCSSPageSize: true});
+await b.close();
+console.log('pdf ->', outFile);

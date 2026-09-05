@@ -123,8 +123,16 @@ export function OnyxPlatformShell({
         <PlatformMobileMenu email={email} sidebarNav={sidebarNav} onClose={() => setMenuOpen(false)} />
       ) : null}
 
-      <div className="grid gap-7 px-4 pb-10 pt-5 lg:grid-cols-[216px_minmax(0,1fr)]
-                      lg:items-start lg:px-7 lg:pt-7">
+      {/* Capped and centred, not full-bleed.
+          On a 2560px monitor an uncapped grid stretched every table to the
+          glass: the credential register put 483px under "Credential id" and
+          spread five columns across 1700px, with the prose beside it still at
+          its reading measure. The console is read on wide screens more than
+          anything else in the product, so the width is bounded here rather
+          than per page. 1560px keeps the widest table (the audit log) intact
+          without letting a five-column table sprawl. */}
+      <div className="mx-auto grid w-full max-w-[1560px] gap-7 px-4 pb-10 pt-5
+                      lg:grid-cols-[216px_minmax(0,1fr)] lg:items-start lg:px-7 lg:pt-7">
         <aside className="rail-scroll hidden lg:sticky lg:top-[84px] lg:block">
           <div className="rounded-2xl border border-line bg-white p-3.5">
             <div className="text-[10.5px] font-bold uppercase tracking-[.09em] text-muted">

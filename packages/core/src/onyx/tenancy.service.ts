@@ -22,7 +22,7 @@ import { onyxAssetKey } from './content.service.ts';
 import { slugify } from '../authoring/slug.ts';
 import type { PermissionOverrides } from './permissions.ts';
 
-const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, student_signup, signup_domains, signup_mode, community_url, community_label, created_at, updated_at';
+const TENANT_COLUMNS = 'id, name, slug, status, plan, faculty_can_schedule_exams, permissions, platform_denied, student_signup, signup_domains, signup_mode, community_url, community_label, created_at, updated_at';
 /**
  * The slice of StorageService a profile picture needs.
  *

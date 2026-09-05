@@ -67,6 +67,11 @@ export default async function OnyxPlatformPermissionsPage(
         <>
           <section>
             <SectionHead title="By role" />
+            <p className="mb-3 max-w-2xl text-[13px] leading-relaxed text-muted">
+              Two decisions on one screen. <strong>Enabled</strong> is the platform’s:
+              whether this institution may do the thing at all, administrators included.
+              The role ticks are the institution’s own, and it may edit them itself.
+            </p>
             <PermissionMatrix
               capabilities={data.capabilities}
               areas={data.areas}
@@ -74,6 +79,15 @@ export default async function OnyxPlatformPermissionsPage(
               scope={{
                 endpoint: '/api/proxy/onyx/platform/tenants/' + tenantId + '/permissions',
                 institution: data.tenant?.name,
+              }}
+              /*
+               * The operator's own column, and the only place it exists. An
+               * institution editing its own matrix cannot reach this: what the
+               * platform withholds is not the customer's to grant back.
+               */
+              platform={{
+                endpoint: '/api/proxy/onyx/platform/tenants/' + tenantId
+                  + '/permissions/denials',
               }}
             />
           </section>

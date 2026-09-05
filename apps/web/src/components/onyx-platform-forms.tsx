@@ -5650,6 +5650,17 @@ export function IssueCertificateForm({ tenantId, holders, courses, capped }: {
             // not the same as zero.
             course_id: courseId ? Number(courseId) : null,
             expires_at: expires ? new Date(expires).toISOString() : null,
+            /*
+             * The two blanks on the artwork: "...in this field from ___ to
+             * ___". Kept in `detail` rather than columns of their own because
+             * nothing queries them -- they are wording on a document. Omitted
+             * entirely when blank, so the certificate prints the issue date on
+             * the first rule and leaves the second empty rather than inventing
+             * an end.
+             */
+            detail: Object.fromEntries(['from', 'to']
+              .map((k) => [k, String(data.get(k) ?? '')])
+              .filter(([, v]) => v)),
           });
           if (!res.ok) { setError(res.message ?? 'That did not work.'); return; }
           setOpen(false);
@@ -5682,12 +5693,15 @@ export function IssueCertificateForm({ tenantId, holders, courses, capped }: {
       </div>
       <div>
         <label className={label} htmlFor="pc-kind">Kind</label>
-        {/* Written out, not the four words the column stores. The
-            institution's own form offers "course / assessment / contest /
-            program" exactly as they appear in the database, which is a
-            picker that reads like a schema. */}
+        {/* Written out, not the words the column stores. The first four are
+            the supplied designs and pick the certificate's title; the last
+            three predate them and each renders on the design closest to what
+            it means. */}
         <select id="pc-kind" name="kind" className={field} defaultValue="course">
           <option value="course">Completing a course</option>
+          <option value="internship">Completing an internship</option>
+          <option value="project">Completing a project</option>
+          <option value="performance">Performance</option>
           <option value="assessment">Passing an assessment</option>
           <option value="contest">Placing in a contest</option>
           <option value="program">Completing a programme</option>
@@ -5699,6 +5713,18 @@ export function IssueCertificateForm({ tenantId, holders, courses, capped }: {
           <option value="">Not tied to a course</option>
           {courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.title}</option>)}
         </select>
+      </div>
+      <div>
+        <label className={label} htmlFor="pc-from">Period from (optional)</label>
+        <input id="pc-from" name="from" type="date" className={field} />
+      </div>
+      <div>
+        <label className={label} htmlFor="pc-to">Period to (optional)</label>
+        <input id="pc-to" name="to" type="date" className={field} />
+        <p className="mt-1 text-[12.5px] text-muted">
+          Printed on the two rules the design leaves for them. Left blank, the
+          certificate shows the issue date and nothing after it.
+        </p>
       </div>
       <div className="sm:col-span-2">
         <label className={label} htmlFor="pc-expires">Valid until (optional)</label>
